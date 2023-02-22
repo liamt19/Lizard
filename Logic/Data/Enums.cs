@@ -7,36 +7,31 @@ using System.Buffers;
 
 namespace LTChess.Data
 {
-    public enum Direction
+    public class Diagonal
     {
         /// <summary>
         /// Diagonally up and to the right, from white's perspective. 
         /// The longest diagonal in this direction contains A1, B2, ... G7, H8.
         /// </summary>
-        D_A1H8,
+        public const int D_A1H8 = 0;
 
         /// <summary>
         /// Diagonally down and to the right, from white's perspective. 
         /// The longest diagonal in this direction contains A8, B7, ... G2, H1.
         /// </summary>
-        D_A8H1,
-
-        Left,
-        Right,
-        Up,
-        Down,
+        public const int D_A8H1 = 1;
     }
 
     public class Color
     {
-        public const int None = -1;
+        public const int None = 2;
         public const int White = 0;
         public const int Black = 1;
     }
 
     public class Piece
     {
-        public const int None = -1;
+        public const int None = 6;
         public const int Pawn = 0;
         public const int Knight = 1;
         public const int Bishop = 2;

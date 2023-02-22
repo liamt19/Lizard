@@ -9,14 +9,24 @@ namespace LTChess.Search
     public static class EvaluationConstants
     {
         public const int ValuePawn = 100;
-        public const int ValueKnight = 320;
-        public const int ValueBishop = 360;
-        public const int ValueRook = 620;
-        public const int ValueQueen = 1400;
+        public const int ValueKnight = 290;
+        public const int ValueBishop = 310;
+        public const int ValueRook = 450;
+        public const int ValueQueen = 1000;
 
-        public const int ScorePawnSupport = 13;
-        public const int ScoreIsolatedPawn = -5;
-        public const int ScorePasser = 20;
+        public const double ScaleMaterial = 1.0;
+        public const double ScalePawns = 0.4;
+        public const double ScaleKnights = 0.6;
+        public const double ScaleBishops = 0.6;
+        public const double ScaleRooks = 0.7;
+        public const double ScaleQueens = 0.8;
+        public const double ScaleKingSafety = 0.6;
+        public const double ScaleThreats = 0.2;
+        public const double ScaleSpace = 0.2;
+
+        public const int ScorePawnSupport = 2;
+        public const int ScoreIsolatedPawn = -3;
+        public const int ScorePasser = 5;
         public const int ScorePromotingPawn = ValueQueen - ValuePawn;
 
         public const int ScoreKingRingAttack = 60;

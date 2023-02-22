@@ -35,7 +35,7 @@ namespace LTChess.Search
         private static int Deepen(int currDepth)
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = GenAllLegalMoves(p, list);
+            int size = p.GenAllLegalMoves(list);
 
             if (size == 0)
             {
@@ -64,6 +64,8 @@ namespace LTChess.Search
 
             int slowestMate = MATE_NONE;
             int slowestIndex = 0;
+
+            list.SortByCheck();
 
             for (int i = 0; i < size; i++)
             {
@@ -108,8 +110,11 @@ namespace LTChess.Search
             {
                 if (fastestMate != MAX_DEPTH)
                 {
-                    Log("".Indent(currDepth) + ColorToString(StartColor) + " has mate in " + fastestMate + " with " + list[fastestIndex].ToString(p) + "\r\n");
-                    //Log("".Indent(currDepth) + ColorToString(StartColor) + " has mate in " + fastestMate + " with " + list[fastestIndex].ToString(p));
+                    if (currDepth == 0)
+                    {
+                        Log("".Indent(currDepth) + ColorToString(StartColor) + " has mate in " + fastestMate + " with " + list[fastestIndex].ToString(p) + "\r\n");
+                        //Log("".Indent(currDepth) + ColorToString(StartColor) + " has mate in " + fastestMate + " with " + list[fastestIndex].ToString(p));
+                    }
                     return fastestMate;
                 }
                 else
@@ -122,7 +127,11 @@ namespace LTChess.Search
             {
                 if (slowestMate > MATE_NONE)
                 {
-                    //Log("".Indent(currDepth) + ColorToString(p.ToMove) + " at depth " + currDepth + " is getting mated in " + slowestMate + " if they play " + list[slowestIndex].ToString(p));
+                    if (currDepth <= 1)
+                    {
+                        Log("".Indent(currDepth) + ColorToString(p.ToMove) + " at depth " + currDepth + " is getting mated in " + slowestMate + " if they play " + list[slowestIndex].ToString(p));
+                    }
+                    
                     return slowestMate;
                 }
                 else
@@ -132,5 +141,6 @@ namespace LTChess.Search
                 }
             }
         }
+
     }
 }

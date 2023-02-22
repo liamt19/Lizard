@@ -251,7 +251,11 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public int GetColorAtIndex(int idx)
         {
-            if ((Colors[Color.White] & SquareBB[idx]) != 0)
+            return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
+
+
+            /**
+             if ((Colors[Color.White] & SquareBB[idx]) != 0)
             {
                 return Color.White;
             }
@@ -259,6 +263,7 @@ namespace LTChess.Core
             Debug.Assert((Colors[Color.Black] & SquareBB[idx]) != 0, "GetPieceColorAtIndex(" + IndexToString(idx) + ") is failing because nothing is set at that index!");
 #endif
             return Color.Black;
+             */
         }
 
         [MethodImpl(Inline)]
@@ -273,17 +278,151 @@ namespace LTChess.Core
             return (Colors[pc] & SquareBB[idx]) != 0;
         }
 
+        [MethodImpl(Inline)]
+        public ulong KingMask(int pc)
+        {
+            return (Colors[pc] & Pieces[Piece.King]);
+        }
 
         [MethodImpl(Inline)]
         public int KingIndex(int pc)
         {
 #if DEBUG
-            ulong u = Colors[pc] & Pieces[Piece.King];
+            ulong u = KingMask(pc);
             Debug.Assert(lsb(u) != 64);
 #endif
 
-            return lsb(Colors[pc] & Pieces[Piece.King]);
+            return lsb(KingMask(pc));
         }
 
+        [MethodImpl(Inline)]
+        public ulong PinnedPieces(int pc)
+        {
+            ulong pinned = 0UL;
+            ulong temp;
+            ulong them = Colors[Not(pc)];
+
+            int ourKing = KingIndex(pc);
+            ulong pinners = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) | 
+                           (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
+            
+            while (pinners != 0)
+            {
+                int idx = lsb(pinners);
+                pinners = poplsb(pinners);
+
+                temp = BetweenBB[ourKing][idx] & (Colors[pc] | them);
+
+                if (popcount(temp) == 1 && (temp & them) == 0)
+                {
+                    pinned |= temp;
+                }
+            }
+
+            return pinned;
+        }
+
+        /// <summary>
+        /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
+        /// So for a bishop on A1, AttackersTo H8 returns a ulong with a bit set at A1.
+        /// defendingColor is the color whose pieces are being attacked, and Not(defendingColor) is the color of the pieces that attack that square. 
+        /// So bb.AttackersTo(..., White) will reference any attacking Black pieces.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong AttackersTo(int idx, int defendingColor)
+        {
+            ulong us = Colors[defendingColor];
+            ulong them = Colors[Not(defendingColor)];
+
+            return AttackersToFast(idx, us | them) & them;
+        }
+
+        [MethodImpl(Inline)]
+        public ulong AttackersToFast(int idx, ulong occupied)
+        {
+            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen])) 
+                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) 
+                  | (Pieces[Piece.Knight] & KnightMasks[idx])
+                  | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
+                  |  (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
+
+            //return (diagonals | straights | knights | pawns);
+        }
+
+        /// <summary>
+        /// Same as AttackersTo, but the bishop and rook moves are calculated after AND NOT'ing the mask from the Color bitboards.
+        /// </summary>
+        /// <param name="idx"></param>
+        /// <param name="defendingColor"></param>
+        /// <returns></returns>
+        public ulong AttackersToMask(int idx, int defendingColor, ulong mask)
+        {
+            /// TODO: this.
+            ulong us = Colors[defendingColor];
+            ulong them = Colors[Not(defendingColor)];
+
+            //  pawnBB is set to our color's pawn attacks.
+            //  We see if the piece at idx could capture another piece as if it were a pawn
+            ulong pawnBB = (defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx];
+
+            ulong occupied = (us | them) & ~mask;
+                 
+            ulong diagonals = (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]));
+            ulong straights = (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]));
+
+            ulong knights = (Pieces[Piece.Knight] & KnightMasks[idx]);
+            ulong pawns = (Pieces[Piece.Pawn] & pawnBB);
+
+            return (diagonals | straights | knights | pawns) & them;
+        }
+
+
+        /// <summary>
+        /// Returns true if the move <paramref name="move"/> is pseudo-legal for the position <paramref name="position"/>.
+        /// Only determines if there is a piece at move.from and the piece at move.to isn't the same color.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public bool IsPseudoLegal(in Move move)
+        {
+            if (GetPieceAtIndex(move.from) != Piece.None)
+            {
+                if (GetPieceAtIndex(move.to) != Piece.None)
+                {
+                    //  We can't capture our own color pieces
+                    return GetColorAtIndex(move.from) != GetColorAtIndex(move.to);
+                }
+
+                //  This is a move to an empty square.
+                return true;
+            }
+
+            //  There isn't a piece on the move's "from" square.
+            return false;
+        }
+
+        /// <summary>
+        /// Sets <paramref name="info"/> according to the number of pieces that attack the king of color <paramref name="ourColor"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void DetermineCheck(int ourColor, ref CheckInfo info)
+        {
+            int ourKing = KingIndex(ourColor);
+
+            ulong att = AttackersTo(ourKing, ourColor);
+            switch (popcount(att))
+            {
+                case 0:
+                    break;
+                case 1:
+                    info.InCheck = true;
+                    info.idxChecker = lsb(att);
+                    break;
+                case 2:
+                    info.InDoubleCheck = true;
+                    info.idxChecker = lsb(att);
+                    info.idxDoubleChecker = msb(att);
+                    break;
+            }
+        }
     }
 }

@@ -71,13 +71,13 @@ namespace LTChess.Magic
 
         private static void DoBlockerMasks()
         {
-            for (int square = 0; square < 64; square++)
+            for (int idx = 0; idx < 64; idx++)
             {
-                ulong rookMask = GetBlockerMask(Fish.PieceType.ROOK, square, Empty);
-                ulong bishopMask = GetBlockerMask(Fish.PieceType.BISHOP, square, Empty);
+                ulong rookMask = GetBlockerMask(Piece.Rook, idx);
+                ulong bishopMask = GetBlockerMask(Piece.Bishop, idx);
 
-                RookBlockerMask[square] = rookMask;
-                BishopBlockerMask[square] = bishopMask;
+                RookBlockerMask[idx] = rookMask;
+                BishopBlockerMask[idx] = bishopMask;
             }
         }
 
@@ -119,7 +119,7 @@ namespace LTChess.Magic
                 for (int i = 0; i < (1 << rbits); i++)
                 {
                     ulong blockBoard = GenBlockerBoard(i, RookBlockerMask[square]);
-                    ulong attackBoard = Fish.sliding_attack(Fish.PieceType.ROOK, (Fish.Square)square, blockBoard);
+                    ulong attackBoard = SlidingAttacks(Piece.Rook, square, blockBoard);
 
                     RookAttackBoards[square][i] = attackBoard;
                     RookBlockerBoards[square][i] = blockBoard;
@@ -127,7 +127,7 @@ namespace LTChess.Magic
                 for (int i = 0; i < (1 << bbits); i++)
                 {
                     ulong blockBoard = GenBlockerBoard(i, BishopBlockerMask[square]);
-                    ulong attackBoard = Fish.sliding_attack(Fish.PieceType.BISHOP, (Fish.Square)square, blockBoard);
+                    ulong attackBoard = SlidingAttacks(Piece.Bishop, square, blockBoard);
 
                     BishopAttackBoards[square][i] = attackBoard;
                     BishopBlockerBoards[square][i] = blockBoard;

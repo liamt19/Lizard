@@ -1,7 +1,10 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
+using LTChess.Data;
+using LTChess.Util;
 
 namespace LTChess.Core
 {
@@ -50,8 +53,10 @@ namespace LTChess.Core
 
         public FasterStack<ulong> Hashes;
 
-        public bool debug_abort_perft = false;
+        public FasterStack<int> HalfmoveClocks;
 
+        private bool IsDrawn = false;
+        public static bool Perft_Stop = false;
 
 
         /// <summary>
@@ -64,12 +69,13 @@ namespace LTChess.Core
             Castles = new FasterStack<CastlingStatus>(MAX_CAPACITY);
             Checks = new FasterStack<CheckInfo>(MAX_CAPACITY);
             Hashes = new FasterStack<ulong>(MAX_CAPACITY);
+            HalfmoveClocks = new FasterStack<int>(MAX_CAPACITY);
 
             this.bb = new Bitboard();
 
             LoadFromFEN(fen);
 
-            PositionUtilities.DetermineCheck(this.bb, ToMove, ref CheckInfo);
+            this.bb.DetermineCheck(ToMove, ref CheckInfo);
             Hash = Zobrist.GetHash(this);
         }
 
@@ -81,7 +87,7 @@ namespace LTChess.Core
         public bool TryMakeMove(string moveStr)
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllLegalMoves(this, list);
+            int size = GenAllLegalMoves(list);
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
@@ -103,12 +109,13 @@ namespace LTChess.Core
         /// Pushes the current state, then performs the move <paramref name="move"/> and updates the state of the board.
         /// </summary>
         /// <param name="move">The move to make, which needs to be generated from MoveGenerator.GenAllLegalMoves or strange things might happen.</param>
-        [MethodImpl(Optimize)]
+        [MethodImpl(Inline)]
         public void MakeMove(in Move move)
         {
             Castles.Push(Castling);
             Checks.Push(CheckInfo);
             Hashes.Push(Hash);
+            HalfmoveClocks.Push(HalfMoves);
 
             int thisPiece = bb.GetPieceAtIndex(move.from);
             int thisColor = bb.GetColorAtIndex(move.from);
@@ -123,7 +130,7 @@ namespace LTChess.Core
             }
             if (otherPiece == Piece.King)
             {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + bb.GetColorAtIndex(move.to).ToString() + "'s king on " + IndexToString(move.to));
+                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(move.to)) + "'s king on " + IndexToString(move.to));
             }
 #endif
 
@@ -333,19 +340,251 @@ namespace LTChess.Core
             Hash = Hash.ZobristChangeToMove();
 
 #if DEBUG
-            if (IsThreefoldRepetition())
+            if (HalfMoves >= LowestRepetitionCount && Hashes.Count >= LowestRepetitionCount)
             {
-                //Log("Game drawn by repetition!");
+                if (IsThreefoldRepetition())
+                {
+                    Log("Game drawn by threefold repetition!");
+                    IsDrawn = true;
+                }
+                else if (IsFiftyMoveDraw())
+                {
+                    //Log("Game drawn by the 50 move rule!");
+                    IsDrawn = true;
+                }
             }
-            else if (IsInsufficientMaterial())
+            if (IsInsufficientMaterial())
             {
                 //Log("Game drawn by insufficient material!");
-            }
-            else if (IsFiftyMoveDraw())
-            {
-                //Log("Game drawn by the 50 move rule!");
+                IsDrawn = true;
             }
 #endif
+
+        }
+
+
+        /// <summary>
+        /// Pushes the current state, then performs the move <paramref name="move"/> and updates the state of the board.
+        /// </summary>
+        /// <param name="move">The move to make, which needs to be generated from MoveGenerator.GenAllLegalMoves or strange things might happen.</param>
+        [MethodImpl(Inline)]
+        public void MakeMoveFast(in Move move)
+        {
+            Castles.Push(Castling);
+            Checks.Push(CheckInfo);
+            HalfmoveClocks.Push(HalfMoves);
+
+            int thisPiece = bb.GetPieceAtIndex(move.from);
+            int thisColor = bb.GetColorAtIndex(move.from);
+
+            int otherPiece = bb.GetPieceAtIndex(move.to);
+            int otherColor = Not(thisColor);
+
+#if DEBUG
+            if (otherPiece != Piece.None && thisColor == bb.GetColorAtIndex(move.to))
+            {
+                 Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(otherPiece) + " on " + IndexToString(move.to));
+            }
+            if (otherPiece == Piece.King)
+            {
+                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(move.to)) + "'s king on " + IndexToString(move.to));
+            }
+#endif
+
+            if (thisPiece == Piece.Pawn || otherPiece != Piece.None)
+            {
+                HalfMoves = 0;
+            }
+            else
+            {
+                HalfMoves++;
+            }
+
+            if (ToMove == Color.Black)
+            {
+                FullMoves++;
+            }
+
+            if (EnPassantTarget != 0)
+            {
+                //  Set EnPassantTarget to 0 now.
+                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset to 0 every move.
+                EnPassantTarget = 0;
+            }
+
+            bool PawnDoubleMove = thisPiece == Piece.Pawn && (move.to ^ move.from) == 16;
+            if (PawnDoubleMove)
+            {
+                bb.MoveSimple(move.from, move.to, thisColor, thisPiece);
+
+                if (thisColor == Color.White && (WhitePawnAttackMasks[move.to - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
+                {
+                    EnPassantTarget = move.to - 8;
+                }
+                else if (thisColor == Color.Black && (BlackPawnAttackMasks[move.to + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
+                {
+                    EnPassantTarget = move.to + 8;
+                }
+            }
+            else if (move.EnPassant)
+            {
+                bb.EnPassant(move.from, move.to, thisColor, move.idxEnPassant);
+            }
+            else if (move.Capture)
+            {
+                Captures.Push(otherPiece);
+
+                if (otherPiece == Piece.Rook)
+                {
+                    //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
+                    switch (move.to)
+                    {
+                        case A1:
+                            Castling &= ~CastlingStatus.WQ;
+                            break;
+                        case H1:
+                            Castling &= ~CastlingStatus.WK;
+                            break;
+                        case A8:
+                            Castling &= ~CastlingStatus.BQ;
+                            break;
+                        case H8:
+                            Castling &= ~CastlingStatus.BK;
+                            break;
+                    }
+                }
+
+                if (move.Promotion)
+                {
+                    //  Pawn capturing and promoting
+                    bb.Promote(move.from, move.to, thisColor, otherPiece, move.PromotionTo);
+                }
+                else
+                {
+                    //  Normal capture
+                    bb.Move(move.from, move.to, thisColor, thisPiece, otherPiece);
+                }
+            }
+            else if (move.Castle)
+            {
+                //  Move the king
+                bb.MoveSimple(move.from, move.to, thisColor, thisPiece);
+
+                //  Then move the rook
+                switch (move.to)
+                {
+                    case C1:
+                        bb.MoveSimple(A1, D1, thisColor, Piece.Rook);
+                        break;
+                    case G1:
+                        bb.MoveSimple(H1, F1, thisColor, Piece.Rook);
+                        break;
+                    case C8:
+                        bb.MoveSimple(A8, D8, thisColor, Piece.Rook);
+                        break;
+                    default:
+                        bb.MoveSimple(H8, F8, thisColor, Piece.Rook);
+                        break;
+                }
+
+                if (thisColor == Color.White)
+                {
+                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
+                }
+                else
+                {
+                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
+                }
+            }
+            else if (move.Promotion)
+            {
+                bb.Promote(move.from, move.to, move.PromotionTo);
+            }
+            else
+            {
+                //  A simple move that isn't a capture/castle/promotion/en passant
+                bb.Move(move.from, move.to, thisColor, thisPiece, otherPiece);
+            }
+
+            if (thisPiece == Piece.King && !move.Castle)
+            {
+                //  If we made a king move, we can't castle anymore. If we just castled, don't bother
+                if (thisColor == Color.White)
+                {
+                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
+                }
+                else
+                {
+                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
+                }
+            }
+            else if (thisPiece == Piece.Rook && Castling != CastlingStatus.None)
+            {
+                //  If we just moved a rook, update Castling
+                switch (move.from)
+                {
+                    case A1:
+                        Castling &= ~CastlingStatus.WQ;
+                        break;
+                    case H1:
+                        Castling &= ~CastlingStatus.WK;
+                        break;
+                    case A8:
+                        Castling &= ~CastlingStatus.BQ;
+                        break;
+                    case H8:
+                        Castling &= ~CastlingStatus.BK;
+                        break;
+                }
+            }
+
+            if (move.CausesCheck)
+            {
+                CheckInfo.idxChecker = move.idxChecker;
+                CheckInfo.InCheck = true;
+                CheckInfo.InDoubleCheck = false;
+            }
+            else if (move.CausesDoubleCheck)
+            {
+                CheckInfo.InCheck = false;
+                CheckInfo.idxChecker = move.idxChecker;
+                CheckInfo.InDoubleCheck = true;
+                CheckInfo.idxDoubleChecker = move.idxDoubleChecker;
+            }
+            else
+            {
+                //	We are either getting out of a check, or weren't in check at all
+                CheckInfo.InCheck = false;
+                CheckInfo.idxChecker = 64;
+                CheckInfo.InDoubleCheck = false;
+                CheckInfo.idxDoubleChecker = 64;
+            }
+
+            ToMove = Not(ToMove);
+            Moves.Push(move);
+            Hash = Hash.ZobristChangeToMove();
+
+#if DEBUG
+            if (HalfMoves >= LowestRepetitionCount && Hashes.Count >= LowestRepetitionCount)
+            {
+                if (IsThreefoldRepetition())
+                {
+                    Log("Game drawn by threefold repetition!");
+                    IsDrawn = true;
+                }
+                else if (IsFiftyMoveDraw())
+                {
+                    //Log("Game drawn by the 50 move rule!");
+                    IsDrawn = true;
+                }
+            }
+            if (IsInsufficientMaterial())
+            {
+                //Log("Game drawn by insufficient material!");
+                IsDrawn = true;
+            }
+#endif
+
         }
 
         /// <summary>
@@ -372,6 +611,7 @@ namespace LTChess.Core
             this.Castling = Castles.Pop();
             this.CheckInfo = Checks.Pop();
             this.Hash = Hashes.Pop();
+            this.HalfMoves = HalfmoveClocks.Pop();
 
             ulong mask = (SquareBB[move.from] | SquareBB[move.to]);
 
@@ -451,7 +691,903 @@ namespace LTChess.Core
             {
                 FullMoves--;
             }
+
             ToMove = Not(ToMove);
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllPseudoMoves(in Span<Move> pseudo)
+        {
+            int size = 0;
+
+            ulong us = bb.Colors[ToMove];
+            ulong usCopy = us;
+
+            ulong them = bb.Colors[Not(ToMove)];
+            ulong theirKing = bb.KingMask(Not(ToMove));
+
+            while (us != 0)
+            {
+                size += GenPseudoMoves(lsb(us), usCopy, them, theirKing, pseudo, size);
+            }
+
+            return size;
+        }
+
+        /// <summary>
+        /// Generates all legal moves in the provided <paramref name="position"/>.
+        /// </summary>
+        /// <param name="position">The position to generate for</param>
+        /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
+        /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
+        [MethodImpl(Inline)]
+        public int GenAllLegalMoves(in Span<Move> legal)
+        {
+            Span<Move> pseudo = stackalloc Move[NORMAL_CAPACITY];
+            int size = 0;
+
+            ulong pinned = bb.PinnedPieces(ToMove);
+            ulong us = bb.Colors[ToMove];
+            ulong usCopy = us;
+            ulong ourKingMask = bb.KingMask(ToMove);
+
+            ulong them = bb.Colors[Not(ToMove)];
+            ulong theirKingMask = bb.KingMask(Not(ToMove));
+
+            Move move;
+            int thisMovesCount;
+            while (us != 0)
+            {
+                thisMovesCount = GenPseudoMoves(lsb(us), usCopy, them, theirKingMask, pseudo, 0);
+                us = poplsb(us);
+                for (int i = 0; i < thisMovesCount; i++)
+                {
+                    move = pseudo[i];
+                    if (IsLegal(move, ourKingMask, theirKingMask, pinned))
+                    {
+                        legal[size++] = move;
+                    }
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllLegalMovesTogether(in Span<Move> legal)
+        {
+            Span<Move> pseudo = stackalloc Move[NORMAL_CAPACITY];
+            int size = 0;
+
+            ulong pinned = bb.PinnedPieces(ToMove);
+            ulong us = bb.Colors[ToMove] ^ (bb.Pieces[Piece.Pawn] & bb.Colors[ToMove]);
+            ulong usCopy = bb.Colors[ToMove];
+            ulong ourKingMask = bb.KingMask(ToMove);
+
+            ulong them = bb.Colors[Not(ToMove)];
+            ulong theirKingMask = bb.KingMask(Not(ToMove));
+
+            Move move;
+            int thisMovesCount = 0;
+
+            thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount);
+
+            for (int i = 0; i < thisMovesCount; i++)
+            {
+                move = pseudo[i];
+                if (IsLegal(move, ourKingMask, theirKingMask, pinned))
+                {
+                    legal[size++] = move;
+                }
+            }
+
+            return size;
+        }
+
+        public void TestPawnGen()
+        {
+            Span<Move> normal = stackalloc Move[NORMAL_CAPACITY];
+            int normalMoves = 0;
+
+            ulong pinned = bb.PinnedPieces(ToMove);
+            ulong us = bb.Colors[ToMove];
+            ulong ourPawns = us & bb.Pieces[Piece.Pawn];
+            ulong ourPawnsCopy = ourPawns;
+            ulong ourKingMask = bb.KingMask(ToMove);
+
+            ulong them = bb.Colors[Not(ToMove)];
+            ulong theirKingMask = bb.KingMask(Not(ToMove));
+
+            while (ourPawns != 0)
+            {
+                int idx = lsb(ourPawns);
+                normalMoves = GenPseudoMoves(idx, ourPawns, them, theirKingMask, normal, normalMoves);
+                ourPawns = poplsb(ourPawns);
+            }
+
+            Span<Move> together = stackalloc Move[NORMAL_CAPACITY];
+            int togetherMoves = GenAllPawnMoves(bb, us, them, together, 0);
+
+            if (normalMoves != togetherMoves)
+            {
+                normal.SortBySourceSquare();
+                together.SortBySourceSquare();
+                Log("Made " + normalMoves + " normal pawn moves: " + normal.Stringify(this));
+                Log("Made " + togetherMoves + " together pawn moves: " + together.Stringify(this));
+                Log("Fen: " + GetFEN());
+                Log("normalMoves: " + normalMoves + " != togetherMoves: " + togetherMoves);
+                throw new Exception();
+            }
+
+        }
+
+        /// <summary>
+        /// Generates the pseudo legal moves for the piece at index <paramref name="idx"/>.
+        /// </summary>
+        /// <param name="position">The position to generate for</param>
+        /// <param name="bb">The <paramref name="position"/>'s Bitboard</param>
+        /// <param name="idx">The index of the piece</param>
+        /// <param name="us">This piece's Color bitboard from the <paramref name="position"/></param>
+        /// <param name="ml">A Span of Move with sufficient size</param>
+        /// <param name="size">The number of moves already generated in <paramref name="ml"/>, which should be 0 if this is being called for the first time.</param>
+        /// <returns>The new value of <paramref name="size"/>, which was incremented for every move placed into <paramref name="ml"/></returns>
+        [MethodImpl(Inline)]
+        public int GenPseudoMoves(int idx, ulong us, ulong them, ulong theirKingMask, in Span<Move> ml, int size)
+        {
+            int ourColor = ToMove;
+            int theirColor = Not(ourColor);
+            int pt = bb.GetPieceAtIndex(idx);
+
+            int theirKing = lsb(theirKingMask);
+
+            ulong all = us | them;
+
+            ulong moves = 0;
+
+            switch (pt)
+            {
+                case Piece.Pawn:
+                    moves = GenPseudoPawnMask(bb, idx, out _, out ulong Promotions);
+                    //  Make promotion moves
+                    while (Promotions != 0)
+                    {
+                        int promotionSquare = lsb(Promotions);
+                        Promotions = poplsb(Promotions);
+
+                        for (int promotionPiece = Piece.Knight; promotionPiece <= Piece.Queen; promotionPiece++)
+                        {
+                            Move m = new Move(idx, promotionSquare, promotionPiece);
+
+                            int cap = bb.GetPieceAtIndex(promotionSquare);
+                            if (cap != Piece.None)
+                            {
+                                bb.Pieces[cap] ^= SquareBB[promotionSquare];
+                                bb.Colors[theirColor] ^= SquareBB[promotionSquare];
+                                m.Capture = true;
+                            }
+                            bb.Pieces[Piece.Pawn] ^= SquareBB[idx];
+                            bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
+                            bb.Colors[ourColor] ^= (SquareBB[idx] | SquareBB[promotionSquare]);
+
+                            ulong attacks = bb.AttackersTo(theirKing, theirColor);
+                            switch (popcount(attacks))
+                            {
+                                case 0:
+                                    break;
+                                case 1:
+                                    m.CausesCheck = true;
+                                    m.idxChecker = lsb(attacks);
+                                    break;
+                                case 2:
+                                    m.CausesDoubleCheck = true;
+                                    m.idxChecker = lsb(attacks);
+                                    m.idxDoubleChecker = msb(attacks);
+                                    break;
+                            }
+
+                            if (cap != Piece.None)
+                            {
+                                bb.Pieces[cap] ^= SquareBB[promotionSquare];
+                                bb.Colors[theirColor] ^= SquareBB[promotionSquare];
+                            }
+                            bb.Pieces[Piece.Pawn] ^= SquareBB[idx];
+                            bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
+                            bb.Colors[ourColor] ^= (SquareBB[idx] | SquareBB[promotionSquare]);
+
+                            ml[size++] = m;
+                        }
+                    }
+                    if (EnPassantTarget != 0 && GenEnPassantMove(bb, idx, EnPassantTarget, out Move EnPassant))
+                    {
+                        ulong moveMask = SquareBB[EnPassant.from] | SquareBB[EnPassant.to];
+                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassant.idxEnPassant]);
+                        bb.Colors[ourColor] ^= moveMask;
+                        bb.Colors[theirColor] ^= (SquareBB[EnPassant.idxEnPassant]);
+
+                        ulong attacks = bb.AttackersTo(theirKing, theirColor);
+
+                        switch (popcount(attacks))
+                        {
+                            case 0:
+                                break;
+                            case 1:
+                                EnPassant.CausesCheck = true;
+                                EnPassant.idxChecker = lsb(attacks);
+                                break;
+                            case 2:
+                                EnPassant.CausesDoubleCheck = true;
+                                EnPassant.idxChecker = lsb(attacks);
+                                EnPassant.idxDoubleChecker = msb(attacks);
+                                break;
+                        }
+
+                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassant.idxEnPassant]);
+                        bb.Colors[ourColor] ^= moveMask;
+                        bb.Colors[theirColor] ^= (SquareBB[EnPassant.idxEnPassant]);
+
+                        ml[size++] = EnPassant;
+                    }
+                    break;
+                case Piece.Knight:
+                    //moves = GenPseudoKnightMask(position, idx);
+                    moves = (PrecomputedData.KnightMasks[idx] & ~us);
+                    break;
+                case Piece.Bishop:
+                    moves = GetBishopMoves(all, idx) & ~us;
+                    break;
+                case Piece.Rook:
+                    moves = GetRookMoves(all, idx) & ~us;
+                    break;
+                case Piece.Queen:
+                    moves = (GetBishopMoves(all, idx) | GetRookMoves(all, idx)) & ~us;
+                    break;
+                case Piece.King:
+                    moves = (PrecomputedData.NeighborsMask[idx] & ~us);
+                    if (!CheckInfo.InCheck && !CheckInfo.InDoubleCheck && GetIndexFile(idx) == Files.E)
+                    {
+                        ulong ourKingMask = bb.KingMask(ourColor);
+                        Span<Move> CastleMoves = stackalloc Move[2];
+                        int numCastleMoves = GenCastlingMoves(bb, idx, us, Castling, CastleMoves, 0);
+                        for (int i = 0; i < numCastleMoves; i++)
+                        {
+                            //  See if this will cause check.
+                            Move m = CastleMoves[i];
+                            int rookTo = m.to switch
+                            {
+                                C1 => D1,
+                                G1 => F1,
+                                C8 => D8,
+                                G8 => F8,
+                            };
+                            ulong between = BetweenBB[rookTo][theirKing];
+                            if (between != 0 && ((between & (all ^ ourKingMask)) == 0))
+                            {
+                                //  Then their king is on the same rank/file/diagonal as the square that our rook will end up at,
+                                //  and there are no pieces which are blocking that ray.
+                                if (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing))
+                                {
+                                    m.CausesCheck = true;
+                                    m.idxChecker = rookTo;
+                                }
+                            }
+
+                            ml[size++] = m;
+                        }
+                    }
+                    break;
+            }
+
+            while (moves != 0)
+            {
+                //  moves = a ulong with bits set wherever the piece can move to.
+                int to = lsb(moves);
+                moves = poplsb(moves);
+
+                Move m = new Move(idx, to);
+
+                ulong moveMask = (SquareBB[idx] | SquareBB[to]);
+                int capturedPiece = bb.GetPieceAtIndex(to);
+                if (capturedPiece != Piece.None)
+                {
+                    bb.Pieces[capturedPiece] ^= SquareBB[to];
+                    bb.Colors[theirColor] ^= SquareBB[to];
+                    m.Capture = true;
+                }
+
+                bb.Pieces[pt] ^= moveMask;
+                bb.Colors[ourColor] ^= moveMask;
+
+                ulong att = bb.AttackersToFast(theirKing, bb.Colors[ourColor] | bb.Colors[theirColor]) & bb.Colors[ourColor];
+
+                switch (popcount(att))
+                {
+                    case 0:
+                        break;
+                    case 1:
+                        m.CausesCheck = true;
+                        m.idxChecker = lsb(att);
+                        break;
+                    case 2:
+                        m.CausesDoubleCheck = true;
+                        m.idxChecker = lsb(att);
+                        m.idxDoubleChecker = msb(att);
+                        break;
+                }
+
+                if (capturedPiece != Piece.None)
+                {
+                    bb.Pieces[capturedPiece] ^= SquareBB[to];
+                    bb.Colors[theirColor] ^= SquareBB[to];
+                }
+
+                bb.Pieces[pt] ^= moveMask;
+                bb.Colors[ourColor] ^= moveMask;
+
+                ml[size++] = m;
+            }
+
+            return size;
+        }
+
+
+        /// <summary>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public bool IsLegal(in Move move, ulong ourKingMask, ulong theirKingMask, ulong pinnedPieces)
+        {
+            int ourKing = lsb(ourKingMask);
+            int theirKing = lsb(theirKingMask);
+            
+            int pt = bb.GetPieceAtIndex(move.from);
+            if (CheckInfo.InDoubleCheck && pt != Piece.King)
+            {
+                //	Must move king out of double check
+                return false;
+            }
+
+            //  TODO: Look at this later to make sure GetColorAtIndex(ToMove) is still ok.
+            //int ourColor = bb.GetColorAtIndex(move.from);
+            int ourColor = ToMove;
+            int theirColor = Not(ourColor);
+
+            if (CheckInfo.InCheck)
+            {
+                //  We have 3 options: block the check, take the piece giving check, or move our king out of it.
+
+                if (pt == Piece.King)
+                {
+                    ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
+                    bb.Pieces[Piece.King] ^= moveMask;
+                    bb.Colors[ourColor] ^= moveMask;
+                    if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
+                    {
+                        bb.Pieces[Piece.King] ^= moveMask;
+                        bb.Colors[ourColor] ^= moveMask;
+                        return false;
+                    }
+
+                    bb.Pieces[Piece.King] ^= moveMask;
+                    bb.Colors[ourColor] ^= moveMask;
+                    return true;
+
+                    /**
+                    if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) == 0)
+                    {
+                        return false;
+                    }
+                     */
+                }
+
+                //  If this will move the piece into the ray between our king and the checker,
+                //  or if this move is capturing a checking pawn via en passant,
+                //  then it is legal as long as it wasn't pinned.
+                bool blocksOrCaptures = (LineBB[ourKing][CheckInfo.idxChecker] & SquareBB[move.to]) != 0;
+                if (blocksOrCaptures || (move.EnPassant && move.idxEnPassant == CheckInfo.idxChecker))
+                {
+                    //  This move is another piece which has moved into the LineBB between our king and the checking piece.
+                    //  This will be legal as long as it isn't pinned.
+
+                    //return !IsPinned(bb, move.from, ourColor, ourKing, out _);
+                    //return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.from]) == 0);
+                    return (pinnedPieces & SquareBB[move.from]) == 0;
+                }
+
+                //  This isn't a king move and doesn't get us out of check, so it's illegal.
+                return false;
+            }
+
+            if (pt == Piece.King)
+            {
+                //  We can move anywhere as long as it isn't attacked by them.
+
+                /**
+                ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
+                bb.Pieces[Piece.King] ^= moveMask;
+                bb.Colors[ourColor] ^= moveMask;
+
+                bool legal = true;
+                if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
+                {
+                    legal = false;
+                }
+
+                bb.Pieces[Piece.King] ^= moveMask;
+                bb.Colors[ourColor] ^= moveMask;
+
+                return legal;
+                 */
+
+                if ((bb.AttackersToMask(move.to, ourColor, ourKingMask) | (NeighborsMask[move.to] & theirKingMask)) != 0)
+                {
+                    return false;
+                }
+            }
+            else if (move.EnPassant)
+            //else if (!position.CheckInfo.InCheck && move.EnPassant)
+            {
+                //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
+                //  to make sure it is still legal
+                ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
+                bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[move.idxEnPassant]);
+                bb.Colors[ourColor] ^= moveMask;
+                bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
+
+                if (bb.AttackersTo(ourKing, ourColor) != 0)
+                {
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[move.idxEnPassant]);
+                    bb.Colors[ourColor] ^= moveMask;
+                    bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
+                    return false;
+                }
+
+                bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[move.idxEnPassant]);
+                bb.Colors[ourColor] ^= moveMask;
+                bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
+            }
+            else if (IsPinned(bb, move.from, ourColor, ourKing, out int pinner))
+            {
+                //	If we are pinned, make sure we are only moving in directions that keep us pinned
+                return ((LineBB[ourKing][pinner] & SquareBB[move.to]) != 0);
+            }
+
+            return true;
+        }
+
+
+        [MethodImpl(Inline)]
+        public ulong GenPseudoPawnMask(in Bitboard bb, int idx, out ulong attacks, out ulong PromotionSquares)
+        {
+            //int ourColor = bb.GetColorAtIndex(idx);
+            ulong them = bb.Colors[Not(ToMove)];
+            ulong moves;
+
+            if (ToMove == Color.White)
+            {
+                attacks = WhitePawnAttackMasks[idx];
+                moves = WhitePawnMoveMasks[idx];
+            }
+            else
+            {
+                attacks = BlackPawnAttackMasks[idx];
+                moves = BlackPawnMoveMasks[idx];
+            }
+
+            //  This pawn can also move 2 squares
+            if (popcount(moves) == 2)
+            {
+                int off = (ToMove == Color.White) ? 8 : -8;
+                if (bb.Occupied(idx + off))
+                {
+                    //  Then a pawn is blocking this pawn from moving forward.
+                    //  This also stops a pawn stuck on the 2nd/6th rank from
+                    //  "jumping" over whatever is in it's way.
+                    moves = 0;
+                }
+            }
+
+            //  moves includes only empty spaces and any of their pieces that we could capture
+            moves &= ~(bb.Colors[Color.White] | bb.Colors[Color.Black]);
+            moves |= (them & attacks);
+
+            //  Promotions are special cases, so take them out
+            PromotionSquares = (moves & PawnPromotionSquares);
+            moves &= ~PawnPromotionSquares;
+
+            return moves;
+        }
+
+
+        [MethodImpl(Inline)]
+        public int GenAllPawnMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            ulong rank7 = (ToMove == Color.White) ? Rank7BB : Rank2BB;
+            ulong rank3 = (ToMove == Color.White) ? Rank3BB : Rank6BB;
+
+            int up = Up(ToMove);
+
+            int theirColor = Not(ToMove);
+
+            ulong occupiedSquares = them | us;
+            ulong emptySquares = ~occupiedSquares;
+
+            ulong ourPawns = us & bb.Pieces[Piece.Pawn];
+            ulong promotingPawns = ourPawns & rank7;
+            ulong notPromotingPawns = ourPawns & ~rank7;
+
+            ulong moves = Forward(ToMove, notPromotingPawns) & emptySquares;
+            ulong twoMoves = Forward(ToMove, moves & rank3) & emptySquares;
+            ulong promotions = Forward(ToMove, promotingPawns) & emptySquares;
+
+            ulong capturesL = Shift(up + Direction.WEST, notPromotingPawns) & them;
+            ulong capturesR = Shift(up + Direction.EAST, notPromotingPawns) & them;
+            ulong promotionCapturesL = Shift(up + Direction.WEST, promotingPawns) & them;
+            ulong promotionCapturesR = Shift(up + Direction.EAST, promotingPawns) & them;
+
+            int theirKing = bb.KingIndex(theirColor);
+
+            while (moves != 0)
+            {
+                int to = lsb(moves);
+                moves = poplsb(moves);
+
+                Move m = new Move(to - up, to);
+                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                ml[size++] = m;
+            }
+
+            while (twoMoves != 0)
+            {
+                int to = lsb(twoMoves);
+                twoMoves = poplsb(twoMoves);
+
+                Move m = new Move(to - up - up, to);
+                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                ml[size++] = m;
+            }
+
+            while (capturesL != 0)
+            {
+                int to = lsb(capturesL);
+                capturesL = poplsb(capturesL);
+
+                Move m = new Move(to - up - Direction.WEST, to);
+                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                ml[size++] = m;
+            }
+
+            while (capturesR != 0)
+            {
+                int to = lsb(capturesR);
+                capturesR = poplsb(capturesR);
+
+                Move m = new Move(to - up - Direction.EAST, to);
+                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                ml[size++] = m;
+            }
+
+            while (promotions != 0)
+            {
+                int to = lsb(promotions);
+                promotions = poplsb(promotions);
+
+                size = MakePromotionChecks(bb, to - up, to, ToMove, theirKing, ml, size);
+            }
+
+            while (promotionCapturesL != 0)
+            {
+                int to = lsb(promotionCapturesL);
+                promotionCapturesL = poplsb(promotionCapturesL);
+
+                size = MakePromotionChecks(bb, to - up - Direction.WEST, to, ToMove, theirKing, ml, size);
+            }
+
+            while (promotionCapturesR != 0)
+            {
+                int to = lsb(promotionCapturesR);
+                promotionCapturesR = poplsb(promotionCapturesR);
+
+                size = MakePromotionChecks(bb, to - up - Direction.EAST, to, ToMove, theirKing, ml, size);
+            }
+
+            if (EnPassantTarget != 0)
+            {
+                ulong[] pawnAttacks = (ToMove == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
+                ulong mask = notPromotingPawns & pawnAttacks[EnPassantTarget];
+
+                while (mask != 0)
+                {
+                    int from = lsb(mask);
+                    mask = poplsb(mask);
+
+                    Move m = new Move(from, EnPassantTarget);
+                    m.EnPassant = true;
+                    m.idxEnPassant = EnPassantTarget - up;
+
+                    //  TODO: this is slow
+                    ulong moveMask = SquareBB[m.from] | SquareBB[m.to];
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[m.idxEnPassant]);
+                    bb.Colors[ToMove] ^= moveMask;
+                    bb.Colors[theirColor] ^= (SquareBB[m.idxEnPassant]);
+
+                    ulong attacks = bb.AttackersTo(theirKing, theirColor);
+
+                    switch (popcount(attacks))
+                    {
+                        case 0:
+                            break;
+                        case 1:
+                            m.CausesCheck = true;
+                            m.idxChecker = lsb(attacks);
+                            break;
+                        case 2:
+                            m.CausesDoubleCheck = true;
+                            m.idxChecker = lsb(attacks);
+                            m.idxDoubleChecker = msb(attacks);
+                            break;
+                    }
+
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[m.idxEnPassant]);
+                    bb.Colors[ToMove] ^= moveMask;
+                    bb.Colors[theirColor] ^= (SquareBB[m.idxEnPassant]);
+
+                    ml[size++] = m;
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllKnightMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            ulong ourPieces = (bb.Pieces[Piece.Knight] & bb.Colors[ToMove]);
+            int theirKing = bb.KingIndex(Not(ToMove));
+            while (ourPieces != 0)
+            {
+                int idx = lsb(ourPieces);
+                ulong moves = (PrecomputedData.KnightMasks[idx] & ~us);
+                ourPieces = poplsb(ourPieces);
+
+                while (moves != 0)
+                {
+                    int to = lsb(moves);
+                    moves = poplsb(moves);
+
+                    Move m = new Move(idx, to);
+                    MakeCheck(bb, Piece.Knight, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllBishopMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            ulong ourPieces = (bb.Pieces[Piece.Bishop] & bb.Colors[ToMove]);
+            int theirKing = bb.KingIndex(Not(ToMove));
+            while (ourPieces != 0)
+            {
+                int idx = lsb(ourPieces);
+                ulong moves = GetBishopMoves(us | them, idx) & ~us;
+                ourPieces = poplsb(ourPieces);
+
+                while (moves != 0)
+                {
+                    int to = lsb(moves);
+                    moves = poplsb(moves);
+
+                    Move m = new Move(idx, to);
+                    MakeCheck(bb, Piece.Bishop, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllRookMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            ulong ourPieces = (bb.Pieces[Piece.Rook] & bb.Colors[ToMove]);
+            int theirKing = bb.KingIndex(Not(ToMove));
+            while (ourPieces != 0)
+            {
+                int idx = lsb(ourPieces);
+                ulong moves = GetRookMoves(us | them, idx) & ~us;
+                ourPieces = poplsb(ourPieces);
+
+                while (moves != 0)
+                {
+                    int to = lsb(moves);
+                    moves = poplsb(moves);
+
+                    Move m = new Move(idx, to);
+                    MakeCheck(bb, Piece.Rook, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllQueenMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            ulong ourPieces = (bb.Pieces[Piece.Queen] & bb.Colors[ToMove]);
+            int theirKing = bb.KingIndex(Not(ToMove));
+            while (ourPieces != 0)
+            {
+                int idx = lsb(ourPieces);
+                ulong moves = (GetBishopMoves(us | them, idx) | GetRookMoves(us | them, idx)) & ~us;
+                ourPieces = poplsb(ourPieces);
+
+                while (moves != 0)
+                {
+                    int to = lsb(moves);
+                    moves = poplsb(moves);
+
+                    Move m = new Move(idx, to);
+                    MakeCheck(bb, Piece.Queen, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public int GenAllKingMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        {
+            int idx = bb.KingIndex(ToMove);
+            int theirKing = bb.KingIndex(Not(ToMove));
+
+            ulong moves = (PrecomputedData.NeighborsMask[idx] & ~us);
+            if (!CheckInfo.InCheck && !CheckInfo.InDoubleCheck && GetIndexFile(idx) == Files.E)
+            {
+                ulong ourKingMask = bb.KingMask(ToMove);
+                Span<Move> CastleMoves = stackalloc Move[2];
+                int numCastleMoves = GenCastlingMoves(bb, idx, us, Castling, CastleMoves, 0);
+                for (int i = 0; i < numCastleMoves; i++)
+                {
+                    //  See if this will cause check.
+                    Move m = CastleMoves[i];
+                    int rookTo = m.to switch
+                    {
+                        C1 => D1,
+                        G1 => F1,
+                        C8 => D8,
+                        G8 => F8,
+                    };
+                    ulong between = BetweenBB[rookTo][theirKing];
+                    if (between != 0 && ((between & ((us | them) ^ ourKingMask)) == 0))
+                    {
+                        //  Then their king is on the same rank/file/diagonal as the square that our rook will end up at,
+                        //  and there are no pieces which are blocking that ray.
+                        if (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing))
+                        {
+                            m.CausesCheck = true;
+                            m.idxChecker = rookTo;
+                        }
+                    }
+
+                    MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
+
+                    ml[size++] = m;
+                }
+            }
+
+            while (moves != 0)
+            {
+                int to = lsb(moves);
+                moves = poplsb(moves);
+
+                Move m = new Move(idx, to);
+                MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
+                ml[size++] = m;
+            }
+
+            return size;
+        }
+
+        [MethodImpl(Inline)]
+        public static void MakeCheck(in Bitboard bb, int pt, int ourColor, int theirKing, ref Move m)
+        {
+            int theirColor = Not(ourColor);
+            ulong moveMask = (SquareBB[m.from] | SquareBB[m.to]);
+            int capturedPiece = bb.GetPieceAtIndex(m.to);
+            if (capturedPiece != Piece.None)
+            {
+                bb.Pieces[capturedPiece] ^= SquareBB[m.to];
+                bb.Colors[theirColor] ^= SquareBB[m.to];
+                m.Capture = true;
+            }
+
+            bb.Pieces[pt] ^= moveMask;
+            bb.Colors[ourColor] ^= moveMask;
+
+            ulong att = bb.AttackersToFast(theirKing, bb.Colors[ourColor] | bb.Colors[theirColor]) & bb.Colors[ourColor];
+
+            switch (popcount(att))
+            {
+                case 0:
+                    break;
+                case 1:
+                    m.CausesCheck = true;
+                    m.idxChecker = lsb(att);
+                    break;
+                case 2:
+                    m.CausesDoubleCheck = true;
+                    m.idxChecker = lsb(att);
+                    m.idxDoubleChecker = msb(att);
+                    break;
+            }
+
+            if (capturedPiece != Piece.None)
+            {
+                bb.Pieces[capturedPiece] ^= SquareBB[m.to];
+                bb.Colors[theirColor] ^= SquareBB[m.to];
+            }
+
+            bb.Pieces[pt] ^= moveMask;
+            bb.Colors[ourColor] ^= moveMask;
+        }
+
+
+        [MethodImpl(Inline)]
+        public static int MakePromotionChecks(in Bitboard bb, int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
+        {
+            int theirColor = Not(ourColor);
+
+            for (int promotionPiece = Piece.Knight; promotionPiece <= Piece.Queen; promotionPiece++)
+            {
+                Move m = new Move(from, promotionSquare, promotionPiece);
+                int cap = bb.GetPieceAtIndex(promotionSquare);
+                if (cap != Piece.None)
+                {
+                    bb.Pieces[cap] ^= SquareBB[promotionSquare];
+                    bb.Colors[theirColor] ^= SquareBB[promotionSquare];
+                    m.Capture = true;
+                }
+                bb.Pieces[Piece.Pawn] ^= SquareBB[from];
+                bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
+                bb.Colors[ourColor] ^= (SquareBB[from] | SquareBB[promotionSquare]);
+
+                ulong attacks = bb.AttackersTo(theirKing, theirColor);
+                switch (popcount(attacks))
+                {
+                    case 0:
+                        break;
+                    case 1:
+                        m.CausesCheck = true;
+                        m.idxChecker = lsb(attacks);
+                        break;
+                    case 2:
+                        m.CausesDoubleCheck = true;
+                        m.idxChecker = lsb(attacks);
+                        m.idxDoubleChecker = msb(attacks);
+                        break;
+                }
+
+                if (cap != Piece.None)
+                {
+                    bb.Pieces[cap] ^= SquareBB[promotionSquare];
+                    bb.Colors[theirColor] ^= SquareBB[promotionSquare];
+                }
+                bb.Pieces[Piece.Pawn] ^= SquareBB[from];
+                bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
+                bb.Colors[ourColor] ^= (SquareBB[from] | SquareBB[promotionSquare]);
+
+                ml[size++] = m;
+            }
+            return size;
         }
 
 
@@ -467,7 +1603,7 @@ namespace LTChess.Core
             ulong bishops = popcount(bb.Pieces[Piece.Bishop]);
 
             //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
-            if ((knights == 0 && bishops <= 1) || (bishops == 0 && knights < 2))
+            if ((knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2))
             {
                 return true;
             }
@@ -480,13 +1616,12 @@ namespace LTChess.Core
         public bool IsThreefoldRepetition()
         {
             int count = 0;
-            for (int i = 0; i < Hashes.Count - 1; i++)
+            for (int i = 0; i < HalfMoves; i++)
             {
-                //  TODO: probably don't need to be going through Hashes.Count - 1 to figure this out.
                 if (Hashes.Peek(i) == Hash)
                 {
                     count++;
-                    if (count == 3)
+                    if (count == 2)
                     {
                         return true;
                     }
@@ -501,6 +1636,8 @@ namespace LTChess.Core
             return HalfMoves >= 50;
         }
 
+        
+
         /// <summary>
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
@@ -509,9 +1646,51 @@ namespace LTChess.Core
         public ulong Perft(int depth)
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = GenAllLegalMoves(this, list);
+            //int size = GenAllLegalMoves(list);
+            int size = GenAllLegalMovesTogether(list);
 
-            if (depth == 1)
+            if (depth == 0)
+            {
+                return 1UL;
+            }
+            else if (depth == 1)
+            {
+                return (ulong)size;
+            }
+
+            ulong n = 0;
+
+            for (int i = 0; i < size; i++)
+            {
+                MakeMove(list[i]);
+                n += Perft(depth - 1);
+                UnmakeMove();
+            }
+
+            return n;
+        }
+
+        /// <summary>
+        /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
+        /// </summary>
+        /// <param name="depth">The number of moves that will be made from the starting position. Depth 1 returns the current number of legal moves.</param>
+        [MethodImpl(Inline)]
+        public ulong PerftInterruptable(int depth)
+        {
+            if (Perft_Stop)
+            {
+                Log("Perft_Stop was true, interrupting at depth " + depth);
+                return 0UL;
+            }
+
+            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            int size = GenAllLegalMovesTogether(list);
+
+            if (depth == 0)
+            {
+                return 1UL;
+            }
+            else if (depth == 1)
             {
                 return (ulong)size;
             }
@@ -537,7 +1716,8 @@ namespace LTChess.Core
             }
 
             Span<Move> mlist = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllLegalMoves(this, mlist);
+            //int size = GenAllLegalMoves(mlist);
+            int size = GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
             {
                 PerftNode pn = new PerftNode();
@@ -546,44 +1726,6 @@ namespace LTChess.Core
                 pn.number = Perft(depth - 1);
                 UnmakeMove();
                 list.Add(pn);
-
-                Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
-            }
-
-            return list;
-        }
-
-        public List<PerftNode> PerftDivideCancellable(int depth)
-        {
-            List<PerftNode> list = new List<PerftNode>();
-            if (depth <= 0)
-            {
-                return list;
-            }
-
-            Span<Move> mlist = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllLegalMoves(this, mlist);
-            for (int i = 0; i < size; i++)
-            {
-                PerftNode pn = new PerftNode();
-                pn.root = mlist[i].ToString();
-                list.Add(pn);
-            }
-
-            for (int i = 0; i < size; i++)
-            {
-                MakeMove(mlist[i]);
-                PerftNode pn = list[i];
-                pn.number = Perft(depth - 1);
-                list[i] = pn;
-                UnmakeMove();
-
-                if (debug_abort_perft)
-                {
-                    Log("Aborting after " + (i + 1) + " / " + size + " branches");
-                    debug_abort_perft = false;
-                    break;
-                }
 
                 Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
             }

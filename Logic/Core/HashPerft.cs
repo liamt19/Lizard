@@ -50,7 +50,7 @@ namespace LTChess.Util
             }
 
             Span<Move> mlist = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllLegalMoves(p, mlist);
+            int size = p.GenAllLegalMoves(mlist);
             for (int i = 0; i < size; i++)
             {
                 PerftNode pn = new PerftNode();
@@ -71,7 +71,7 @@ namespace LTChess.Util
         {
             ulong n = 0;
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = GenAllLegalMoves(p, list);
+            int size = p.GenAllLegalMoves(list);
 
             if (depth == 1)
             {

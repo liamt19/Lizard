@@ -14,36 +14,25 @@ namespace LTChess.Util
     public static unsafe class PositionUtilities
     {
         /// <summary>
-        /// Sets <paramref name="info"/> according to the number of pieces that attack the king of color <paramref name="ourColor"/>
+        /// The halfmove clock needs to be at least 8 before a draw by threefold repetition can occur.
         /// </summary>
-        [MethodImpl(Inline)]
-        public static void DetermineCheck(in Bitboard bb, int ourColor, ref CheckInfo info)
-        {
-            int ourKing = bb.KingIndex(ourColor);
-
-            ulong att = AttackersTo(bb, ourKing, ourColor);
-            switch (popcount(att))
-            {
-                case 0:
-                    break;
-                case 1:
-                    info.InCheck = true;
-                    info.idxChecker = lsb(att);
-                    break;
-                case 2:
-                    info.InDoubleCheck = true;
-                    info.idxChecker = lsb(att);
-                    info.idxDoubleChecker = msb(att);
-                    break;
-            }
-        }
-
+        public const int LowestRepetitionCount = 8;
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static bool IsLegal(Position position, in Bitboard bb, in Move move, int ourKing, int theirKing)
+        {
+            ulong pinned = bb.PinnedPieces(bb.GetColorAtIndex(ourKing));
+            return IsLegal(position, bb, move, ourKing, theirKing, pinned);
+        }
+
+        /// <summary>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static bool IsLegal(Position position, in Bitboard bb, in Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
             int pt = bb.GetPieceAtIndex(move.from);
             if (position.CheckInfo.InDoubleCheck && pt != Piece.King)
@@ -58,62 +47,76 @@ namespace LTChess.Util
             if (position.CheckInfo.InCheck)
             {
                 //  We have 3 options: block the check, take the piece giving check, or move our king out of it.
-                int checker = position.CheckInfo.idxChecker;
-                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[move.to]) != 0;
 
-                if (move.EnPassant && move.idxEnPassant == position.CheckInfo.idxChecker)
-                {
-                    blocksOrCaptures = true;
-                }
                 if (pt == Piece.King)
                 {
                     ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
-                    bool illegal = false;
-                    if ((AttackersTo(bb, move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
+                    if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
                     {
-                        illegal = true;
+                        bb.Pieces[Piece.King] ^= moveMask;
+                        bb.Colors[ourColor] ^= moveMask;
+                        return false;
                     }
 
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
+                    return true;
 
-                    return !illegal;
+                    /**
+                    if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) == 0)
+                    {
+                        return false;
+                    }
+                     */
+
                 }
-                else if (blocksOrCaptures)
+
+                int checker = position.CheckInfo.idxChecker;
+                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[move.to]) != 0;
+
+                if (blocksOrCaptures || (move.EnPassant && move.idxEnPassant == position.CheckInfo.idxChecker))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
-                    return !IsPinned(bb, move.from, ourColor, ourKing, out _);
+
+                    //return !IsPinned(bb, move.from, ourColor, ourKing, out _);
+                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.from]) == 0);
                 }
-                else
-                {
-                    //  This isn't a king move and doesn't get us out of check, so it's illegal.
-                    return false;
-                }
+
+                //  This isn't a king move and doesn't get us out of check, so it's illegal.
+                return false;
             }
 
             if (pt == Piece.King)
             {
                 //  We can move anywhere as long as it isn't attacked by them.
 
+                /**
                 ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
                 bb.Pieces[Piece.King] ^= moveMask;
                 bb.Colors[ourColor] ^= moveMask;
 
-                bool illegal = false;
-                if ((AttackersTo(bb, move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
+                bool legal = true;
+                if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
                 {
-                    illegal = true;
+                    legal = false;
                 }
 
                 bb.Pieces[Piece.King] ^= moveMask;
                 bb.Colors[ourColor] ^= moveMask;
 
-                return !illegal;
+                return legal;
+                 */
+
+                if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
+                {
+                    return false;
+                }
             }
-            else if (!position.CheckInfo.InCheck && move.EnPassant)
+            else if (move.EnPassant)
+            //else if (!position.CheckInfo.InCheck && move.EnPassant)
             {
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
@@ -122,16 +125,17 @@ namespace LTChess.Util
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
 
-                bool returnFalse = (AttackersTo(bb, ourKing, ourColor) != 0);
+                if (bb.AttackersTo(ourKing, ourColor) != 0)
+                {
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[move.idxEnPassant]);
+                    bb.Colors[ourColor] ^= moveMask;
+                    bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
+                    return false;
+                }
 
                 bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[move.idxEnPassant]);
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[move.idxEnPassant]);
-
-                if (returnFalse)
-                {
-                    return false;
-                }
             }
             else if (IsPinned(bb, move.from, ourColor, ourKing, out int pinner))
             {
@@ -143,25 +147,35 @@ namespace LTChess.Util
         }
 
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is pseudo-legal for the position <paramref name="position"/>.
-        /// Only determines if there is a piece at move.from and the piece at move.to isn't the same color.
+        /// Returns true if the piece at <paramref name="idx"/> is pinned to it's king
         /// </summary>
+        /// <param name="pinner">The index of the piece that is pinning this one</param>
         [MethodImpl(Inline)]
-        public static bool IsPseudoLegal(in Bitboard bb, in Move move)
+        public static bool IsPinned(in Bitboard bb, int idx, int pc, int ourKing, out int pinner)
         {
-            if (bb.GetPieceAtIndex(move.from) != Piece.None)
-            {
-                if (bb.GetPieceAtIndex(move.to) != Piece.None)
-                {
-                    //  We can't capture our own color pieces
-                    return bb.GetColorAtIndex(move.from) != bb.GetColorAtIndex(move.to);
-                }
+            /// TODO: Optimize this since we don't care about every pinner, just pinners for idx.
+            ulong temp;
+            ulong them = bb.Colors[Not(pc)];
 
-                //  This is a move to an empty square.
-                return true;
+            ulong pinners = ((RookRays[ourKing] & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen])) |
+                           (BishopRays[ourKing] & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]))) & them;
+
+            while (pinners != 0)
+            {
+                int maybePinner = lsb(pinners);
+                pinners = poplsb(pinners);
+
+                temp = BetweenBB[ourKing][maybePinner] & (bb.Colors[pc] | them);
+
+                //if (popcount(temp) == 1 && (temp & them) == 0)
+                if (popcount(temp) == 1 && lsb(temp) == idx)
+                {
+                    pinner = maybePinner;
+                    return true;
+                }
             }
 
-            //  There isn't a piece on the move's "from" square.
+            pinner = idx;
             return false;
         }
 
@@ -170,7 +184,7 @@ namespace LTChess.Util
         /// </summary>
         /// <param name="pinner">The index of the piece that is pinning this one</param>
         [MethodImpl(Inline)]
-        public static bool IsPinned(in Bitboard bb, int idx, int pc, int ourKing, out int pinner)
+        public static bool IsPinnedSlow(in Bitboard bb, int idx, int pc, int ourKing, out int pinner)
         {
             IndexToCoord(idx, out int x, out int y);
 
@@ -247,12 +261,11 @@ namespace LTChess.Util
             }
             else if (PrecomputedData.OnSameDiagonal(ourKing, idx, out DiagonalInfo info))
             {
-                Direction dir = info.direction;
                 int iOurKing = info.i1;
                 int iIdx = info.i2;
 
-                int[] diag = Diagonals[idx][dir];
-                
+                int[] diag = (info.direction == Diagonal.D_A1H8) ? DiagonalIndicesA1H8[idx] : DiagonalIndicesA8H1[idx];
+
                 if (iOurKing > iIdx)
                 {
                     //  In diag, the index of our king comes after the index of this piece.
@@ -286,44 +299,10 @@ namespace LTChess.Util
             return false;
         }
 
-        [MethodImpl(Inline)]
-        public static bool IsPinnedSlow(in Bitboard bb, int idx, int pc, out int pinner)
-        {
-            pinner = idx;
-            int ourKing = bb.KingIndex(pc);
-            int pt = bb.GetPieceAtIndex(idx);
-
-            bb.Pieces[pt] ^= SquareBB[idx];
-            bb.Colors[pc] ^= SquareBB[idx];
-
-            bool isPinned = false;
-            ulong checkers = AttackersTo(bb, ourKing, pc);
-            while (checkers != 0)
-            {
-                int checker = lsb(checkers);
-
-                if ((LineBB[ourKing][checker] & SquareBB[idx]) != 0)
-                {
-                    pinner = checker;
-                    //  Then the piece at idx was between a checking piece and our king.
-                    isPinned = true;
-                    break;
-                }
-
-                checkers = poplsb(checkers);
-            }
-
-            bb.Pieces[pt] ^= SquareBB[idx];
-            bb.Colors[pc] ^= SquareBB[idx];
-
-            return isPinned;
-        }
-
         /// <summary>
         /// Returns true if any pieces of color <paramref name="attackingColor"/> attack the square <paramref name="idx"/>, 
         /// and sets <paramref name="attackers"/> to be the attacker of the lowest index.
         /// </summary>
-        [MethodImpl(Optimize)]
         public static bool IsSquareAttacked(Position position, int idx, int attackingColor, out int attackers)
         {
             Bitboard bb = position.bb;
@@ -368,31 +347,6 @@ namespace LTChess.Util
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
-        /// So for a bishop on A1, AttackersTo H8 returns a ulong with a bit set at A1.
-        /// defendingColor is the color whose pieces are being attacked, and Not(defendingColor) is the color of the pieces that attack that square. 
-        /// So AttackersTo(..., White) will reference any attacking Black pieces.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong AttackersTo(in Bitboard bb, int idx, int defendingColor)
-        {
-            ulong us = bb.Colors[defendingColor];
-            ulong them = bb.Colors[Not(defendingColor)];
-
-            //  pawnBB is set to our color's pawn attacks.
-            //  We see if the piece at idx could capture another piece as if it were a pawn
-            ulong pawnBB = (defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx];
-
-            ulong diagonals = (GetBishopMoves(us | them, idx) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]));
-            ulong straights = (GetRookMoves(us | them, idx) & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]));
-
-            ulong knights = (bb.Pieces[Piece.Knight] & KnightMasks[idx]);
-            ulong pawns = (bb.Pieces[Piece.Pawn] & pawnBB);
-
-            return (diagonals | straights | knights | pawns) & them;
         }
 
         /// <summary>
@@ -449,7 +403,7 @@ namespace LTChess.Util
             }
 
             
-            ulong all = AttackersTo(bb, theirKing, Not(ourColor));
+            ulong all = bb.AttackersTo(theirKing, Not(ourColor));
 
             bbRef ^= SquareBB[idx];
             if (ourColor == Color.White)
@@ -474,7 +428,6 @@ namespace LTChess.Util
         /// <summary>
         /// Returns a bitboard with bits set at the indices of pieces of color <paramref name="ourColor"/> that support their piece at <paramref name="idx"/>
         /// </summary>
-        [MethodImpl(Optimize)]
         public static bool IsHanging(in Bitboard bb, int idx, int ourColor)
         {
             ulong us;
@@ -568,7 +521,7 @@ namespace LTChess.Util
         /// <summary>
         /// Returns a bitboard with bits set at every square that the piece of color <paramref name="ourColor"/> on <paramref name="idx"/> attacks.
         /// </summary>
-        [MethodImpl(Inline | Optimize)]
+        [MethodImpl(Inline)]
         public static ulong GetAttackedSquaresMaskSlow(in Bitboard bb, int idx, int ourColor, ulong ourColorBB)
         {
             ulong mask = 0;

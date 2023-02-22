@@ -12,8 +12,6 @@ namespace LTChess.Search
     public static class Quiescence
     {
 
-
-
         [MethodImpl(Inline)]
         public static int FindBest(ref SearchInformation info, int alpha, int beta, int maxDepth = 4)
         {
@@ -33,7 +31,7 @@ namespace LTChess.Search
 
             ulong posHash = info.Position.Hash;
             ETEntry stored = EvaluationTable.Probe(posHash);
-            if (stored.key != 0UL)
+            if (stored.key != EvaluationTable.InvalidKey)
             {
                 if (stored.Validate(posHash))
                 {
@@ -73,7 +71,7 @@ namespace LTChess.Search
             }
 
             Span<Move> legal = stackalloc Move[NORMAL_CAPACITY];
-            int size = GenAllLegalMoves(info.Position, legal);
+            int size = info.Position.GenAllLegalMoves(legal);
 
 
             if (size == 0)

@@ -11,6 +11,7 @@ using System.Runtime.Intrinsics.X86;
 
 namespace LTChess.Data
 {
+    [StructLayout(LayoutKind.Sequential)]
     public unsafe struct Move
     {
         public static Move Null = new Move();
@@ -35,11 +36,10 @@ namespace LTChess.Data
         public bool Castle = false;
         public bool CausesCheck = false;
         public bool CausesDoubleCheck = false;
-        public bool IsMate = false;
         public bool Promotion = false;
 
+        public bool IsMate = false;
 
-        //public bool IsQuiet => (!Capture && !Promotion && !EnPassant);
 
         public Move(int from, int to)
         {
@@ -150,11 +150,15 @@ namespace LTChess.Data
 
         public string ToStringCorrect(Position position)
         {
+            //  TODO: this.
             Bitboard bb = position.bb;
             
             int pt = bb.GetPieceAtIndex(from);
             int pc = bb.GetColorAtIndex(from);
             ulong pieceBB = (bb.Pieces[pt] & bb.Colors[pc]);
+
+            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            int size = position.GenAllLegalMoves(list);
 
             //  If multiple of the same type of piece can move to the same square, We include on of the following to differentiate them:
             //  The file from which they moved.
@@ -163,8 +167,8 @@ namespace LTChess.Data
 
             //  7k/2N1N3/1N6/8/1N3N2/2N1N3/8/K7 w - - 0 1
 
-            ulong rankBB = GetRankBB(from);
-            ulong fileBB = GetFileBB(from);
+            ulong rankBB = GetRankBB(from) & pieceBB;
+            ulong fileBB = GetFileBB(from) & pieceBB;
 
             StringBuilder sb = new StringBuilder();
             if (Castle)
@@ -202,12 +206,12 @@ namespace LTChess.Data
                     }
                     else if (popcount(rankBB) == 1)
                     {
-                        sb.Append(GetIndexRank(from));
+                        sb.Append(GetIndexRank(from) + 1);
                     }
                     else
                     {
                         sb.Append(GetFileChar(GetIndexFile(from)));
-                        sb.Append(GetIndexRank(from));
+                        sb.Append(GetIndexRank(from) + 1);
                     }
                 }
 

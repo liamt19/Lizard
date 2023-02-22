@@ -14,7 +14,6 @@ namespace LTChess.Search
     public static unsafe class Evaluation
     {
         //  https://github.com/official-stockfish/Stockfish/tree/master/src
-        //  Stockfish is using polynomials for material imbalance or something.
 
         public const int ScoreMate = 32000;
         public const int ScoreDraw = 0;
@@ -23,6 +22,7 @@ namespace LTChess.Search
         private static Bitboard bb;
 
         private static int ToMove;
+        private static bool IsEndgame;
 
         private static ulong white;
         private static ulong black;
@@ -73,6 +73,8 @@ namespace LTChess.Search
             whitePieces = popcount(white);
             blackPieces = popcount(black);
 
+            IsEndgame = (whitePieces + blackPieces) <= EndgamePieces;
+
             materialScore.Clear();
             pawnScore.Clear();
             bishopScore.Clear();
@@ -90,6 +92,17 @@ namespace LTChess.Search
             EvalQueens();
             EvalKingSafety();
             EvalSpace();
+
+            pawnScore.Scale(ScalePawns);
+            knightScore.Scale(ScaleKnights);
+            bishopScore.Scale(ScaleBishops);
+            rookScore.Scale(ScaleRooks);
+            queenScore.Scale(ScaleQueens);
+            kingScore.Scale(ScaleKingSafety);
+            spaceScore.Scale(ScaleSpace);
+
+            threatScore.Scale(ScaleThreats);
+            materialScore.Scale(ScaleMaterial);
 
             double scoreW = materialScore.white + pawnScore.white + knightScore.white + bishopScore.white + rookScore.white + kingScore.white + threatScore.white + spaceScore.white;
             double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + kingScore.black + threatScore.black + spaceScore.black;
@@ -163,18 +176,25 @@ namespace LTChess.Search
                     thisPawnAttacks = poplsb(thisPawnAttacks);
                 }
 
-                if (IsPasser(bb, idx))
+                //  TODO: Bitboards/masks for determining if a knight geometrically can't stop the pawn.
+
+                if (IsEndgame)
                 {
-                    pawnScore.white += ScorePasser;
-                }
-                else if (IsIsolated(idx))
-                {
-                    pawnScore.white += ScoreIsolatedPawn;
+                    if (IsPasser(bb, idx))
+                    {
+                        pawnScore.white += ScorePasser;
+                    }
+
+                    //  If black only has pawns and is too far to stop this pwan from promoting, then add bonus.
+                    if (popcount(black & bb.Pieces[Piece.Pawn]) == blackPieces - 1 && WillPromote(idx))
+                    {
+                        pawnScore.white += ScorePromotingPawn;
+                    }
                 }
 
-                if (popcount(black & bb.Pieces[Piece.Pawn]) == blackPieces - 1 && WillPromote(idx))
+                if (IsIsolated(idx))
                 {
-                    pawnScore.white += ScorePromotingPawn;
+                    pawnScore.white += ScoreIsolatedPawn;
                 }
 
                 pawnScore.white += (PSQT.WhitePawns[idx] * CoefficientPSQTPawns);
@@ -222,18 +242,22 @@ namespace LTChess.Search
 
                     thisPawnAttacks = poplsb(thisPawnAttacks);
                 }
-                if (IsPasser(bb, idx))
+                if (IsEndgame)
                 {
-                    pawnScore.black += ScorePasser;
-                }
-                else if (IsIsolated(idx))
-                {
-                    pawnScore.black += ScoreIsolatedPawn;
+                    if (IsPasser(bb, idx))
+                    {
+                        pawnScore.black += ScorePasser;
+                    }
+                    if (popcount(white & bb.Pieces[Piece.Pawn]) == whitePieces - 1 && WillPromote(idx))
+                    {
+                        pawnScore.black += ScorePromotingPawn;
+                    }
+                    
                 }
 
-                if (popcount(white & bb.Pieces[Piece.Pawn]) == whitePieces - 1 && WillPromote(idx))
+                if (IsIsolated(idx))
                 {
-                    pawnScore.black += ScorePromotingPawn;
+                    pawnScore.black += ScoreIsolatedPawn;
                 }
 
                 pawnScore.black += (PSQT.BlackPawns[idx] * CoefficientPSQTPawns);
@@ -545,13 +569,13 @@ namespace LTChess.Search
 
                 //  TODO: IsPinned sucks and there is a better way to figure this out.
                 //  Opponent gets a bonus if they are pinning our queen
-                if (false && PositionUtilities.IsPinned(bb, idx, Color.White, whiteKing, out int pinner))
-                {
-                    int theirPiece = bb.PieceTypes[pinner];
-                    int theirValue = GetPieceValue(theirPiece);
+                //if (false && PositionUtilities.IsPinned(bb, idx, Color.White, whiteKing, out int pinner))
+                //{
+                //    int theirPiece = bb.PieceTypes[pinner];
+                //    int theirValue = GetPieceValue(theirPiece);
 
-                    queenScore.black += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
-                }
+                //    queenScore.black += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
+                //}
 
                 materialScore.white += ValueQueen;
 
@@ -589,13 +613,13 @@ namespace LTChess.Search
                 }
 
                 //  Opponent gets a bonus if they are pinning our queen
-                if (PositionUtilities.IsPinned(bb, idx, Color.Black, blackKing, out int pinner))
-                {
-                    int theirPiece = bb.PieceTypes[pinner];
-                    int theirValue = GetPieceValue(theirPiece);
+                //if (PositionUtilities.IsPinned(bb, idx, Color.Black, blackKing, out int pinner))
+                //{
+                //    int theirPiece = bb.PieceTypes[pinner];
+                //    int theirValue = GetPieceValue(theirPiece);
 
-                    queenScore.white += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
-                }
+                //    queenScore.white += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
+                //}
 
                 materialScore.black += ValueQueen;
 
@@ -705,8 +729,8 @@ namespace LTChess.Search
             int theirKing = bb.KingIndex(Not(ourColor));
             int promotionSquare = CoordToIndex(GetIndexFile(idx), ourColor == Color.White ? 7 : 0);
 
-            int pawnDistance = Fish.distanceSquare(idx, promotionSquare);
-            int kingDistance = Fish.distanceSquare(theirKing, promotionSquare);
+            int pawnDistance = SquareDistances[idx][promotionSquare];
+            int kingDistance = SquareDistances[theirKing][promotionSquare];
 
             return (pawnDistance < kingDistance);
         }
@@ -770,7 +794,6 @@ namespace LTChess.Search
 
             if (abs < MAX_DEPTH)
             {
-                //  LTChess depth 64 :flushed:
                 return true;
             }
 

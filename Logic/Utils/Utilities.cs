@@ -13,6 +13,7 @@ using static LTChess.Data.RunOptions;
 using LTChess.Data;
 using static LTChess.Data.Squares;
 using LTChess.Search;
+using LTChess.Core;
 
 namespace LTChess.Util
 {
@@ -23,7 +24,6 @@ namespace LTChess.Util
         public const int LEFT = 0;
         public const int RIGHT = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        //public static Move NULLMOVE = new Move(64, 64);
 
         public const int MAX_CAPACITY = 512;
         public const int NORMAL_CAPACITY = 128;
@@ -62,17 +62,6 @@ namespace LTChess.Util
         public const ulong KingSide = FileEBB | FileFBB | FileGBB | FileHBB;
         public const ulong Center = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 
-        public static ulong[] KingFlank = new ulong[]{
-            QueenSide ^ FileDBB,
-            QueenSide,
-            QueenSide,
-            CenterFiles,
-            CenterFiles,
-            KingSide,
-            KingSide,
-            KingSide ^ FileEBB
-        };
-
         public const ulong WhiteKingsideMask = (1UL << F1) | (1UL << G1);
         public const ulong WhiteQueensideMask = (1UL << B1) | (1UL << C1) | (1UL << D1);
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
@@ -99,6 +88,60 @@ namespace LTChess.Util
         {
             Console.WriteLine("Error: " + s);
             Debug.WriteLine("Error: " + s);
+        }
+		
+        public static class Direction
+        {
+          public const int NORTH =  8;
+          public const int EAST  =  1;
+          public const int SOUTH = -NORTH;
+          public const int WEST  = -EAST;
+
+          public const int NORTH_EAST = NORTH + EAST;
+          public const int SOUTH_EAST = SOUTH + EAST;
+          public const int SOUTH_WEST = SOUTH + WEST;
+          public const int NORTH_WEST = NORTH + WEST;
+        }
+
+        [MethodImpl(Inline)]
+        public static int Up(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
+
+        [MethodImpl(Inline)]
+        public static ulong Forward(int color, ulong b)
+        {
+            if (color == Color.White)
+            {
+                return Shift(Direction.NORTH, b);
+            }
+
+            return Shift(Direction.SOUTH, b);
+        }
+
+        [MethodImpl(Inline)]
+        public static ulong Shift(int dir, ulong b)
+        {
+            return dir == Direction.NORTH ? b << 8
+                : dir == Direction.SOUTH ? b >> 8
+                : dir == Direction.NORTH + Direction.NORTH ? b << 16
+                : dir == Direction.SOUTH + Direction.SOUTH ? b >> 16
+                : dir == Direction.EAST ? (b & ~FileHBB) << 1
+                : dir == Direction.WEST ? (b & ~FileABB) >> 1
+                : dir == Direction.NORTH_EAST ? (b & ~FileHBB) << 9
+                : dir == Direction.NORTH_WEST ? (b & ~FileABB) << 7
+                : dir == Direction.SOUTH_EAST ? (b & ~FileHBB) >> 7
+                : dir == Direction.SOUTH_WEST ? (b & ~FileABB) >> 9
+                : 0;
+        }
+
+        [MethodImpl(Inline)]
+        public static ulong PawnShift(int color, ulong b)
+        {
+            if (color == Color.White)
+            {
+                return Shift(Direction.NORTH_WEST, b) | Shift(Direction.NORTH_EAST, b);
+            }
+
+            return Shift(Direction.SOUTH_WEST, b) | Shift(Direction.SOUTH_EAST, b);
         }
 
         [MethodImpl(Inline)]
@@ -398,6 +441,36 @@ namespace LTChess.Util
             }
         }
 
+        public static void SortBySourceSquare(this Span<Move> arr)
+        {
+            List<Move> temp = new List<Move>();
+            for (int i = 0; i < arr.Length; i++)
+            {
+                if (arr[i].IsNull())
+                {
+                    break;
+                }
+                temp.Add(arr[i]);
+            }
+
+            temp = temp.OrderBy(move => move.from).ThenBy(move => move.to).ToList();
+
+            for (int i = 0; i < temp.Count; i++)
+            {
+                arr[i] = temp[i];
+            }
+        }
+
+        public static int CountMoves(this Span<Move> arr)
+        {
+            int i = 0;
+            while (i < arr.Length && !arr[i].IsNull())
+            {
+                i++;
+            }
+            return i;
+        }
+
         public static string PrintBoard(Bitboard bb)
         {
             StringBuilder sb = new StringBuilder();
@@ -501,7 +574,7 @@ namespace LTChess.Util
             return s.Contains(other, StringComparison.OrdinalIgnoreCase);
         }
 
-        public static string FormatSearchInformation(SearchInformation info)
+        public static string FormatSearchInformation(SearchInformation info, bool TraceEval = false, bool MakePVReadable = false)
         {
             int depth = info.MaxDepth;
             int selDepth = depth;
@@ -509,8 +582,11 @@ namespace LTChess.Util
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
             int nodesPerSec = ((int)(nodes / (time / 1000)));
-            string pv = "";
+            StringBuilder pv = new StringBuilder();
+
             NegaMax.GetPV(info, info.PV, 0);
+
+            Position temp = new Position(info.Position.GetFEN());
             for (int i = 0; i < MAX_DEPTH; i++)
             {
                 if (info.PV[i].IsNull())
@@ -518,7 +594,28 @@ namespace LTChess.Util
                     break;
                 }
 
-                pv += info.PV[i].ToString() + " ";
+                if (MakePVReadable)
+                {
+                    if (temp.bb.IsPseudoLegal(info.PV[i]))
+                    {
+                        pv.Append(info.PV[i].ToString(temp) + " ");
+                        temp.MakeMove(info.PV[i]);
+                    }
+                    else
+                    {
+                        pv.Append(info.PV[i].ToString() + "( not psuedo legal :c )" + " ");
+                    }
+                }
+                else
+                {
+                    pv.Append(info.PV[i].ToString() + " ");
+                }
+            }
+
+            if (TraceEval)
+            {
+                Log("\r\n\r\n**** Tracing whichever PV is under this");
+                Evaluation.Evaluate(temp.bb, temp.ToMove, true);
             }
 
             StringBuilder sb = new StringBuilder();
@@ -529,7 +626,7 @@ namespace LTChess.Util
             sb.Append(" score " + score);
             sb.Append(" nodes " + nodes);
             sb.Append(" nps " + nodesPerSec);
-            sb.Append(" pv " + pv);
+            sb.Append(" pv " + pv.ToString());
 
             return sb.ToString();
         }
@@ -587,7 +684,7 @@ namespace LTChess.Util
 
 
         /// <summary>
-        /// Returns the number of bits set in <paramref name="value"/> using <c>Popcnt.X64.PopCount</c>
+        /// Returns the number of bits set in <paramref name="value"/> using <c>Popcnt.X64.PopCount(<paramref name="value"/>)</c>
         /// </summary>
         [MethodImpl(Inline)]
         public static ulong popcount(ulong value)
@@ -636,7 +733,7 @@ namespace LTChess.Util
 
         /// <summary>
         /// I would like to use it like this to avoid having to do some thing like "int idx = lsb(value);    value = poplsb(value);"
-        /// But this is slower, I think because of how C# doesn't really like pointers. 
+        /// But this is slower, probably since C# doesn't like pointers. 
         /// And this was faster than using "ref ulong value" by about 10 ms in a benchmark, but still about 2-3 ms slower than ^^^^ that.
         /// </summary>
         [MethodImpl(Inline)]
@@ -669,9 +766,7 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static ulong popmsb(ulong value)
         {
-#if BMI
             return value ^ (1UL << msb(value));
-#endif
         }
 
         [MethodImpl(Inline)]
@@ -695,16 +790,146 @@ namespace LTChess.Util
 
 
         /// <summary>
-        /// Returns a mask containing every square the piece on <paramref name="square"/> can move to on the board <paramref name="occupied"/>.
+        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on the board <paramref name="occupied"/>.
         /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
         /// except for A8 and H1.
         /// </summary>
-        public static ulong GetBlockerMask(Fish.PieceType pt, int square, ulong occupied)
+        public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
         {
-            ulong mask = Fish.sliding_attack(pt, (Fish.Square)square, occupied);
+            ulong mask = 0UL;
+            if (pt == Piece.Bishop)
+            {
+                IndexToCoord(idx, out int x, out int y);
+                int sq;
 
-            int rank = (square >> 3);
-            int file = (square & 7);
+                int ix = x - 1;
+                int iy = y - 1;
+                while (ix >= 0 && iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                    iy--;
+                }
+
+                ix = x - 1;
+                iy = y + 1;
+                while (ix >= 0 && iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                    iy++;
+                }
+
+                ix = x + 1;
+                iy = y + 1;
+                while (ix <= 7 && iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                    iy++;
+                }
+
+                ix = x + 1;
+                iy = y - 1;
+                while (ix <= 7 && iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                    iy--;
+                }
+            }
+            else
+            {
+                IndexToCoord(idx, out int x, out int y);
+                int sq;
+
+                int ix = x - 1;
+                int iy = y;
+                while (ix >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                }
+
+                ix = x + 1;
+                iy = y;
+                while (ix <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                }
+
+                ix = x;
+                iy = y - 1;
+                while (iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    iy--;
+                }
+
+                ix = x;
+                iy = y + 1;
+                while (iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    iy++;
+                }
+            }
+
+            return mask;
+        }
+
+        /// <summary>
+        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on an empty board.
+        /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
+        /// except for A8 and H1.
+        /// </summary>
+        public static ulong GetBlockerMask(int pt, int idx)
+        {
+            ulong mask = (pt == Piece.Bishop) ? PrecomputedData.BishopRays[idx] : PrecomputedData.RookRays[idx];
+
+            int rank = (idx >> 3);
+            int file = (idx & 7);
             if (rank == 7)
             {
                 mask &= ~Rank1BB;

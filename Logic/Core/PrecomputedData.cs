@@ -32,7 +32,14 @@ namespace LTChess.Data
         /// At each index, contains a mask of each of the squares that a knight could move to.
         /// </summary>
         public static ulong[] KnightMasks = new ulong[64];
-        public static Dictionary<Direction, int[]>[] Diagonals = new Dictionary<Direction, int[]>[64];
+
+        public static ulong[] RookRays = new ulong[64];
+
+        public static ulong[] BishopRays = new ulong[64];
+
+        public static int[][] DiagonalIndicesA1H8 = new int[64][];
+
+        public static int[][] DiagonalIndicesA8H1 = new int[64][];
 
         /// <summary>
         /// Contains ulongs for each square with bits set along the A1-H8 diagonal (bottom left to top right, from White's perspective).
@@ -46,6 +53,8 @@ namespace LTChess.Data
         /// </summary>
         public static ulong[] DiagonalMasksA8H1 = new ulong[64];
 
+        public static DiagonalInfo[][] InfoA1H8 = new DiagonalInfo[64][];
+        public static DiagonalInfo[][] InfoA8H1 = new DiagonalInfo[64][];
 
         /// <summary>
         /// Bitboards containing all of the squares that a White pawn on an index attacks. A White pawn on A2 attacks B3 etc.
@@ -89,8 +98,7 @@ namespace LTChess.Data
         /// </summary>
         public static ulong[][] BetweenBB = new ulong[64][];
 
-        public static DiagonalInfo[,] InfoA1H8 = new DiagonalInfo[64, 64];
-        public static DiagonalInfo[,] InfoA8H1 = new DiagonalInfo[64, 64];
+        public static int[][] SquareDistances = new int[64][];
 
         private static bool Initialized = false;
 
@@ -105,13 +113,16 @@ namespace LTChess.Data
         public static void Initialize()
         {
             DoSquareBBs();
+            DoSquareDistances();
+            DoDiagonals();
+
+            DoRays();
 
             DoNeighbors();
             DoOutterNeighbors();
-            DoKnightMoves();
-            DoDiagonals();
-            DoPawnAttacks();
 
+            DoKnightMoves();
+            DoPawnAttacks();
             DoPassedPawns();
 
             DoBetweenBBs();
@@ -135,151 +146,118 @@ namespace LTChess.Data
             }
         }
 
-        /// <summary>
-        /// Calculates values for LineBB and BetweenBB, must be done after the diagonals have been calculated.
-        /// </summary>
-        private static void DoBetweenBBs()
+        private static void DoSquareDistances()
         {
             for (int s1 = 0; s1 < 64; s1++)
             {
-                LineBB[s1] = new ulong[64];
-                BetweenBB[s1] = new ulong[64];
-                int f1 = GetIndexFile(s1);
-                int r1 = GetIndexRank(s1);
+                SquareDistances[s1] = new int[64];
+                IndexToCoord(s1, out int s1x, out int s1y);
                 for (int s2 = 0; s2 < 64; s2++)
                 {
-                    int f2 = GetIndexFile(s2);
-                    int r2 = GetIndexRank(s2);
-                    LineBB[s1][s2] |= SquareBB[s2];
-
-                    if (OnSameDiagonal(s1, s2, out DiagonalInfo info))
-                    {
-                        int[] arr = Diagonals[s1][info.direction];
-                        for (int i = Math.Max(info.i1, info.i2) - 1; i > Math.Min(info.i1, info.i2); i--)
-                        {
-                            LineBB[s1][s2] |= SquareBB[arr[i]];
-                            BetweenBB[s1][s2] |= SquareBB[arr[i]];
-                        }
-                    }
-                    
-                    if (f1 == f2)
-                    {
-                        if (s1 > s2)
-                        {
-                            for (int i = s1 - 8; i > s2; i -= 8)
-                            {
-                                LineBB[s1][s2] |= SquareBB[i];
-                                BetweenBB[s1][s2] |= SquareBB[i];
-                            }
-                        }
-                        else
-                        {
-                            for (int i = s1 + 8; i < s2; i += 8)
-                            {
-                                LineBB[s1][s2] |= SquareBB[i];
-                                BetweenBB[s1][s2] |= SquareBB[i];
-                            }
-                        }
-                    }
-                    else if (r1 == r2)
-                    {
-                        if (s1 > s2)
-                        {
-                            for (int i = s1 - 1; i > s2; i--)
-                            {
-                                LineBB[s1][s2] |= SquareBB[i];
-                                BetweenBB[s1][s2] |= SquareBB[i];
-                            }
-                        }
-                        else
-                        {
-                            for (int i = s1 + 1; i < s2; i++)
-                            {
-                                LineBB[s1][s2] |= SquareBB[i];
-                                BetweenBB[s1][s2] |= SquareBB[i];
-                            }
-                        }
-                    }
-
+                    IndexToCoord(s2, out int s2x, out int s2y);
+                    int fileDistance = Math.Abs(s1x - s2x);
+                    int rankDistance = Math.Abs(s1y - s2y);
+                    SquareDistances[s1][s2] = Math.Max(fileDistance, rankDistance);
                 }
             }
         }
 
-        private static void DoPawnAttacks()
+        private static void DoDiagonals()
         {
             for (int i = 0; i < 64; i++)
             {
-                ulong whiteAttack = 0;
-                ulong whiteMove = (1UL << (i + 8));
-
-                ulong blackAttack = 0;
-                ulong blackMove = (1UL << (i - 8));
-
                 IndexToCoord(i, out int x, out int y);
+                List<int> bltr = new List<int>();
+                List<int> tlbr = new List<int>();
 
-                int wy = (y + 1);
-                int by = (y - 1);
-
-                if (y == 1)
+                int ix = x - 1;
+                int iy = y - 1;
+                while (ix >= 0 && iy >= 0)
                 {
-                    whiteMove |= (1UL << (i + 16));
+                    bltr.Insert(0, CoordToIndex(ix, iy));
+                    ix--;
+                    iy--;
                 }
 
-                if (y == 6)
+                ix = x;
+                iy = y;
+                while (ix <= 7 && iy <= 7)
                 {
-                    blackMove |= (1UL << (i - 16));
+                    bltr.Add(CoordToIndex(ix, iy));
+                    ix++;
+                    iy++;
                 }
 
-                if (x > 0)
+
+                ix = x - 1;
+                iy = y + 1;
+                while (ix >= 0 && iy <= 7)
                 {
-                    if (i < A2)
-                    {
-                        BlackPawnAttackMasks[i] = 0;
-
-                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
-                    }
-                    else if (i > H7)
-                    {
-                        WhitePawnAttackMasks[i] = 0;
-
-                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
-                    }
-                    else
-                    {
-                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
-                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
-                    }
-                    
-                }
-                if (x < 7)
-                {
-                    if (i < A2)
-                    {
-                        //  Set this to 0 since pawns don't attack squares that are outside of the bounds of the board.
-                        BlackPawnAttackMasks[i] = 0;
-
-                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
-                    }
-                    else if (i > H7)
-                    {
-                        WhitePawnAttackMasks[i] = 0;
-
-                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
-                    }
-                    else
-                    {
-                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
-                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
-                    }
+                    tlbr.Insert(0, CoordToIndex(ix, iy));
+                    ix--;
+                    iy++;
                 }
 
-                WhitePawnAttackMasks[i] = whiteAttack;
-                BlackPawnAttackMasks[i] = blackAttack;
+                ix = x;
+                iy = y;
+                //index2 = tlbr.Count;
+                while (ix <= 7 && iy >= 0)
+                {
+                    tlbr.Add(CoordToIndex(ix, iy));
+                    ix++;
+                    iy--;
+                }
 
-                WhitePawnMoveMasks[i] = whiteMove;
-                BlackPawnMoveMasks[i] = blackMove;
+                ulong maskA1 = 0UL;
+                foreach (int mv in bltr)
+                {
+                    maskA1 |= (1UL << mv);
+                }
+                DiagonalMasksA1H8[i] = maskA1;
+
+                ulong maskA8 = 0UL;
+                foreach (int mv in tlbr)
+                {
+                    maskA8 |= (1UL << mv);
+                }
+                DiagonalMasksA8H1[i] = maskA8;
+
+
+                DiagonalIndicesA1H8[i] = bltr.ToArray();
+                DiagonalIndicesA8H1[i] = tlbr.ToArray();
             }
-        } 
+
+            for (int i = 0; i < 64; i++)
+            {
+                InfoA1H8[i] = new DiagonalInfo[64];
+                InfoA8H1[i] = new DiagonalInfo[64];
+                for (int j = 0; j < 64; j++)
+                {
+                    bool onSame = DetOnSameDiagonal(i, j, Diagonal.D_A1H8, out int a, out int b);
+                    DiagonalInfo d1 = new DiagonalInfo(i, j, Diagonal.D_A1H8, onSame, a, b);
+                    InfoA1H8[i][j] = d1;
+
+                    bool onSame1 = DetOnSameDiagonal(i, j, Diagonal.D_A8H1, out int c, out int d);
+                    DiagonalInfo d2 = new DiagonalInfo(i, j, Diagonal.D_A8H1, onSame1, c, d);
+                    InfoA8H1[i][j] = d2;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Calculates the masks for rook and bishop moves on an empty board, must be done after the diagonals have been calculated.
+        /// </summary>
+        private static void DoRays()
+        {
+            for (int sq = 0; sq < 64; sq++)
+            {
+                ulong rookMask = (GetFileBB(sq) | GetRankBB(sq)) & ~(1UL << sq);
+                RookRays[sq] = rookMask;
+
+                ulong bishopMask = (DiagonalMasksA1H8[sq] | DiagonalMasksA8H1[sq]) & ~(1UL << sq);
+                BishopRays[sq] = bishopMask;
+            }
+        }
 
         private static void DoNeighbors()
         {
@@ -351,88 +329,6 @@ namespace LTChess.Data
             }
         }
 
-        private static void DoDiagonals()
-        {
-            for (int i = 0; i < 64; i++)
-            {
-                IndexToCoord(i, out int x, out int y);
-                List<int> bltr = new List<int>();
-                List<int> tlbr = new List<int>();
-
-                int ix = x - 1;
-                int iy = y - 1;
-                while (ix >= 0 && iy >= 0)
-                {
-                    bltr.Insert(0, CoordToIndex(ix, iy));
-                    ix--;
-                    iy--;
-                }
-
-                ix = x;
-                iy = y;
-                while (ix <= 7 && iy <= 7)
-                {
-                    bltr.Add(CoordToIndex(ix, iy));
-                    ix++;
-                    iy++;
-                }
-
-
-                ix = x - 1;
-                iy = y + 1;
-                while (ix >= 0 && iy <= 7)
-                {
-                    tlbr.Insert(0, CoordToIndex(ix, iy));
-                    ix--;
-                    iy++;
-                }
-
-                ix = x;
-                iy = y;
-                //index2 = tlbr.Count;
-                while (ix <= 7 && iy >= 0)
-                {
-                    tlbr.Add(CoordToIndex(ix, iy));
-                    ix++;
-                    iy--;
-                }
-
-                ulong maskA1 = 0UL;
-                foreach (int mv in bltr)
-                {
-                    maskA1 |= (1UL << mv);
-                }
-                DiagonalMasksA1H8[i] = maskA1;
-
-                ulong maskA8 = 0UL;
-                foreach (int mv in tlbr)
-                {
-                    maskA8 |= (1UL << mv);
-                }
-                DiagonalMasksA8H1[i] = maskA8;
-
-                Diagonals[i] = new Dictionary<Direction, int[]>
-                {
-                    { Direction.D_A1H8, bltr.ToArray() },
-                    { Direction.D_A8H1, tlbr.ToArray() }
-                };
-            }
-            
-            for (int i = 0; i < 64; i++)
-            {
-                for (int j = 0; j < 64; j++)
-                {
-                    bool onSame = DetOnSameDiagonal(i, j, Direction.D_A1H8, out int a, out int b);
-                    DiagonalInfo d1 = new DiagonalInfo(i, j, Direction.D_A1H8, onSame, a, b);
-                    InfoA1H8[i, j] = d1;
-
-                    bool onSame1 = DetOnSameDiagonal(i, j, Direction.D_A8H1, out int c, out int d);
-                    DiagonalInfo d2 = new DiagonalInfo(i, j, Direction.D_A8H1, onSame1, c, d);
-                    InfoA8H1[i, j] = d2;
-                }
-            }
-        }
-
         private static void DoKnightMoves()
         {
             for (int i = 0; i < 64; i++)
@@ -486,6 +382,82 @@ namespace LTChess.Data
             }
         }
 
+        private static void DoPawnAttacks()
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                ulong whiteAttack = 0;
+                ulong whiteMove = (1UL << (i + 8));
+
+                ulong blackAttack = 0;
+                ulong blackMove = (1UL << (i - 8));
+
+                IndexToCoord(i, out int x, out int y);
+
+                int wy = (y + 1);
+                int by = (y - 1);
+
+                if (y == 1)
+                {
+                    whiteMove |= (1UL << (i + 16));
+                }
+
+                if (y == 6)
+                {
+                    blackMove |= (1UL << (i - 16));
+                }
+
+                if (x > 0)
+                {
+                    if (i < A2)
+                    {
+                        BlackPawnAttackMasks[i] = 0;
+
+                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
+                    }
+                    else if (i > H7)
+                    {
+                        WhitePawnAttackMasks[i] = 0;
+
+                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
+                    }
+                    else
+                    {
+                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
+                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
+                    }
+
+                }
+                if (x < 7)
+                {
+                    if (i < A2)
+                    {
+                        //  Set this to 0 since pawns don't attack squares that are outside of the bounds of the board.
+                        BlackPawnAttackMasks[i] = 0;
+
+                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
+                    }
+                    else if (i > H7)
+                    {
+                        WhitePawnAttackMasks[i] = 0;
+
+                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
+                    }
+                    else
+                    {
+                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
+                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
+                    }
+                }
+
+                WhitePawnAttackMasks[i] = whiteAttack;
+                BlackPawnAttackMasks[i] = blackAttack;
+
+                WhitePawnMoveMasks[i] = whiteMove;
+                BlackPawnMoveMasks[i] = blackMove;
+            }
+        }
+
         private static void DoPassedPawns()
         {
             for (int idx = 0; idx < 64; idx++)
@@ -520,17 +492,87 @@ namespace LTChess.Data
         }
 
         /// <summary>
+        /// Calculates values for LineBB and BetweenBB, must be done after the diagonals have been calculated.
+        /// </summary>
+        private static void DoBetweenBBs()
+        {
+            for (int s1 = 0; s1 < 64; s1++)
+            {
+                LineBB[s1] = new ulong[64];
+                BetweenBB[s1] = new ulong[64];
+                int f1 = GetIndexFile(s1);
+                int r1 = GetIndexRank(s1);
+                for (int s2 = 0; s2 < 64; s2++)
+                {
+                    int f2 = GetIndexFile(s2);
+                    int r2 = GetIndexRank(s2);
+                    LineBB[s1][s2] |= SquareBB[s2];
+
+                    if (OnSameDiagonal(s1, s2, out DiagonalInfo info))
+                    {
+                        int[] arr = (info.direction == Diagonal.D_A1H8) ? DiagonalIndicesA1H8[s1] : DiagonalIndicesA8H1[s1];
+                        for (int i = Math.Max(info.i1, info.i2) - 1; i > Math.Min(info.i1, info.i2); i--)
+                        {
+                            LineBB[s1][s2] |= SquareBB[arr[i]];
+                            BetweenBB[s1][s2] |= SquareBB[arr[i]];
+                        }
+                    }
+
+                    if (f1 == f2)
+                    {
+                        if (s1 > s2)
+                        {
+                            for (int i = s1 - 8; i > s2; i -= 8)
+                            {
+                                LineBB[s1][s2] |= SquareBB[i];
+                                BetweenBB[s1][s2] |= SquareBB[i];
+                            }
+                        }
+                        else
+                        {
+                            for (int i = s1 + 8; i < s2; i += 8)
+                            {
+                                LineBB[s1][s2] |= SquareBB[i];
+                                BetweenBB[s1][s2] |= SquareBB[i];
+                            }
+                        }
+                    }
+                    else if (r1 == r2)
+                    {
+                        if (s1 > s2)
+                        {
+                            for (int i = s1 - 1; i > s2; i--)
+                            {
+                                LineBB[s1][s2] |= SquareBB[i];
+                                BetweenBB[s1][s2] |= SquareBB[i];
+                            }
+                        }
+                        else
+                        {
+                            for (int i = s1 + 1; i < s2; i++)
+                            {
+                                LineBB[s1][s2] |= SquareBB[i];
+                                BetweenBB[s1][s2] |= SquareBB[i];
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+
+        /// <summary>
         /// Returns true if <paramref name="index1"/> and <paramref name="index2"/> exist on the same diagonal.
         /// </summary>
         /// <param name="index1">The first index.</param>
         /// <param name="index2">The second index.</param>
-        /// <param name="diagonal">Set to the Direction that the two indicies share, or Direction.D_A1H8 if they don't.</param>
+        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.D_A1H8 if they don't.</param>
         /// <param name="iIndex1">The index that <paramref name="index1"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         /// <param name="iIndex2">The index that <paramref name="index2"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         [MethodImpl(Inline)]
-        private static unsafe bool DetOnSameDiagonal(int index1, int index2, Direction direction, out int iIndex1, out int iIndex2)
+        private static unsafe bool DetOnSameDiagonal(int index1, int index2, int direction, out int iIndex1, out int iIndex2)
         {
-            if (direction == Direction.D_A1H8)
+            if (direction == Diagonal.D_A1H8)
             {
                 iIndex1 = iIndex2 = 8;
                 ulong d1 = DiagonalMasksA1H8[index1];
@@ -597,19 +639,19 @@ namespace LTChess.Data
         /// </summary>
         /// <param name="index1">The first index.</param>
         /// <param name="index2">The second index.</param>
-        /// <param name="diagonal">Set to the Direction that the two indicies share, or Direction.D_A1H8 if they don't.</param>
+        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.D_A1H8 if they don't.</param>
         /// <param name="iIndex1">The index that <paramref name="index1"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         /// <param name="iIndex2">The index that <paramref name="index2"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         [MethodImpl(Inline)]
         public static unsafe bool OnSameDiagonal(int index1, int index2, out DiagonalInfo info)
         {
-            info = InfoA1H8[index1, index2];
+            info = InfoA1H8[index1][index2];
             if (info.onSame)
             {
                 return true;
             }
 
-            info = InfoA8H1[index1, index2];
+            info = InfoA8H1[index1][index2];
             if (info.onSame)
             {
                 return true;
@@ -624,12 +666,12 @@ namespace LTChess.Data
     {
         public readonly int index1;
         public readonly int index2;
-        public readonly Direction direction;
+        public readonly int direction;
         public readonly bool onSame;
         public readonly int i1;
         public readonly int i2;
 
-        public DiagonalInfo(int index1, int index2, Direction direction, bool onSame, int i1, int i2)
+        public DiagonalInfo(int index1, int index2, int direction, bool onSame, int i1, int i2)
         {
             this.index1 = index1;
             this.index2 = index2;

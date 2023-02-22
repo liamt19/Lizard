@@ -11,11 +11,9 @@ namespace LTChess.Util
     {
         private static Position p;
 
-		//	Bench 4 - 3.0083703 s
-		private static string Depth4Path = @".\_Performance\BenchFiles\sf14bench_perft4.txt";
+		private static string Depth4Path = @".\BenchFiles\sf14bench_perft4.txt";
 
-		//	Bench 5 - 111.1742933 s
-		private static string Depth5Path = @".\_Performance\BenchFiles\sf14bench_perft5.txt";
+		private static string Depth5Path = @".\BenchFiles\sf14bench_perft5.txt";
 
 		public static Dictionary<string, ulong> FENDepths4 = new Dictionary<string, ulong>();
 		public static Dictionary<string, ulong> FENDepths5 = new Dictionary<string, ulong>();
@@ -117,10 +115,6 @@ namespace LTChess.Util
                 {
 					Log('[' + fen + ']' + ": Expected " + correctNodes + " nodes but got " + ourNodes + " nodes instead!");
                 }
-				else
-                {
-					//Log("[" + fen + "]: Has " + correctNodes + " nodes and agrees with our " + ourNodes + " nodes");
-				}
             }
 
 			Log("Done in " + sw.Elapsed.TotalSeconds + " s!");

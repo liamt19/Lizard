@@ -6,22 +6,12 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
+using static LTChess.Search.SearchConstants;
+
 namespace LTChess.Search
 {
     public static class NegaMax
     {
-        /// <summary>
-        /// Number of plys to reduce.
-        /// </summary>
-        public static int LMRReductionAmount = 1;
-
-        /// <summary>
-        /// Only reduce if the depth is at or above this number.
-        /// </summary>
-        public static int LMRDepth = 3;
-
-        static int AlphaStart = -100000;
-        static int BetaStart = 100000;
 
         public static void IterativeDeepen(ref SearchInformation info)
         {
@@ -31,6 +21,7 @@ namespace LTChess.Search
             int maxDepth = info.MaxDepth;
             double maxTime = info.MaxSeachTime;
             bool continueDeepening = true;
+
             while (continueDeepening)
             {
                 info.MaxDepth = depth;
@@ -88,71 +79,33 @@ namespace LTChess.Search
                 return Quiescence.FindBest(ref info, alpha, beta);
             }
 
-            int startingAlpha = alpha;
+            
             Position pos = info.Position;
             Bitboard bb = pos.bb;
             ulong posHash = pos.Hash;
             TTEntry ttEntry = TranspositionTable.Probe(posHash);
             Move BestMove = Move.Null;
+            int startingAlpha = alpha;
             int BestScore = 0;
             bool isPV = (beta - alpha < 1);
 
-#if DEBUG
-
-            if (ttEntry.NodeType != NodeType.Invalid)
+            int staticEval = 0;
+            ETEntry etEntry = EvaluationTable.Probe(posHash);
+            if (etEntry.key == EvaluationTable.InvalidKey|| !etEntry.Validate(posHash))
             {
-                if (ttEntry.Key == TTEntry.MakeKey(posHash))
-                {
-                    if (!ttEntry.BestMove.IsNull())
-                    {
-                        SearchStatistics.TTHits++;
-                        if (ttEntry.NodeType != NodeType.Alpha)
-                        {
-                            if (IsPseudoLegal(bb, ttEntry.BestMove))
-                            {
-                                if (IsLegal(pos, bb, ttEntry.BestMove, bb.KingIndex(Not(pos.ToMove)), bb.KingIndex(pos.ToMove)))
-                                {
-                                    //Log(stored.ToString());
-                                }
-                                else
-                                {
-                                    SearchStatistics.TTIllegal++;
-                                }
-                            }
-                            else
-                            {
-                                SearchStatistics.TTNotPseudo++;
-                            }
-                        }
-                        else
-                        {
-                            SearchStatistics.TTIgnoredAlpha++;
-                        }
-                    }
-                    else
-                    {
-                        SearchStatistics.TTNullMoves++;
-                    }
-                }
-                else
-                {
-                    var calcHash = TTEntry.MakeKey(posHash);
-                    //LogW("Collision between stored key " + stored.key + " and posHash: " + calcHash + " = " + posHash);
-                    SearchStatistics.TTWrongHashKey++;
-                }
+                staticEval = Evaluation.Evaluate(info.Position.bb, info.Position.ToMove);
+                EvaluationTable.Save(posHash, (short)staticEval);
             }
             else
             {
-                SearchStatistics.TTInvalid++;
+                staticEval = etEntry.score;
             }
-#endif
-
 
             if (ttEntry.NodeType != NodeType.Invalid && ttEntry.Key == TTEntry.MakeKey(posHash) && !ttEntry.BestMove.IsNull())
             {
                 //  Make sure it's legal since collisions are common
                 //  If we found a node for this position
-                if (ttEntry.NodeType != NodeType.Alpha && IsPseudoLegal(bb, ttEntry.BestMove) && IsLegal(pos, bb, ttEntry.BestMove, bb.KingIndex(Not(pos.ToMove)), bb.KingIndex(pos.ToMove)))
+                if (ttEntry.NodeType != NodeType.Alpha && bb.IsPseudoLegal(ttEntry.BestMove) && IsLegal(pos, bb, ttEntry.BestMove, bb.KingIndex(Not(pos.ToMove)), bb.KingIndex(pos.ToMove)))
                 {
                     //  Exclude alpha nodes because they are lower bounds and probably not "the best"
                     info.BestMove = ttEntry.BestMove;
@@ -200,7 +153,7 @@ namespace LTChess.Search
             }
 
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = GenAllLegalMoves(info.Position, list);
+            int size = info.Position.GenAllLegalMoves(list);
 
             if (size == 0)
             {
@@ -232,6 +185,15 @@ namespace LTChess.Search
                 }
                 else
                 {
+                    /**
+                    
+                    if (CanFutilityPrune(list[i], moveDuringCheck, depth, staticEval, alpha, beta))
+                    {
+                        int futility = GetFutilityScore(depth);
+                    }
+
+                     */
+
                     int lmr = 0;
                     if (CanApplyLMR(bb, list[i], moveDuringCheck, depth))
                     {
@@ -241,11 +203,6 @@ namespace LTChess.Search
                         lmr += LMRReductionAmount;
                     }
                     score = -NegaMax.FindBest(ref info, -beta, -alpha, depth - lmr - 1);
-
-                    //if (score > alpha && (isPV || (!isPV && lmr > 0)))
-                    //{
-                    //    score = -NegaMax.FindBest(ref info, -beta, -alpha, depth - lmr - 1);
-                    //}
 
                     if (score > BestScore)
                     {
@@ -308,6 +265,9 @@ namespace LTChess.Search
                     nodeType = NodeType.Exact;
                 }
                 TranspositionTable.Save(posHash, (short)BestScore, nodeType, depth, BestMove);
+
+                info.BestMove = BestMove;
+                info.BestScore = BestScore;
             }
 
             return BestScore;
@@ -344,7 +304,26 @@ namespace LTChess.Search
                     scores[i] = MoveScores.Normal;
                 }
             }
+        }
 
+        [MethodImpl(Inline)]
+        private static bool CanFutilityPrune(in Move m, bool isToMoveInCheck, int depth, int eval, int alpha, int beta)
+        {
+            if (depth <= FutilityPruningDepth && isToMoveInCheck == false && m.CausesCheck == false && m.CausesDoubleCheck == false && m.Capture == false)
+            {
+                if (eval < beta && !Evaluation.IsScoreMate(eval, out _) && !Evaluation.IsScoreMate(alpha, out _) && !Evaluation.IsScoreMate(beta, out _))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        [MethodImpl(Inline)]
+        public static int GetFutilityScore(int depth)
+        {
+            return (FutilityPruningScore * depth);
         }
 
         [MethodImpl(Inline)]
@@ -379,7 +358,7 @@ namespace LTChess.Search
             TTEntry stored = TranspositionTable.Probe(position.Hash);
             if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(position.Hash) && numMoves < MAX_DEPTH)
             {
-                if (!IsPseudoLegal(bb, stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
+                if (!bb.IsPseudoLegal(stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
                 {
                     return numMoves;
                 }
@@ -387,12 +366,17 @@ namespace LTChess.Search
                 moves[numMoves] = stored.BestMove;
                 position.MakeMove(stored.BestMove);
 
-                if (AttackersTo(bb, theirKing, Not(position.ToMove)) != 0)
+                //  Not sure what the point of this check is, I think Cosette handles checks differently.
+                /*
+                
+                if (bb.AttackersTo(theirKing, Not(position.ToMove)) != 0)
                 {
-                    //  Not sure what the point of this check is, I think Cosette handles checks differently.
-                    //pos.UnmakeMove();
-                    //return numMoves;
+                    position.UnmakeMove();
+                    return numMoves;
                 }
+
+                 */
+
 
                 numMoves = GetPV(info, moves, numMoves + 1);
                 position.UnmakeMove();

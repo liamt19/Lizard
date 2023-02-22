@@ -64,7 +64,6 @@ namespace LTChess.Transposition
             BlackHash = rand.NextUlong();
         }
 
-        [MethodImpl(Optimize)]
         public static ulong GetHash(Position position)
         {
             Bitboard bb = position.bb;

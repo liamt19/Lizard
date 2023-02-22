@@ -10,6 +10,8 @@ namespace LTChess.Transposition
 {
     public class EvaluationTable
     {
+        public const ulong InvalidKey = 0UL;
+
         private static ETEntry[] Table;
         private static ulong Size;
 
