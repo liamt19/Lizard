@@ -54,13 +54,40 @@ namespace LTChess.Search
         /// </summary>
         public ulong NodeCount = 0;
 
-        public SearchInformation(Position p, int depth = 4)
+        public SearchInformation(Position p, int depth = 5)
         {
             this.Position = p;
             this.MaxDepth = depth;
             StopSearching = false;
 
             PV = new Move[MAX_DEPTH];
+        }
+
+        public string GetPV()
+        {
+            StringBuilder pv = new StringBuilder();
+            NegaMax.GetPV(this, this.PV, 0);
+
+            Position temp = new Position(this.Position.GetFEN());
+            for (int i = 0; i < MAX_DEPTH; i++)
+            {
+                if (this.PV[i].IsNull())
+                {
+                    break;
+                }
+
+                if (temp.bb.IsPseudoLegal(this.PV[i]))
+                {
+                    pv.Append(this.PV[i].ToString(temp) + " ");
+                    temp.MakeMove(this.PV[i]);
+                }
+                else
+                {
+                    pv.Append(this.PV[i].ToString() + "? ");
+                }
+            }
+
+            return pv.ToString();
         }
 
         public override string ToString()

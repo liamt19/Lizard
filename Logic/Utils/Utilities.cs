@@ -603,7 +603,7 @@ namespace LTChess.Util
                     }
                     else
                     {
-                        pv.Append(info.PV[i].ToString() + "( not psuedo legal :c )" + " ");
+                        pv.Append(info.PV[i].ToString() + "? ");
                     }
                 }
                 else

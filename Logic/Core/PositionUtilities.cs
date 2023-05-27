@@ -470,12 +470,16 @@ namespace LTChess.Util
         }
 
         /// <summary>
-        /// Returns a bitboard with bits set at the indices of pieces of color <paramref name="ourColor"/> that support their piece at <paramref name="idx"/>
+        /// Returns a bitboard with bits set at the indices of pieces that support their piece at <paramref name="idx"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong DefendersOf(in Bitboard bb, int idx, int ourColor, ulong us, ulong them)
+        public static ulong DefendersOf(in Bitboard bb, int idx)
         {
+            //  TODO: This doesn't work for skewers
             ulong[] pawnBB;
+            int ourColor = bb.GetColorAtIndex(idx);
+            ulong us = bb.Colors[ourColor];
+            ulong them = bb.Colors[Not(ourColor)];
             if (ourColor == Color.White)
             {
                 pawnBB = BlackPawnAttackMasks;
@@ -490,7 +494,7 @@ namespace LTChess.Util
 
             ulong ourKnightAttacks = (bb.Pieces[Piece.Knight] & KnightMasks[idx]);
             ulong ourPawnAttacks = (bb.Pieces[Piece.Pawn] & pawnBB[idx]);
-            ulong ourKingDefender = (bb.Pieces[Piece.King] & NeighborsMask[idx]);
+            ulong ourKingDefender = (SquareBB[bb.KingIndex(ourColor)] & NeighborsMask[idx]);
             ulong defenders = (ourDiags | ourStraights | ourKnightAttacks | ourPawnAttacks | ourKingDefender) & us;
             
             return defenders;

@@ -72,7 +72,7 @@ namespace LTChess
 
         public static void DoInputLoop()
         {
-            Log("LTChess version 4.0 - Got to 13 in puzzle rush\r\n");
+            Log("LTChess version 5.0 - Got to 44! in puzzle rush\r\n");
 
             string input;
             while (true)
@@ -94,8 +94,7 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("go perft "))
                 {
                     int depth = int.Parse(input.Substring(9));
-                    //Task.Run(() => DoPerftDivide(depth, false));
-                    Task.Run(() => DoPerftDivideCancellable(depth, false));
+                    Task.Run(() => DoPerftDivide(depth, false));
                 }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
@@ -115,8 +114,11 @@ namespace LTChess
 
                     info.Position = p;
                     info.OnSearchDone = () => Log(FormatSearchInformation(info));
-                    NegaMax.IterativeDeepen(ref info);
-                    Log("BestMove " + info.BestMove.ToString(p) + " = " + FormatMoveScore(info.BestScore));
+
+                    //NegaMax.IterativeDeepen(ref info);
+                    SimpleSearch.StartSearching(ref info);
+
+                    Log("Line: " + info.GetPV() + "= " + FormatMoveScore(info.BestScore));
                 }
                 else if (input.StartsWithIgnoreCase("best"))
                 {
@@ -126,7 +128,12 @@ namespace LTChess
                         info.MaxDepth = selDepth;
                     }
                     info.OnSearchDone = () => Log(FormatSearchInformation(info));
-                    NegaMax.IterativeDeepen(ref info);
+
+                    //NegaMax.IterativeDeepen(ref info);
+                    SimpleSearch.StartSearching(ref info);
+
+                    Log("Line: " + info.GetPV() + "= " + FormatMoveScore(info.BestScore));
+
                 }
                 else if (input.StartsWithIgnoreCase("play"))
                 {
@@ -136,7 +143,10 @@ namespace LTChess
                         info.MaxDepth = selDepth;
                     }
                     info.OnSearchDone = () => Log(FormatSearchInformation(info));
-                    NegaMax.IterativeDeepen(ref info);
+
+                    //NegaMax.IterativeDeepen(ref info);
+                    SimpleSearch.StartSearching(ref info);
+
                     p.MakeMove(info.BestMove);
                     Log(p.ToString());
                 }
@@ -144,7 +154,7 @@ namespace LTChess
                 {
                     string move = input.ToLower().Substring(7).Trim();
                     Span<Move> list = new Move[NORMAL_CAPACITY];
-                    int size = MoveGenerator.GenAllLegalMoves(p, list);
+                    int size = p.GenAllLegalMoves(list);
                     bool failed = true;
                     for (int i = 0; i < size; i++)
                     {
@@ -154,7 +164,10 @@ namespace LTChess
                             p.MakeMove(m);
                             info = new SearchInformation(p, 4);
                             info.OnSearchDone = () => Log(FormatSearchInformation(info));
-                            NegaMax.IterativeDeepen(ref info);
+
+                            //NegaMax.IterativeDeepen(ref info);
+                            SimpleSearch.StartSearching(ref info);
+
                             p.MakeMove(info.BestMove);
                             Log(p.ToString());
                             failed = false;
@@ -196,8 +209,6 @@ namespace LTChess
                     {
                         info.StopSearching = true;
                     }
-                    p.debug_abort_perft = true;
-
 
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
@@ -272,7 +283,8 @@ namespace LTChess
 
             //Thread.Sleep(1000);
 
-            NegaMax.IterativeDeepen(ref info);
+            //NegaMax.IterativeDeepen(ref info);
+            SimpleSearch.StartSearching(ref info);
 
             Environment.Exit(0);
         }
@@ -297,7 +309,10 @@ namespace LTChess
         {
             info = new SearchInformation(p, toDepth);
             info.OnSearchDone = () => Log(FormatSearchInformation(info));
-            NegaMax.IterativeDeepen(ref info);
+
+            //NegaMax.IterativeDeepen(ref info);
+            SimpleSearch.StartSearching(ref info);
+
             Log(FormatSearchInformation(info));
         }
 
@@ -305,7 +320,10 @@ namespace LTChess
         {
             info = new SearchInformation(p, toDepth);
             info.OnSearchDone = () => Log(FormatSearchInformation(info));
-            NegaMax.Deepen(ref info);
+
+            //NegaMax.Deepen(ref info);
+            SimpleSearch.Deepen(ref info);
+
             Log(FormatSearchInformation(info));
         }
 
@@ -352,31 +370,6 @@ namespace LTChess
             Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
         }
 
-        public static void DoPerftDivideCancellable(int depth, bool sortAlphabetical = true)
-        {
-            ulong res = 0;
-            Stopwatch sw = Stopwatch.StartNew();
-            List<PerftNode> nodes = p.PerftDivideCancellable(depth);
-            sw.Stop();
-
-            foreach (PerftNode node in nodes)
-            {
-                if (!sortAlphabetical)
-                {
-                    Log(node.root + ": " + node.number);
-                }
-
-                res += node.number;
-            }
-
-            if (sortAlphabetical)
-            {
-                nodes.OrderBy(x => x.root).ToList().ForEach(node => Log(node.root + ": " + node.number));
-            }
-
-            Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
-        }
-
         public static void PrintSearchInfo()
         {
             TranspositionTable.PrintStatus();
@@ -389,14 +382,14 @@ namespace LTChess
         public static void PrintMoves()
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllLegalMoves(p, list);
+            int size = p.GenAllLegalMoves(list);
             Log("Legal (" + size + "): " + list.Stringify(p));
         }
 
         public static void PrintPseudoMoves()
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
-            int size = MoveGenerator.GenAllPseudoMoves(p, list);
+            int size = p.GenAllPseudoMoves(list);
             Log("Pseudo (" + size + "): " + list.Stringify(p));
         }
 

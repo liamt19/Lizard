@@ -108,6 +108,7 @@ namespace LTChess.Search
             double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + kingScore.black + threatScore.black + spaceScore.black;
 
             double scoreFinal = scoreW - scoreB;
+            double relative = (scoreFinal * (ToMove == Color.White ? 1 : -1));
 
             if (Trace)
             {
@@ -125,11 +126,12 @@ namespace LTChess.Search
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│       Total │ " + FormatEvalTerm(scoreW) + " │ " + FormatEvalTerm(scoreB) + " │ " + FormatEvalTerm(scoreFinal) + " │ ");
                 Log("└─────────────┴──────────┴──────────┴──────────┘");
-                Log("Final: " + FormatEvalTerm(scoreFinal) + "\t\trelative\t" + FormatEvalTerm((scoreFinal * (ToMove == Color.White ? 1 : -1))));
+                Log("Final: " + FormatEvalTerm(scoreFinal) + "\t\trelative\t" + FormatEvalTerm(relative));
+                Log(ColorToString(ToMove) + " is " + 
+                    (relative < 0 ? "losing" : (relative > 0 ? "winning" : "equal")) + " by " + InCentipawns(scoreFinal) + " cp");
             }
 
-
-            return (int)scoreFinal;
+            return (int)relative;
         }
 
         [MethodImpl(Inline)]
@@ -158,7 +160,7 @@ namespace LTChess.Search
                         int theirPiece = bb.PieceTypes[attackIdx];
                         int theirValue = GetPieceValue(theirPiece);
 
-                        int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.White, white, black));
+                        int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                         if (defenders == 0)
                         {
                             threatScore.white += (theirValue * CoefficientHanging);
@@ -225,7 +227,7 @@ namespace LTChess.Search
                         int theirPiece = bb.PieceTypes[attackIdx];
                         int theirValue = GetPieceValue(theirPiece);
 
-                        int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.Black, black, white));
+                        int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                         if (defenders == 0)
                         {
                             threatScore.black += (theirValue * CoefficientHanging);
@@ -288,7 +290,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.White, white, black));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.white += (theirValue * CoefficientHanging);
@@ -324,7 +326,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.Black, black, white));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.black += (theirValue * CoefficientHanging);
@@ -377,7 +379,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.White, white, black));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.white += (theirValue * CoefficientHanging);
@@ -412,7 +414,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.Black, black, white));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.black += (theirValue * CoefficientHanging);
@@ -455,7 +457,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.White, white, black));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.white += (theirValue * CoefficientHanging);
@@ -499,7 +501,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.Black, black, white));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.black += (theirValue * CoefficientHanging);
@@ -551,7 +553,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.White, white, black));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.white += (theirValue * CoefficientHanging);
@@ -596,7 +598,7 @@ namespace LTChess.Search
                     int theirPiece = bb.PieceTypes[attackIdx];
                     int theirValue = GetPieceValue(theirPiece);
 
-                    int defenders = (int)popcount(DefendersOf(bb, attackIdx, Color.Black, black, white));
+                    int defenders = (int)popcount(DefendersOf(bb, attackIdx));
                     if (defenders == 0)
                     {
                         threatScore.black += (theirValue * CoefficientHanging);
@@ -640,6 +642,39 @@ namespace LTChess.Search
             kingScore.white -= (bAtt * ScoreKingRingAttack);
             kingScore.white -= (bAttOut * ScoreKingOutterRingAttack);
 
+            //  Divide the threat score because it might be risky to actually capture the piece (deflection)
+            double riskCoefficient = 1;
+
+            //  Check if White's king is threatening any material
+            ulong wKingAttacks = whiteRing & black;
+            while (wKingAttacks != 0)
+            {
+                int attackIdx = lsb(wKingAttacks);
+                int theirPiece = bb.PieceTypes[attackIdx];
+                int theirValue = GetPieceValue(theirPiece);
+
+                int defenders = (int)popcount(DefendersOf(bb, attackIdx));
+                if (defenders == 0)
+                {
+                    threatScore.white += (theirValue * CoefficientHanging) / riskCoefficient;
+                }
+                wKingAttacks = poplsb(wKingAttacks);
+            }
+
+            ulong bKingAttacks = blackRing & white;
+            while (bKingAttacks != 0)
+            {
+                int attackIdx = lsb(bKingAttacks);
+                int theirPiece = bb.PieceTypes[attackIdx];
+                int theirValue = GetPieceValue(theirPiece);
+
+                int defenders = (int)popcount(DefendersOf(bb, attackIdx));
+                if (defenders == 0)
+                {
+                    threatScore.black += (theirValue * CoefficientHanging) / riskCoefficient;
+                }
+                bKingAttacks = poplsb(bKingAttacks);
+            }
         }
 
         [MethodImpl(Inline)]

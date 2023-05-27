@@ -122,7 +122,7 @@ namespace LTChess.Variants
                         {
                             whiteKingPlaced = ReadInput(out kingIdx, out _);
 
-                            ulong attackers = PositionUtilities.AttackersTo(bb, kingIdx, currColor);
+                            ulong attackers = bb.AttackersTo(kingIdx, currColor);
                             if (attackers != 0)
                             {
                                 Log("Putting " + ColorToString(currColor) + "'s king on " + IndexToString(kingIdx) + " would put it in check from " + IndexToString(lsb(attackers)));
@@ -151,7 +151,7 @@ namespace LTChess.Variants
                         {
                             blackKingPlaced = ReadInput(out kingIdx, out _);
 
-                            ulong attackers = PositionUtilities.AttackersTo(bb, kingIdx, currColor);
+                            ulong attackers = bb.AttackersTo(kingIdx, currColor);
                             if (attackers != 0)
                             {
                                 Log("Putting " + ColorToString(currColor) + "'s king on " + IndexToString(kingIdx) + " would put it in check from " + IndexToString(lsb(attackers)));
