@@ -20,6 +20,7 @@ global using static LTChess.Search.SearchStatistics;
 global using static LTChess.Util.Utilities;
 global using static LTChess.Util.CommonFENs;
 global using static LTChess.Util.PositionUtilities;
+global using static LTChess.Search.SearchConstants;
 
 global using Fish = Stockfish.Stockfish;
 
@@ -112,43 +113,41 @@ namespace LTChess
                         info.MaxDepth = selDepth;
                     }
 
-                    info.Position = p;
-                    info.OnSearchDone = () => Log(FormatSearchInformation(info));
-
-                    //NegaMax.IterativeDeepen(ref info);
-                    SimpleSearch.StartSearching(ref info);
-
-                    Log("Line: " + info.GetPV() + "= " + FormatMoveScore(info.BestScore));
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                    });
                 }
                 else if (input.StartsWithIgnoreCase("best"))
                 {
-                    info = new SearchInformation(p, 4);
+                    info = new SearchInformation(p, DefaultSearchDepth);
                     if (input.Length > 5 && int.TryParse(input.Substring(5), out int selDepth))
                     {
                         info.MaxDepth = selDepth;
                     }
-                    info.OnSearchDone = () => Log(FormatSearchInformation(info));
 
-                    //NegaMax.IterativeDeepen(ref info);
-                    SimpleSearch.StartSearching(ref info);
-
-                    Log("Line: " + info.GetPV() + "= " + FormatMoveScore(info.BestScore));
-
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                    });
                 }
                 else if (input.StartsWithIgnoreCase("play"))
                 {
-                    info = new SearchInformation(p, 4);
+                    info = new SearchInformation(p, DefaultSearchDepth);
                     if (input.Length > 5 && int.TryParse(input.Substring(5), out int selDepth))
                     {
                         info.MaxDepth = selDepth;
                     }
-                    info.OnSearchDone = () => Log(FormatSearchInformation(info));
 
-                    //NegaMax.IterativeDeepen(ref info);
-                    SimpleSearch.StartSearching(ref info);
-
-                    p.MakeMove(info.BestMove);
-                    Log(p.ToString());
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                        p.MakeMove(info.BestMove);
+                        Log(p.ToString());
+                    });
                 }
                 else if (input.StartsWithIgnoreCase("respond"))
                 {
@@ -162,10 +161,8 @@ namespace LTChess
                         if (m.ToString(p).ToLower().Equals(move) || m.ToString().ToLower().Equals(move))
                         {
                             p.MakeMove(m);
-                            info = new SearchInformation(p, 4);
-                            info.OnSearchDone = () => Log(FormatSearchInformation(info));
+                            info = new SearchInformation(p, DefaultSearchDepth);
 
-                            //NegaMax.IterativeDeepen(ref info);
                             SimpleSearch.StartSearching(ref info);
 
                             p.MakeMove(info.BestMove);
@@ -210,6 +207,10 @@ namespace LTChess
                         info.StopSearching = true;
                     }
 
+                }
+                else if (input.ContainsIgnoreCase("searchinfo"))
+                {
+                    PrintSearchInfo();
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
@@ -275,15 +276,13 @@ namespace LTChess
             Environment.Exit(0);
         }
 
-        public static void RunEval(int toDepth = 6, string fen = InitialFEN)
+        public static void RunEval(int toDepth = DefaultSearchDepth, string fen = InitialFEN)
         {
             p = new Position(fen);
             info = new SearchInformation(p, toDepth);
-            info.OnSearchDone = () => Log(FormatSearchInformation(info));
 
             //Thread.Sleep(1000);
 
-            //NegaMax.IterativeDeepen(ref info);
             SimpleSearch.StartSearching(ref info);
 
             Environment.Exit(0);
@@ -300,31 +299,23 @@ namespace LTChess
             Log("Total: " + iter + " iters in " + sum + " seconds = " + (sum / iter) + " seconds / iter");
         }
 
-        public static void DoMateSearch(int toDepth = 6)
+        public static void DoMateSearch(int toDepth = DefaultSearchDepth)
         {
             Mate.Search(p, toDepth);
         }
 
-        public static void DoNegaMaxIterative(int toDepth = 6)
+        public static void DoNegaMaxIterative(int toDepth = DefaultSearchDepth)
         {
             info = new SearchInformation(p, toDepth);
-            info.OnSearchDone = () => Log(FormatSearchInformation(info));
 
-            //NegaMax.IterativeDeepen(ref info);
             SimpleSearch.StartSearching(ref info);
-
-            Log(FormatSearchInformation(info));
         }
 
-        public static void DoNegaMaxAtDepth(int toDepth = 6)
+        public static void DoNegaMaxAtDepth(int toDepth = DefaultSearchDepth)
         {
             info = new SearchInformation(p, toDepth);
-            info.OnSearchDone = () => Log(FormatSearchInformation(info));
 
-            //NegaMax.Deepen(ref info);
             SimpleSearch.Deepen(ref info);
-
-            Log(FormatSearchInformation(info));
         }
 
         public static void DoHashPerft(int depth)

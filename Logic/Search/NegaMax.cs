@@ -56,7 +56,7 @@ namespace LTChess.Search
             sw.Stop();
             info.SearchTime = sw.Elapsed.TotalMilliseconds;
             info.BestScore = score;
-            info.OnSearchDone?.Invoke();
+            info.OnDepthFinish?.Invoke();
         }
 
         [MethodImpl(Inline)]
@@ -347,7 +347,7 @@ namespace LTChess.Search
         /// This is from https://github.com/Tearth/Cosette/blob/master/Cosette/Engine/Ai/Search/IterativeDeepening.cs .
         /// Tried using this since what I tried doing worked but was just redoing the search at lower depths.
         /// </summary>
-        public static int GetPV(SearchInformation info, in Move[] moves, int numMoves)
+        public static int _GetPV(SearchInformation info, in Move[] moves, int numMoves)
         {
             Position position = info.Position;
             Bitboard bb = position.bb;
@@ -378,7 +378,7 @@ namespace LTChess.Search
                  */
 
 
-                numMoves = GetPV(info, moves, numMoves + 1);
+                numMoves = _GetPV(info, moves, numMoves + 1);
                 position.UnmakeMove();
             }
 

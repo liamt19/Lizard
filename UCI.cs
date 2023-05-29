@@ -15,17 +15,15 @@ namespace LTChess.Core
 {
     public class UCI
     {
-        public Position position;
         public SearchInformation info;
 
-        public const string Filename = "ucilog.txt";
-        public const string FilenameLast = "ucilog_last.txt";
+        public const string Filename = @".\ucilog.txt";
+        public const string FilenameLast = @".\ucilog_last.txt";
 
         public UCI()
         {
-            position = new Position();
-            info = new SearchInformation(position, 10);
-            info.OnSearchDone += OnSearchDone;
+            info = new SearchInformation(new Position(), DefaultSearchDepth);
+            info.OnDepthFinish += OnSearchDone;
             if (File.Exists(Filename))
             {
                 File.Move(Filename, FilenameLast, true);
@@ -41,7 +39,7 @@ namespace LTChess.Core
         public static void LogString(string s)
         {
             using StreamWriter file = new(Filename, append: true);
-            file.WriteLineAsync(s);
+            file.WriteLine(s);
         }
 
         public string[] ReceiveString(out string cmd)
@@ -64,7 +62,7 @@ namespace LTChess.Core
 
         public void Run()
         {
-            SendString("id name LTChess 3.0");
+            SendString("id name LTChess 5.0");
             SendString("id author Liam McGuire");
             SendString("option name hello type spin default 2 min 1 max 3");
             SendString("uciok");
@@ -88,14 +86,23 @@ namespace LTChess.Core
                 }
                 else if (cmd == "ucinewgame")
                 {
-                    position = new Position();
+                    info.Position = new Position();
                 }
                 else if (cmd == "position")
                 {
                     if (param[0] == "startpos")
                     {
                         LogString("Set position to " + InitialFEN);
-                        position = new Position();
+                        info.Position = new Position();
+                        if (param.Length > 1 && param[1] == "moves")
+                        {
+                            for (int i = 2; i < param.Length; i++)
+                            {
+                                info.Position.TryMakeMove(param[i]);
+                            }
+
+                            LogString("made " + (param.Length - 2) + " moves from start pos");
+                        }
                     }
                     else
                     {
@@ -106,7 +113,7 @@ namespace LTChess.Core
                             fen += " " + param[i];
                         }
                         LogString("Set position to " + fen);
-                        position = new Position(fen);
+                        info.Position = new Position(fen);
                     }
                 }
                 else if (cmd == "go")
@@ -139,6 +146,11 @@ namespace LTChess.Core
 
         private void Go(string[] param)
         {
+            //  Default to 5
+            info.MaxDepth = 5;
+            LogString("[INFO]: Got 'go' command");
+
+
             for (int i = 0; i < param.Length; i++)
             {
                 if (param[i] == "movetime")
@@ -158,15 +170,31 @@ namespace LTChess.Core
                         LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
                     }
                 }
+                else if (param[i] == "nodes")
+                {
+                    if (i + 1 >= param.Length)
+                    {
+                        break;
+                    }
+                    if (ulong.TryParse(param[i + 1], out ulong reqNodes))
+                    {
+                        info.MaxNodes = reqNodes;
+                        LogString("[INFO]: MaxNodes is set to " + info.MaxNodes);
+                    }
+                }
             }
 
-            Task.Run(DoSearch);
+            DoSearch();
         }
 
         private void DoSearch()
         {
-            NegaMax.IterativeDeepen(ref info);
-            SendString("bestmove " + info.BestMove.ToString());
+            Task.Run(() =>
+            {
+                SimpleSearch.StartSearching(ref info);
+                SendString("bestmove " + info.BestMove.ToString());
+                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString());
+            });
         }
     }
 }

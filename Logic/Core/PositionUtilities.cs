@@ -19,7 +19,7 @@ namespace LTChess.Util
         public const int LowestRepetitionCount = 8;
 
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
         /// </summary>
         [MethodImpl(Inline)]
         public static bool IsLegal(Position position, in Bitboard bb, in Move move, int ourKing, int theirKing)
@@ -29,7 +29,7 @@ namespace LTChess.Util
         }
 
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
         /// </summary>
         [MethodImpl(Inline)]
         public static bool IsLegal(Position position, in Bitboard bb, in Move move, int ourKing, int theirKing, ulong pinnedPieces)
@@ -475,7 +475,7 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static ulong DefendersOf(in Bitboard bb, int idx)
         {
-            //  TODO: This doesn't work for skewers
+            //  TODO: This doesn't work for king skewers
             ulong[] pawnBB;
             int ourColor = bb.GetColorAtIndex(idx);
             ulong us = bb.Colors[ourColor];

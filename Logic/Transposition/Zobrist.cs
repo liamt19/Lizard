@@ -16,7 +16,6 @@ namespace LTChess.Transposition
         private static ulong BlackHash;
         private static Random rand;
 
-        //  const int randomSeed :)
         private const int randomSeed = 0xBEEF;
 
         private static bool Initialized = false;

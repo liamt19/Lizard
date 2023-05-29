@@ -38,6 +38,9 @@ namespace LTChess.Core
         /// </summary>
         public int ToMove;
 
+        /// <summary>
+        /// Current zobrist hash of the position.
+        /// </summary>
         public ulong Hash;
 
         /// <summary>
@@ -349,14 +352,9 @@ namespace LTChess.Core
                 }
                 else if (IsFiftyMoveDraw())
                 {
-                    //Log("Game drawn by the 50 move rule!");
+                    Log("Game drawn by the 50 move rule!");
                     IsDrawn = true;
                 }
-            }
-            if (IsInsufficientMaterial())
-            {
-                //Log("Game drawn by insufficient material!");
-                IsDrawn = true;
             }
 #endif
 
@@ -1611,7 +1609,22 @@ namespace LTChess.Core
             return false;
         }
 
+        [MethodImpl(Inline)]
+        public bool WouldCauseThreefoldRepetition(Move m)
+        {
+            MakeMove(m);
+            bool check = IsThreefoldRepetition();
+            UnmakeMove();
 
+            return check;
+        }
+
+
+        /// <summary>
+        /// Checks if the position is currently drawn by threefold repetition.
+        /// Only considers moves made past the last time the HalfMoves clock was reset,
+        /// which occurs when captures are made or a pawn moves.
+        /// </summary>
         [MethodImpl(Inline)]
         public bool IsThreefoldRepetition()
         {
@@ -1647,43 +1660,6 @@ namespace LTChess.Core
         {
             Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
             //int size = GenAllLegalMoves(list);
-            int size = GenAllLegalMovesTogether(list);
-
-            if (depth == 0)
-            {
-                return 1UL;
-            }
-            else if (depth == 1)
-            {
-                return (ulong)size;
-            }
-
-            ulong n = 0;
-
-            for (int i = 0; i < size; i++)
-            {
-                MakeMove(list[i]);
-                n += Perft(depth - 1);
-                UnmakeMove();
-            }
-
-            return n;
-        }
-
-        /// <summary>
-        /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
-        /// </summary>
-        /// <param name="depth">The number of moves that will be made from the starting position. Depth 1 returns the current number of legal moves.</param>
-        [MethodImpl(Inline)]
-        public ulong PerftInterruptable(int depth)
-        {
-            if (Perft_Stop)
-            {
-                Log("Perft_Stop was true, interrupting at depth " + depth);
-                return 0UL;
-            }
-
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
             int size = GenAllLegalMovesTogether(list);
 
             if (depth == 0)

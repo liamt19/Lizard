@@ -8,14 +8,15 @@ namespace LTChess.Search
 {
     public class SearchInformation
     {
-        public Action? OnSearchDone;
+        public Action? OnDepthFinish;
+        public Action? OnSearchFinish;
 
         public Position Position;
 
         /// <summary>
         /// The depth to stop the search at.
         /// </summary>
-        public int MaxDepth = 10;
+        public int MaxDepth = DefaultSearchDepth;
 
         /// <summary>
         /// The number of nodes the search should stop at.
@@ -54,19 +55,32 @@ namespace LTChess.Search
         /// </summary>
         public ulong NodeCount = 0;
 
-        public SearchInformation(Position p, int depth = 5)
+        public SearchInformation(Position p, int depth = DefaultSearchDepth)
         {
             this.Position = p;
             this.MaxDepth = depth;
             StopSearching = false;
 
             PV = new Move[MAX_DEPTH];
+
+            this.OnDepthFinish = () => Log(FormatSearchInformation(this));
         }
 
-        public string GetPV()
+        public SearchInformation(Position p, Action? onDepthFinish, int depth = DefaultSearchDepth)
+        {
+            this.Position = p;
+            this.MaxDepth = depth;
+            StopSearching = false;
+
+            PV = new Move[MAX_DEPTH];
+
+            this.OnDepthFinish = onDepthFinish;
+        }
+
+        public string GetPVString()
         {
             StringBuilder pv = new StringBuilder();
-            NegaMax.GetPV(this, this.PV, 0);
+            SimpleSearch.GetPV(this, this.PV, 0);
 
             Position temp = new Position(this.Position.GetFEN());
             for (int i = 0; i < MAX_DEPTH; i++)

@@ -37,7 +37,6 @@ namespace LTChess.Search
 #if DEBUG
                     SearchStatistics.ETWrongHashKey++;
 #endif
-
                     //  This is the lower bound for the score
                     standingPat = Evaluation.Evaluate(info.Position.bb, info.Position.ToMove);
                     EvaluationTable.Save(posHash, (short)standingPat);
@@ -85,6 +84,11 @@ namespace LTChess.Search
                 if (!legal[i].Capture)
                 {
                     continue;
+                }
+
+                if (info.Position.WouldCauseThreefoldRepetition(legal[i]))
+                {
+                    return -Evaluation.ScoreDraw;
                 }
 
                 info.Position.MakeMove(legal[i]);

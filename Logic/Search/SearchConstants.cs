@@ -8,6 +8,8 @@ namespace LTChess.Search
 {
     public static class SearchConstants
     {
+        public const int DefaultSearchDepth = 5;
+
         public const int FutilityPruningDepth = 6;
 
         public const int FutilityPruningScore = 100;

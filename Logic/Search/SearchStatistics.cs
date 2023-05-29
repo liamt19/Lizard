@@ -36,6 +36,9 @@ namespace LTChess.Search
         public static ulong ETReplacements = 0;
         public static ulong ETWrongHashKey = 0;
 
+        public static ulong SetTTs = 0;
+        public static ulong NotSetTTs = 0;
+
         public static void PrintStatistics()
         {
             //  https://stackoverflow.com/questions/12474908/how-to-get-all-static-properties-and-its-values-of-a-class-using-reflection

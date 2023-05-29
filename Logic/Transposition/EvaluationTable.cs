@@ -10,6 +10,8 @@ namespace LTChess.Transposition
 {
     public class EvaluationTable
     {
+        public const int DefaultEvaluationTableSizeMB = 16;
+
         public const ulong InvalidKey = 0UL;
 
         private static ETEntry[] Table;
@@ -18,8 +20,9 @@ namespace LTChess.Transposition
         /// <summary>
         /// 8mb is enough for 2097152 entries
         /// </summary>
-        public static unsafe void Initialize(int mb = 8)
+        public static unsafe void Initialize(int mb = DefaultEvaluationTableSizeMB)
         {
+            //  1024 * 1024 = 1048576 == 0x100000UL
             Size = ((ulong)mb * 0x100000UL) / (ulong)sizeof(ETEntry);
             Table = new ETEntry[Size];
         }

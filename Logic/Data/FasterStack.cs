@@ -41,9 +41,16 @@ namespace LTChess.Data
             return arr[--size];
         }
 
+        /// <summary>
+        /// Returns the value at the top of the stack (index 0), which is the rightmost element of the array.
+        /// </summary>
+        /// <returns></returns>
         [MethodImpl(Inline)]
         public T Peek() => Peek(0);
 
+        /// <summary>
+        /// Returns the value of the <paramref name="idx"/>'th element in the stack, with index 0 being the rightmost element, index 1 being the second to last, etc.
+        /// </summary>
         [MethodImpl(Inline)]
         public T Peek(int idx)
         {

@@ -584,7 +584,7 @@ namespace LTChess.Util
             int nodesPerSec = ((int)(nodes / (time / 1000)));
             StringBuilder pv = new StringBuilder();
 
-            NegaMax.GetPV(info, info.PV, 0);
+            SimpleSearch.GetPV(info, info.PV, 0);
 
             Position temp = new Position(info.Position.GetFEN());
             for (int i = 0; i < MAX_DEPTH; i++)

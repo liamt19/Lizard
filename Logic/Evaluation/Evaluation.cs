@@ -61,7 +61,8 @@ namespace LTChess.Search
             black = bb.Colors[Color.Black];
             all = white | black;
 
-
+            //  The "king ring" evaluations see how many enemy pieces are attacking the squares nearby our king,
+            //  Which is often but not necessarily a bad thing.
             whiteKing = bb.KingIndex(Color.White);
             whiteRing = NeighborsMask[whiteKing];
             whiteOutRing = OutterNeighborsMask[whiteKing];
