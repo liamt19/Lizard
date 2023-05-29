@@ -25,6 +25,7 @@ namespace LTChess.Search
             int maxDepth = info.MaxDepth;
             double maxTime = info.MaxSeachTime;
             bool continueDeepening = true;
+            info.NodeCount = 0;
 
             while (continueDeepening)
             {
@@ -207,9 +208,21 @@ namespace LTChess.Search
 
             for (int i = 0; i < size; i++)
             {
-                pos.MakeMove(list[i]);
-                int score = -SimpleSearch.FindBest(ref info, -beta, -alpha, depth - 1);
-                pos.UnmakeMove();
+                int score;
+
+                //  Instead of looking further and probably breaking something,
+                //  Just evaluate this move as a draw here and keep looking at the others.
+                if (info.Position.WouldCauseThreefoldRepetition(list[i]))
+                {
+                    score = -Evaluation.ScoreDraw;
+                }
+                else
+                {
+                    pos.MakeMove(list[i]);
+                    score = -SimpleSearch.FindBest(ref info, -beta, -alpha, depth - 1);
+                    pos.UnmakeMove();
+                }
+
 
                 if (score >= beta)
                 {
@@ -284,6 +297,22 @@ namespace LTChess.Search
             if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(position.Hash) && numMoves < MAX_DEPTH)
             {
                 if (!bb.IsPseudoLegal(stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
+                {
+                    return numMoves;
+                }
+
+                //  Prevent any perpetual check loops from being included in the PV.
+                //  Before, it would sometimes keep placing the same 4 forced moves
+                //  in the PV, which some UCI's mark as (technically) illegal.
+                if (position.IsThreefoldRepetition() || position.IsFiftyMoveDraw())
+                {
+                    return numMoves;
+                }
+
+                //  If the above check fails for any reason,
+                //  This will also prevent those loops from occuring.
+                //  TODO seldepth won't work with this.
+                if (numMoves > info.MaxDepth)
                 {
                     return numMoves;
                 }

@@ -17,10 +17,10 @@ namespace LTChess.Search
         public const double ScaleMaterial = 1.0;
         public const double ScalePawns = 0.4;
         public const double ScaleKnights = 0.6;
-        public const double ScaleBishops = 0.6;
+        public const double ScaleBishops = 0.7;
         public const double ScaleRooks = 0.7;
         public const double ScaleQueens = 0.8;
-        public const double ScaleKingSafety = 0.3;
+        public const double ScaleKingSafety = 0.15;
         public const double ScaleThreats = 0.4;
         public const double ScaleSpace = 0.2;
 
@@ -29,8 +29,8 @@ namespace LTChess.Search
         public const int ScorePasser = 5;
         public const int ScorePromotingPawn = ValueQueen - ValuePawn;
 
-        public const int ScoreKingRingAttack = 30;
-        public const int ScoreKingOutterRingAttack = 15;
+        public const int ScoreKingRingAttack = 25;
+        public const int ScoreKingOutterRingAttack = 10;
 
         public const int ScorePerSquare = 10;
 

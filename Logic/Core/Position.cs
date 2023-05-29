@@ -343,18 +343,15 @@ namespace LTChess.Core
             Hash = Hash.ZobristChangeToMove();
 
 #if DEBUG
-            if (HalfMoves >= LowestRepetitionCount && Hashes.Count >= LowestRepetitionCount)
+            if (IsThreefoldRepetition())
             {
-                if (IsThreefoldRepetition())
-                {
-                    Log("Game drawn by threefold repetition!");
-                    IsDrawn = true;
-                }
-                else if (IsFiftyMoveDraw())
-                {
-                    Log("Game drawn by the 50 move rule!");
-                    IsDrawn = true;
-                }
+                Log("Game drawn by threefold repetition!");
+                IsDrawn = true;
+            }
+            else if (IsFiftyMoveDraw())
+            {
+                Log("Game drawn by the 50 move rule!");
+                IsDrawn = true;
             }
 #endif
 
@@ -785,43 +782,6 @@ namespace LTChess.Core
             }
 
             return size;
-        }
-
-        public void TestPawnGen()
-        {
-            Span<Move> normal = stackalloc Move[NORMAL_CAPACITY];
-            int normalMoves = 0;
-
-            ulong pinned = bb.PinnedPieces(ToMove);
-            ulong us = bb.Colors[ToMove];
-            ulong ourPawns = us & bb.Pieces[Piece.Pawn];
-            ulong ourPawnsCopy = ourPawns;
-            ulong ourKingMask = bb.KingMask(ToMove);
-
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong theirKingMask = bb.KingMask(Not(ToMove));
-
-            while (ourPawns != 0)
-            {
-                int idx = lsb(ourPawns);
-                normalMoves = GenPseudoMoves(idx, ourPawns, them, theirKingMask, normal, normalMoves);
-                ourPawns = poplsb(ourPawns);
-            }
-
-            Span<Move> together = stackalloc Move[NORMAL_CAPACITY];
-            int togetherMoves = GenAllPawnMoves(bb, us, them, together, 0);
-
-            if (normalMoves != togetherMoves)
-            {
-                normal.SortBySourceSquare();
-                together.SortBySourceSquare();
-                Log("Made " + normalMoves + " normal pawn moves: " + normal.Stringify(this));
-                Log("Made " + togetherMoves + " together pawn moves: " + together.Stringify(this));
-                Log("Fen: " + GetFEN());
-                Log("normalMoves: " + normalMoves + " != togetherMoves: " + togetherMoves);
-                throw new Exception();
-            }
-
         }
 
         /// <summary>
@@ -1628,9 +1588,20 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public bool IsThreefoldRepetition()
         {
+            if (HalfMoves < LowestRepetitionCount || Hashes.Count < LowestRepetitionCount)
+            {
+                return false;
+            }
+
             int count = 0;
             for (int i = 0; i < HalfMoves; i++)
             {
+                if (i == Hashes.Count)
+                {
+                    //  TODO actually fix this...
+                    break;
+                }
+
                 if (Hashes.Peek(i) == Hash)
                 {
                     count++;

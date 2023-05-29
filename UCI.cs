@@ -101,19 +101,44 @@ namespace LTChess.Core
                                 info.Position.TryMakeMove(param[i]);
                             }
 
-                            LogString("made " + (param.Length - 2) + " moves from start pos");
+                            LogString("New FEN is " + info.Position.GetFEN());
                         }
                     }
                     else
                     {
                         Debug.Assert(param[0] == "fen");
                         string fen = param[1];
+                        bool hasExtraMoves = false;
                         for (int i = 2; i < param.Length; i++)
                         {
-                            fen += " " + param[i];
+                            if (param[i] == "moves")
+                            {
+                                info.Position = new Position(fen);
+                                for (int j = i + 1; j < param.Length; j++)
+                                {
+                                    if (!info.Position.TryMakeMove(param[j]))
+                                    {
+                                        LogString("Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
+                                    }
+                                }
+
+                                LogString("New FEN is " + info.Position.GetFEN());
+                                hasExtraMoves = true;
+                                break;
+                            }
+                            else
+                            {
+                                fen += " " + param[i];
+                            }
+                            
                         }
-                        LogString("Set position to " + fen);
-                        info.Position = new Position(fen);
+
+                        if (!hasExtraMoves)
+                        {
+                            LogString("Set position to " + fen);
+                            info.Position = new Position(fen);
+                        }
+                        
                     }
                 }
                 else if (cmd == "go")
@@ -193,7 +218,7 @@ namespace LTChess.Core
             {
                 SimpleSearch.StartSearching(ref info);
                 SendString("bestmove " + info.BestMove.ToString());
-                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString());
+                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "'");
             });
         }
     }
