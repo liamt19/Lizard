@@ -46,9 +46,6 @@ namespace LTChess
         {
             InitializeAll();
 
-            p = new Position("8/8/8/8/8/P7/5K1k/8 w - - 10 19");
-            Evaluation.Evaluate(p.bb, p.ToMove, true);
-
             DoInputLoop();
 
             Console.WriteLine("Done");
@@ -76,7 +73,7 @@ namespace LTChess
 
         public static void DoInputLoop()
         {
-            Log("LTChess version 5.0 - Got to 44! in puzzle rush\r\n");
+            Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
 
             string input;
             while (true)
