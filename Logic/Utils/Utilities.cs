@@ -25,6 +25,9 @@ namespace LTChess.Util
         public const int RIGHT = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+        public const string EngineBuildVersion = "5.0";
+        public const string EngineTagLine = "Got to 44! in puzzle rush";
+
         public const int MAX_CAPACITY = 512;
         public const int NORMAL_CAPACITY = 128;
         public const int LSB_EMPTY = 64;

@@ -107,7 +107,7 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("go depth"))
                 {
-                    info = new SearchInformation(p);
+                    info = new SearchInformation(p, DefaultSearchDepth);
                     if (input.Length > 9 && int.TryParse(input.Substring(9), out int selDepth))
                     {
                         info.MaxDepth = selDepth;
@@ -306,7 +306,7 @@ namespace LTChess
             Environment.Exit(0);
         }
 
-        public static void RunEval(int toDepth = DefaultSearchDepth, string fen = InitialFEN)
+        public static void RunEval(int toDepth, string fen = InitialFEN)
         {
             p = new Position(fen);
             info = new SearchInformation(p, toDepth);
@@ -329,19 +329,19 @@ namespace LTChess
             Log("Total: " + iter + " iters in " + sum + " seconds = " + (sum / iter) + " seconds / iter");
         }
 
-        public static void DoMateSearch(int toDepth = DefaultSearchDepth)
+        public static void DoMateSearch(int toDepth)
         {
             Mate.Search(p, toDepth);
         }
 
-        public static void DoNegaMaxIterative(int toDepth = DefaultSearchDepth)
+        public static void DoNegaMaxIterative(int toDepth)
         {
             info = new SearchInformation(p, toDepth);
 
             SimpleSearch.StartSearching(ref info);
         }
 
-        public static void DoNegaMaxAtDepth(int toDepth = DefaultSearchDepth)
+        public static void DoNegaMaxAtDepth(int toDepth)
         {
             info = new SearchInformation(p, toDepth);
 

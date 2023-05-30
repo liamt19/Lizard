@@ -60,7 +60,7 @@ namespace LTChess.Search
         /// </summary>
         public ulong NodeCount = 0;
 
-        public SearchInformation(Position p, int depth = DefaultSearchDepth)
+        public SearchInformation(Position p, int depth)
         {
             this.Position = p;
             this.MaxDepth = depth;
@@ -71,7 +71,7 @@ namespace LTChess.Search
             this.OnDepthFinish = () => Log(FormatSearchInformation(this));
         }
 
-        public SearchInformation(Position p, Action? onDepthFinish, int depth = DefaultSearchDepth)
+        public SearchInformation(Position p, Action? onDepthFinish, int depth)
         {
             this.Position = p;
             this.MaxDepth = depth;
