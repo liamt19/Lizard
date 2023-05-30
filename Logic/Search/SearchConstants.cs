@@ -10,6 +10,13 @@ namespace LTChess.Search
     {
         public const int DefaultSearchDepth = 5;
 
+        /// <summary>
+        /// Default amount of time in milliseconds that a search will run for before it is cancelled.
+        /// </summary>
+        public const int DefaultSearchTime = 30 * 1000;
+
+        public const int MaxSearchTime = int.MaxValue - 1;
+
         public const int FutilityPruningDepth = 6;
 
         public const int FutilityPruningScore = 100;

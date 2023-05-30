@@ -58,7 +58,6 @@ namespace LTChess.Core
 
         public FasterStack<int> HalfmoveClocks;
 
-        private bool IsDrawn = false;
         public static bool Perft_Stop = false;
 
 
@@ -992,6 +991,11 @@ namespace LTChess.Core
             return size;
         }
 
+        [MethodImpl(Inline)]
+        public bool IsLegal(in Move move)
+        {
+            return IsLegal(move, bb.KingMask(ToMove), bb.KingMask(Not(ToMove)), bb.PinnedPieces(ToMove));
+        }
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
@@ -1569,11 +1573,16 @@ namespace LTChess.Core
             return false;
         }
 
+        /// <summary>
+        /// Returns true if the move <paramref name="m"/> would cause a draw by threefold repetition or insufficient material.
+        /// </summary>
+        /// <param name="m"></param>
+        /// <returns></returns>
         [MethodImpl(Inline)]
-        public bool WouldCauseThreefoldRepetition(Move m)
+        public bool WouldCauseDraw(Move m)
         {
             MakeMove(m);
-            bool check = IsThreefoldRepetition();
+            bool check = (IsThreefoldRepetition() || IsInsufficientMaterial());
             UnmakeMove();
 
             return check;

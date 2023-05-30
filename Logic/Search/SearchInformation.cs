@@ -21,12 +21,12 @@ namespace LTChess.Search
         /// <summary>
         /// The number of nodes the search should stop at.
         /// </summary>
-        public ulong MaxNodes = int.MaxValue;
+        public ulong MaxNodes = ulong.MaxValue - 1;
 
         /// <summary>
         /// The time in milliseconds that the search should stop at.
         /// </summary>
-        public double MaxSeachTime = 300000;
+        public long MaxSearchTime = DefaultSearchTime;
 
         /// <summary>
         /// The best move found.
@@ -38,6 +38,11 @@ namespace LTChess.Search
         /// </summary>
         public bool StopSearching = false;
 
+
+        /// <summary>
+        /// A list of moves which the search thinks will be played next.
+        /// PV[0] is the best move that we found, PV[1] is the best response that we think they have, etc.
+        /// </summary>
         public Move[] PV;
 
         /// <summary>
@@ -106,7 +111,7 @@ namespace LTChess.Search
 
         public override string ToString()
         {
-            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSeachTime: " + MaxSeachTime + ", " 
+            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", " 
                 + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + SearchTime + ", " 
                 + "NodeCount: " + NodeCount + ", " + "QNodeCount: " + SearchStatistics.QuiescenceNodes + ", " + "StopSearching: " + StopSearching;
         }

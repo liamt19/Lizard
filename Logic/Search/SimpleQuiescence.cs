@@ -86,7 +86,7 @@ namespace LTChess.Search
                     continue;
                 }
 
-                if (info.Position.WouldCauseThreefoldRepetition(legal[i]))
+                if (info.Position.WouldCauseDraw(legal[i]))
                 {
                     return -Evaluation.ScoreDraw;
                 }

@@ -19,7 +19,7 @@ namespace LTChess.Search
             
             int depth = 1;
             int maxDepth = info.MaxDepth;
-            double maxTime = info.MaxSeachTime;
+            double maxTime = info.MaxSearchTime;
             bool continueDeepening = true;
 
             while (continueDeepening)

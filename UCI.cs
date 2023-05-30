@@ -169,6 +169,22 @@ namespace LTChess.Core
             SendString(FormatSearchInformation(info));
         }
 
+        //  https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf
+
+        /// <summary>
+        /// Process "go" command parameters and begin a search.
+        /// 
+        /// <para> Currently handled: </para>
+        /// <br> movetime -> search for milliseconds </br>
+        /// <br> depth -> search until a specific depth (in plies) </br>
+        /// <br> nodes -> only look at a maximum number of nodes </br>
+        /// <br> infinite -> keep looking until we get a "stop" command </br>
+        /// 
+        /// <para> Currently ignored: </para>
+        /// <br> ponder, wtime / btime, winc/binc, movestogo, mate </br>
+        /// 
+        /// </summary>
+        /// <param name="param">List of parameters sent with the "go" command.</param>
         private void Go(string[] param)
         {
             //  Default to 5
@@ -180,8 +196,8 @@ namespace LTChess.Core
             {
                 if (param[i] == "movetime")
                 {
-                    info.SearchTime = double.Parse(param[i + 1]);
-                    LogString("[INFO]: SearchTime is set to " + info.SearchTime);
+                    info.MaxSearchTime = long.Parse(param[i + 1]);
+                    LogString("[INFO]: MaxSearchTime is set to " + info.MaxSearchTime);
                 }
                 else if (param[i] == "depth")
                 {
@@ -206,6 +222,11 @@ namespace LTChess.Core
                         info.MaxNodes = reqNodes;
                         LogString("[INFO]: MaxNodes is set to " + info.MaxNodes);
                     }
+                }
+                else if (param[i] == "infinite")
+                {
+                    info.MaxNodes = ulong.MaxValue - 1;
+                    info.MaxSearchTime = MaxSearchTime;
                 }
             }
 

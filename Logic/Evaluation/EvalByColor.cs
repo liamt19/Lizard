@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-using static LTChess.Data.RunOptions;
 
 namespace LTChess.Search
 {

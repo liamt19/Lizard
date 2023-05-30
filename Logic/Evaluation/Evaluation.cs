@@ -18,11 +18,13 @@ namespace LTChess.Search
         public const int ScoreMate = 32000;
         public const int ScoreDraw = 0;
         public const ulong EndgamePieces = 8;
+        public const ulong TBEndgamePieces = 5;
 
         private static Bitboard bb;
 
         private static int ToMove;
         private static bool IsEndgame;
+        private static bool IsTBEndgame;
 
         private static ulong white;
         private static ulong black;
@@ -51,6 +53,7 @@ namespace LTChess.Search
         private static EvalByColor threatScore;
         private static EvalByColor spaceScore;
         private static EvalByColor queenScore;
+        private static EvalByColor endgameScore;
 
         public static int Evaluate(in Bitboard pBB, int pToMove, bool Trace = false)
         {
@@ -60,6 +63,14 @@ namespace LTChess.Search
             white = bb.Colors[Color.White];
             black = bb.Colors[Color.Black];
             all = white | black;
+
+            whitePieces = popcount(white);
+            blackPieces = popcount(black);
+
+            IsEndgame = (whitePieces + blackPieces) <= EndgamePieces;
+            IsTBEndgame = (whitePieces + blackPieces) <= TBEndgamePieces;
+
+            int gamePhase = ((IsEndgame || IsTBEndgame) ? GamePhaseEndgame : GamePhaseNormal);
 
             //  The "king ring" evaluations see how many enemy pieces are attacking the squares nearby our king,
             //  Which is often but not necessarily a bad thing.
@@ -71,11 +82,6 @@ namespace LTChess.Search
             blackRing = NeighborsMask[blackKing];
             blackOutRing = OutterNeighborsMask[blackKing];
 
-            whitePieces = popcount(white);
-            blackPieces = popcount(black);
-
-            IsEndgame = (whitePieces + blackPieces) <= EndgamePieces;
-
             materialScore.Clear();
             pawnScore.Clear();
             bishopScore.Clear();
@@ -85,6 +91,7 @@ namespace LTChess.Search
             threatScore.Clear();
             spaceScore.Clear();
             queenScore.Clear();
+            endgameScore.Clear();
 
             EvalPawns();
             EvalKnights();
@@ -94,19 +101,26 @@ namespace LTChess.Search
             EvalKingSafety();
             EvalSpace();
 
-            pawnScore.Scale(ScalePawns);
-            knightScore.Scale(ScaleKnights);
-            bishopScore.Scale(ScaleBishops);
-            rookScore.Scale(ScaleRooks);
-            queenScore.Scale(ScaleQueens);
-            kingScore.Scale(ScaleKingSafety);
-            spaceScore.Scale(ScaleSpace);
+            if (IsEndgame || IsTBEndgame)
+            {
+                gamePhase = GamePhaseEndgame;
+                EvalEndgame();
+                endgameScore.Scale(ScaleEndgame);
+            }
 
-            threatScore.Scale(ScaleThreats);
-            materialScore.Scale(ScaleMaterial);
+            pawnScore.Scale(ScalePawns[gamePhase]);
+            knightScore.Scale(ScaleKnights[gamePhase]);
+            bishopScore.Scale(ScaleBishops[gamePhase]);
+            rookScore.Scale(ScaleRooks[gamePhase]);
+            queenScore.Scale(ScaleQueens[gamePhase]);
+            kingScore.Scale(ScaleKingSafety[gamePhase]);
+            spaceScore.Scale(ScaleSpace[gamePhase]);
 
-            double scoreW = materialScore.white + pawnScore.white + knightScore.white + bishopScore.white + rookScore.white + kingScore.white + threatScore.white + spaceScore.white;
-            double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + kingScore.black + threatScore.black + spaceScore.black;
+            threatScore.Scale(ScaleThreats[gamePhase]);
+            materialScore.Scale(ScaleMaterial[gamePhase]);
+
+            double scoreW = materialScore.white + pawnScore.white + knightScore.white + bishopScore.white + rookScore.white + kingScore.white + threatScore.white + spaceScore.white + endgameScore.white;
+            double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + kingScore.black + threatScore.black + spaceScore.black + endgameScore.black;
 
             double scoreFinal = scoreW - scoreB;
             double relative = (scoreFinal * (ToMove == Color.White ? 1 : -1));
@@ -124,6 +138,7 @@ namespace LTChess.Search
                 Log("│ King safety │ " + FormatEvalTerm(kingScore.white) + " │ " + FormatEvalTerm(kingScore.black) + " │ " + FormatEvalTerm(kingScore.white - kingScore.black) + " │ ");
                 Log("│     Threats │ " + FormatEvalTerm(threatScore.white) + " │ " + FormatEvalTerm(threatScore.black) + " │ " + FormatEvalTerm(threatScore.white - threatScore.black) + " │ ");
                 Log("│       Space │ " + FormatEvalTerm(spaceScore.white) + " │ " + FormatEvalTerm(spaceScore.black) + " │ " + FormatEvalTerm(spaceScore.white - spaceScore.black) + " │ ");
+                Log("│     Endgame │ " + FormatEvalTerm(endgameScore.white) + " │ " + FormatEvalTerm(endgameScore.black) + " │ " + FormatEvalTerm(endgameScore.white - endgameScore.black) + " │ ");
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│       Total │ " + FormatEvalTerm(scoreW) + " │ " + FormatEvalTerm(scoreB) + " │ " + FormatEvalTerm(scoreFinal) + " │ ");
                 Log("└─────────────┴──────────┴──────────┴──────────┘");
@@ -133,6 +148,47 @@ namespace LTChess.Search
             }
 
             return (int)relative;
+        }
+
+        [MethodImpl(Inline)]
+        private static void EvalEndgame()
+        {
+            int weak = (materialScore.white > materialScore.black ? Color.Black : Color.White);
+            int strong = Not(weak);
+            bool loneWeakKing = (bb.Colors[weak] == SquareBB[bb.KingIndex(weak)]);
+
+            int kingDist = SquareDistances[whiteKing][blackKing];
+
+            bool KPvK = ((bb.Pieces[Piece.Queen] | bb.Pieces[Piece.Rook]) == 0 && bb.Pieces[Piece.Pawn] != 0 && loneWeakKing);
+
+            int nearestPawn = NearestPawn(bb, strong);
+
+            if (weak == Color.Black)
+            {
+                if (KPvK)
+                {
+                    int pawnDist = SquareDistances[whiteKing][nearestPawn];
+                    endgameScore.white -= ScoreEGKingDistance[pawnDist];
+                }
+                else
+                {
+                    endgameScore.black += (PSQT.EGWeakKingPosition[blackKing] * CoefficientPSQTEKG);
+                    endgameScore.white += ScoreEGKingDistance[kingDist];
+                }
+            }
+            else
+            {
+                if (KPvK)
+                {
+                    int pawnDist = SquareDistances[blackKing][nearestPawn];
+                    endgameScore.black -= ScoreEGKingDistance[pawnDist];
+                }
+                else
+                {
+                    endgameScore.white += (PSQT.EGWeakKingPosition[whiteKing] * CoefficientPSQTEKG);
+                    endgameScore.black += ScoreEGKingDistance[kingDist];
+                }
+            }
         }
 
         [MethodImpl(Inline)]
@@ -181,6 +237,7 @@ namespace LTChess.Search
 
                 //  TODO: Bitboards/masks for determining if a knight geometrically can't stop the pawn.
 
+                //  TODO: not doing this here anymore
                 if (IsEndgame)
                 {
                     if (IsPasser(bb, idx))
@@ -188,7 +245,8 @@ namespace LTChess.Search
                         pawnScore.white += ScorePasser;
                     }
 
-                    //  If black only has pawns and is too far to stop this pwan from promoting, then add bonus.
+                    
+                    //  If black only has pawns and is too far to stop this pawn from promoting, then add bonus.
                     if (popcount(black & bb.Pieces[Piece.Pawn]) == blackPieces - 1 && WillPromote(idx))
                     {
                         pawnScore.white += ScorePromotingPawn;
@@ -685,6 +743,32 @@ namespace LTChess.Search
 
             spaceScore.white = ((int)popcount(WhiteAttacks) * ScorePerSquare);
             spaceScore.black = ((int)popcount(BlackAttacks) * ScorePerSquare);
+        }
+
+        [MethodImpl]
+        public static int NearestPawn(in Bitboard bb, int color)
+        {
+            int nearestIdx = 0;
+            int nearestDist = 64;
+
+            int ourKing = bb.KingIndex(color);
+
+            ulong temp = bb.Pieces[Piece.Pawn] & bb.Colors[color];
+            while (temp != 0)
+            {
+                int idx = lsb(temp);
+
+                int thisDist = SquareDistances[ourKing][idx];
+                if (thisDist < nearestDist)
+                {
+                    nearestDist = thisDist;
+                    nearestIdx = idx;
+                }
+
+                temp = poplsb(temp);
+            }
+
+            return nearestIdx;
         }
 
         [MethodImpl(Inline)]

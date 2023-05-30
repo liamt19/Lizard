@@ -46,6 +46,9 @@ namespace LTChess
         {
             InitializeAll();
 
+            p = new Position("8/8/8/8/8/P7/5K1k/8 w - - 10 19");
+            Evaluation.Evaluate(p.bb, p.ToMove, true);
+
             DoInputLoop();
 
             Console.WriteLine("Done");
@@ -111,6 +114,36 @@ namespace LTChess
                     if (input.Length > 9 && int.TryParse(input.Substring(9), out int selDepth))
                     {
                         info.MaxDepth = selDepth;
+                    }
+
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                    });
+                }
+                else if (input.StartsWithIgnoreCase("go time"))
+                {
+                    info = new SearchInformation(p, MAX_DEPTH);
+                    bool timeInMS = false;
+
+                    if (input.EndsWith("ms"))
+                    {
+                        timeInMS = true;
+                        input = input.Substring(0, input.Length - 2);
+                    }
+                    else if (input.EndsWith("s"))
+                    {
+                        input = input.Substring(0, input.Length - 1);
+                    }
+
+                    if (input.Length > 8 && long.TryParse(input.Substring(8), out long searchTime))
+                    {
+                        info.MaxSearchTime = searchTime;
+                        if (!timeInMS)
+                        {
+                            info.MaxSearchTime *= 1000;
+                        }
                     }
 
                     Task.Run(() =>

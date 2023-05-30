@@ -48,8 +48,6 @@ namespace LTChess.Data
             flags |= (short)(m.Promotion ? 1 : 0);
 
             Log("cm: [" + ToString() + "]");
-
-            int z = 0;
         }
 
         [MethodImpl(Inline)]
