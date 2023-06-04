@@ -116,7 +116,7 @@ namespace LTChess
                     Task.Run(() =>
                     {
                         SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
                 else if (input.StartsWithIgnoreCase("go time"))
@@ -146,7 +146,7 @@ namespace LTChess
                     Task.Run(() =>
                     {
                         SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
                 else if (input.StartsWithIgnoreCase("best"))
@@ -160,7 +160,7 @@ namespace LTChess
                     Task.Run(() =>
                     {
                         SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
                 else if (input.StartsWithIgnoreCase("play"))
@@ -174,7 +174,7 @@ namespace LTChess
                     Task.Run(() =>
                     {
                         SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + "= " + FormatMoveScore(info.BestScore));
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                         p.MakeMove(info.BestMove);
                         Log(p.ToString());
                     });
@@ -306,18 +306,6 @@ namespace LTChess
             Environment.Exit(0);
         }
 
-        public static void RunEval(int toDepth, string fen = InitialFEN)
-        {
-            p = new Position(fen);
-            info = new SearchInformation(p, toDepth);
-
-            //Thread.Sleep(1000);
-
-            SimpleSearch.StartSearching(ref info);
-
-            Environment.Exit(0);
-        }
-
         public static void RunBenchIterations(int iter, int benchDepth = 4)
         {
             double sum = 0;
@@ -339,13 +327,6 @@ namespace LTChess
             info = new SearchInformation(p, toDepth);
 
             SimpleSearch.StartSearching(ref info);
-        }
-
-        public static void DoNegaMaxAtDepth(int toDepth)
-        {
-            info = new SearchInformation(p, toDepth);
-
-            SimpleSearch.Deepen(ref info);
         }
 
         public static void DoHashPerft(int depth)
@@ -413,7 +394,6 @@ namespace LTChess
             int size = p.GenAllPseudoMoves(list);
             Log("Pseudo (" + size + "): " + list.Stringify(p));
         }
-
 
     }
 
