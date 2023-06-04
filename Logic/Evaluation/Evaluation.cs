@@ -197,6 +197,12 @@ namespace LTChess.Search
             ulong whitePawns = (white & bb.Pieces[Piece.Pawn]);
             ulong blackPawns = (black & bb.Pieces[Piece.Pawn]);
 
+            ulong whiteDoubledPawns = Forward(Color.White, whitePawns) & whitePawns;
+            pawnScore.white -= ((int)popcount(whiteDoubledPawns) * ScorePawnDoubled);
+
+            ulong blackDoubledPawns = Forward(Color.Black, blackPawns) & blackPawns;
+            pawnScore.black -= ((int)popcount(blackDoubledPawns) * ScorePawnDoubled);
+
             while (whitePawns != 0)
             {
                 int idx = lsb(whitePawns);
@@ -365,7 +371,7 @@ namespace LTChess.Search
                     thisAttacks = poplsb(thisAttacks);
                 }
 
-                knightScore.white += (PSQT.Center[idx] * CoefficientPSQTKnights);
+                knightScore.white += (PSQT.Center[idx] * CoefficientPSQTCenter  * CoefficientPSQTKnights);
 
                 materialScore.white += ValueKnight;
 
@@ -401,7 +407,7 @@ namespace LTChess.Search
                     thisAttacks = poplsb(thisAttacks);
                 }
 
-                knightScore.black += (PSQT.Center[idx] * CoefficientPSQTKnights);
+                knightScore.black += (PSQT.Center[idx] * CoefficientPSQTCenter * CoefficientPSQTKnights);
 
                 materialScore.black += ValueKnight;
 
@@ -743,6 +749,12 @@ namespace LTChess.Search
 
             spaceScore.white = ((int)popcount(WhiteAttacks) * ScorePerSquare);
             spaceScore.black = ((int)popcount(BlackAttacks) * ScorePerSquare);
+
+            ulong undevelopedWhite = ((Rank8BB & bb.Colors[Color.White]) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Knight]));
+            ulong undevelopedBlack = ((Rank8BB & bb.Colors[Color.Black]) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Knight]));
+
+            spaceScore.white += ((int)popcount(undevelopedWhite) * ScoreUndevelopedPiece);
+            spaceScore.black += ((int)popcount(undevelopedBlack) * ScoreUndevelopedPiece);
         }
 
         [MethodImpl]
@@ -921,7 +933,7 @@ namespace LTChess.Search
         }
 
         [MethodImpl(Inline)]
-        private static int GetPieceValue(int pt)
+        public static int GetPieceValue(int pt)
         {
             switch (pt)
             {
