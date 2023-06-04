@@ -19,8 +19,10 @@ namespace LTChess.Core
     {
         public SearchInformation info;
 
-        public const string Filename = @".\ucilog.txt";
+        public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
+
+        public static int DefaultMoveOverhead = 10;
 
         public Dictionary<string, UCIOption> options;
 
@@ -30,13 +32,22 @@ namespace LTChess.Core
             {
                 { UCIOption.Opt_DefaultSearchTime, new UCIOption(UCIOption.Opt_DefaultSearchTime, "spin", (DefaultSearchTime / 1000).ToString(), "1", "120")},
                 { UCIOption.Opt_DefaultSearchDepth, new UCIOption(UCIOption.Opt_DefaultSearchDepth, "spin", DefaultSearchDepth.ToString(), "1", "99")},
+                { UCIOption.Opt_DefaultMoveOverhead, new UCIOption(UCIOption.Opt_DefaultMoveOverhead, "spin", DefaultMoveOverhead.ToString(), "1", "3000")},
+                { UCIOption.Opt_UseAspirationWindows, new UCIOption(UCIOption.Opt_UseAspirationWindows, "check", UseAspirationWindows.ToString().ToLower(), "", "")},
+                { UCIOption.Opt_AspirationWindowMargin, new UCIOption(UCIOption.Opt_AspirationWindowMargin, "spin", AspirationWindowMargin.ToString(), "10", "250")},
+                { UCIOption.Opt_MarginIncreasePerDepth, new UCIOption(UCIOption.Opt_MarginIncreasePerDepth, "spin", MarginIncreasePerDepth.ToString(), "0", "50")},
+
             };
 
             info = new SearchInformation(new Position(), DefaultSearchDepth);
-            info.OnDepthFinish += OnSearchDone;
-            if (File.Exists(Filename))
+            info.OnDepthFinish = OnDepthDone;
+            info.OnSearchFinish = OnSearchDone;
+            if (File.Exists(LogFileName))
             {
-                File.Move(Filename, FilenameLast, true);
+                using StreamWriter LogFileStream = new(LogFileName, append: true);
+                LogFileStream.WriteLine("\n\n\n**************************************************");
+                LogFileStream.WriteLine(CenteredString(DateTime.Now.ToString(), 50));
+                LogFileStream.WriteLine("**************************************************");
             }
         }
 
@@ -48,8 +59,17 @@ namespace LTChess.Core
 
         public static void LogString(string s)
         {
-            using StreamWriter file = new(Filename, append: true);
-            file.WriteLine(s);
+            using StreamWriter LogFileStream = new(LogFileName, append: true);
+#if DEBUG
+            long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.debug_time_off;
+            LogFileStream.WriteLine(timeMS.ToString("0000000") + " " + s);
+#else
+            LogFileStream.WriteLine(s);
+
+#endif
+
+            LogFileStream.Flush();
+
         }
 
         public string[] ReceiveString(out string cmd)
@@ -72,6 +92,8 @@ namespace LTChess.Core
 
         public void Run()
         {
+            UCIMode = true;
+
             SendString("id name LTChess " + EngineBuildVersion);
             SendString("id author Liam McGuire");
             foreach (string k in options.Keys)
@@ -103,9 +125,13 @@ namespace LTChess.Core
                 }
                 else if (cmd == "position")
                 {
+                    info = new SearchInformation(new Position(), DefaultSearchDepth);
+                    info.OnDepthFinish = OnDepthDone;
+                    info.OnSearchFinish = OnSearchDone;
+
                     if (param[0] == "startpos")
                     {
-                        LogString("Set position to " + InitialFEN);
+                        LogString("[INFO]: Set position to " + InitialFEN);
                         info.Position = new Position();
                         if (param.Length > 1 && param[1] == "moves")
                         {
@@ -114,7 +140,7 @@ namespace LTChess.Core
                                 info.Position.TryMakeMove(param[i]);
                             }
 
-                            LogString("New FEN is " + info.Position.GetFEN());
+                            LogString("[INFO]: New FEN is " + info.Position.GetFEN());
                         }
                     }
                     else
@@ -131,11 +157,11 @@ namespace LTChess.Core
                                 {
                                     if (!info.Position.TryMakeMove(param[j]))
                                     {
-                                        LogString("Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
+                                        LogString("[ERROR]: Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
                                     }
                                 }
 
-                                LogString("New FEN is " + info.Position.GetFEN());
+                                LogString("[INFO]: New FEN is " + info.Position.GetFEN());
                                 hasExtraMoves = true;
                                 break;
                             }
@@ -148,7 +174,7 @@ namespace LTChess.Core
 
                         if (!hasExtraMoves)
                         {
-                            LogString("Set position to " + fen);
+                            LogString("[INFO]: Set position to " + fen);
                             info.Position = new Position(fen);
                         }
                         
@@ -175,8 +201,27 @@ namespace LTChess.Core
                     {
                         //  param[0] == "name"
                         string optName = param[1];
+                        string optValue = "";
+
+                        for (int i = 2; i < param.Length; i++)
+                        {
+                            if (param[i] == "value")
+                            {
+                                for (int j = i + 1; j < param.Length; j++)
+                                {
+                                    optValue += param[j] + " ";
+                                }
+                                optValue = optValue.Trim();
+                                break;
+                            }
+                            else
+                            {
+                                optName += " " + param[i];
+                            }
+                        }
+
                         //  param[2] == "value"
-                        string optValue = param[3];
+                        
 
                         if (!options.ContainsKey(optName)) 
                         {
@@ -193,13 +238,29 @@ namespace LTChess.Core
                         {
                             DefaultSearchTime = int.Parse(optValue) * 1000;
                         }
+                        else if (optName == UCIOption.Opt_DefaultMoveOverhead)
+                        {
+                            DefaultMoveOverhead = int.Parse(optValue);
+                        }
+                        else if (optName == UCIOption.Opt_UseAspirationWindows)
+                        {
+                            UseAspirationWindows = bool.Parse(optValue);
+                        }
+                        else if (optName == UCIOption.Opt_AspirationWindowMargin)
+                        {
+                            AspirationWindowMargin = int.Parse(optValue);
+                        }
+                        else if (optName == UCIOption.Opt_MarginIncreasePerDepth)
+                        {
+                            AspirationWindowMargin = int.Parse(optValue);
+                        }
                     }
 
                 }
             }
         }
 
-        private void OnSearchDone()
+        private void OnDepthDone()
         {
             SendEval(info);
         }
@@ -227,10 +288,18 @@ namespace LTChess.Core
         /// <param name="param">List of parameters sent with the "go" command.</param>
         private void Go(string[] param)
         {
-            //  Default to 5
-            info.MaxDepth = 5;
+            info.MaxDepth = DefaultSearchDepth;
+            info.MaxSearchTime = DefaultSearchTime;
             LogString("[INFO]: Got 'go' command");
 
+            bool hasMoveTime = false;
+            bool hasWhiteTime = false;
+            bool hasBlackTime = false;
+
+            int whiteTime = 0;
+            int blackTime = 0;
+            int whiteInc = 0;
+            int blackInc = 0;
 
             for (int i = 0; i < param.Length; i++)
             {
@@ -238,6 +307,8 @@ namespace LTChess.Core
                 {
                     info.MaxSearchTime = long.Parse(param[i + 1]);
                     LogString("[INFO]: MaxSearchTime is set to " + info.MaxSearchTime);
+                    
+                    hasMoveTime = true;
                 }
                 else if (param[i] == "depth")
                 {
@@ -267,6 +338,73 @@ namespace LTChess.Core
                 {
                     info.MaxNodes = ulong.MaxValue - 1;
                     info.MaxSearchTime = MaxSearchTime;
+                    info.MaxDepth = MAX_DEPTH;
+                }
+                else if (param[i] == "wtime")
+                {
+                    whiteTime = int.Parse(param[i + 1]);
+                    hasWhiteTime = true;
+
+                    if (info.Position.ToMove == Color.White)
+                    {
+                        info.PlayerTimeLeft = whiteTime;
+
+                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
+                    }
+                }
+                else if (param[i] == "btime")
+                {
+                    blackTime = int.Parse(param[i + 1]);
+                    hasBlackTime = true;
+
+                    if (info.Position.ToMove == Color.Black)
+                    {
+                        info.PlayerTimeLeft = blackTime;
+                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
+                    }
+                }
+                else if (param[i] == "winc")
+                {
+                    whiteInc = int.Parse(param[i + 1]);
+                }
+                else if (param[i] == "binc")
+                {
+                    blackInc = int.Parse(param[i + 1]);
+                }
+            }
+
+            if (hasWhiteTime)
+            {
+                //  We will need to reduce our search time if we have less time than info.MaxSearchTime
+                if (info.Position.ToMove == Color.White && hasMoveTime && (whiteTime < info.MaxSearchTime))
+                {
+                    //  If we have more than 5 seconds, we can use all of the time we have above that.
+                    //  Otherwise, just use our remaining time.
+                    int newTime = whiteTime - SimpleSearch.TimerTickInterval;
+                    if (whiteTime > SearchLowTimeThreshold)
+                    {
+                        newTime -= SearchLowTimeThreshold;
+                    }
+
+                    LogString("[INFO]: only have " + whiteTime + "ms left <= MaxSearchTime: " + info.MaxSearchTime + ", setting time to " + newTime + "ms");
+                    info.MaxSearchTime = newTime;
+                }
+            }
+
+            if (hasBlackTime)
+            {
+                if (info.Position.ToMove == Color.Black && hasMoveTime && (blackTime < info.MaxSearchTime))
+                {
+                    //  If we have more than 5 seconds, we can use all of the time we have above that.
+                    //  Otherwise, just use our remaining time.
+                    int newTime = blackTime - SimpleSearch.TimerTickInterval;
+                    if (blackTime > SearchLowTimeThreshold)
+                    {
+                        newTime -= SearchLowTimeThreshold;
+                    }
+
+                    LogString("[INFO]: only have " + blackTime + "ms left <= MaxSearchTime: " + info.MaxSearchTime + ", setting time to " + newTime + "ms");
+                    info.MaxSearchTime = newTime;
                 }
             }
 
@@ -277,10 +415,24 @@ namespace LTChess.Core
         {
             Task.Run(() =>
             {
-                SimpleSearch.StartSearching(ref info);
+                SimpleSearch.StartSearching(ref info, true);
+                LogString("[INFO]: DoSearch task returned from call to StartSearching");
+                info.OnSearchFinish?.Invoke();
+            });
+        }
+
+        private void OnSearchDone()
+        {
+            if (!info.SearchFinishedCalled)
+            {
+                info.SearchFinishedCalled = true;
                 SendString("bestmove " + info.BestMove.ToString());
                 LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "'");
-            });
+            }
+            else
+            {
+                LogString("[INFO]: SearchFinishedCalled was " + info.SearchFinishedCalled + ", ignoring.");
+            }
         }
     }
 }
