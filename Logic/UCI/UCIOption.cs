@@ -8,8 +8,12 @@ namespace LTChess.Core
 {
     public struct UCIOption
     {
-        public const string Opt_DefaultSearchTime = "DefaultSearchTime";
-        public const string Opt_DefaultSearchDepth = "DefaultSearchDepth";
+        public const string Opt_DefaultSearchTime = "Default Search Time";
+        public const string Opt_DefaultSearchDepth = "Default Search Depth";
+        public const string Opt_UseAspirationWindows = "Use Aspiration Windows";
+        public const string Opt_AspirationWindowMargin = "Aspiration Window Margin";
+        public const string Opt_MarginIncreasePerDepth = "MarginIncreasePerDepth";
+        public const string Opt_DefaultMoveOverhead = "Move Overhead";
 
 
         public string Name;
@@ -27,9 +31,16 @@ namespace LTChess.Core
             MaxValue = maxValue;
         }
 
+        public UCIOption(string name, string type, string defaultValue)
+        {
+            Name = name;
+            Type = type;
+            DefaultValue = defaultValue;
+        }
+
         public override string ToString()
         {
-            return "option name " + Name + " type " + Type + " default " + DefaultValue + " min " + MinValue + " max " + MaxValue;
+            return "option name " + Name + " type " + Type + " default " + DefaultValue + (MinValue.Length == 0 ? string.Empty : (" min " + MinValue + " max " + MaxValue));
         }
     }
 }
