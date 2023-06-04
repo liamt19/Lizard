@@ -19,20 +19,17 @@ namespace LTChess.Search
         /// <summary>
         /// Check if we have reached/exceeded the maximum search time every x milliseconds
         /// </summary>
-        public const int TimerTickInterval = 200;
+        public const int TimerTickInterval = 100;
 
         /// <summary>
         /// A timer that checks if the search time has reached/exceeded the maximum every <c>TimerTickInterval</c> milliseconds.
         /// </summary>
-        private static Timer SearchDurationTimer = new Timer(TimerTickInterval);
+        private static Timer SearchDurationTimer;
 
         /// <summary>
         /// Keeps track of the time spent on during the entire search
         /// </summary>
         private static Stopwatch TotalSearchTime = Stopwatch.StartNew();
-
-        //  Can't use "ref" variables in lambda's...
-        private static SearchInformation LocalCopy;
 
         /// <summary>
         /// The best move found in the previous call to Deepen.
@@ -44,53 +41,134 @@ namespace LTChess.Search
         /// </summary>
         private static int LastBestScore = Evaluation.ScoreDraw;
 
+        //  These are inconvenient but work
+        delegate void CallSearchFinishDelegate();
+        delegate void StopSearchingDelegate();
+        delegate void SetLastMoveDelegate(Move move, int score);
+
         /// <summary>
         /// Begin a new search with the parameters in <paramref name="info"/>.
         /// This performs iterative deepening, which searches at higher and higher depths as time goes on.
         /// </summary>
-        public static void StartSearching(ref SearchInformation info)
+        public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
             TotalSearchTime.Restart();
-            LocalCopy = info;
 
             int depth = 1;
-            int maxDepth = info.MaxDepth;
+            int maxDepthStart = info.MaxDepth;
             double maxTime = info.MaxSearchTime;
+            int playerTimeLeft = info.PlayerTimeLeft;
+            StopSearchingDelegate stopSearchingDelegate = info.DoStopSearching;
+            SetLastMoveDelegate setLastMoveDelegate = info.SetLastMove;
+            CallSearchFinishDelegate callSearchFinishDelegate = info.CallSearchFinish;
             bool continueDeepening = true;
             info.NodeCount = 0;
 
             //  Start checking the search time
+            SearchDurationTimer = new Timer(TimerTickInterval);
             SearchDurationTimer.Start();
             SearchDurationTimer.Elapsed += (_, _) =>
             {
-                if (TotalSearchTime.ElapsedMilliseconds > LocalCopy.MaxSearchTime)
+                //  This will stop the search early if:
+                //  We are about to (or did) go over the max time, OR
+                //  We are at/past the depth to begin checking AND
+                //  We were told to search for more time than we have left AND
+                //  We now have less time than the low time threshold
+                if (TotalSearchTime.Elapsed.TotalMilliseconds > (maxTime - TimerTickInterval))
                 {
-                    Log("CheckSearchTime got " + (TotalSearchTime.ElapsedMilliseconds) + " > " + LocalCopy.MaxSearchTime);
-                    LocalCopy.StopSearching = true;
+                    Log("WARN Stopping early at depth " + depth + ", time: " + TotalSearchTime.Elapsed.TotalMilliseconds + " > (maxtime: " + maxTime + " - interval: " + TimerTickInterval + ")");
+
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
+                    TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
+                }
+                else if ((depth >= SearchLowTimeMinDepth && maxTime > playerTimeLeft && (playerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds) < SearchLowTimeThreshold))
+                {
+                    Log("WARN Stopping early at depth " + depth + ", maxTime: " + maxTime + " > playerTimeLeft: " + playerTimeLeft + " and (playerTimeLeft - time): (" + playerTimeLeft + " - " + TotalSearchTime.Elapsed.TotalMilliseconds + ") = " + (playerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds));
+                    
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
+                    TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
                 }
             };
+
+            int alpha = AlphaStart;
+            int beta = BetaStart;
+            bool aspirationFailed = false;
 
             while (continueDeepening)
             {
                 info.MaxDepth = depth;
-                Deepen(ref info);
+
+                if (UseAspirationWindows && !aspirationFailed && depth > 1)
+                {
+                    alpha = LastBestScore - (AspirationWindowMargin + (depth * MarginIncreasePerDepth));
+                    beta = LastBestScore + (AspirationWindowMargin + (depth * MarginIncreasePerDepth));
+                    Log("Depth " + depth + " aspiration bounds are [A: " + alpha + ", eval: " + LastBestScore + ", B: " + beta + "]");
+                }
+
+                aspirationFailed = false;
+                ulong prevNodes = info.NodeCount;
+                //Log("Before Deepen, info -> " + info.ToString());
+                //Log("Before Deepen, TotalSearchTime: " + TotalSearchTime.Elapsed.TotalMilliseconds);
+                Deepen(ref info, alpha, beta);
+                ulong afterNodes = info.NodeCount;
+
+                if (info.StopSearching)
+                {
+                    Log("Received StopSearching command just after Deepen at depth " + depth);
+
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
+                    TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
+
+                    return;
+                }
+
+                if (UseAspirationWindows && (info.BestScore <= alpha || info.BestScore >= beta))
+                {
+                    //  Redo the search with the default bounds, at the same depth.
+                    alpha = AlphaStart;
+                    beta = BetaStart;
+
+                    //  TODO: not sure if engines are supposed to include nodes that they are searching again in this context.
+                    info.NodeCount -= (afterNodes - prevNodes);
+
+                    aspirationFailed = true;
+
+                    Log("Depth " + depth + " failed aspiration bounds, got " + info.BestScore);
+                    continue;
+                }
+
+                info.OnDepthFinish?.Invoke();
+
                 if (continueDeepening && Evaluation.IsScoreMate(info.BestScore, out _))
                 {
-                    Log("Forced mate found (" + info.BestMove + "#), aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
+                    Log("Forced mate found (" + info.BestMove + "), aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
                     TotalSearchTime.Reset();
-                    SearchDurationTimer.Stop();
+                    SearchDurationTimer?.Stop();
                     info.OnSearchFinish?.Invoke();
                     return;
                 }
+
                 if (info.StopSearching)
                 {
-                    Log("Received StopSearching command, aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
+                    Log("WARN Received StopSearching command late, aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
 
                     //  We ran out of time before completely searching this depth, and might've missed something critical.
                     //  If we found a different BestMove before being interrupted, just give the previous best one instead.
                     if (!info.BestMove.Equals(LastBestMove))
                     {
-                        if (info.Position.IsLegal(LastBestMove))
+                        if (info.Position.bb.IsPseudoLegal(LastBestMove) && info.Position.IsLegal(LastBestMove))
                         {
                             Log("Reverting to previous best move " + LastBestMove + " = " + LastBestScore + "cp instead of " + info.BestMove + " = " + info.BestScore + "cp ");
 
@@ -105,10 +183,9 @@ namespace LTChess.Search
                         }
 
                     }
-                    
 
                     TotalSearchTime.Reset();
-                    SearchDurationTimer.Stop();
+                    SearchDurationTimer?.Stop();
                     info.OnSearchFinish?.Invoke();
                     return;
                 }
@@ -117,27 +194,30 @@ namespace LTChess.Search
                 LastBestMove = info.BestMove;
                 LastBestScore = info.BestScore;
 
-                continueDeepening = (depth <= maxDepth && TotalSearchTime.Elapsed.TotalMilliseconds <= maxTime);
+                if (allowDepthIncrease && TotalSearchTime.Elapsed.TotalMilliseconds < SearchLowTimeThreshold && depth == maxDepthStart)
+                {
+                    maxDepthStart++;
+                    Log("Extended search depth to " + maxDepthStart);
+                }
+
+                continueDeepening = (depth <= maxDepthStart && TotalSearchTime.Elapsed.TotalMilliseconds <= maxTime);
             }
 
             TotalSearchTime.Reset();
-            SearchDurationTimer.Stop();
+            SearchDurationTimer?.Stop();
             info.OnSearchFinish?.Invoke();
         }
 
         /// <summary>
-        /// Performs one pass of deepening, at the depth specified in <paramref name="info"/>.maxDepth
+        /// Performs one pass of deepening, at the depth specified in <paramref name="info"/>.maxDepthStart
         /// </summary>
-        public static void Deepen(ref SearchInformation info)
+        public static void Deepen(ref SearchInformation info, int alpha = AlphaStart, int beta = BetaStart)
         {
-            int alpha = AlphaStart;
-            int beta = BetaStart;
             TotalSearchTime.Start();
             int score = SimpleSearch.FindBest(ref info, alpha, beta, info.MaxDepth);
             TotalSearchTime.Stop();
             info.SearchTime = TotalSearchTime.Elapsed.TotalMilliseconds;
             info.BestScore = score;
-            info.OnDepthFinish?.Invoke();
         }
 
         /// <summary>
@@ -165,7 +245,7 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public static int FindBest(ref SearchInformation info, int alpha, int beta, int depth)
         {
-            if (info.NodeCount >= info.MaxNodes || info.StopSearching)
+            if (info.StopSearching || info.NodeCount >= info.MaxNodes)
             {
                 info.StopSearching = true;
                 return 0;
@@ -185,23 +265,7 @@ namespace LTChess.Search
             Move BestMove = Move.Null;
             int startingAlpha = alpha;
 
-            bool useStaticEval = false;
-            if (useStaticEval)
-            {
-                int staticEval = 0;
-                ETEntry etEntry = EvaluationTable.Probe(posHash);
-                if (etEntry.key == EvaluationTable.InvalidKey || !etEntry.Validate(posHash))
-                {
-                    staticEval = Evaluation.Evaluate(info.Position.bb, info.Position.ToMove);
-                    EvaluationTable.Save(posHash, (short)staticEval);
-                }
-                else
-                {
-                    staticEval = etEntry.score;
-                }
-            }
-
-            bool useTT = false;
+            bool useTT = true;
             if (useTT)
             {
                 if (ttEntry.NodeType != NodeType.Invalid && ttEntry.Key == TTEntry.MakeKey(posHash) && !ttEntry.BestMove.IsNull())
@@ -265,7 +329,7 @@ namespace LTChess.Search
             {
                 if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
                 {
-                    return -Evaluation.ScoreMate - ((pos.Moves.Count + 1) / 2);
+                    return -Evaluation.ScoreMate - ((info.MaxDepth / 2) + 1);
                 }
                 else
                 {
@@ -280,10 +344,22 @@ namespace LTChess.Search
             {
                 int score;
 
-                //  Instead of looking further and probably breaking something,
-                //  Just evaluate this move as a draw here and keep looking at the others.
-                if (info.Position.WouldCauseDraw(list[i]))
+                if (info.StopSearching)
                 {
+
+                    /**
+                    if (depth == info.MaxDepth)
+                    {
+                        Log("Branch " + i + "/" + size + " at depth " + depth + " StopSearching is " + info.StopSearching + " ret 0");
+                    }
+                    */
+
+                    return 0;
+                }
+                else if (info.Position.WouldCauseDraw(list[i]))
+                {
+                    //  Instead of looking further and probably breaking something,
+                    //  Just evaluate this move as a draw here and keep looking at the others.
                     score = -Evaluation.ScoreDraw;
                 }
                 else
@@ -354,7 +430,6 @@ namespace LTChess.Search
             return alpha;
         }
 
-
         public static int GetPV(SearchInformation info, in Move[] moves, int numMoves)
         {
             Position position = info.Position;
@@ -368,6 +443,16 @@ namespace LTChess.Search
             {
                 if (!bb.IsPseudoLegal(stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
                 {
+                    if (stored.BestMove.IsNull())
+                    {
+                        Log("GetPV stopping normally at numMoves: " + numMoves);
+                    }
+                    else
+                    {
+                        Log("WARN GetPV(" + stored.BestMove.ToString() + " isn't (pseudo)legal, stopping at numMoves: " + numMoves);
+                    }
+
+                    Log("info -> " + info.ToString());
                     return numMoves;
                 }
 
@@ -383,7 +468,9 @@ namespace LTChess.Search
                 //  If the above check fails for any reason,
                 //  This will also prevent those loops from occuring.
                 //  TODO seldepth won't work with this.
-                if (numMoves > info.MaxDepth)
+
+                //Log("Building PV, info.MaxDepth: " + info.MaxDepth + ", numMoves: " + numMoves);
+                if (numMoves >= info.MaxDepth)
                 {
                     return numMoves;
                 }
