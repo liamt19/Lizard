@@ -10,9 +10,12 @@ namespace LTChess.Search
     public static class SimpleQuiescence
     {
         [MethodImpl(Inline)]
-        public static int FindBest(ref SearchInformation info, int alpha, int beta, int curDepth = 4)
+        public static int FindBest(ref SearchInformation info, int alpha, int beta, int curDepth)
         {
-            //  https://www.chessprogramming.org/Quiescence_Search
+            if (info.StopSearching)
+            {
+                return 0;
+            }
 
             int standingPat;
 
@@ -52,10 +55,10 @@ namespace LTChess.Search
 
             if (standingPat >= beta)
             {
-                return standingPat;
+                return beta;
             }
 
-            if (standingPat > alpha)
+            if (alpha < standingPat)
             {
                 alpha = standingPat;
             }
@@ -68,8 +71,7 @@ namespace LTChess.Search
             {
                 if (info.Position.CheckInfo.InCheck || info.Position.CheckInfo.InDoubleCheck)
                 {
-                    //Log("Quiescence - No legal moves after " + info.Position.Moves.Peek());
-                    return -Evaluation.ScoreMate - ((info.Position.Moves.Count + 1) / 2);
+                    return -Evaluation.ScoreMate - ((info.MaxDepth / 2) + 1);
 
                 }
                 else
@@ -90,6 +92,18 @@ namespace LTChess.Search
                 {
                     return -Evaluation.ScoreDraw;
                 }
+
+                if (UseDeltaPruning)
+                {
+                    int theirPieceVal = Evaluation.GetPieceValue(info.Position.bb.PieceTypes[legal[i].to]);
+
+                    if (standingPat + theirPieceVal + DeltaPruningMargin < alpha)
+                    {
+                        //Log("Skipping " + legal[i].ToString(info.Position) + " because " + "standingPat: " + standingPat + " + theirPieceVal: " + theirPieceVal + " + Margin: " + DeltaPruningMargin + " < alpha: " + alpha);
+                        continue;
+                    }
+                }
+
 
                 info.Position.MakeMove(legal[i]);
                 //  Keep making moves until there aren't any captures left.
