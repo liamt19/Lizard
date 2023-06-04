@@ -70,17 +70,35 @@ namespace LTChess.Util
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
+        public static bool UCIMode = false;
 
-        public static void LogFile(string s, string fileName)
-        {
-            File.AppendAllText(fileName, s);
-        }
+        public static long debug_time_off = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
         public static void Log(string s)
         {
-            Console.WriteLine(s);
+#if DEBUG
+            long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off;
+            if (!UCIMode)
+            {
+                Console.WriteLine(timeMS.ToString("0000000") + " " + s);
+            }
+            else
+            {
+                LogString("[LOG]: " + s);
+            }
+#else
+            if (!UCIMode)
+            {
+                Console.WriteLine(s);
+            }
+            else
+            {
+                LogString("[LOG]: " + s);
+            }
+#endif
             Debug.WriteLine(s);
         }
+        
         public static void LogW(string s)
         {
             Console.WriteLine("Warn: " + s);
@@ -106,9 +124,20 @@ namespace LTChess.Util
           public const int NORTH_WEST = NORTH + WEST;
         }
 
+        /// <summary>
+        /// Returns the <c>Direction</c> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
+        /// </summary>
         [MethodImpl(Inline)]
         public static int Up(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
 
+        /// <summary>
+        /// Returns a bitboard with bits set 1 "above" the bits in <paramref name="b"/>.
+        /// So Forward(Color.White) with a bitboard that has A2 set will return one with A3 set,
+        /// and Forward(Color.Black) returns one with A1 set instead.
+        /// </summary>
+        /// <param name="color">Shifted "up"</param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         [MethodImpl(Inline)]
         public static ulong Forward(int color, ulong b)
         {
@@ -549,7 +578,7 @@ namespace LTChess.Util
         }
 
         //  https://stackoverflow.com/questions/18573004/how-to-center-align-arguments-in-a-format-string
-        public static string centeredString(string s, int width)
+        public static string CenteredString(string s, int width)
         {
             if (s.Length >= width)
             {
@@ -585,51 +614,22 @@ namespace LTChess.Util
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
             int nodesPerSec = ((int)(nodes / (time / 1000)));
-            StringBuilder pv = new StringBuilder();
-
-            SimpleSearch.GetPV(info, info.PV, 0);
-
-            Position temp = new Position(info.Position.GetFEN());
-            for (int i = 0; i < MAX_DEPTH; i++)
-            {
-                if (info.PV[i].IsNull())
-                {
-                    break;
-                }
-
-                if (MakePVReadable)
-                {
-                    if (temp.bb.IsPseudoLegal(info.PV[i]))
-                    {
-                        pv.Append(info.PV[i].ToString(temp) + " ");
-                        temp.MakeMove(info.PV[i]);
-                    }
-                    else
-                    {
-                        pv.Append(info.PV[i].ToString() + "? ");
-                    }
-                }
-                else
-                {
-                    pv.Append(info.PV[i].ToString() + " ");
-                }
-            }
 
             if (TraceEval)
             {
                 Log("\r\n\r\n**** Tracing whichever PV is under this");
+                Position temp = new Position(info.Position.GetFEN());
                 Evaluation.Evaluate(temp.bb, temp.ToMove, true);
             }
 
             StringBuilder sb = new StringBuilder();
-
             sb.Append("info depth " + depth);
             sb.Append(" seldepth " + selDepth);
             sb.Append(" time " + time);
             sb.Append(" score " + score);
             sb.Append(" nodes " + nodes);
             sb.Append(" nps " + nodesPerSec);
-            sb.Append(" pv " + pv.ToString());
+            sb.Append(" pv " + info.GetPVString(true));
 
             return sb.ToString();
         }
@@ -648,7 +648,7 @@ namespace LTChess.Util
 
         public static string FormatEvalTerm(double normalScore, int sz = 8)
         {
-            return centeredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
+            return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
         }
 
         //  https://stackoverflow.com/questions/8946808/can-console-clear-be-used-to-only-clear-a-line-instead-of-whole-console
