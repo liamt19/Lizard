@@ -60,6 +60,9 @@ namespace LTChess.Core
 
         public static bool Perft_Stop = false;
 
+        public bool whiteCastled = false;
+        public bool blackCastled = false;
+
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
@@ -257,11 +260,13 @@ namespace LTChess.Core
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
                     Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
+                    whiteCastled = true;
                 }
                 else
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.BK | CastlingStatus.BQ));
                     Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
+                    blackCastled = true;
                 }
             }
             else if (move.Promotion)
@@ -345,241 +350,15 @@ namespace LTChess.Core
             if (IsThreefoldRepetition())
             {
                 Log("Game drawn by threefold repetition!");
-                IsDrawn = true;
             }
             else if (IsFiftyMoveDraw())
             {
                 Log("Game drawn by the 50 move rule!");
-                IsDrawn = true;
             }
 #endif
 
         }
 
-
-        /// <summary>
-        /// Pushes the current state, then performs the move <paramref name="move"/> and updates the state of the board.
-        /// </summary>
-        /// <param name="move">The move to make, which needs to be generated from MoveGenerator.GenAllLegalMoves or strange things might happen.</param>
-        [MethodImpl(Inline)]
-        public void MakeMoveFast(in Move move)
-        {
-            Castles.Push(Castling);
-            Checks.Push(CheckInfo);
-            HalfmoveClocks.Push(HalfMoves);
-
-            int thisPiece = bb.GetPieceAtIndex(move.from);
-            int thisColor = bb.GetColorAtIndex(move.from);
-
-            int otherPiece = bb.GetPieceAtIndex(move.to);
-            int otherColor = Not(thisColor);
-
-#if DEBUG
-            if (otherPiece != Piece.None && thisColor == bb.GetColorAtIndex(move.to))
-            {
-                 Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(otherPiece) + " on " + IndexToString(move.to));
-            }
-            if (otherPiece == Piece.King)
-            {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(move.to)) + "'s king on " + IndexToString(move.to));
-            }
-#endif
-
-            if (thisPiece == Piece.Pawn || otherPiece != Piece.None)
-            {
-                HalfMoves = 0;
-            }
-            else
-            {
-                HalfMoves++;
-            }
-
-            if (ToMove == Color.Black)
-            {
-                FullMoves++;
-            }
-
-            if (EnPassantTarget != 0)
-            {
-                //  Set EnPassantTarget to 0 now.
-                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset to 0 every move.
-                EnPassantTarget = 0;
-            }
-
-            bool PawnDoubleMove = thisPiece == Piece.Pawn && (move.to ^ move.from) == 16;
-            if (PawnDoubleMove)
-            {
-                bb.MoveSimple(move.from, move.to, thisColor, thisPiece);
-
-                if (thisColor == Color.White && (WhitePawnAttackMasks[move.to - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
-                {
-                    EnPassantTarget = move.to - 8;
-                }
-                else if (thisColor == Color.Black && (BlackPawnAttackMasks[move.to + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
-                {
-                    EnPassantTarget = move.to + 8;
-                }
-            }
-            else if (move.EnPassant)
-            {
-                bb.EnPassant(move.from, move.to, thisColor, move.idxEnPassant);
-            }
-            else if (move.Capture)
-            {
-                Captures.Push(otherPiece);
-
-                if (otherPiece == Piece.Rook)
-                {
-                    //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
-                    switch (move.to)
-                    {
-                        case A1:
-                            Castling &= ~CastlingStatus.WQ;
-                            break;
-                        case H1:
-                            Castling &= ~CastlingStatus.WK;
-                            break;
-                        case A8:
-                            Castling &= ~CastlingStatus.BQ;
-                            break;
-                        case H8:
-                            Castling &= ~CastlingStatus.BK;
-                            break;
-                    }
-                }
-
-                if (move.Promotion)
-                {
-                    //  Pawn capturing and promoting
-                    bb.Promote(move.from, move.to, thisColor, otherPiece, move.PromotionTo);
-                }
-                else
-                {
-                    //  Normal capture
-                    bb.Move(move.from, move.to, thisColor, thisPiece, otherPiece);
-                }
-            }
-            else if (move.Castle)
-            {
-                //  Move the king
-                bb.MoveSimple(move.from, move.to, thisColor, thisPiece);
-
-                //  Then move the rook
-                switch (move.to)
-                {
-                    case C1:
-                        bb.MoveSimple(A1, D1, thisColor, Piece.Rook);
-                        break;
-                    case G1:
-                        bb.MoveSimple(H1, F1, thisColor, Piece.Rook);
-                        break;
-                    case C8:
-                        bb.MoveSimple(A8, D8, thisColor, Piece.Rook);
-                        break;
-                    default:
-                        bb.MoveSimple(H8, F8, thisColor, Piece.Rook);
-                        break;
-                }
-
-                if (thisColor == Color.White)
-                {
-                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                }
-                else
-                {
-                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                }
-            }
-            else if (move.Promotion)
-            {
-                bb.Promote(move.from, move.to, move.PromotionTo);
-            }
-            else
-            {
-                //  A simple move that isn't a capture/castle/promotion/en passant
-                bb.Move(move.from, move.to, thisColor, thisPiece, otherPiece);
-            }
-
-            if (thisPiece == Piece.King && !move.Castle)
-            {
-                //  If we made a king move, we can't castle anymore. If we just castled, don't bother
-                if (thisColor == Color.White)
-                {
-                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                }
-                else
-                {
-                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                }
-            }
-            else if (thisPiece == Piece.Rook && Castling != CastlingStatus.None)
-            {
-                //  If we just moved a rook, update Castling
-                switch (move.from)
-                {
-                    case A1:
-                        Castling &= ~CastlingStatus.WQ;
-                        break;
-                    case H1:
-                        Castling &= ~CastlingStatus.WK;
-                        break;
-                    case A8:
-                        Castling &= ~CastlingStatus.BQ;
-                        break;
-                    case H8:
-                        Castling &= ~CastlingStatus.BK;
-                        break;
-                }
-            }
-
-            if (move.CausesCheck)
-            {
-                CheckInfo.idxChecker = move.idxChecker;
-                CheckInfo.InCheck = true;
-                CheckInfo.InDoubleCheck = false;
-            }
-            else if (move.CausesDoubleCheck)
-            {
-                CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = move.idxChecker;
-                CheckInfo.InDoubleCheck = true;
-                CheckInfo.idxDoubleChecker = move.idxDoubleChecker;
-            }
-            else
-            {
-                //	We are either getting out of a check, or weren't in check at all
-                CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = 64;
-                CheckInfo.InDoubleCheck = false;
-                CheckInfo.idxDoubleChecker = 64;
-            }
-
-            ToMove = Not(ToMove);
-            Moves.Push(move);
-            Hash = Hash.ZobristChangeToMove();
-
-#if DEBUG
-            if (HalfMoves >= LowestRepetitionCount && Hashes.Count >= LowestRepetitionCount)
-            {
-                if (IsThreefoldRepetition())
-                {
-                    Log("Game drawn by threefold repetition!");
-                    IsDrawn = true;
-                }
-                else if (IsFiftyMoveDraw())
-                {
-                    //Log("Game drawn by the 50 move rule!");
-                    IsDrawn = true;
-                }
-            }
-            if (IsInsufficientMaterial())
-            {
-                //Log("Game drawn by insufficient material!");
-                IsDrawn = true;
-            }
-#endif
-
-        }
 
         /// <summary>
         /// Undoes the last move that was made by popping from the Position's stacks.
@@ -665,6 +444,15 @@ namespace LTChess.Core
                 {
                     //  move.to == G8
                     bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
+                }
+
+                if (ourColor == Color.White)
+                {
+                    whiteCastled = true;
+                }
+                else
+                {
+                    blackCastled = false;
                 }
             }
             else if (move.Promotion)
@@ -1007,6 +795,11 @@ namespace LTChess.Core
             int theirKing = lsb(theirKingMask);
             
             int pt = bb.GetPieceAtIndex(move.from);
+            if (pt == Piece.None)
+            {
+                return false;
+            }
+
             if (CheckInfo.InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
