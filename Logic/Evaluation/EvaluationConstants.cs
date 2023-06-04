@@ -14,45 +14,47 @@ namespace LTChess.Search
 
 
         public const int ValuePawn = 100;
-        public const int ValueKnight = 290;
-        public const int ValueBishop = 310;
-        public const int ValueRook = 450;
+        public const int ValueKnight = 310;
+        public const int ValueBishop = 330;
+        public const int ValueRook = 510;
         public const int ValueQueen = 1000;
 
         public static readonly double[] ScaleMaterial = { 1.0, 2.0 };
-        public static readonly double[] ScalePawns = { 0.4, 0.75 };
-        public static readonly double[] ScaleKnights = { 0.6, 0.6 };
-        public static readonly double[] ScaleBishops = { 0.7, 0.7 };
-        public static readonly double[] ScaleRooks = { 0.7, 0.7 };
-        public static readonly double[] ScaleQueens = { 0.8, 0.8 };
-        public static readonly double[] ScaleKingSafety = { 0.15, 0.3 };
-        public static readonly double[] ScaleThreats = { 0.4, 0.4 };
-        public static readonly double[] ScaleSpace = { 0.2, 0.2 };
+        public static readonly double[] ScalePawns = { 1.0, 1.0 };
+        public static readonly double[] ScaleKnights = { 1.0, 1.0 };
+        public static readonly double[] ScaleBishops = { 1.0, 1.0 };
+        public static readonly double[] ScaleRooks = { 1.0, 1.0 };
+        public static readonly double[] ScaleQueens = { 1.0, 1.2 };
+        public static readonly double[] ScaleKingSafety = { 1.0, 1.0 };
+        public static readonly double[] ScaleThreats = { 0.5, 0.5 };
+        public static readonly double[] ScaleSpace = { 1.0, 1.0 };
 
-        public const int ScorePawnSupport = 2;
-        public const int ScoreIsolatedPawn = -3;
-        public const int ScorePasser = 5;
-        public const int ScorePromotingPawn = ValueQueen - ValuePawn;
+        public const double ScorePawnDoubled = -30;
+        public const double ScorePawnSupport = 15;
+        public const double ScoreIsolatedPawn = -10;
+        public const double ScorePasser = 10;
+        public const double ScorePromotingPawn = ValueQueen - ValuePawn;
 
-        public const int ScoreKingRingAttack = 25;
-        public const int ScoreKingOutterRingAttack = 10;
+        public const double ScoreKingRingAttack = 10;
+        public const double ScoreKingOutterRingAttack = 2;
 
-        public const int ScorePerSquare = 10;
+        public const double ScorePerSquare = 10;
+        public const double ScoreUndevelopedPiece = -20;
 
-        public const int ScoreBishopOutpost = 15;
-        public const int ScoreBishopPair = 40;
+        public const double ScoreBishopOutpost = 15;
+        public const double ScoreBishopPair = 40;
 
-        public const int ScoreRookOpenFile = 30;
-        public const int ScoreRookSemiOpenFile = 15;
+        public const double ScoreRookOpenFile = 30;
+        public const double ScoreRookSemiOpenFile = 15;
 
-        public const double CoefficientPawnAttack = 1.6;
-        public const double CoefficientHanging = 1.7;
+        public const double CoefficientPawnAttack = 1.3;
+        public const double CoefficientHanging = 1.6;
         public const double CoefficientUnderdefended = 1.4;
         public const double CoefficientPositiveTrade = 1.2;
-        public const double CoefficientPinnedQueen = 0.5;
+        public const double CoefficientPinnedQueen = 0.4;
 
-        public const double CoefficientPSQTCenter = 0.6;
-        public const double CoefficientPSQTPawns = 1;
+        public const double CoefficientPSQTCenter = 0.7;
+        public const double CoefficientPSQTPawns = 0.4;
         public const double CoefficientPSQTKnights = 1;
 
 
