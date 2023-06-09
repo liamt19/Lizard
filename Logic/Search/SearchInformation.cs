@@ -118,6 +118,22 @@ namespace LTChess.Search
             this.OnDepthFinish = () => Log(FormatSearchInformation(this));
         }
 
+        public static SearchInformation Clone(SearchInformation other)
+        {
+            Position copyPos = new Position(other.Position.GetFEN());
+            SearchInformation copy = (SearchInformation) other.MemberwiseClone();
+
+            copy.Position = copyPos;
+
+            copy.PV = new Move[other.PV.Length];
+            for (int i = 0; i < other.PV.Length; i++)
+            {
+                copy.PV[i] = other.PV[i];
+            }
+            
+            return copy;
+        }
+
         public string GetPVString(bool EngineFormat = false)
         {
             StringBuilder pv = new StringBuilder();
