@@ -707,6 +707,20 @@ namespace LTChess.Search
             kingScore.white -= (bAtt * ScoreKingRingAttack);
             kingScore.white -= (bAttOut * ScoreKingOutterRingAttack);
 
+            //  I really don't know why it likes playing Ka1/Kh1 so often,
+            //  so giving it a small penalty here to stop it from doing so
+            //  unless it is necessary.
+            if ((SquareBB[whiteKing] & Corners) != 0)
+            {
+                kingScore.white += ScoreKingInCorner;
+            }
+
+            if ((SquareBB[blackKing] & Corners) != 0)
+            {
+                kingScore.black += ScoreKingInCorner;
+            }
+
+
             //  Divide the threat score because it might be risky to actually capture the piece (deflection)
             double riskCoefficient = 1;
 
