@@ -97,6 +97,11 @@ namespace LTChess
                     int depth = int.Parse(input.Substring(9));
                     Task.Run(() => DoPerftDivide(depth, false));
                 }
+                else if (input.StartsWithIgnoreCase("go perftp "))
+                {
+                    int depth = int.Parse(input.Substring(10));
+                    Task.Run(() => DoPerftDivideParallel(depth, false));
+                }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
                     string move = input.Substring(5).ToLower();
@@ -112,6 +117,8 @@ namespace LTChess
                     {
                         info.MaxDepth = selDepth;
                     }
+
+                    info.MaxSearchTime = SearchConstants.MaxSearchTime;
 
                     Task.Run(() =>
                     {
@@ -371,6 +378,32 @@ namespace LTChess
 
             Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
         }
+
+        public static void DoPerftDivideParallel(int depth, bool sortAlphabetical = true)
+        {
+            ulong res = 0;
+            Stopwatch sw = Stopwatch.StartNew();
+            List<PerftNode> nodes = p.PerftDivideParallel(depth);
+            sw.Stop();
+
+            foreach (PerftNode node in nodes)
+            {
+                if (!sortAlphabetical)
+                {
+                    Log(node.root + ": " + node.number);
+                }
+
+                res += node.number;
+            }
+
+            if (sortAlphabetical)
+            {
+                nodes.OrderBy(x => x.root).ToList().ForEach(node => Log(node.root + ": " + node.number));
+            }
+
+            Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
+        }
+
 
         public static void PrintSearchInfo()
         {

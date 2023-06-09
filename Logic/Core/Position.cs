@@ -1483,6 +1483,39 @@ namespace LTChess.Core
         }
 
         /// <summary>
+        /// Same as PerftDivide, but uses Parallel.For rather than a regular for loop.
+        /// This ran 5-6x faster for me on a Core i5-12500H.
+        /// </summary>
+        public List<PerftNode> PerftDivideParallel(int depth)
+        {
+            if (depth <= 0)
+            {
+                return new List<PerftNode>();
+            }
+
+            string rootFEN = this.GetFEN();
+
+            Move[] mlist = new Move[NORMAL_CAPACITY];
+            int size = GenAllLegalMovesTogether(mlist);
+
+            List<PerftNode> list = new List<PerftNode>(size);
+
+            Parallel.For(0, size, i =>
+            {
+                PerftNode pn = new PerftNode();
+                Position threadPosition = new Position(rootFEN);
+
+                pn.root = mlist[i].ToString();
+                threadPosition.MakeMove(mlist[i]);
+                pn.number = threadPosition.Perft(depth - 1);
+
+                list.Add(pn);
+            });
+
+            return list;
+        }
+
+        /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
         /// </summary>
         /// <param name="fen">The FEN to set the position to</param>
