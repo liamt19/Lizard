@@ -26,8 +26,12 @@ namespace LTChess.Core
 
         public Dictionary<string, UCIOption> options;
 
+        private static object logFileLock = new object();
+
         public UCI()
         {
+            
+
             options = new Dictionary<string, UCIOption>
             {
                 { UCIOption.Opt_DefaultSearchTime, new UCIOption(UCIOption.Opt_DefaultSearchTime, "spin", (DefaultSearchTime / 1000).ToString(), "1", "120")},
@@ -44,10 +48,9 @@ namespace LTChess.Core
             info.OnSearchFinish = OnSearchDone;
             if (File.Exists(LogFileName))
             {
-                using StreamWriter LogFileStream = new(LogFileName, append: true);
-                LogFileStream.WriteLine("\n\n\n**************************************************");
-                LogFileStream.WriteLine(CenteredString(DateTime.Now.ToString(), 50));
-                LogFileStream.WriteLine("**************************************************");
+                LogString("\n\n**************************************************\n" 
+                    + CenteredString(DateTime.Now.ToString(), 50) + "\n" 
+                    + "**************************************************");
             }
         }
 
@@ -59,17 +62,22 @@ namespace LTChess.Core
 
         public static void LogString(string s)
         {
-            using StreamWriter LogFileStream = new(LogFileName, append: true);
-#if DEBUG
-            long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.debug_time_off;
-            LogFileStream.WriteLine(timeMS.ToString("0000000") + " " + s);
-#else
-            LogFileStream.WriteLine(s);
+            lock (logFileLock)
+            {
+                using (FileStream fs = new FileStream(LogFileName, FileMode.Append, FileAccess.Write, FileShare.Read))
+                {
+                    using StreamWriter sw = new StreamWriter(fs);
 
+#if DEBUG
+                    long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.debug_time_off;
+                    sw.WriteLine(timeMS.ToString("0000000") + " " + s);
+#else
+                    sw.WriteLine(s);
 #endif
 
-            LogFileStream.Flush();
-
+                    sw.Flush();
+                } 
+            }
         }
 
         public string[] ReceiveString(out string cmd)
