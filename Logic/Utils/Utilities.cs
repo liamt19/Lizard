@@ -610,7 +610,7 @@ namespace LTChess.Util
         {
             int depth = info.MaxDepth;
             int selDepth = depth;
-            double time = Math.Round(info.SearchTime);
+            double time = Math.Max(1, Math.Round(info.SearchTime));
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
             int nodesPerSec = ((int)(nodes / (time / 1000)));
