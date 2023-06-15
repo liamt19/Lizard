@@ -102,7 +102,7 @@ namespace LTChess.Search
             this.Position = p;
             this.MaxDepth = depth;
 
-            PV = new Move[MAX_DEPTH];
+            PV = new Move[Utilities.MaxDepth];
 
             this.OnDepthFinish = () => Log(FormatSearchInformation(this));
         }
@@ -113,11 +113,14 @@ namespace LTChess.Search
             this.MaxDepth = depth;
             this.MaxSearchTime = searchTime;
 
-            PV = new Move[MAX_DEPTH];
+            PV = new Move[Utilities.MaxDepth];
 
             this.OnDepthFinish = () => Log(FormatSearchInformation(this));
         }
 
+        /// <summary>
+        /// Creates a deep copy of an existing <c>SearchInformation</c>
+        /// </summary>
         public static SearchInformation Clone(SearchInformation other)
         {
             Position copyPos = new Position(other.Position.GetFEN());
@@ -134,6 +137,14 @@ namespace LTChess.Search
             return copy;
         }
 
+        /// <summary>
+        /// Returns a string with the PV line from this search, 
+        /// which begins with the best move, followed by a series of moves that we think will be played in response.
+        /// <br></br>
+        /// If <paramref name="EngineFormat"/> is true, then the string will look like "e2e4 e7e5 g1g3 b8c6" which is what
+        /// chess UCI and other engines programs expect a PV to look like.
+        /// </summary>
+        /// <param name="EngineFormat">If false, provides the line in human readable form (i.e. Nxf7+ instead of e5f7)</param>
         public string GetPVString(bool EngineFormat = false)
         {
             StringBuilder pv = new StringBuilder();
