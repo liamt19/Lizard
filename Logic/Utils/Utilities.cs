@@ -19,19 +19,19 @@ namespace LTChess.Util
 {
     public static class Utilities
     {
-        public const int TOP = 7;
-        public const int BOT = 0;
-        public const int LEFT = 0;
-        public const int RIGHT = 7;
+        public const int IndexTop = 7;
+        public const int IndexBot = 0;
+        public const int IndexLeft = 0;
+        public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
         public const string EngineBuildVersion = "5.0";
         public const string EngineTagLine = "Got to 44! in puzzle rush";
 
-        public const int MAX_CAPACITY = 512;
-        public const int NORMAL_CAPACITY = 128;
-        public const int LSB_EMPTY = 64;
-        public const int MAX_DEPTH = 64;
+        public const int MaxListCapacity = 512;
+        public const int NormalListCapacity = 128;
+        public const int LSBEmpty = 64;
+        public const int MaxDepth = 64;
 
         public const ulong Border = 0xFF818181818181FF;
         public const ulong PawnPromotionSquares = 0xFF000000000000FF;
@@ -70,6 +70,10 @@ namespace LTChess.Util
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
+        /// <summary>
+        /// This is set to true when the program receives the "uci" command, 
+        /// and causes calls to the Log method to write to a file rather than stdout.
+        /// </summary>
         public static bool UCIMode = false;
 
         public static long debug_time_off = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
@@ -97,18 +101,6 @@ namespace LTChess.Util
             }
 #endif
             Debug.WriteLine(s);
-        }
-        
-        public static void LogW(string s)
-        {
-            Console.WriteLine("Warn: " + s);
-            Debug.WriteLine("Warn: " + s);
-        }
-
-        public static void LogE(string s)
-        {
-            Console.WriteLine("Error: " + s);
-            Debug.WriteLine("Error: " + s);
         }
 		
         public static class Direction
@@ -293,7 +285,7 @@ namespace LTChess.Util
                 return Piece.King;
             }
 
-            LogE("Failed parsing FEN character '" + c + "'");
+            Log("ERROR Failed parsing FEN character '" + c + "'");
             return Piece.None;
         }
 
@@ -539,6 +531,20 @@ namespace LTChess.Util
             return sb.ToString();
         }
 
+        public static string SpanToString<T>(Span<T> list) where T : struct
+        {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < list.Length; i++)
+            {
+                sb.Append(list[i].ToString() + ", ");
+            }
+            if (sb.Length > 3)
+            {
+                sb.Remove(sb.Length - 2, 2);
+            }
+            return sb.ToString();
+        }
+
         public static string Stringify(this Span<Move> list)
         {
             StringBuilder sb = new StringBuilder();
@@ -606,7 +612,12 @@ namespace LTChess.Util
             return s.Contains(other, StringComparison.OrdinalIgnoreCase);
         }
 
-        public static string FormatSearchInformation(SearchInformation info, bool TraceEval = false, bool MakePVReadable = false)
+        /// <summary>
+        /// Returns a string representing the current search statistics, which is sent to chess GUI programs.
+        /// <br></br>
+        /// If <paramref name="TraceEval"/> is true, an evaluation of the position will be printed as well.
+        /// </summary>
+        public static string FormatSearchInformation(SearchInformation info, bool TraceEval = false)
         {
             int depth = info.MaxDepth;
             int selDepth = depth;

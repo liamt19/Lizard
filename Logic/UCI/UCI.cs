@@ -346,7 +346,7 @@ namespace LTChess.Core
                 {
                     info.MaxNodes = ulong.MaxValue - 1;
                     info.MaxSearchTime = MaxSearchTime;
-                    info.MaxDepth = MAX_DEPTH;
+                    info.MaxDepth = MaxDepth;
                 }
                 else if (param[i] == "wtime")
                 {
@@ -431,6 +431,7 @@ namespace LTChess.Core
 
         private void OnSearchDone()
         {
+            //  TODO: make sure we can't send illegal moves
             if (!info.SearchFinishedCalled)
             {
                 info.SearchFinishedCalled = true;

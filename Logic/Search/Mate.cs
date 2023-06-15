@@ -34,7 +34,7 @@ namespace LTChess.Search
 
         private static int Deepen(int currDepth)
         {
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMoves(list);
 
             if (size == 0)
@@ -59,7 +59,7 @@ namespace LTChess.Search
             Span<int> results = stackalloc int[size];
             int movesThatDontMate = 0;
 
-            int fastestMate = MAX_DEPTH;
+            int fastestMate = MaxDepth;
             int fastestIndex = 0;
 
             int slowestMate = MATE_NONE;
@@ -108,7 +108,7 @@ namespace LTChess.Search
 
             if (p.ToMove == StartColor)
             {
-                if (fastestMate != MAX_DEPTH)
+                if (fastestMate != MaxDepth)
                 {
                     if (currDepth == 0)
                     {

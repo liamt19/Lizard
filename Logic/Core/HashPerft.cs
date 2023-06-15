@@ -49,7 +49,7 @@ namespace LTChess.Util
                 return list;
             }
 
-            Span<Move> mlist = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> mlist = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMoves(mlist);
             for (int i = 0; i < size; i++)
             {
@@ -70,7 +70,7 @@ namespace LTChess.Util
         public ulong Perft(int depth)
         {
             ulong n = 0;
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMoves(list);
 
             if (depth == 1)

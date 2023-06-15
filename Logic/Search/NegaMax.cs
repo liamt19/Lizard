@@ -152,7 +152,7 @@ namespace LTChess.Search
                 }
             }
 
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = info.Position.GenAllLegalMoves(list);
 
             if (size == 0)
@@ -278,13 +278,9 @@ namespace LTChess.Search
             //  https://www.chessprogramming.org/Move_Ordering#Typical_move_ordering
             for (int i = 0; i < numMoves; i++)
             {
-                if (moves[i].EnPassant)
+                if (moves[i].Equals(Best))
                 {
-                    scores[i] = MoveScores.EnPassant;
-                }
-                else if (moves[i].Equals(Best))
-                {
-                    scores[i] = BestIsPV ? MoveScores.PVMove : MoveScores.TTHit;
+                    //scores[i] = BestIsPV ? MoveScores.PVMove : MoveScores.TTHit;
                 }
                 else if (moves[i].Capture)
                 {
@@ -356,7 +352,7 @@ namespace LTChess.Search
             int ourKing = bb.KingIndex(position.ToMove);
 
             TTEntry stored = TranspositionTable.Probe(position.Hash);
-            if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(position.Hash) && numMoves < MAX_DEPTH)
+            if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(position.Hash) && numMoves < MaxDepth)
             {
                 if (!bb.IsPseudoLegal(stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
                 {

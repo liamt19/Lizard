@@ -69,12 +69,12 @@ namespace LTChess.Core
         /// </summary>
         public Position(string fen = InitialFEN)
         {
-            Moves = new FasterStack<Move>(MAX_CAPACITY);
-            Captures = new FasterStack<int>(NORMAL_CAPACITY);
-            Castles = new FasterStack<CastlingStatus>(MAX_CAPACITY);
-            Checks = new FasterStack<CheckInfo>(MAX_CAPACITY);
-            Hashes = new FasterStack<ulong>(MAX_CAPACITY);
-            HalfmoveClocks = new FasterStack<int>(MAX_CAPACITY);
+            Moves = new FasterStack<Move>(MaxListCapacity);
+            Captures = new FasterStack<int>(NormalListCapacity);
+            Castles = new FasterStack<CastlingStatus>(MaxListCapacity);
+            Checks = new FasterStack<CheckInfo>(MaxListCapacity);
+            Hashes = new FasterStack<ulong>(MaxListCapacity);
+            HalfmoveClocks = new FasterStack<int>(MaxListCapacity);
 
             this.bb = new Bitboard();
 
@@ -91,7 +91,7 @@ namespace LTChess.Core
         /// <returns>True if <paramref name="moveStr"/> was a recognized and legal move.</returns>
         public bool TryMakeMove(string moveStr)
         {
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMoves(list);
             for (int i = 0; i < size; i++)
             {
@@ -505,7 +505,7 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public int GenAllLegalMoves(in Span<Move> legal)
         {
-            Span<Move> pseudo = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
             int size = 0;
 
             ulong pinned = bb.PinnedPieces(ToMove);
@@ -538,7 +538,7 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public int GenAllLegalMovesTogether(in Span<Move> legal)
         {
-            Span<Move> pseudo = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
             int size = 0;
 
             ulong pinned = bb.PinnedPieces(ToMove);
@@ -806,7 +806,6 @@ namespace LTChess.Core
                 return false;
             }
 
-            //  TODO: Look at this later to make sure GetColorAtIndex(ToMove) is still ok.
             //int ourColor = bb.GetColorAtIndex(move.from);
             int ourColor = ToMove;
             int theirColor = Not(ourColor);
@@ -1431,7 +1430,7 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public ulong Perft(int depth)
         {
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             //int size = GenAllLegalMoves(list);
             int size = GenAllLegalMovesTogether(list);
 
@@ -1464,7 +1463,7 @@ namespace LTChess.Core
                 return list;
             }
 
-            Span<Move> mlist = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> mlist = stackalloc Move[NormalListCapacity];
             //int size = GenAllLegalMoves(mlist);
             int size = GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
@@ -1495,7 +1494,7 @@ namespace LTChess.Core
 
             string rootFEN = this.GetFEN();
 
-            Move[] mlist = new Move[NORMAL_CAPACITY];
+            Move[] mlist = new Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(mlist);
 
             List<PerftNode> list = new List<PerftNode>(size);
@@ -1560,7 +1559,7 @@ namespace LTChess.Core
                         }
                         else
                         {
-                            LogE("x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
+                            Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
                         }
                     }
                 }

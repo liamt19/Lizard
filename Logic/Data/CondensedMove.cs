@@ -19,13 +19,13 @@ namespace LTChess.Data
 
         //  fffffftttttteeeeeeccccccdddddd
 
-        public const int indexSize = 6;
-        public const int dataSize = (indexSize * 5);
+        public const int IndexSize = 6;
+        public const int DataSize = (IndexSize * 5);
 
-        public const int promotionToIndex = 8;
-        public const int numFlags = 6;
+        public const int PromotionToIndex = 8;
+        public const int NumFlags = 6;
 
-        public const int flagsSize = (3 + numFlags);
+        public const int FlagsSize = (3 + NumFlags);
 
         private int data;
         private short flags;
@@ -33,13 +33,13 @@ namespace LTChess.Data
 
         public CondensedMove(Move m)
         {
-            data = (m.from << (dataSize - indexSize));
-            data |= (m.to << (dataSize - (2 * indexSize)));
-            data |= (m.idxEnPassant << (dataSize - (3 * indexSize)));
-            data |= (m.idxChecker << (dataSize - (4 * indexSize)));
-            data |= (m.idxDoubleChecker << (dataSize - (5 * indexSize)));
+            data = (m.from << (DataSize - IndexSize));
+            data |= (m.to << (DataSize - (2 * IndexSize)));
+            data |= (m.idxEnPassant << (DataSize - (3 * IndexSize)));
+            data |= (m.idxChecker << (DataSize - (4 * IndexSize)));
+            data |= (m.idxDoubleChecker << (DataSize - (5 * IndexSize)));
             
-            flags = (short)(m.PromotionTo << promotionToIndex);
+            flags = (short)(m.PromotionTo << PromotionToIndex);
             flags |= (short)((m.Capture ? 1 : 0) << 5);
             flags |= (short)((m.EnPassant ? 1 : 0) << 4);
             flags |= (short)((m.Castle ? 1 : 0) << 3);
@@ -93,17 +93,17 @@ namespace LTChess.Data
             return sb.ToString();
         }
 
-        public int From => (data >> (dataSize - indexSize));
+        public int From => (data >> (DataSize - IndexSize));
         
-        public int To => (data >> (dataSize - (2 * indexSize)));
+        public int To => (data >> (DataSize - (2 * IndexSize)));
         
-        public int idxEnPassant => (data >> (dataSize - (3 * indexSize)));
+        public int idxEnPassant => (data >> (DataSize - (3 * IndexSize)));
         
-        public int idxChecker => (data >> (dataSize - (4 * indexSize)));
+        public int idxChecker => (data >> (DataSize - (4 * IndexSize)));
 
-        public int idxDoubleChecker => (data >> (dataSize - (5 * indexSize)));
+        public int idxDoubleChecker => (data >> (DataSize - (5 * IndexSize)));
 
-        public int PromotionTo => (flags >> promotionToIndex);
+        public int PromotionTo => (flags >> PromotionToIndex);
 
         public bool Capture => ((flags & 0b100000) != 0);
 

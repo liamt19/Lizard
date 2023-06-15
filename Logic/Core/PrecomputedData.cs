@@ -233,12 +233,12 @@ namespace LTChess.Data
                 InfoA8H1[i] = new DiagonalInfo[64];
                 for (int j = 0; j < 64; j++)
                 {
-                    bool onSame = DetOnSameDiagonal(i, j, Diagonal.D_A1H8, out int a, out int b);
-                    DiagonalInfo d1 = new DiagonalInfo(i, j, Diagonal.D_A1H8, onSame, a, b);
+                    bool onSame = DetOnSameDiagonal(i, j, Diagonal.Diagonal_A1H8, out int a, out int b);
+                    DiagonalInfo d1 = new DiagonalInfo(i, j, Diagonal.Diagonal_A1H8, onSame, a, b);
                     InfoA1H8[i][j] = d1;
 
-                    bool onSame1 = DetOnSameDiagonal(i, j, Diagonal.D_A8H1, out int c, out int d);
-                    DiagonalInfo d2 = new DiagonalInfo(i, j, Diagonal.D_A8H1, onSame1, c, d);
+                    bool onSame1 = DetOnSameDiagonal(i, j, Diagonal.Diagonal_A8H1, out int c, out int d);
+                    DiagonalInfo d2 = new DiagonalInfo(i, j, Diagonal.Diagonal_A8H1, onSame1, c, d);
                     InfoA8H1[i][j] = d2;
                 }
             }
@@ -510,7 +510,7 @@ namespace LTChess.Data
 
                     if (OnSameDiagonal(s1, s2, out DiagonalInfo info))
                     {
-                        int[] arr = (info.direction == Diagonal.D_A1H8) ? DiagonalIndicesA1H8[s1] : DiagonalIndicesA8H1[s1];
+                        int[] arr = (info.direction == Diagonal.Diagonal_A1H8) ? DiagonalIndicesA1H8[s1] : DiagonalIndicesA8H1[s1];
                         for (int i = Math.Max(info.i1, info.i2) - 1; i > Math.Min(info.i1, info.i2); i--)
                         {
                             LineBB[s1][s2] |= SquareBB[arr[i]];
@@ -566,13 +566,13 @@ namespace LTChess.Data
         /// </summary>
         /// <param name="index1">The first index.</param>
         /// <param name="index2">The second index.</param>
-        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.D_A1H8 if they don't.</param>
+        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.Diagonal_A1H8 if they don't.</param>
         /// <param name="iIndex1">The index that <paramref name="index1"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         /// <param name="iIndex2">The index that <paramref name="index2"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         [MethodImpl(Inline)]
         private static unsafe bool DetOnSameDiagonal(int index1, int index2, int direction, out int iIndex1, out int iIndex2)
         {
-            if (direction == Diagonal.D_A1H8)
+            if (direction == Diagonal.Diagonal_A1H8)
             {
                 iIndex1 = iIndex2 = 8;
                 ulong d1 = DiagonalMasksA1H8[index1];
@@ -639,7 +639,7 @@ namespace LTChess.Data
         /// </summary>
         /// <param name="index1">The first index.</param>
         /// <param name="index2">The second index.</param>
-        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.D_A1H8 if they don't.</param>
+        /// <param name="diagonal">Set to the Diagonal that the two indicies share, or Diagonal.Diagonal_A1H8 if they don't.</param>
         /// <param name="iIndex1">The index that <paramref name="index1"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         /// <param name="iIndex2">The index that <paramref name="index2"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         [MethodImpl(Inline)]

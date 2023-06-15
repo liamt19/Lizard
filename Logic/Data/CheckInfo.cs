@@ -12,10 +12,10 @@ namespace LTChess.Data
     /// </summary>
     public struct CheckInfo
     {
-        public const int NONE = 64;
+        public const int NoCheckers = 64;
 
-        public int idxChecker = NONE;
-        public int idxDoubleChecker = NONE;
+        public int idxChecker = NoCheckers;
+        public int idxDoubleChecker = NoCheckers;
 
         public bool InCheck = false;
         public bool InDoubleCheck = false;
@@ -37,7 +37,7 @@ namespace LTChess.Data
             }
             else
             {
-                return "NONE";
+                return "NoCheckers";
             }
         }
     }

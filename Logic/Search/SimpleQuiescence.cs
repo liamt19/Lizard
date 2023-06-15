@@ -17,6 +17,8 @@ namespace LTChess.Search
                 return 0;
             }
 
+            info.NodeCount++;
+
             int standingPat;
 
 #if DEBUG
@@ -63,7 +65,7 @@ namespace LTChess.Search
                 alpha = standingPat;
             }
 
-            Span<Move> legal = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> legal = stackalloc Move[NormalListCapacity];
             int size = info.Position.GenAllLegalMoves(legal);
 
 

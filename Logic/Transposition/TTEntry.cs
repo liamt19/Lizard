@@ -16,7 +16,7 @@ namespace LTChess.Transposition
     public struct TTEntry
     {
         public ushort Key;
-        public const int KEYSHIFT = 48;
+        public const int KeyShift = 48;
 
         public short Eval;
         public NodeType NodeType;
@@ -25,7 +25,7 @@ namespace LTChess.Transposition
 
         public TTEntry(ulong key, short eval, NodeType nodeType, int depth, Move move)
         {
-            this.Key = (ushort)(key >> KEYSHIFT);
+            this.Key = (ushort)(key >> KeyShift);
             this.Eval = eval;
             this.NodeType = nodeType;
             this.Depth = (byte)depth;
@@ -34,7 +34,7 @@ namespace LTChess.Transposition
 
         public static ushort MakeKey(ulong posHash)
         {
-            return (ushort)(posHash >> KEYSHIFT);
+            return (ushort)(posHash >> KeyShift);
         }
 
         public override string ToString()

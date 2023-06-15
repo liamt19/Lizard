@@ -634,16 +634,6 @@ namespace LTChess.Search
                     thisAttacks = poplsb(thisAttacks);
                 }
 
-                //  TODO: IsPinned sucks and there is a better way to figure this out.
-                //  Opponent gets a bonus if they are pinning our queen
-                //if (false && PositionUtilities.IsPinned(bb, idx, Color.White, whiteKing, out int pinner))
-                //{
-                //    int theirPiece = bb.PieceTypes[pinner];
-                //    int theirValue = GetPieceValue(theirPiece);
-
-                //    queenScore.black += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
-                //}
-
                 materialScore.white += ValueQueen;
 
                 whiteQueens = poplsb(whiteQueens);
@@ -678,15 +668,6 @@ namespace LTChess.Search
                     }
                     thisAttacks = poplsb(thisAttacks);
                 }
-
-                //  Opponent gets a bonus if they are pinning our queen
-                //if (PositionUtilities.IsPinned(bb, idx, Color.Black, blackKing, out int pinner))
-                //{
-                //    int theirPiece = bb.PieceTypes[pinner];
-                //    int theirValue = GetPieceValue(theirPiece);
-
-                //    queenScore.white += ((ValueQueen - theirValue) * CoefficientPinnedQueen);
-                //}
 
                 materialScore.black += ValueQueen;
 
@@ -938,7 +919,7 @@ namespace LTChess.Search
             int abs = Math.Abs(score - ScoreMate);
             mateIn = abs;
 
-            if (abs < MAX_DEPTH)
+            if (abs < MaxDepth)
             {
                 return true;
             }

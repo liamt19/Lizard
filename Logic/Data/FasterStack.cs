@@ -9,8 +9,8 @@ namespace LTChess.Data
 {
     public class FasterStack<T>
     {
-        public const int MAX_CAPACITY = 512;
-        public const int NORMAL_CAPACITY = 256;
+        public const int MaxCapacity = 512;
+        public const int NormalCapacity = 256;
 
         private readonly T[] arr;
         private int size;
@@ -26,7 +26,7 @@ namespace LTChess.Data
         [MethodImpl(Inline)]
         public FasterStack()
         {
-            arr = new T[NORMAL_CAPACITY];
+            arr = new T[NormalCapacity];
         }
 
         [MethodImpl(Inline)]

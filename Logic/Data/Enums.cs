@@ -13,13 +13,13 @@ namespace LTChess.Data
         /// Diagonally up and to the right, from white's perspective. 
         /// The longest diagonal in this direction contains A1, B2, ... G7, H8.
         /// </summary>
-        public const int D_A1H8 = 0;
+        public const int Diagonal_A1H8 = 0;
 
         /// <summary>
         /// Diagonally down and to the right, from white's perspective. 
         /// The longest diagonal in this direction contains A8, B7, ... G2, H1.
         /// </summary>
-        public const int D_A8H1 = 1;
+        public const int Diagonal_A8H1 = 1;
     }
 
     public class Color
