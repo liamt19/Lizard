@@ -11,6 +11,7 @@ using Timer = System.Timers.Timer;
 using static System.Formats.Asn1.AsnWriter;
 using static LTChess.Search.SearchConstants;
 using LTChess.Data;
+using LTChess.Util;
 
 namespace LTChess.Search
 {
@@ -49,9 +50,15 @@ namespace LTChess.Search
         /// <summary>
         /// Begin a new search with the parameters in <paramref name="info"/>.
         /// This performs iterative deepening, which searches at higher and higher depths as time goes on.
+        /// <br></br>
+        /// If <paramref name="allowDepthIncrease"/> is true, then the search will continue above the requested maximum depth
+        /// so long as there is still search time remaining.
         /// </summary>
         public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
+            //  TODO: Clearing the TT for new searches
+            //  to prevent illegal moves defeats the purpose.
+            TranspositionTable.Clear();
             TotalSearchTime.Restart();
 
             int depth = 1;
@@ -115,8 +122,6 @@ namespace LTChess.Search
 
                 aspirationFailed = false;
                 ulong prevNodes = info.NodeCount;
-                //Log("Before Deepen, info -> " + info.ToString());
-                //Log("Before Deepen, TotalSearchTime: " + TotalSearchTime.Elapsed.TotalMilliseconds);
                 Deepen(ref info, alpha, beta);
                 ulong afterNodes = info.NodeCount;
 
@@ -251,12 +256,12 @@ namespace LTChess.Search
                 return 0;
             }
 
-            info.NodeCount++;
-
             if (depth <= 0)
             {
                 return SimpleQuiescence.FindBest(ref info, alpha, beta, depth);
             }
+
+            info.NodeCount++;
 
             Position pos = info.Position;
             Bitboard bb = pos.bb;
@@ -265,7 +270,7 @@ namespace LTChess.Search
             Move BestMove = Move.Null;
             int startingAlpha = alpha;
 
-            bool useTT = true;
+            bool useTT = false;
             if (useTT)
             {
                 if (ttEntry.NodeType != NodeType.Invalid && ttEntry.Key == TTEntry.MakeKey(posHash) && !ttEntry.BestMove.IsNull())
@@ -293,7 +298,7 @@ namespace LTChess.Search
                         {
                             if (ttEntry.Eval > alpha)
                             {
-                                //  This nose is known to be better than alpha
+                                //  This node is known to be better than alpha
                                 alpha = ttEntry.Eval;
                             }
                         }
@@ -320,8 +325,23 @@ namespace LTChess.Search
                 }
             }
 
+            bool useStaticEval = false;
+            if (useStaticEval)
+            {
+                int staticEval = 0;
+                ETEntry etEntry = EvaluationTable.Probe(posHash);
+                if (etEntry.key == EvaluationTable.InvalidKey || !etEntry.Validate(posHash) || etEntry.score == ETEntry.InvalidScore)
+                {
+                    staticEval = Evaluation.Evaluate(info.Position.bb, info.Position.ToMove);
+                    EvaluationTable.Save(posHash, (short)staticEval);
+                }
+                else
+                {
+                    staticEval = etEntry.score;
+                }
+            }
 
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllLegalMoves(list);
 
             //  No legal moves, is this checkmate or a draw?
@@ -337,8 +357,7 @@ namespace LTChess.Search
                 }
             }
 
-            //  Seems to help
-            list.SortByCheck();
+            SortByMoveScores(ref info, list, size, ttEntry.BestMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -346,17 +365,10 @@ namespace LTChess.Search
 
                 if (info.StopSearching)
                 {
-
-                    /**
-                    if (depth == info.MaxDepth)
-                    {
-                        Log("Branch " + i + "/" + size + " at depth " + depth + " StopSearching is " + info.StopSearching + " ret 0");
-                    }
-                    */
-
                     return 0;
                 }
-                else if (info.Position.WouldCauseDraw(list[i]))
+                
+                if (info.Position.WouldCauseDraw(list[i]))
                 {
                     //  Instead of looking further and probably breaking something,
                     //  Just evaluate this move as a draw here and keep looking at the others.
@@ -369,21 +381,13 @@ namespace LTChess.Search
                     pos.UnmakeMove();
                 }
 
-
                 if (score >= beta)
                 {
-#if DEBUG
-                    //Log(depth + " beta cutoff on move " + list[i].ToString(pos) + ", score " + score + " >= beta " + beta);
-#endif
                     return beta;
                 }
 
                 if (score > alpha)
                 {
-#if DEBUG
-                    //Log(depth + " new best move " + list[i].ToString(pos) + ", score " + score + " > alpha " + alpha);
-#endif
-
                     alpha = score;
                     BestMove = list[i];
                 }
@@ -396,7 +400,7 @@ namespace LTChess.Search
             if (setTT)
             {
                 NodeType nodeType;
-                if (alpha < startingAlpha)
+                if (alpha <= startingAlpha)
                 {
                     nodeType = NodeType.Alpha;
                 }
@@ -413,53 +417,146 @@ namespace LTChess.Search
                 //  TODO this looks misplaced
                 info.BestMove = BestMove;
                 info.BestScore = alpha;
-
-#if DEBUG
-                SearchStatistics.SetTTs += 1;
-#endif
             }
-#if DEBUG
-            else
-            {
-                SearchStatistics.NotSetTTs += 1;
-            }
-#endif
 
 
 
             return alpha;
         }
 
-        public static int GetPV(SearchInformation info, in Move[] moves, int numMoves)
+        /// <summary>
+        /// Assigns each move in the list a score based on things like whether it is a capture, causes check, etc.
+        /// This is important for iterative deepening since we generally have a good idea of which moves are good/bad
+        /// based on the results from the previous depth, and don't necessarily want to spend time looking at 
+        /// a "bad" move's entire search tree again when we already have a couple moves that look promising.
+        /// </summary>
+        /// <param name="pvOrTTMove">This is set to the TTEntry.BestMove from the previous depth, or possibly Move.Null</param>
+        [MethodImpl(Inline)]
+        private static void SortByMoveScores(ref SearchInformation info, Span<Move> list, int size, Move pvOrTTMove)
         {
-            Position position = info.Position;
-            Bitboard bb = position.bb;
-
-            int theirKing = bb.KingIndex(Not(position.ToMove));
-            int ourKing = bb.KingIndex(position.ToMove);
-
-            TTEntry stored = TranspositionTable.Probe(position.Hash);
-            if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(position.Hash) && numMoves < MAX_DEPTH)
+            Span<int> scores = stackalloc int[size];
+            for (int i = 0; i < size; i++)
             {
-                if (!bb.IsPseudoLegal(stored.BestMove) || !IsLegal(position, bb, stored.BestMove, ourKing, theirKing))
+                if (list[i].Equals(pvOrTTMove))
                 {
-                    if (stored.BestMove.IsNull())
+                    scores[i] = MoveScores.PV_TT_Move;
+                }
+                else if (list[i].Capture)
+                {
+                    int ourPieceVal = Evaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].from]);
+                    int theirPieceVal = Evaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
+                    if (theirPieceVal - ourPieceVal > 0)
                     {
-                        Log("GetPV stopping normally at numMoves: " + numMoves);
+                        scores[i] = MoveScores.WinningCapture;
+                    }
+                    else if (theirPieceVal - ourPieceVal == 0)
+                    {
+                        scores[i] = MoveScores.EqualCapture;
                     }
                     else
                     {
-                        Log("WARN GetPV(" + stored.BestMove.ToString() + " isn't (pseudo)legal, stopping at numMoves: " + numMoves);
+                        scores[i] = MoveScores.LosingCapture;
+                    }
+                }
+                else if (list[i].CausesDoubleCheck)
+                {
+                    scores[i] = MoveScores.DoubleCheck;
+                }
+                else if (list[i].CausesCheck)
+                {
+                    scores[i] = MoveScores.Check;
+                }
+                else if (list[i].Castle)
+                {
+                    scores[i] = MoveScores.Castle;
+                }
+                else
+                {
+                    scores[i] = MoveScores.Normal;
+                }
+            }
+
+            int max;
+            for (int i = 0; i < size - 1; i++)
+            {
+                max = i;
+                for (int j = i + 1; j < size; j++)
+                {
+                    if (scores[j] > scores[max])
+                    {
+                        max = j;
+                    }
+                }
+
+                Move tempMove = list[i];
+                list[i] = list[max];
+                list[max] = tempMove;
+
+                int tempScore = scores[i];
+                scores[i] = scores[max];
+                scores[max] = tempScore;
+            }
+        }
+
+        private static bool CanFutilityPrune(CheckInfo checkInfo, int alpha, int beta)
+        {
+            Evaluation.IsScoreMate(alpha, out _);
+            return false;
+        }
+
+        private static bool CanLateMoveReduce(ref SearchInformation info, Move m, int alpha, int beta)
+        {
+            if (info.Position.CheckInfo.InCheck || info.Position.CheckInfo.InDoubleCheck)
+            {
+                return false;
+            }
+
+            if (m.CausesCheck || m.CausesDoubleCheck)
+            {
+                return false;
+            }
+
+            if (m.Capture || m.Promotion)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Returns the PV line from a search, which is the 
+        /// </summary>
+        /// <param name="info"></param>
+        /// <param name="moves"></param>
+        /// <param name="numMoves"></param>
+        /// <returns></returns>
+        public static int GetPV(SearchInformation info, in Move[] moves, int numMoves)
+        {
+            int theirKing = info.Position.bb.KingIndex(Not(info.Position.ToMove));
+            int ourKing = info.Position.bb.KingIndex(info.Position.ToMove);
+
+            TTEntry stored = TranspositionTable.Probe(info.Position.Hash);
+            if (stored.NodeType == NodeType.Exact && stored.Key == TTEntry.MakeKey(info.Position.Hash) && numMoves < MaxDepth)
+            {
+                if (!info.Position.bb.IsPseudoLegal(stored.BestMove) || !IsLegal(info.Position, info.Position.bb, stored.BestMove, ourKing, theirKing))
+                {
+                    if (stored.BestMove.IsNull())
+                    {
+                        Log("GetPV stopping normally at numMoves: " + numMoves + "\t info -> " + info.ToString());
+                    }
+                    else
+                    {
+                        Log("WARN GetPV(" + stored.BestMove.ToString() + " isn't (pseudo)legal, stopping at numMoves: " + numMoves + "\t info -> " + info.ToString());
                     }
 
-                    Log("info -> " + info.ToString());
                     return numMoves;
                 }
 
                 //  Prevent any perpetual check loops from being included in the PV.
                 //  Before, it would sometimes keep placing the same 4 forced moves
                 //  in the PV, which some UCI's mark as (technically) illegal.
-                if (position.IsThreefoldRepetition() || position.IsFiftyMoveDraw())
+                if (info.Position.IsThreefoldRepetition() || info.Position.IsFiftyMoveDraw())
                 {
                     //  TODO position.IsInsufficientMaterial() here?
                     return numMoves;
@@ -469,17 +566,16 @@ namespace LTChess.Search
                 //  This will also prevent those loops from occuring.
                 //  TODO seldepth won't work with this.
 
-                //Log("Building PV, info.MaxDepth: " + info.MaxDepth + ", numMoves: " + numMoves);
                 if (numMoves >= info.MaxDepth)
                 {
                     return numMoves;
                 }
 
                 moves[numMoves] = stored.BestMove;
-                position.MakeMove(stored.BestMove);
+                info.Position.MakeMove(stored.BestMove);
 
                 numMoves = GetPV(info, moves, numMoves + 1);
-                position.UnmakeMove();
+                info.Position.UnmakeMove();
             }
 
             return numMoves;
