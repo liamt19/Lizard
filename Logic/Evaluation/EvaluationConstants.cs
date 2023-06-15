@@ -37,7 +37,7 @@ namespace LTChess.Search
 
         public const double ScoreKingRingAttack = 10;
         public const double ScoreKingOutterRingAttack = 2;
-        public const double ScoreKingInCorner = -20;
+        public const double ScoreKingInCorner = -50;
 
         public const double ScorePerSquare = 10;
         public const double ScoreUndevelopedPiece = -20;
