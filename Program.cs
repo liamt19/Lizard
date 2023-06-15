@@ -102,14 +102,6 @@ namespace LTChess
                     int depth = int.Parse(input.Substring(10));
                     Task.Run(() => DoPerftDivideParallel(depth, false));
                 }
-                else if (input.StartsWithIgnoreCase("move "))
-                {
-                    string move = input.Substring(5).ToLower();
-
-                    p.TryMakeMove(move);
-
-                    Log(p.ToString());
-                }
                 else if (input.StartsWithIgnoreCase("go depth"))
                 {
                     info = new SearchInformation(p, DefaultSearchDepth);
@@ -128,7 +120,7 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("go time"))
                 {
-                    info = new SearchInformation(p, MAX_DEPTH);
+                    info = new SearchInformation(p, MaxDepth);
                     bool timeInMS = false;
 
                     if (input.EndsWith("ms"))
@@ -149,6 +141,17 @@ namespace LTChess
                             info.MaxSearchTime *= 1000;
                         }
                     }
+
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
+                    });
+                }
+                else if (input.EqualsIgnoreCase("go") || input.EqualsIgnoreCase("go infinite"))
+                {
+                    info = new SearchInformation(p, MaxDepth);
+                    info.MaxSearchTime = SearchConstants.MaxSearchTime;
 
                     Task.Run(() =>
                     {
@@ -189,7 +192,7 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("respond"))
                 {
                     string move = input.ToLower().Substring(7).Trim();
-                    Span<Move> list = new Move[NORMAL_CAPACITY];
+                    Span<Move> list = new Move[NormalListCapacity];
                     int size = p.GenAllLegalMoves(list);
                     bool failed = true;
                     for (int i = 0; i < size; i++)
@@ -215,27 +218,17 @@ namespace LTChess
                     }
 
                 }
+                else if (input.StartsWithIgnoreCase("move "))
+                {
+                    string move = input.Substring(5).ToLower();
+
+                    p.TryMakeMove(move);
+
+                    Log(p.ToString());
+                }
                 else if (input.StartsWithIgnoreCase("undo"))
                 {
                     p.UnmakeMove();
-                }
-                else if (input.StartsWithIgnoreCase("bench "))
-                {
-                    int depth = int.Parse(input.Substring(6));
-                    FishBench.Go(depth);
-                }
-                else if (input.EqualsIgnoreCase("d"))
-                {
-                    Log(p.ToString());
-                }
-                else if (input.ContainsIgnoreCase("time perft"))
-                {
-                    int toDepth = int.Parse(input.Substring(11));
-                    TimePerftToDepth(toDepth);
-                }
-                else if (input.ContainsIgnoreCase("eval"))
-                {
-                    Evaluation.Evaluate(p.bb, p.ToMove, true);
                 }
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
@@ -245,9 +238,27 @@ namespace LTChess
                     }
 
                 }
+                else if (input.ContainsIgnoreCase("eval"))
+                {
+                    Evaluation.Evaluate(p.bb, p.ToMove, true);
+                }
+                else if (input.EqualsIgnoreCase("d"))
+                {
+                    Log(p.ToString());
+                }
                 else if (input.ContainsIgnoreCase("searchinfo"))
                 {
                     PrintSearchInfo();
+                }
+                else if (input.ContainsIgnoreCase("time perft"))
+                {
+                    int toDepth = int.Parse(input.Substring(11));
+                    TimePerftToDepth(toDepth);
+                }
+                else if (input.StartsWithIgnoreCase("bench "))
+                {
+                    int depth = int.Parse(input.Substring(6));
+                    FishBench.Go(depth);
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
@@ -322,11 +333,6 @@ namespace LTChess
             }
 
             Log("Total: " + iter + " iters in " + sum + " seconds = " + (sum / iter) + " seconds / iter");
-        }
-
-        public static void DoMateSearch(int toDepth)
-        {
-            Mate.Search(p, toDepth);
         }
 
         public static void DoNegaMaxIterative(int toDepth)
@@ -407,6 +413,11 @@ namespace LTChess
 
         public static void PrintSearchInfo()
         {
+            if (info != null)
+            {
+                Log(info.ToString());
+                Log("\r\n");
+            }
             TranspositionTable.PrintStatus();
             Log("\r\n");
             EvaluationTable.PrintStatus();
@@ -416,14 +427,14 @@ namespace LTChess
 
         public static void PrintMoves()
         {
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMoves(list);
             Log("Legal (" + size + "): " + list.Stringify(p));
         }
 
         public static void PrintPseudoMoves()
         {
-            Span<Move> list = stackalloc Move[NORMAL_CAPACITY];
+            Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllPseudoMoves(list);
             Log("Pseudo (" + size + "): " + list.Stringify(p));
         }
