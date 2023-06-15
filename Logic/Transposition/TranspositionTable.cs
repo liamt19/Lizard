@@ -27,6 +27,8 @@ namespace LTChess.Transposition
             Table = new TTEntry[Size];
         }
 
+        public static void Clear() => Array.Clear(Table);
+
         [MethodImpl(Inline)]
         public static void Save(ulong key, short eval, NodeType nodeType, int depth, Move m)
         {
