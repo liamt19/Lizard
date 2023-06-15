@@ -8,9 +8,15 @@ namespace LTChess.Search
 {
     public static class SearchConstants
     {
+        /// <summary>
+        /// The maximum amount of time to search, in milliseconds.
+        /// </summary>
         public const int MaxSearchTime = int.MaxValue - 1;
 
-        public static int DefaultSearchDepth = 8;
+        /// <summary>
+        /// The default depth to search to.
+        /// </summary>
+        public static int DefaultSearchDepth = 7;
 
         /// <summary>
         /// Default amount of time in milliseconds that a search will run for before it is cancelled.
@@ -29,6 +35,14 @@ namespace LTChess.Search
         /// </summary>
         public const int SearchLowTimeMinDepth = 2;
 
+        /// <summary>
+        /// Aspiration windows will clamp the expected evaluation (alpha/beta values) at the next depth to the evaluation of the current depth.
+        /// The thought behind this is that the evaluation at the next depth generally doesn't change all that much,
+        /// so we could save time by guessing what the evaluation should be and only looking at the nodes that will get us there.
+        /// <para></para>
+        /// The major issue with aspiration windows is that they require positional evaluation to be good/consistent,
+        /// because an incorrect, large swing in evaluation will waste time.
+        /// </summary>
         public static bool UseAspirationWindows = false;
 
         /// <summary>
@@ -46,8 +60,16 @@ namespace LTChess.Search
         /// </summary>
         public static int MarginIncreasePerDepth = 10;
 
-        public static bool UseDeltaPruning = false;
+        /// <summary>
+        /// Delta pruning will ignore captures which wouldn't help the losing side improve their position during quiescence searches.
+        /// For example, if we are down a queen, then testing a pawn capture is less important than testing the capture of a bishop/rook.
+        /// </summary>
+        public static bool UseDeltaPruning = true;
 
+        /// <summary>
+        /// This value is added to the value of the captured piece when we are considering if a capture
+        /// is "worth it" or not, and represents possible positional compensation in exchange for material.
+        /// </summary>
         public const int DeltaPruningMargin = 210;
 
         public const int FutilityPruningDepth = 6;
