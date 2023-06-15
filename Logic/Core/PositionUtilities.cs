@@ -50,6 +50,7 @@ namespace LTChess.Util
 
                 if (pt == Piece.King)
                 {
+                    //  Either move out or capture the piece
                     ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
@@ -63,14 +64,6 @@ namespace LTChess.Util
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
                     return true;
-
-                    /**
-                    if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) == 0)
-                    {
-                        return false;
-                    }
-                     */
-
                 }
 
                 int checker = position.CheckInfo.idxChecker;
@@ -81,7 +74,6 @@ namespace LTChess.Util
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
 
-                    //return !IsPinned(bb, move.from, ourColor, ourKing, out _);
                     return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.from]) == 0);
                 }
 
@@ -93,30 +85,15 @@ namespace LTChess.Util
             {
                 //  We can move anywhere as long as it isn't attacked by them.
 
-                /**
-                ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
-                bb.Pieces[Piece.King] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                bool legal = true;
-                if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
-                {
-                    legal = false;
-                }
-
-                bb.Pieces[Piece.King] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                return legal;
-                 */
-
+                //  AttackersToMask gives a bitboard of the squares that they attack,
+                //  but it doesn't consider their king as an attacker in that sense.
+                //  so also OR the squares surrounding their king as "attacked"
                 if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
                 {
                     return false;
                 }
             }
             else if (move.EnPassant)
-            //else if (!position.CheckInfo.InCheck && move.EnPassant)
             {
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
@@ -157,6 +134,7 @@ namespace LTChess.Util
             ulong temp;
             ulong them = bb.Colors[Not(pc)];
 
+            //  Only rooks, bishops, and queens can pin pieces.
             ulong pinners = ((RookRays[ourKing] & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen])) |
                            (BishopRays[ourKing] & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]))) & them;
 
@@ -165,133 +143,14 @@ namespace LTChess.Util
                 int maybePinner = lsb(pinners);
                 pinners = poplsb(pinners);
 
+                //  "The pieces between our king and one of their pieces"
                 temp = BetweenBB[ourKing][maybePinner] & (bb.Colors[pc] | them);
 
-                //if (popcount(temp) == 1 && (temp & them) == 0)
+                //  "If there is only 1 piece between our king and their piece, and that 1 piece is on the square 'idx'"
                 if (popcount(temp) == 1 && lsb(temp) == idx)
                 {
                     pinner = maybePinner;
                     return true;
-                }
-            }
-
-            pinner = idx;
-            return false;
-        }
-
-        /// <summary>
-        /// Returns true if the piece at <paramref name="idx"/> is pinned to it's king
-        /// </summary>
-        /// <param name="pinner">The index of the piece that is pinning this one</param>
-        [MethodImpl(Inline)]
-        public static bool IsPinnedSlow(in Bitboard bb, int idx, int pc, int ourKing, out int pinner)
-        {
-            IndexToCoord(idx, out int x, out int y);
-
-            IndexToCoord(ourKing, out int kx, out int ky);
-
-            ulong us = bb.Colors[pc];
-            ulong them = bb.Colors[Not(pc)];
-
-            ulong all = us | them;
-
-            ulong theirStraights = (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]) & them;
-            ulong theirDiags = (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]) & them;
-
-            if ((BetweenBB[ourKing][idx] & all) != 0)
-            {
-                //  Some other piece is in the way, so we aren't pinned
-                pinner = idx;
-                return false;
-            }
-
-            if (x == kx)
-            {
-                if (y > ky)
-                {
-                    for (int otherIndex = idx + 8; otherIndex <= H8; otherIndex += 8)
-                    {
-                        //  We are above our king, so continue upwards until we hit the top rank
-                        if ((LineBB[idx][otherIndex] & all) != 0)
-                        {
-                            //  We hit a piece, so return true if it is pinning us
-                            pinner = lsb(LineBB[idx][otherIndex] & theirStraights);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int otherIndex = idx - 8; otherIndex >= A1; otherIndex -= 8)
-                    {
-                        //  We are below our king, so continue downwards until we hit the bottom rank
-                        if ((LineBB[idx][otherIndex] & all) != 0)
-                        {
-                            //  We hit a piece, so return true if it is pinning us
-                            pinner = lsb(LineBB[idx][otherIndex] & theirStraights);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
-                }
-            }
-            else if (y == ky)
-            {
-                if (x > kx)
-                {
-                    for (int otherIndex = idx + 1; otherIndex <= ((8 * y) + 7); otherIndex++)
-                    {
-                        if ((LineBB[idx][otherIndex] & all) != 0)
-                        {
-                            pinner = lsb(LineBB[idx][otherIndex] & theirStraights);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
-                }
-                else
-                {
-                    for (int otherIndex = idx - 1; otherIndex >= (8 * y); otherIndex--)
-                    {
-                        if ((LineBB[idx][otherIndex] & all) != 0)
-                        {
-                            pinner = lsb(LineBB[idx][otherIndex] & theirStraights);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
-                }
-            }
-            else if (PrecomputedData.OnSameDiagonal(ourKing, idx, out DiagonalInfo info))
-            {
-                int iOurKing = info.i1;
-                int iIdx = info.i2;
-
-                int[] diag = (info.direction == Diagonal.D_A1H8) ? DiagonalIndicesA1H8[idx] : DiagonalIndicesA8H1[idx];
-
-                if (iOurKing > iIdx)
-                {
-                    //  In diag, the index of our king comes after the index of this piece.
-                    //  So start at one before this piece and go backwards.
-                    for (int i = iIdx - 1; i >= 0; i--)
-                    {
-                        if ((LineBB[idx][diag[i]] & all) != 0)
-                        {
-                            //  We hit a piece, so return true if it is pinning us
-                            pinner = lsb(LineBB[idx][diag[i]] & theirDiags);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
-                }
-                else
-                {
-                    //  In diag, the index of our king comes before the index of this piece.
-                    //  So start at one after this piece and go to the end of the diag.
-                    for (int i = iIdx + 1; i < diag.Length; i++)
-                    {
-                        if ((LineBB[idx][diag[i]] & all) != 0)
-                        {
-                            pinner = lsb(LineBB[idx][diag[i]] & theirDiags);
-                            return pinner != LSB_EMPTY;
-                        }
-                    }
                 }
             }
 
@@ -323,25 +182,25 @@ namespace LTChess.Util
             }
 
             attackers = lsb(bb.Pieces[Piece.Pawn] & attackingPieces & pawnBB);
-            if (attackers != LSB_EMPTY)
+            if (attackers != LSBEmpty)
             {
                 return true;
             }
 
             attackers = lsb(bb.Pieces[Piece.Knight] & attackingPieces & KnightMasks[idx]);
-            if (attackers != LSB_EMPTY)
+            if (attackers != LSBEmpty)
             {
                 return true;
             }
 
             attackers = lsb(GenPseudoSlidersMask(position.bb, idx, Piece.Bishop, Not(attackingColor)) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]) & attackingPieces);
-            if (attackers != LSB_EMPTY)
+            if (attackers != LSBEmpty)
             {
                 return true;
             }
 
             attackers = lsb(GenPseudoSlidersMask(position.bb, idx, Piece.Rook, Not(attackingColor)) & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]) & attackingPieces);
-            if (attackers != LSB_EMPTY)
+            if (attackers != LSBEmpty)
             {
                 return true;
             }
@@ -470,12 +329,12 @@ namespace LTChess.Util
         }
 
         /// <summary>
-        /// Returns a bitboard with bits set at the indices of pieces that support their piece at <paramref name="idx"/>
+        /// Returns a bitboard with bits set at the indices of pieces that support their piece at <paramref name="idx"/>.
+        /// This doesn't consider "xray defense" where a king was in between a rook and another piece and is forced to move away.
         /// </summary>
         [MethodImpl(Inline)]
         public static ulong DefendersOf(in Bitboard bb, int idx)
         {
-            //  TODO: This doesn't work for king skewers
             ulong[] pawnBB;
             int ourColor = bb.GetColorAtIndex(idx);
             ulong us = bb.Colors[ourColor];
@@ -516,59 +375,6 @@ namespace LTChess.Util
                 int idx = lsb(b);
                 mask |= GetAttackedSquaresMask(bb, idx, color, all);
                 b = poplsb(b);
-            }
-
-            return mask;
-        }
-
-
-        /// <summary>
-        /// Returns a bitboard with bits set at every square that the piece of color <paramref name="ourColor"/> on <paramref name="idx"/> attacks.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong GetAttackedSquaresMaskSlow(in Bitboard bb, int idx, int ourColor, ulong ourColorBB)
-        {
-            ulong mask = 0;
-            int pt = bb.GetPieceAtIndex(idx);
-
-            switch (pt)
-            {
-                case Piece.Pawn:
-                    {
-                        //GenPseudoPawnMask(position, idx, out ulong att, out _);
-                        mask |= (ourColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx];
-                        break;
-                    }
-
-                case Piece.Knight:
-                    mask |= KnightMasks[idx];
-                    break;
-                case Piece.Bishop:
-                    {
-                        GenPseudoSlidersMask(bb, idx, Piece.Bishop, ourColorBB, out ulong support);
-                        mask |= support;
-                        break;
-                    }
-
-                case Piece.Rook:
-                    {
-                        GenPseudoSlidersMask(bb, idx, Piece.Rook, ourColorBB, out ulong support);
-                        mask |= support;
-                        break;
-                    }
-
-                case Piece.Queen:
-                    {
-                        GenPseudoSlidersMask(bb, idx, Piece.Bishop, ourColorBB, out ulong support);
-                        mask |= support;
-                        GenPseudoSlidersMask(bb, idx, Piece.Rook, ourColorBB, out ulong supportStraight);
-                        mask |= supportStraight;
-                        break;
-                    }
-
-                case Piece.King:
-                    mask |= NeighborsMask[idx];
-                    break;
             }
 
             return mask;
