@@ -5,3 +5,6 @@
 /bin
 /.vs/LTChess
 /obj
+/Logic/Search/Quiescence.cs
+/Logic/Search/NegaMax.cs
+/Logic/Core/HashPerft.cs
