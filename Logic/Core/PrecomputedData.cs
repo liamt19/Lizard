@@ -72,12 +72,12 @@ namespace LTChess.Data
         /// <summary>
         /// At each index, contains a mask of all of the squares above the index which determine whether or not a pawn is passed.
         /// </summary>
-        public static ulong[] WhitePawnPassedMasks = new ulong[64];
+        public static ulong[] WhitePassedPawnMasks = new ulong[64];
 
         /// <summary>
         /// At each index, contains a mask of all of the squares below the index which determine whether or not a pawn is passed.
         /// </summary>
-        public static ulong[] BlackPawnPassedMasks = new ulong[64];
+        public static ulong[] BlackPassedPawnMasks = new ulong[64];
 
         /// <summary>
         /// At each index, contains a ulong equal to (1UL << index).
@@ -323,7 +323,7 @@ namespace LTChess.Data
                 }
 
                 //  Mask out the original square.
-                mask &= ~SquareBB[i];
+                mask &= ~(NeighborsMask[i] | SquareBB[i]);
 
                 OutterNeighborsMask[i] = mask;
             }
@@ -464,13 +464,13 @@ namespace LTChess.Data
             {
                 IndexToCoord(idx, out int x, out int y);
                 ulong whiteRanks = 0UL;
-                for (int rank = y; rank < 7; rank++)
+                for (int rank = y + 1; rank < 7; rank++)
                 {
                     whiteRanks |= (Rank1BB << (8 * rank));
                 }
 
                 ulong blackRanks = 0UL;
-                for (int rank = y; rank > 0; rank--)
+                for (int rank = y - 1; rank > 0; rank--)
                 {
                     blackRanks |= (Rank1BB << (8 * rank));
                 }
@@ -483,11 +483,11 @@ namespace LTChess.Data
                 }
                 if (GetIndexRank(idx + 1) == y)
                 {
-                    files |= GetFileBB(idx - 1);
+                    files |= GetFileBB(idx + 1);
                 }
 
-                WhitePawnPassedMasks[idx] = whiteRanks & files;
-                BlackPawnPassedMasks[idx] = blackRanks & files;
+                WhitePassedPawnMasks[idx] = whiteRanks & files;
+                BlackPassedPawnMasks[idx] = blackRanks & files;
             }
         }
 
