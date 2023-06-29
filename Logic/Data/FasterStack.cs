@@ -15,18 +15,22 @@ namespace LTChess.Data
         private readonly T[] arr;
         private int size;
 
+        public int Capacity;
         public int Count => size;
 
         [MethodImpl(Inline)]
-        public FasterStack(int capacity)
+        public FasterStack(int capacity = NormalCapacity)
         {
-            arr = new T[capacity];
+            this.Capacity = capacity;
+            arr = new T[Capacity];
         }
 
         [MethodImpl(Inline)]
-        public FasterStack()
+        public FasterStack<T> Clone()
         {
-            arr = new T[NormalCapacity];
+            FasterStack<T> clone = new FasterStack<T>(this.arr.Length);
+            Array.Copy(this.arr, clone.arr, this.arr.Length);
+            return clone;
         }
 
         [MethodImpl(Inline)]
@@ -74,6 +78,16 @@ namespace LTChess.Data
                 arrCopy[i] = arr[i];
             }
             return arrCopy;
+        }
+
+        public void CopyFromArray(FasterStack<T> otherStack) => CopyFromArray(otherStack.AsArray());
+
+        public void CopyFromArray(T[] otherArr)
+        {
+            for (int i = 0; i < Math.Min(Capacity, otherArr.Length); i++)
+            {
+                this.arr[i] = otherArr[i];
+            }
         }
 
         public override string ToString()

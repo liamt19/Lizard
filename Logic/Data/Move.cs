@@ -65,6 +65,7 @@ namespace LTChess.Data
             this.PromotionTo = 0;
         }
 
+        [MethodImpl(Inline)]
         public bool IsNull()
         {
             return (from == 0 && to == 0 && idxChecker == 0);
@@ -256,6 +257,7 @@ namespace LTChess.Data
             return (SquareBB[from] | SquareBB[to]);
         }
 
+        [MethodImpl(Inline)]
         public override bool Equals(object? obj)
         {
             Move other = (Move)obj;
