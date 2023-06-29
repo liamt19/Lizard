@@ -39,6 +39,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Logic\Core\HashPerft.cs" />
+    <Compile Remove="Logic\Evaluation\ThreadedEvaluation.cs" />
+    <Compile Remove="Logic\Search\Mate.cs" />
+    <Compile Remove="Logic\Search\NegaMax.cs" />
+    <Compile Remove="Logic\Search\Quiescence.cs" />
+    <Compile Remove="Logic\Search\ThreadedSearch.cs" />
+    <Compile Remove="Logic\Utils\Stockfish.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Update="BenchFiles\sf14bench_perft4.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
