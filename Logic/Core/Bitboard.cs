@@ -41,6 +41,13 @@ namespace LTChess.Core
             Array.Fill(PieceTypes, Piece.None);
         }
 
+        public string SquareToString(int idx)
+        {
+            return ColorToString(GetColorAtIndex(idx)) + " " +
+                   PieceToString(PieceTypes[idx]) + " on " + 
+                   IndexToString(idx);
+        }
+
         /// <summary>
         /// 0's the Piece and Color arrays and fills the PieceType array with Piece.None .
         /// </summary>
@@ -145,21 +152,23 @@ namespace LTChess.Core
         }
 
         /// <summary>
-        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece on <paramref name="to"/> if there is one.
+        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPieceType"/>.
         /// </summary>
+        /// <param name="from">The square the piece is moving from</param>
+        /// <param name="to">The square the piece is moving to</param>
+        /// <param name="pieceColor">The color of the piece that is moving</param>
+        /// <param name="pieceType">The type of the piece that is moving</param>
+        /// <param name="capturedPieceType">The type of the piece that is being captured</param>
         [MethodImpl(Inline)]
-        public void Move(int from, int to)
+        public void Move(int from, int to, int pieceColor, int pieceType, int capturedPieceType)
         {
-            int pieceType = GetPieceAtIndex(from);
-            int pieceColor = GetColorAtIndex(from);
-
-            int capturedPiece = PieceTypes[to];
-            if (capturedPiece != Piece.None)
+            if (capturedPieceType != Piece.None)
             {
 #if DEBUG
-                Debug.Assert(capturedPiece != Piece.King);
+                Debug.Assert(capturedPieceType != Piece.King, "Moving from " + IndexToString(from) + " to " + IndexToString(to) + " captures " + ColorToString(pieceColor) + "'s king!"
+                    + "\r\nCalled by " + (new StackTrace()).GetFrame(1).GetMethod().Name);
 #endif
-                Pieces[capturedPiece] ^= SquareBB[to];
+                Pieces[capturedPieceType] ^= SquareBB[to];
                 Colors[Not(pieceColor)] ^= SquareBB[to];
             }
 
@@ -172,18 +181,19 @@ namespace LTChess.Core
         }
 
         /// <summary>
-        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPiece"/>.
+        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPieceType"/>.
         /// </summary>
+        /// <param name="from">The square the piece originally came from</param>
+        /// <param name="to">The square the piece is currently on</param>
+        /// <param name="pieceColor">The color of the piece that moved</param>
+        /// <param name="pieceType">The type of the piece that moved</param>
+        /// <param name="capturedPieceType">The type of the piece that was captured</param>
         [MethodImpl(Inline)]
-        public void Move(int from, int to, int pieceColor, int pieceType, int capturedPiece)
+        public void UnmakeCapture(int from, int to, int pieceColor, int pieceType, int capturedPieceType)
         {
-            if (capturedPiece != Piece.None)
+            if (capturedPieceType != Piece.None)
             {
-#if DEBUG
-                Debug.Assert(capturedPiece != Piece.King, "Moving from " + IndexToString(from) + " to " + IndexToString(to) + " captures " + ColorToString(pieceColor) + "'s king!"
-                    + "\r\nCalled by " + (new StackTrace()).GetFrame(1).GetMethod().Name);
-#endif
-                Pieces[capturedPiece] ^= SquareBB[to];
+                Pieces[capturedPieceType] ^= SquareBB[to];
                 Colors[Not(pieceColor)] ^= SquareBB[to];
             }
 
@@ -191,16 +201,17 @@ namespace LTChess.Core
             Pieces[pieceType] ^= moveMask;
             Colors[pieceColor] ^= moveMask;
 
-            //Pieces[pieceType] ^= (SquareBB[from] | SquareBB[to]);
-            //Colors[pieceColor] ^= (SquareBB[from] | SquareBB[to]);
-
-            PieceTypes[from] = Piece.None;
-            PieceTypes[to] = pieceType;
+            PieceTypes[from] = pieceType;
+            PieceTypes[to] = capturedPieceType;
         }
 
         /// <summary>
         /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, where <paramref name="to"/> is an empty square.
         /// </summary>
+        /// <param name="from">The square the piece is moving from</param>
+        /// <param name="to">The square the piece is moving to</param>
+        /// <param name="pieceColor">The color of the piece that is moving</param>
+        /// <param name="pieceType">The type of the piece that is moving</param>
         [MethodImpl(Inline)]
         public void MoveSimple(int from, int to, int pieceColor, int pieceType)
         {
@@ -234,6 +245,10 @@ namespace LTChess.Core
         /// <summary>
         /// Moves the pawn at <paramref name="from"/> to <paramref name="to"/>, and clears the index at <paramref name="idxEnPassant"/>.
         /// </summary>
+        /// <param name="from">The square the piece is moving from</param>
+        /// <param name="to">The square the piece is moving to</param>
+        /// <param name="pieceColor">The color of the piece that is moving</param>
+        /// <param name="idxEnPassant">The index of the pawn that is being taken, which should be 1 square left/right of <paramref name="from"/></param>
         [MethodImpl(Inline)]
         public void EnPassant(int from, int to, int pieceColor, int idxEnPassant)
         {
@@ -252,18 +267,6 @@ namespace LTChess.Core
         public int GetColorAtIndex(int idx)
         {
             return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
-
-
-            /**
-             if ((Colors[Color.White] & SquareBB[idx]) != 0)
-            {
-                return Color.White;
-            }
-#if DEBUG
-            Debug.Assert((Colors[Color.Black] & SquareBB[idx]) != 0, "GetPieceColorAtIndex(" + IndexToString(idx) + ") is failing because nothing is set at that index!");
-#endif
-            return Color.Black;
-             */
         }
 
         [MethodImpl(Inline)]
@@ -293,6 +296,47 @@ namespace LTChess.Core
 #endif
 
             return lsb(KingMask(pc));
+        }
+
+        [MethodImpl(Inline)]
+        public int MaterialCount(int pc)
+        {
+            int mat = 0;
+            ulong temp = Colors[pc];
+            while (temp != 0)
+            {
+                int idx = lsb(temp);
+
+                mat += Evaluation.GetPieceValue(GetPieceAtIndex(idx));
+
+                temp = poplsb(temp);
+            }
+
+            return mat;
+        }
+
+        [MethodImpl(Inline)]
+        public bool IsPasser(int idx)
+        {
+            if (GetPieceAtIndex(idx) != Piece.Pawn)
+            {
+                return false;
+            }
+
+            //  TODO use WhitePassedPawnMasks
+            int ourColor = GetColorAtIndex(idx);
+            ulong them = Colors[Not(ourColor)];
+            ulong theirPawns = (them & Pieces[Piece.Pawn]);
+
+
+            if (ourColor == Color.White)
+            {
+                return ((WhitePassedPawnMasks[idx] & theirPawns) == 0);
+            }
+            else
+            {
+                return ((BlackPassedPawnMasks[idx] & theirPawns) == 0);
+            }
         }
 
         [MethodImpl(Inline)]
@@ -352,9 +396,7 @@ namespace LTChess.Core
         /// <summary>
         /// Same as AttackersTo, but the bishop and rook moves are calculated after AND NOT'ing the mask from the Color bitboards.
         /// </summary>
-        /// <param name="idx"></param>
-        /// <param name="defendingColor"></param>
-        /// <returns></returns>
+        [MethodImpl(Inline)]
         public ulong AttackersToMask(int idx, int defendingColor, ulong mask)
         {
             /// TODO: this.
@@ -376,9 +418,55 @@ namespace LTChess.Core
             return (diagonals | straights | knights | pawns) & them;
         }
 
+        /// <summary>
+        /// Returns the index of the square of the attacker of lowest value,
+        /// which is a pawn, knight, bishop, rook, queen, or king in that order.
+        /// </summary>
+        /// <param name="idx">The square to look at</param>
+        /// <param name="defendingColor">The color of the pieces BEING attacked.</param>
+        [MethodImpl(Inline)]
+        public int LowestValueAttacker(int idx, int defendingColor)
+        {
+            ulong us = Colors[defendingColor];
+            ulong them = Colors[Not(defendingColor)];
+
+            ulong pawns = ((defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx]) & Pieces[Piece.Pawn] & them;
+            if (pawns != 0)
+            {
+                return lsb(pawns);
+            }
+
+            ulong knights = (Pieces[Piece.Knight] & KnightMasks[idx] & them);
+            if (knights != 0)
+            {
+                return lsb(knights);
+            }
+
+            ulong occupied = (us | them);
+
+            ulong diagSliders = GetBishopMoves(occupied, idx);
+            if ((diagSliders & Pieces[Piece.Bishop] & them) != 0)
+            {
+                return lsb((diagSliders & Pieces[Piece.Bishop] & them));
+            }
+
+            ulong straightSliders = GetRookMoves(occupied, idx);
+            if ((straightSliders & Pieces[Piece.Rook] & them) != 0)
+            {
+                return lsb((straightSliders & Pieces[Piece.Rook] & them));
+            }
+
+            if (((diagSliders | straightSliders) & Pieces[Piece.Queen] & them) != 0)
+            {
+                return lsb((diagSliders | straightSliders) & Pieces[Piece.Queen] & them);
+            }
+
+            return LSBEmpty;
+        }
+
 
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is pseudo-legal for the position <paramref name="position"/>.
+        /// Returns true if the move <paramref name="move"/> is pseudo-legal.
         /// Only determines if there is a piece at move.from and the piece at move.to isn't the same color.
         /// </summary>
         [MethodImpl(Inline)]
