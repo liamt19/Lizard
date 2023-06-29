@@ -27,6 +27,7 @@ namespace LTChess.Transposition
             Table = new TTEntry[Size];
         }
 
+        [MethodImpl(Inline)]
         public static void Clear() => Array.Clear(Table);
 
         [MethodImpl(Inline)]
@@ -34,8 +35,16 @@ namespace LTChess.Transposition
         {
 #if DEBUG
             SearchStatistics.TTSaves++;
-            if (!Table[key % Size].BestMove.IsNull() || Table[key % Size].Key != 0)
+            if (Table[key % Size].NodeType != NodeType.Invalid)
             {
+                if (Table[key % Size].NodeType == NodeType.Exact && nodeType== NodeType.Beta)
+                {
+                    TTReplacementsE_to_B++;
+                }
+                else if (Table[key % Size].NodeType == NodeType.Beta && nodeType == NodeType.Exact)
+                {
+                    TTReplacementsB_to_E++;
+                }
                 SearchStatistics.TTReplacements++;
             }
             else if (Table[key % Size].Key == TTEntry.MakeKey(key))
@@ -56,6 +65,12 @@ namespace LTChess.Transposition
         [MethodImpl(Inline)]
         public static TTEntry Probe(ulong hash)
         {
+#if DEBUG
+            if (Table[hash % Size].NodeType != NodeType.Invalid)
+            {
+                SearchStatistics.TTHits++;
+            }
+#endif
             return Table[hash % Size];
         }
 

@@ -32,6 +32,7 @@ namespace LTChess.Transposition
             this.BestMove = move;
         }
 
+        [MethodImpl(Inline)]
         public static ushort MakeKey(ulong posHash)
         {
             return (ushort)(posHash >> KeyShift);
@@ -39,7 +40,7 @@ namespace LTChess.Transposition
 
         public override string ToString()
         {
-            return "[" + Key + "]: " + NodeType.ToString() + " at depth " + Depth + ", " + BestMove.ToString() + " eval " + Eval;
+            return NodeType.ToString() + "entry , depth " + Depth + ", move " + BestMove.ToString() + " eval " + Eval + ", key " + Key;
         }
     }
 }
