@@ -232,6 +232,176 @@ namespace LTChess.Magic
             return rand.NextUlong() & rand.NextUlong() & rand.NextUlong();
         }
 
+        /// <summary>
+        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on the board <paramref name="occupied"/>.
+        /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
+        /// except for A8 and H1.
+        /// </summary>
+        public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
+        {
+            ulong mask = 0UL;
+            if (pt == Piece.Bishop)
+            {
+                IndexToCoord(idx, out int x, out int y);
+                int sq;
+
+                int ix = x - 1;
+                int iy = y - 1;
+                while (ix >= 0 && iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                    iy--;
+                }
+
+                ix = x - 1;
+                iy = y + 1;
+                while (ix >= 0 && iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                    iy++;
+                }
+
+                ix = x + 1;
+                iy = y + 1;
+                while (ix <= 7 && iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                    iy++;
+                }
+
+                ix = x + 1;
+                iy = y - 1;
+                while (ix <= 7 && iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                    iy--;
+                }
+            }
+            else
+            {
+                IndexToCoord(idx, out int x, out int y);
+                int sq;
+
+                int ix = x - 1;
+                int iy = y;
+                while (ix >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix--;
+                }
+
+                ix = x + 1;
+                iy = y;
+                while (ix <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    ix++;
+                }
+
+                ix = x;
+                iy = y - 1;
+                while (iy >= 0)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    iy--;
+                }
+
+                ix = x;
+                iy = y + 1;
+                while (iy <= 7)
+                {
+                    sq = CoordToIndex(ix, iy);
+                    mask |= (SquareBB[sq]);
+                    if ((occupied & SquareBB[sq]) != 0)
+                    {
+                        break;
+                    }
+                    iy++;
+                }
+            }
+
+            return mask;
+        }
+
+        /// <summary>
+        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on an empty board.
+        /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
+        /// except for A8 and H1.
+        /// </summary>
+        public static ulong GetBlockerMask(int pt, int idx)
+        {
+            ulong mask = (pt == Piece.Bishop) ? PrecomputedData.BishopRays[idx] : PrecomputedData.RookRays[idx];
+
+            int rank = (idx >> 3);
+            int file = (idx & 7);
+            if (rank == 7)
+            {
+                mask &= ~Rank1BB;
+            }
+            else if (rank == 0)
+            {
+                mask &= ~Rank8BB;
+            }
+            else
+            {
+                mask &= (~Rank1BB & ~Rank8BB);
+            }
+
+            if (file == 0)
+            {
+                mask &= ~FileHBB;
+            }
+            else if (file == 7)
+            {
+                mask &= ~FileABB;
+            }
+            else
+            {
+                mask &= (~FileHBB & ~FileABB);
+            }
+
+            return mask;
+        }
+
         private static int[] RookBits = {
             12, 11, 11, 11, 11, 11, 11, 12,
             11, 10, 10, 10, 10, 10, 10, 11,
