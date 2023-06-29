@@ -22,7 +22,6 @@ global using static LTChess.Util.CommonFENs;
 global using static LTChess.Util.PositionUtilities;
 global using static LTChess.Search.SearchConstants;
 
-global using Fish = Stockfish.Stockfish;
 
 using System;
 using System.Collections;
@@ -34,13 +33,16 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 using System.Threading.Tasks;
+using System.Drawing;
+using System.Formats.Tar;
+using System.Threading;
 
 namespace LTChess
 {
     public static class Program
     {
-        public static Position p = new Position();
-        public static SearchInformation info;
+        private static Position p = new Position();
+        private static SearchInformation info;
 
         public static void Main()
         {
@@ -218,6 +220,16 @@ namespace LTChess
                     }
 
                 }
+                else if (input.StartsWithIgnoreCase("puzzle"))
+                {
+                    p = new Position(input.Substring(7));
+                    info = new SearchInformation(p, 12, MaxSearchTime);
+                    Task.Run(() =>
+                    {
+                        SimpleSearch.StartSearching(ref info);
+                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
+                    });
+                }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
                     string move = input.Substring(5).ToLower();
@@ -240,7 +252,7 @@ namespace LTChess
                 }
                 else if (input.ContainsIgnoreCase("eval"))
                 {
-                    Evaluation.Evaluate(p.bb, p.ToMove, true);
+                    Evaluation.Evaluate(p, p.ToMove, true);
                 }
                 else if (input.EqualsIgnoreCase("d"))
                 {
@@ -266,18 +278,13 @@ namespace LTChess
                 }
                 else
                 {
-                    Log("Unknown token '" + input + "'");
+                    //  You can just copy paste in a FEN string rather than typing "position fen" before it.
+                    if (input.Where(x => x == '/').Count() != 7 || !p.LoadFromFEN(input.Trim()))
+                    {
+                        Log("Unknown token '" + input + "'");
+                    }
                 }
             }
-        }
-
-        public static double TimePerft(int depth)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            ulong res = p.Perft(depth);
-            sw.Stop();
-            Log("Nodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
-            return sw.Elapsed.TotalSeconds;
         }
 
         public static void TimePerftToDepth(int depth)
@@ -291,73 +298,6 @@ namespace LTChess
                 double r = Math.Round(sw.Elapsed.TotalSeconds, 4);
                 Log("Depth " + i + " - Time: " + Math.Round(sw.Elapsed.TotalSeconds, 4) + " s");
             }
-        }
-
-        public static void TimePerftNodesToDepth(int depth)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            for (int i = 1; i <= depth; i++)
-            {
-                sw.Restart();
-                List<PerftNode> nodes = p.PerftDivide(i);
-                sw.Stop();
-                Log("Depth " + i + " - Time: " + Math.Round(sw.Elapsed.TotalSeconds, 4) + " s");
-            }
-        }
-
-        public static void RunCpuUsage()
-        {
-            Thread.Sleep(2000);
-
-            //TimePerft(5);
-            //Bench.Go();
-            TimePerftToDepth(6);
-
-
-            Thread.Sleep(1000);
-            Environment.Exit(0);
-        }
-
-        public static void RunInstrumentation()
-        {
-            p.Perft(5);
-            Environment.Exit(0);
-        }
-
-        public static void RunBenchIterations(int iter, int benchDepth = 4)
-        {
-            double sum = 0;
-            for (int i = 0; i < iter; i++)
-            {
-                sum += FishBench.Go(benchDepth);
-            }
-
-            Log("Total: " + iter + " iters in " + sum + " seconds = " + (sum / iter) + " seconds / iter");
-        }
-
-        public static void DoNegaMaxIterative(int toDepth)
-        {
-            info = new SearchInformation(p, toDepth);
-
-            SimpleSearch.StartSearching(ref info);
-        }
-
-        public static void DoHashPerft(int depth)
-        {
-            ulong res = 0;
-            HashPerft hp = new HashPerft(p, 8, depth);
-            Stopwatch sw = Stopwatch.StartNew();
-            List<PerftNode> nodes = hp.PerftDivide(depth);
-            sw.Stop();
-
-            foreach (PerftNode node in nodes)
-            {
-                Log(node.root + ": " + node.number);
-                res += node.number;
-            }
-
-            Log("\r\n" + hp.TableHits + " hits" + ", " + hp.TableMisses + " misses and " + hp.TableSaves + " saves");
-            Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
         }
 
         public static void DoPerftDivide(int depth, bool sortAlphabetical = true)

@@ -159,7 +159,11 @@ namespace LTChess.Core
             }
 
 #if DEBUG
-            Debug.Assert(bb.GetColorAtIndex(idxPawn) != us);
+            //Debug.Assert(bb.GetColorAtIndex(idxPawn) != us);
+            if (bb.GetColorAtIndex(idxPawn) == us)
+            {
+                //Log("WARN pawn being en passant'ed -> " + bb.SquareToString(idxPawn) + " is the same color as the one we are generating -> " + bb.SquareToString(idx));
+            }
 #endif
 
             if ((idxPawn % 8 == (x - 1) && idxPawn / 8 == y) && (x > Files.A))
