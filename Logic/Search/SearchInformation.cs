@@ -43,6 +43,9 @@ namespace LTChess.Search
         /// </summary>
         public bool SearchFinishedCalled = false;
 
+        public bool SearchWasAborted = false;
+        public string LastSearchInfo = string.Empty;
+
         public void DoStopSearching()
         {
             StopSearching = true;
@@ -66,6 +69,7 @@ namespace LTChess.Search
 
         public void CallSearchFinish()
         {
+            SearchWasAborted = true;
             this.OnSearchFinish?.Invoke();
         }
 
@@ -97,14 +101,28 @@ namespace LTChess.Search
         /// </summary>
         public int PlayerTimeLeft = SearchConstants.MaxSearchTime;
 
+        public int RootPositionMoveCount = 0;
+
+        public bool IsMultiThreaded = false;
+
+        public SearchInformation ()
+        {
+
+
+            PV = new Move[Utilities.MaxDepth];
+
+            this.OnDepthFinish = PrintSearchInfo;
+        }
+
         public SearchInformation(Position p, int depth)
         {
             this.Position = p;
             this.MaxDepth = depth;
+            this.RootPositionMoveCount = this.Position.Moves.Count;
 
             PV = new Move[Utilities.MaxDepth];
 
-            this.OnDepthFinish = () => Log(FormatSearchInformation(this));
+            this.OnDepthFinish = PrintSearchInfo;
         }
 
         public SearchInformation(Position p, int depth, int searchTime)
@@ -112,10 +130,24 @@ namespace LTChess.Search
             this.Position = p;
             this.MaxDepth = depth;
             this.MaxSearchTime = searchTime;
+            this.RootPositionMoveCount = this.Position.Moves.Count;
 
             PV = new Move[Utilities.MaxDepth];
 
-            this.OnDepthFinish = () => Log(FormatSearchInformation(this));
+            this.OnDepthFinish = PrintSearchInfo;
+        }
+
+        public void PrintSearchInfo()
+        {
+            this.LastSearchInfo = FormatSearchInformation(this);
+            if (IsMultiThreaded)
+            {
+                Log(Thread.CurrentThread.ManagedThreadId + " ->\t" + LastSearchInfo);
+            }
+            else
+            {
+                Log(LastSearchInfo);
+            }
         }
 
         /// <summary>
@@ -123,18 +155,26 @@ namespace LTChess.Search
         /// </summary>
         public static SearchInformation Clone(SearchInformation other)
         {
-            Position copyPos = new Position(other.Position.GetFEN());
-            SearchInformation copy = (SearchInformation) other.MemberwiseClone();
-
-            copy.Position = copyPos;
+            SearchInformation copy = (SearchInformation)other.MemberwiseClone();
+            copy.Position = new Position(other.Position.GetFEN());
 
             copy.PV = new Move[other.PV.Length];
             for (int i = 0; i < other.PV.Length; i++)
             {
                 copy.PV[i] = other.PV[i];
             }
-            
+
+            copy.OnDepthFinish = copy.PrintSearchInfo;
+
+
             return copy;
+        }
+
+        public int MakeMateScore()
+        {
+            int movesMade = (this.Position.Moves.Count - this.RootPositionMoveCount);
+            int mateScore = -Evaluation.ScoreMate - ((movesMade / 2) + 1);
+            return mateScore;
         }
 
         /// <summary>
@@ -148,6 +188,10 @@ namespace LTChess.Search
         public string GetPVString(bool EngineFormat = false)
         {
             StringBuilder pv = new StringBuilder();
+
+            //  Start fresh, since a PV at depth 3 could write to PV[0-2] and the time we call GetPV
+            //  it could fail at PV[1] and leave the wrong move in PV[2].
+            Array.Clear(this.PV);
             SimpleSearch.GetPV(this, this.PV, 0);
 
             Position temp = new Position(this.Position.GetFEN());
@@ -184,6 +228,10 @@ namespace LTChess.Search
                 }
             }
 
+            if (pv.Length > 1)
+            {
+                pv.Remove(pv.Length - 1, 1);
+            }
             return pv.ToString();
         }
 
