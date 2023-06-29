@@ -34,13 +34,16 @@ namespace LTChess.Core
 
             options = new Dictionary<string, UCIOption>
             {
+                { UCIOption.Opt_DefaultMoveOverhead, new UCIOption(UCIOption.Opt_DefaultMoveOverhead, "spin", DefaultMoveOverhead.ToString(), "1", "3000")},
                 { UCIOption.Opt_DefaultSearchTime, new UCIOption(UCIOption.Opt_DefaultSearchTime, "spin", (DefaultSearchTime / 1000).ToString(), "1", "120")},
                 { UCIOption.Opt_DefaultSearchDepth, new UCIOption(UCIOption.Opt_DefaultSearchDepth, "spin", DefaultSearchDepth.ToString(), "1", "99")},
-                { UCIOption.Opt_DefaultMoveOverhead, new UCIOption(UCIOption.Opt_DefaultMoveOverhead, "spin", DefaultMoveOverhead.ToString(), "1", "3000")},
                 { UCIOption.Opt_UseAspirationWindows, new UCIOption(UCIOption.Opt_UseAspirationWindows, "check", UseAspirationWindows.ToString().ToLower(), "", "")},
                 { UCIOption.Opt_AspirationWindowMargin, new UCIOption(UCIOption.Opt_AspirationWindowMargin, "spin", AspirationWindowMargin.ToString(), "10", "250")},
-                { UCIOption.Opt_MarginIncreasePerDepth, new UCIOption(UCIOption.Opt_MarginIncreasePerDepth, "spin", MarginIncreasePerDepth.ToString(), "0", "50")},
-
+                { UCIOption.Opt_AspirationMarginPerDepth, new UCIOption(UCIOption.Opt_AspirationMarginPerDepth, "spin", AspirationMarginPerDepth.ToString(), "0", "50")},
+                { UCIOption.Opt_UseDeltaPruning, new UCIOption(UCIOption.Opt_UseDeltaPruning, "check", UseDeltaPruning.ToString().ToLower(), "", "")},
+                { UCIOption.Opt_DeltaPruningMargin, new UCIOption(UCIOption.Opt_DeltaPruningMargin, "spin", DeltaPruningMargin.ToString(), "200", "220")},
+                { UCIOption.Opt_UseFutilityPruning, new UCIOption(UCIOption.Opt_UseFutilityPruning, "check", UseFutilityPruning.ToString().ToLower(), "", "")},
+                { UCIOption.Opt_UseStaticExchangeEval, new UCIOption(UCIOption.Opt_UseStaticExchangeEval, "check", UseStaticExchangeEval.ToString().ToLower(), "", "")},
             };
 
             info = new SearchInformation(new Position(), DefaultSearchDepth);
@@ -238,29 +241,38 @@ namespace LTChess.Core
                         }
 
                         LogString("[INFO]: Changing '" + optName + "' from " + options[optName].DefaultValue + " to " + optValue);
-                        if (optName == UCIOption.Opt_DefaultSearchDepth)
+                        switch (optName)
                         {
-                            DefaultSearchDepth = int.Parse(optValue);
-                        }
-                        else if (optName == UCIOption.Opt_DefaultSearchTime)
-                        {
-                            DefaultSearchTime = int.Parse(optValue) * 1000;
-                        }
-                        else if (optName == UCIOption.Opt_DefaultMoveOverhead)
-                        {
-                            DefaultMoveOverhead = int.Parse(optValue);
-                        }
-                        else if (optName == UCIOption.Opt_UseAspirationWindows)
-                        {
-                            UseAspirationWindows = bool.Parse(optValue);
-                        }
-                        else if (optName == UCIOption.Opt_AspirationWindowMargin)
-                        {
-                            AspirationWindowMargin = int.Parse(optValue);
-                        }
-                        else if (optName == UCIOption.Opt_MarginIncreasePerDepth)
-                        {
-                            AspirationWindowMargin = int.Parse(optValue);
+                            case UCIOption.Opt_DefaultMoveOverhead:
+                                DefaultMoveOverhead = int.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_DefaultSearchTime:
+                                DefaultSearchTime = int.Parse(optValue) * 1000;
+                                break;
+                            case UCIOption.Opt_DefaultSearchDepth:
+                                DefaultSearchDepth = int.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_UseAspirationWindows:
+                                UseAspirationWindows = bool.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_AspirationWindowMargin:
+                                AspirationWindowMargin = int.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_AspirationMarginPerDepth:
+                                AspirationMarginPerDepth = int.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_UseDeltaPruning:
+                                UseDeltaPruning = bool.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_DeltaPruningMargin:
+                                DeltaPruningMargin = int.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_UseFutilityPruning:
+                                UseFutilityPruning = bool.Parse(optValue);
+                                break;
+                            case UCIOption.Opt_UseStaticExchangeEval:
+                                UseStaticExchangeEval = bool.Parse(optValue);
+                                break;
                         }
                     }
 
@@ -270,12 +282,9 @@ namespace LTChess.Core
 
         private void OnDepthDone()
         {
-            SendEval(info);
-        }
-
-        private void SendEval(SearchInformation info)
-        {
-            SendString(FormatSearchInformation(info));
+            //  Send the "info depth (number) ..." string
+            info.LastSearchInfo = FormatSearchInformation(info);
+            SendString(info.LastSearchInfo);
         }
 
         //  https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf
@@ -357,7 +366,9 @@ namespace LTChess.Core
                     {
                         info.PlayerTimeLeft = whiteTime;
 
-                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
+                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + 
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000") + 
+                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
                     }
                 }
                 else if (param[i] == "btime")
@@ -368,7 +379,9 @@ namespace LTChess.Core
                     if (info.Position.ToMove == Color.Black)
                     {
                         info.PlayerTimeLeft = blackTime;
-                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
+                        LogString("[INFO]: We have " + info.PlayerTimeLeft + " ms left on our clock, should STOP by " + 
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.PlayerTimeLeft)).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000") + 
+                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
                     }
                 }
                 else if (param[i] == "winc")
@@ -421,12 +434,9 @@ namespace LTChess.Core
 
         private void DoSearch()
         {
-            Task.Run(() =>
-            {
-                SimpleSearch.StartSearching(ref info, true);
-                LogString("[INFO]: DoSearch task returned from call to StartSearching");
-                info.OnSearchFinish?.Invoke();
-            });
+            SimpleSearch.StartSearching(ref info, true);
+            LogString("[INFO]: DoSearch task returned from call to StartSearching");
+            info.OnSearchFinish?.Invoke();
         }
 
         private void OnSearchDone()
@@ -435,12 +445,25 @@ namespace LTChess.Core
             if (!info.SearchFinishedCalled)
             {
                 info.SearchFinishedCalled = true;
+
+                if (info.BestMove.IsNull())
+                {
+                    LogString("[ERROR]: info.BestMove in OnSearchDone was null!");
+                    LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
+                }
+                else if (!info.Position.IsLegal(info.BestMove))
+                {
+                    LogString("[ERROR]: info.BestMove (" + info.BestMove.ToString() + ") in OnSearchDone isn't legal!");
+                    LogString("[INFO]: FEN = '" + info.Position.GetFEN() + "'");
+                    LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
+                }
+
                 SendString("bestmove " + info.BestMove.ToString());
-                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "'");
+                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
             }
             else
             {
-                LogString("[INFO]: SearchFinishedCalled was " + info.SearchFinishedCalled + ", ignoring.");
+                LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
             }
         }
     }
