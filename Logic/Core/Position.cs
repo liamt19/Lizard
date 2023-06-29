@@ -58,7 +58,7 @@ namespace LTChess.Core
 
         public FasterStack<int> HalfmoveClocks;
 
-        public static bool Perft_Stop = false;
+        public FasterStack<int> EnPassantTargets;
 
         public bool whiteCastled = false;
         public bool blackCastled = false;
@@ -75,6 +75,7 @@ namespace LTChess.Core
             Checks = new FasterStack<CheckInfo>(MaxListCapacity);
             Hashes = new FasterStack<ulong>(MaxListCapacity);
             HalfmoveClocks = new FasterStack<int>(MaxListCapacity);
+            EnPassantTargets = new FasterStack<int>(MaxListCapacity);
 
             this.bb = new Bitboard();
 
@@ -121,6 +122,7 @@ namespace LTChess.Core
             Checks.Push(CheckInfo);
             Hashes.Push(Hash);
             HalfmoveClocks.Push(HalfMoves);
+            EnPassantTargets.Push(EnPassantTarget);
 
             int thisPiece = bb.GetPieceAtIndex(move.from);
             int thisColor = bb.GetColorAtIndex(move.from);
@@ -353,10 +355,55 @@ namespace LTChess.Core
             }
             else if (IsFiftyMoveDraw())
             {
-                Log("Game drawn by the 50 move rule!");
+                //Log("Game drawn by the 50 move rule!");
             }
 #endif
 
+        }
+
+        /// <summary>
+        /// Performs a null move, which only updates the EnPassantTarget (since it is always reset to 0 when a move is made) 
+        /// and position hash accordingly.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void MakeNullMove()
+        {
+            Hashes.Push(Hash);
+            EnPassantTargets.Push(EnPassantTarget);
+
+            if (ToMove == Color.Black)
+            {
+                FullMoves++;
+            }
+
+            if (EnPassantTarget != 0)
+            {
+                //  Set EnPassantTarget to 0 now.
+                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset to 0 every move.
+                Hash = Hash.ZobristEnPassant(GetIndexFile(EnPassantTarget));
+                EnPassantTarget = 0;
+            }
+
+            ToMove = Not(ToMove);
+            Hash = Hash.ZobristChangeToMove();
+        }
+
+        /// <summary>
+        /// Undoes a null move, which returns EnPassantTarget and the hash to their previous values.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void UnmakeNullMove()
+        {
+
+            if (ToMove == Color.White)
+            {
+                FullMoves--;
+            }
+
+            ToMove = Not(ToMove);
+
+            this.Hash = Hashes.Pop();
+            this.EnPassantTarget = EnPassantTargets.Pop();
         }
 
 
@@ -364,10 +411,7 @@ namespace LTChess.Core
         /// Undoes the last move that was made by popping from the Position's stacks.
         /// </summary>
         [MethodImpl(Inline)]
-        public void UnmakeMove()
-        {
-            UnmakeMove(Moves.Pop());
-        }
+        public void UnmakeMove() => UnmakeMove(Moves.Pop());
 
         /// <summary>
         /// Undoes the provided <paramref name="move"/> by popping from the stacks.
@@ -385,6 +429,7 @@ namespace LTChess.Core
             this.CheckInfo = Checks.Pop();
             this.Hash = Hashes.Pop();
             this.HalfMoves = HalfmoveClocks.Pop();
+            this.EnPassantTarget = EnPassantTargets.Pop();
 
             ulong mask = (SquareBB[move.from] | SquareBB[move.to]);
 
@@ -525,7 +570,7 @@ namespace LTChess.Core
                 for (int i = 0; i < thisMovesCount; i++)
                 {
                     move = pseudo[i];
-                    if (IsLegal(move, ourKingMask, theirKingMask, pinned))
+                    if (IsLegal(this, bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
                     {
                         legal[size++] = move;
                     }
@@ -562,7 +607,7 @@ namespace LTChess.Core
             for (int i = 0; i < thisMovesCount; i++)
             {
                 move = pseudo[i];
-                if (IsLegal(move, ourKingMask, theirKingMask, pinned))
+                if (IsLegal(this, bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
                 {
                     legal[size++] = move;
                 }
@@ -779,43 +824,45 @@ namespace LTChess.Core
             return size;
         }
 
-        [MethodImpl(Inline)]
-        public bool IsLegal(in Move move)
-        {
-            return IsLegal(move, bb.KingMask(ToMove), bb.KingMask(Not(ToMove)), bb.PinnedPieces(ToMove));
-        }
-
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>
+        /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsLegal(in Move move, ulong ourKingMask, ulong theirKingMask, ulong pinnedPieces)
-        {
-            int ourKing = lsb(ourKingMask);
-            int theirKing = lsb(theirKingMask);
-            
-            int pt = bb.GetPieceAtIndex(move.from);
-            if (pt == Piece.None)
-            {
-                return false;
-            }
+        public bool IsLegal(in Move move) => IsLegal(this, this.bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), bb.PinnedPieces(ToMove));
 
-            if (CheckInfo.InDoubleCheck && pt != Piece.King)
+        /// <summary>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static bool IsLegal(in Position position, in Bitboard bb, Move move, int ourKing, int theirKing) =>
+            IsLegal(position, bb, move, ourKing, theirKing, bb.PinnedPieces(bb.GetColorAtIndex(ourKing)));
+
+        /// <summary>
+        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static bool IsLegal(in Position position, in Bitboard bb, Move move, int ourKing, int theirKing, ulong pinnedPieces)
+        {
+            int pt = bb.GetPieceAtIndex(move.from);
+            if (position.CheckInfo.InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
                 return false;
             }
 
-            //int ourColor = bb.GetColorAtIndex(move.from);
-            int ourColor = ToMove;
+            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(move.to) != Piece.None), 
+                "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(position) + ") is trying to capture a piece on an empty square!");
+
+            int ourColor = bb.GetColorAtIndex(move.from);
             int theirColor = Not(ourColor);
 
-            if (CheckInfo.InCheck)
+            if (position.CheckInfo.InCheck)
             {
                 //  We have 3 options: block the check, take the piece giving check, or move our king out of it.
 
                 if (pt == Piece.King)
                 {
+                    //  Either move out or capture the piece
                     ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
@@ -829,27 +876,17 @@ namespace LTChess.Core
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
                     return true;
-
-                    /**
-                    if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) == 0)
-                    {
-                        return false;
-                    }
-                     */
                 }
 
-                //  If this will move the piece into the ray between our king and the checker,
-                //  or if this move is capturing a checking pawn via en passant,
-                //  then it is legal as long as it wasn't pinned.
-                bool blocksOrCaptures = (LineBB[ourKing][CheckInfo.idxChecker] & SquareBB[move.to]) != 0;
-                if (blocksOrCaptures || (move.EnPassant && move.idxEnPassant == CheckInfo.idxChecker))
+                int checker = position.CheckInfo.idxChecker;
+                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[move.to]) != 0;
+
+                if (blocksOrCaptures || (move.EnPassant && move.idxEnPassant == position.CheckInfo.idxChecker))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
 
-                    //return !IsPinned(bb, move.from, ourColor, ourKing, out _);
-                    //return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.from]) == 0);
-                    return (pinnedPieces & SquareBB[move.from]) == 0;
+                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.from]) == 0);
                 }
 
                 //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -860,30 +897,15 @@ namespace LTChess.Core
             {
                 //  We can move anywhere as long as it isn't attacked by them.
 
-                /**
-                ulong moveMask = (SquareBB[move.from] | SquareBB[move.to]);
-                bb.Pieces[Piece.King] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                bool legal = true;
-                if ((bb.AttackersTo(move.to, ourColor) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
-                {
-                    legal = false;
-                }
-
-                bb.Pieces[Piece.King] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                return legal;
-                 */
-
-                if ((bb.AttackersToMask(move.to, ourColor, ourKingMask) | (NeighborsMask[move.to] & theirKingMask)) != 0)
+                //  AttackersToMask gives a bitboard of the squares that they attack,
+                //  but it doesn't consider their king as an attacker in that sense.
+                //  so also OR the squares surrounding their king as "attacked"
+                if ((bb.AttackersToMask(move.to, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.to] & SquareBB[theirKing])) != 0)
                 {
                     return false;
                 }
             }
             else if (move.EnPassant)
-            //else if (!position.CheckInfo.InCheck && move.EnPassant)
             {
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
@@ -1251,8 +1273,12 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Determines if the Move <paramref name="m"/> will put the enemy king in check or double check
+        /// and updates <paramref name="m"/><c>.CausesCheck</c> and friends accordingly.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static void MakeCheck(in Bitboard bb, int pt, int ourColor, int theirKing, ref Move m)
+        private static void MakeCheck(in Bitboard bb, int pt, int ourColor, int theirKing, ref Move m)
         {
             int theirColor = Not(ourColor);
             ulong moveMask = (SquareBB[m.from] | SquareBB[m.to]);
@@ -1294,9 +1320,12 @@ namespace LTChess.Core
             bb.Colors[ourColor] ^= moveMask;
         }
 
-
+        /// <summary>
+        /// Generates all of the possible promotions for the pawn on <paramref name="from"/> and determines
+        /// if those promotions will put the enemy king in check or double check.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static int MakePromotionChecks(in Bitboard bb, int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
+        private static int MakePromotionChecks(in Bitboard bb, int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
         {
             int theirColor = Not(ourColor);
 
@@ -1345,6 +1374,10 @@ namespace LTChess.Core
         }
 
 
+        /// <summary>
+        /// Checks if the position is currently drawn by insufficient material.
+        /// This generally only happens for KvK, KvKB, and KvKN endgames.
+        /// </summary>
         [MethodImpl(Inline)]
         public bool IsInsufficientMaterial()
         {
@@ -1357,6 +1390,7 @@ namespace LTChess.Core
             ulong bishops = popcount(bb.Pieces[Piece.Bishop]);
 
             //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
+            //  Some organizations classify 2 knights a draw and others don't.
             if ((knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2))
             {
                 return true;
@@ -1418,7 +1452,7 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public bool IsFiftyMoveDraw()
         {
-            return HalfMoves >= 50;
+            return HalfMoves >= 100;
         }
 
         
@@ -1431,7 +1465,6 @@ namespace LTChess.Core
         public ulong Perft(int depth)
         {
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            //int size = GenAllLegalMoves(list);
             int size = GenAllLegalMovesTogether(list);
 
             if (depth == 0)
@@ -1453,32 +1486,6 @@ namespace LTChess.Core
             }
 
             return n;
-        }
-
-        public List<PerftNode> PerftDivide(int depth)
-        {
-            List<PerftNode> list = new List<PerftNode>();
-            if (depth <= 0)
-            {
-                return list;
-            }
-
-            Span<Move> mlist = stackalloc Move[NormalListCapacity];
-            //int size = GenAllLegalMoves(mlist);
-            int size = GenAllLegalMovesTogether(mlist);
-            for (int i = 0; i < size; i++)
-            {
-                PerftNode pn = new PerftNode();
-                pn.root = mlist[i].ToString();
-                MakeMove(mlist[i]);
-                pn.number = Perft(depth - 1);
-                UnmakeMove();
-                list.Add(pn);
-
-                Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
-            }
-
-            return list;
         }
 
         /// <summary>
@@ -1514,104 +1521,161 @@ namespace LTChess.Core
             return list;
         }
 
+        public List<PerftNode> PerftDivide(int depth)
+        {
+            List<PerftNode> list = new List<PerftNode>();
+            if (depth <= 0)
+            {
+                return list;
+            }
+
+            Span<Move> mlist = stackalloc Move[NormalListCapacity];
+            //int size = GenAllLegalMoves(mlist);
+            int size = GenAllLegalMovesTogether(mlist);
+            for (int i = 0; i < size; i++)
+            {
+                PerftNode pn = new PerftNode();
+                pn.root = mlist[i].ToString();
+                MakeMove(mlist[i]);
+                pn.number = Perft(depth - 1);
+                UnmakeMove();
+                list.Add(pn);
+
+                Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
+            }
+
+            return list;
+        }
+
+
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
         /// </summary>
         /// <param name="fen">The FEN to set the position to</param>
-        public void LoadFromFEN(string fen)
+        public bool LoadFromFEN(string fen)
         {
-            string[] splits = fen.Split(new char[] { '/', ' ' });
+            Position temp = (Position) this.MemberwiseClone();
 
-            bb.Reset();
-            Castling = CastlingStatus.None;
-            HalfMoves = 0;
-            FullMoves = 1;
+            temp.Moves = this.Moves.Clone();
+            temp.Captures = this.Captures.Clone();
+            temp.Castles = this.Castles.Clone();
+            temp.Checks = this.Checks.Clone();
+            temp.Hashes = this.Hashes.Clone();
+            temp.HalfmoveClocks = this.HalfmoveClocks.Clone();
+            temp.EnPassantTargets = this.EnPassantTargets.Clone();
 
-            for (int i = 0; i < splits.Length; i++)
+            try
             {
-                //	it's a row on the board
-                if (i <= 7)
+                string[] splits = fen.Split(new char[] { '/', ' ' });
+
+                bb.Reset();
+                Castling = CastlingStatus.None;
+                HalfMoves = 0;
+                FullMoves = 1;
+
+                for (int i = 0; i < splits.Length; i++)
                 {
-                    int pieceX = 0;
-                    for (int x = 0; x < splits[i].Length; x++)
+                    //	it's a row on the board
+                    if (i <= 7)
                     {
-                        if (char.IsLetter(splits[i][x]))
+                        int pieceX = 0;
+                        for (int x = 0; x < splits[i].Length; x++)
                         {
-                            int pt = FENToPiece(splits[i][x]);
-                            int idx = CoordToIndex(pieceX, 7 - i);
-                            bb.Pieces[pt] |= SquareBB[idx];
-                            bb.PieceTypes[idx] = pt;
-                            if (char.IsUpper(splits[i][x]))
+                            if (char.IsLetter(splits[i][x]))
                             {
-                                bb.Colors[Color.White] |= SquareBB[idx];
+                                int pt = FENToPiece(splits[i][x]);
+                                int idx = CoordToIndex(pieceX, 7 - i);
+                                bb.Pieces[pt] |= SquareBB[idx];
+                                bb.PieceTypes[idx] = pt;
+                                if (char.IsUpper(splits[i][x]))
+                                {
+                                    bb.Colors[Color.White] |= SquareBB[idx];
+                                }
+                                else
+                                {
+                                    bb.Colors[Color.Black] |= SquareBB[idx];
+                                }
+
+                                pieceX++;
+                            }
+                            else if (char.IsDigit(splits[i][x]))
+                            {
+                                int add = int.Parse(splits[i][x].ToString());
+                                pieceX += add;
                             }
                             else
                             {
-                                bb.Colors[Color.Black] |= SquareBB[idx];
+                                Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
                             }
-
-                            pieceX++;
                         }
-                        else if (char.IsDigit(splits[i][x]))
+                    }
+                    //	who moves next
+                    else if (i == 8)
+                    {
+                        ToMove = splits[i].Equals("w") ? Color.White : Color.Black;
+                    }
+                    //	castling availability
+                    else if (i == 9)
+                    {
+                        if (splits[i].Contains("-"))
                         {
-                            int add = int.Parse(splits[i][x].ToString());
-                            pieceX += add;
+                            Castling = 0;
                         }
                         else
                         {
-                            Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
+                            Castling |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
+                            Castling |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
+                            Castling |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
+                            Castling |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
                         }
                     }
-                }
-                //	who moves next
-                else if (i == 8)
-                {
-                    ToMove = splits[i].Equals("w") ? Color.White : Color.Black;
-                }
-                //	castling availability
-                else if (i == 9)
-                {
-                    if (splits[i].Contains("-"))
+                    //	en passant target or last double pawn move
+                    else if (i == 10)
                     {
-                        Castling = 0;
-                    }
-                    else
-                    {
-                        Castling |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
-                        Castling |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
-                        Castling |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
-                        Castling |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
-                    }
-                }
-                //	en passant target or last double pawn move
-                else if (i == 10)
-                {
-                    if (!splits[i].Contains("-"))
-                    {
-                        //	White moved a pawn last
-                        if (splits[i][1].Equals('3'))
+                        if (!splits[i].Contains("-"))
                         {
-                            //int id = CoordToIndex(GetFileInt(splits[i][0]), 4);
-                            EnPassantTarget = StringToIndex(splits[i]);
-                        }
-                        else if (splits[i][1].Equals('6'))
-                        {
-                            //int id = CoordToIndex(GetFileInt(splits[i][0]), 5);
-                            EnPassantTarget = StringToIndex(splits[i]);
+                            //	White moved a pawn last
+                            if (splits[i][1].Equals('3'))
+                            {
+                                //int id = CoordToIndex(GetFileInt(splits[i][0]), 4);
+                                EnPassantTarget = StringToIndex(splits[i]);
+                            }
+                            else if (splits[i][1].Equals('6'))
+                            {
+                                //int id = CoordToIndex(GetFileInt(splits[i][0]), 5);
+                                EnPassantTarget = StringToIndex(splits[i]);
+                            }
                         }
                     }
-                }
-                //	halfmove number
-                else if (i == 11)
-                {
-                    HalfMoves = int.Parse(splits[i]);
-                }
-                //	fullmove number
-                else if (i == 12)
-                {
-                    FullMoves = int.Parse(splits[i]);
+                    //	halfmove number
+                    else if (i == 11)
+                    {
+                        HalfMoves = int.Parse(splits[i]);
+                    }
+                    //	fullmove number
+                    else if (i == 12)
+                    {
+                        FullMoves = int.Parse(splits[i]);
+                    }
                 }
             }
+            catch(Exception ex)
+            {
+                Log("Failed parsing '" + fen + "': ");
+                Log(ex.ToString());
+                
+                this.Moves.CopyFromArray(temp.Moves);
+                this.Captures.CopyFromArray(temp.Captures);
+                this.Castles.CopyFromArray(temp.Castles);
+                this.Checks.CopyFromArray(temp.Checks);
+                this.Hashes.CopyFromArray(temp.Hashes);
+                this.HalfmoveClocks.CopyFromArray(temp.HalfmoveClocks);
+                this.EnPassantTargets.CopyFromArray(temp.EnPassantTargets);
+
+                return false;
+            }
+
+            return true;
         }
 
         public string GetFEN()
