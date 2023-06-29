@@ -10,7 +10,7 @@ namespace LTChess.Transposition
 {
     public class EvaluationTable
     {
-        public const int DefaultEvaluationTableSizeMB = 16;
+        public const int DefaultEvaluationTableSizeMB = 32;
 
         public const ulong InvalidKey = 0UL;
 
