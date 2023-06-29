@@ -23,6 +23,8 @@ namespace LTChess.Search
         private const int C3 = 30;
         private const int C4 = 0;
 
+        private const int CF = 30;
+
         private const int EGK1 = -100;
         private const int EGK2 = -50;
         private const int EGK3 = -10;
@@ -44,6 +46,18 @@ namespace LTChess.Search
             D4, D3, D5, D4, D4, D5, D3, D4,
             D6, D6, D6, D6, D6, D6, D6, D6,
             0,  0,  0,  0,  0,  0,  0,  0,
+        };
+
+        public static int[] PawnCenter = new[]
+        {
+            C4, C4, C4, C4 + CF, C4 + CF, C4, C4, C4,
+            C4, C3, C3, C3 + CF, C3 + CF, C3, C3, C4,
+            C4, C3, C2, C2 + CF, C2 + CF, C2, C3, C4,
+            C4, C3, C2, C1 + CF, C1 + CF, C2, C3, C4,
+            C4, C3, C2, C1 + CF, C1 + CF, C2, C3, C4,
+            C4, C3, C2, C2 + CF, C2 + CF, C2, C3, C4,
+            C4, C3, C3, C3 + CF, C3 + CF, C3, C3, C4,
+            C4, C4, C4, C4 + CF, C4 + CF, C4, C4, C4,
         };
 
         public static int[] Center = new[]
@@ -81,10 +95,10 @@ namespace LTChess.Search
 
         public static void Initialize()
         {
-            WhitePawns = Pawns.Reverse().ToArray();
-            BlackPawns = Pawns;
-            Initialized = true;
-        }
+                WhitePawns = Pawns.Reverse().ToArray();
+                BlackPawns = Pawns;
+                Initialized = true;
+            }
 
 
     }
