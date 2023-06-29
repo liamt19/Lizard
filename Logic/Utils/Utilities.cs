@@ -25,8 +25,8 @@ namespace LTChess.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "5.0";
-        public const string EngineTagLine = "Got to 44! in puzzle rush";
+        public const string EngineBuildVersion = "6.0";
+        public const string EngineTagLine = "Now rated 1700 on Lichess!";
 
         public const int MaxListCapacity = 512;
         public const int NormalListCapacity = 128;
@@ -80,17 +80,6 @@ namespace LTChess.Util
 
         public static void Log(string s)
         {
-#if DEBUG
-            long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off;
-            if (!UCIMode)
-            {
-                Console.WriteLine(timeMS.ToString("0000000") + " " + s);
-            }
-            else
-            {
-                LogString("[LOG]: " + s);
-            }
-#else
             if (!UCIMode)
             {
                 Console.WriteLine(s);
@@ -99,7 +88,7 @@ namespace LTChess.Util
             {
                 LogString("[LOG]: " + s);
             }
-#endif
+
             Debug.WriteLine(s);
         }
 		
@@ -182,6 +171,7 @@ namespace LTChess.Util
             return color ^ 1;
         }
 
+        [MethodImpl(Inline)]
         public static string ColorToString(int color)
         {
             if (color == Color.White)
@@ -198,6 +188,7 @@ namespace LTChess.Util
             }
         }
 
+        [MethodImpl(Inline)]
         public static string PieceToString(int n)
         {
             switch (n)
@@ -216,7 +207,7 @@ namespace LTChess.Util
                     return "King";
             }
 
-            return "EMPTY";
+            return "None";
         }
 
         [MethodImpl(Inline)]
@@ -330,62 +321,28 @@ namespace LTChess.Util
             return (y * 8) + x;
         }
 
+        [MethodImpl(Inline)]
         public static string IndexToString(int idx)
         {
             return "" + GetFileChar(GetIndexFile(idx)) + (GetIndexRank(idx) + 1);
         }
 
+        [MethodImpl(Inline)]
         public static string CoordToString(int x, int y)
         {
             return "" + GetFileChar(x) + (y + 1);
         }
 
+        [MethodImpl(Inline)]
         public static int StringToIndex(string s)
         {
             return CoordToIndex(GetFileInt(s[0]), int.Parse(s[1].ToString()) - 1);
-        }
-
-        public static string UlongToString(ulong b)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            while (b != 0)
-            {
-                int idx = lsb(b);
-                sb.Append(IndexToString(idx) + ", ");
-                b = poplsb(b);
-            }
-
-            if (sb.Length > 2)
-            {
-                sb.Remove(sb.Length - 2, 2);
-            }
-
-            return sb.ToString();
         }
 
         [MethodImpl(Inline)]
         public static bool InBounds(int x, int y)
         {
             return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
-        }
-
-        /// <summary>
-        /// returns <c>Convert.ToString((long)u, 2)</c>
-        /// </summary>
-        public static string InBinary(ulong u) => Convert.ToString((long)u, 2);
-
-        public static string InBinaryFull(ulong bb)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append(Convert.ToString((long)bb, 2));
-            if (sb.Length != 64)
-            {
-                sb.Insert(0, "0", 64 - sb.Length);
-            }
-
-            return sb.ToString();
         }
 
         public static string FormatBB(ulong bb)
@@ -423,77 +380,6 @@ namespace LTChess.Util
             return new string(charArray);
         }
 
-        public static void SortByCapture(this Span<Move> arr)
-        {
-            int sortIndex = 0;
-            for (int i = 0; i < arr.Length; i++)
-            {
-                if (arr[i].IsNull())
-                {
-                    return;
-                }
-
-                if (arr[i].Capture)
-                {
-                    Move temp = arr[sortIndex];
-                    arr[sortIndex] = arr[i];
-                    arr[i] = temp;
-
-                    sortIndex++;
-                }
-            }
-        }
-
-        public static void SortByCheck(this Span<Move> arr)
-        {
-            int sortIndex = 0;
-            for (int i = 0; i < arr.Length; i++)
-            {
-                if (arr[i].IsNull())
-                {
-                    return;
-                }
-
-                if (arr[i].CausesCheck || arr[i].CausesDoubleCheck)
-                {
-                    Move temp = arr[sortIndex];
-                    arr[sortIndex] = arr[i];
-                    arr[i] = temp;
-
-                    sortIndex++;
-                }
-            }
-        }
-
-        public static void SortBySourceSquare(this Span<Move> arr)
-        {
-            List<Move> temp = new List<Move>();
-            for (int i = 0; i < arr.Length; i++)
-            {
-                if (arr[i].IsNull())
-                {
-                    break;
-                }
-                temp.Add(arr[i]);
-            }
-
-            temp = temp.OrderBy(move => move.from).ThenBy(move => move.to).ToList();
-
-            for (int i = 0; i < temp.Count; i++)
-            {
-                arr[i] = temp[i];
-            }
-        }
-
-        public static int CountMoves(this Span<Move> arr)
-        {
-            int i = 0;
-            while (i < arr.Length && !arr[i].IsNull())
-            {
-                i++;
-            }
-            return i;
-        }
 
         public static string PrintBoard(Bitboard bb)
         {
@@ -630,7 +516,7 @@ namespace LTChess.Util
             {
                 Log("\r\n\r\n**** Tracing whichever PV is under this");
                 Position temp = new Position(info.Position.GetFEN());
-                Evaluation.Evaluate(temp.bb, temp.ToMove, true);
+                Evaluation.Evaluate(temp, temp.ToMove, true);
             }
 
             StringBuilder sb = new StringBuilder();
@@ -645,6 +531,7 @@ namespace LTChess.Util
             return sb.ToString();
         }
 
+        [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
             if (Evaluation.IsScoreMate(score, out int mateIn))
@@ -660,26 +547,6 @@ namespace LTChess.Util
         public static string FormatEvalTerm(double normalScore, int sz = 8)
         {
             return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
-        }
-
-        //  https://stackoverflow.com/questions/8946808/can-console-clear-be-used-to-only-clear-a-line-instead-of-whole-console
-        public static void ClearCurrentConsoleLine()
-        {
-            //Console.SetCursorPosition(0, Console.CursorTop - 1);
-            int currentLineCursor = Console.CursorTop;
-            Console.SetCursorPosition(0, Console.CursorTop);
-            Console.Write(new string(' ', Console.WindowWidth));
-            Console.SetCursorPosition(0, currentLineCursor);
-        }
-
-        //  https://stackoverflow.com/questions/15529672/generating-an-indented-string-for-a-single-line-of-text
-        public static string Indent(this string value, int tabs)
-        {
-            var strArray = value.Split('\n');
-            var sb = new StringBuilder();
-            foreach (var s in strArray)
-                sb.Append(new string(' ', (tabs * 4))).Append(s);
-            return sb.ToString();
         }
 
 
@@ -745,28 +612,6 @@ namespace LTChess.Util
 #endif
         }
 
-        /// <summary>
-        /// I would like to use it like this to avoid having to do some thing like "int idx = lsb(value);    value = poplsb(value);"
-        /// But this is slower, probably since C# doesn't like pointers. 
-        /// And this was faster than using "ref ulong value" by about 10 ms in a benchmark, but still about 2-3 ms slower than ^^^^ that.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static unsafe int _poplsbFull(ulong* value)
-        {
-            int idx = (int) Bmi1.X64.TrailingZeroCount(*value);
-            //*value &= *value - 1;
-            *value = Bmi1.X64.ResetLowestSetBit(*value);
-            return idx;
-        }
-
-        [MethodImpl(Inline)]
-        public static unsafe int _poplsbRef(ref ulong value)
-        {
-            int idx = (int)Bmi1.X64.TrailingZeroCount(value);
-            value = Bmi1.X64.ResetLowestSetBit(value);
-            return idx;
-        }
-
         [MethodImpl(Inline)]
         public static int msb(ulong value)
         {
@@ -802,180 +647,10 @@ namespace LTChess.Util
 #endif
         }
 
-
-        /// <summary>
-        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on the board <paramref name="occupied"/>.
-        /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
-        /// except for A8 and H1.
-        /// </summary>
-        public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
-        {
-            ulong mask = 0UL;
-            if (pt == Piece.Bishop)
-            {
-                IndexToCoord(idx, out int x, out int y);
-                int sq;
-
-                int ix = x - 1;
-                int iy = y - 1;
-                while (ix >= 0 && iy >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix--;
-                    iy--;
-                }
-
-                ix = x - 1;
-                iy = y + 1;
-                while (ix >= 0 && iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix--;
-                    iy++;
-                }
-
-                ix = x + 1;
-                iy = y + 1;
-                while (ix <= 7 && iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix++;
-                    iy++;
-                }
-
-                ix = x + 1;
-                iy = y - 1;
-                while (ix <= 7 && iy >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix++;
-                    iy--;
-                }
-            }
-            else
-            {
-                IndexToCoord(idx, out int x, out int y);
-                int sq;
-
-                int ix = x - 1;
-                int iy = y;
-                while (ix >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix--;
-                }
-
-                ix = x + 1;
-                iy = y;
-                while (ix <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix++;
-                }
-
-                ix = x;
-                iy = y - 1;
-                while (iy >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    iy--;
-                }
-
-                ix = x;
-                iy = y + 1;
-                while (iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    iy++;
-                }
-            }
-
-            return mask;
-        }
-
-        /// <summary>
-        /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on an empty board.
-        /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
-        /// except for A8 and H1.
-        /// </summary>
-        public static ulong GetBlockerMask(int pt, int idx)
-        {
-            ulong mask = (pt == Piece.Bishop) ? PrecomputedData.BishopRays[idx] : PrecomputedData.RookRays[idx];
-
-            int rank = (idx >> 3);
-            int file = (idx & 7);
-            if (rank == 7)
-            {
-                mask &= ~Rank1BB;
-            }
-            else if (rank == 0)
-            {
-                mask &= ~Rank8BB;
-            }
-            else
-            {
-                mask &= (~Rank1BB & ~Rank8BB);
-            }
-
-            if (file == 0)
-            {
-                mask &= ~FileHBB;
-            }
-            else if (file == 7)
-            {
-                mask &= ~FileABB;
-            }
-            else
-            {
-                mask &= (~FileHBB & ~FileABB);
-            }
-
-            return mask;
-        }
-
         /// <summary>
         /// Returns a ulong with bits set along whichever file <paramref name="idx"/> is in.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetFileBB(int idx)
         {
             return (FileABB << GetIndexFile(idx));
@@ -984,6 +659,7 @@ namespace LTChess.Util
         /// <summary>
         /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetRankBB(int idx)
         {
             return (Rank1BB << (8 * GetIndexRank(idx)));
