@@ -66,6 +66,8 @@ namespace LTChess.Data
         /// </summary>
         public static ulong[] BlackPawnAttackMasks = new ulong[64];
 
+        public static ulong[][] PawnAttackMasks = new ulong[2][];
+
         public static ulong[] WhitePawnMoveMasks = new ulong[64];
         public static ulong[] BlackPawnMoveMasks = new ulong[64];
 
@@ -384,6 +386,9 @@ namespace LTChess.Data
 
         private static void DoPawnAttacks()
         {
+            PawnAttackMasks[Color.White] = new ulong[64];
+            PawnAttackMasks[Color.Black] = new ulong[64];
+
             for (int i = 0; i < 64; i++)
             {
                 ulong whiteAttack = 0;
@@ -412,12 +417,14 @@ namespace LTChess.Data
                     if (i < A2)
                     {
                         BlackPawnAttackMasks[i] = 0;
+                        PawnAttackMasks[Color.Black][i] = 0;
 
                         whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
                     }
                     else if (i > H7)
                     {
                         WhitePawnAttackMasks[i] = 0;
+                        PawnAttackMasks[Color.White][i] = 0;
 
                         blackAttack |= (1UL << CoordToIndex(x - 1, by));
                     }
@@ -434,12 +441,14 @@ namespace LTChess.Data
                     {
                         //  Set this to 0 since pawns don't attack squares that are outside of the bounds of the board.
                         BlackPawnAttackMasks[i] = 0;
+                        PawnAttackMasks[Color.Black][i] = 0;
 
                         whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
                     }
                     else if (i > H7)
                     {
                         WhitePawnAttackMasks[i] = 0;
+                        PawnAttackMasks[Color.White][i] = 0;
 
                         blackAttack |= (1UL << CoordToIndex(x + 1, by));
                     }
@@ -453,9 +462,13 @@ namespace LTChess.Data
                 WhitePawnAttackMasks[i] = whiteAttack;
                 BlackPawnAttackMasks[i] = blackAttack;
 
+                PawnAttackMasks[Color.White][i] = whiteAttack;
+                PawnAttackMasks[Color.Black][i] = blackAttack;
+
                 WhitePawnMoveMasks[i] = whiteMove;
                 BlackPawnMoveMasks[i] = blackMove;
             }
+
         }
 
         private static void DoPassedPawns()
