@@ -34,9 +34,11 @@ namespace LTChess.Search
 
         public static int[] BlackPawns;
 
+        public static int[][] PawnsByColor;
+
         //  From white's perspective.
         //  Small bonus for fianchetto and for center pawns
-        public static int[] Pawns = new int[]
+        public static int[] _Pawns = new int[]
         {
             0,  0,  0,  0,  0,  0,  0,  0,
             D1, D1, D1, D1, D1, D1, D1, D1,
@@ -95,10 +97,15 @@ namespace LTChess.Search
 
         public static void Initialize()
         {
-                WhitePawns = Pawns.Reverse().ToArray();
-                BlackPawns = Pawns;
-                Initialized = true;
-            }
+            WhitePawns = _Pawns.Reverse().ToArray();
+            BlackPawns = _Pawns;
+            Initialized = true;
+
+            PawnsByColor = new int[2][];
+
+            PawnsByColor[Color.White] = WhitePawns;
+            PawnsByColor[Color.Black] = _Pawns;
+        }
 
 
     }
