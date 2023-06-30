@@ -92,6 +92,9 @@ namespace LTChess.Search
             blackRing = NeighborsMask[blackKing];
             blackOutRing = OutterNeighborsMask[blackKing];
 
+            WhiteAttacks = 0;
+            BlackAttacks = 0;
+
             materialScore.Clear();
             pawnScore.Clear();
             bishopScore.Clear();
@@ -131,8 +134,8 @@ namespace LTChess.Search
             threatScore.Scale(ScaleThreats[gamePhase]);
             materialScore.Scale(ScaleMaterial[gamePhase]);
 
-            double scoreW = materialScore.white + pawnScore.white + knightScore.white + bishopScore.white + rookScore.white + kingScore.white + threatScore.white + spaceScore.white + endgameScore.white;
-            double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + kingScore.black + threatScore.black + spaceScore.black + endgameScore.black;
+            double scoreW = materialScore.white + pawnScore.white + knightScore.white + bishopScore.white + rookScore.white + queenScore.white + kingScore.white + threatScore.white + spaceScore.white + endgameScore.white;
+            double scoreB = materialScore.black + pawnScore.black + knightScore.black + bishopScore.black + rookScore.black + queenScore.black + kingScore.black + threatScore.black + spaceScore.black + endgameScore.black;
 
             double scoreFinal = scoreW - scoreB;
             double relative = (scoreFinal * (ToMove == Color.White ? 1 : -1));
@@ -147,6 +150,7 @@ namespace LTChess.Search
                 Log("│     Knights │ " + FormatEvalTerm(knightScore.white) + " │ " + FormatEvalTerm(knightScore.black) + " │ " + FormatEvalTerm(knightScore.white - knightScore.black) + " │ ");
                 Log("│     Bishops │ " + FormatEvalTerm(bishopScore.white) + " │ " + FormatEvalTerm(bishopScore.black) + " │ " + FormatEvalTerm(bishopScore.white - bishopScore.black) + " │ ");
                 Log("│       Rooks │ " + FormatEvalTerm(rookScore.white) + " │ " + FormatEvalTerm(rookScore.black) + " │ " + FormatEvalTerm(rookScore.white - rookScore.black) + " │ ");
+                Log("│      Queens │ " + FormatEvalTerm(queenScore.white) + " │ " + FormatEvalTerm(queenScore.black) + " │ " + FormatEvalTerm(queenScore.white - queenScore.black) + " │ ");
                 Log("│ King safety │ " + FormatEvalTerm(kingScore.white) + " │ " + FormatEvalTerm(kingScore.black) + " │ " + FormatEvalTerm(kingScore.white - kingScore.black) + " │ ");
                 Log("│     Threats │ " + FormatEvalTerm(threatScore.white) + " │ " + FormatEvalTerm(threatScore.black) + " │ " + FormatEvalTerm(threatScore.white - threatScore.black) + " │ ");
                 Log("│       Space │ " + FormatEvalTerm(spaceScore.white) + " │ " + FormatEvalTerm(spaceScore.black) + " │ " + FormatEvalTerm(spaceScore.white - spaceScore.black) + " │ ");
@@ -364,7 +368,7 @@ namespace LTChess.Search
                 int idx = lsb(whiteKnights);
 
                 ulong thisAttacks = KnightMasks[idx] & black;
-                WhiteAttacks |= KnightMasks[idx];
+                WhiteAttacks |= KnightMasks[idx] & ~white;
 
                 while (thisAttacks != 0)
                 {
@@ -400,7 +404,7 @@ namespace LTChess.Search
                 int idx = lsb(blackKnights);
 
                 ulong thisAttacks = KnightMasks[idx] & white;
-                BlackAttacks |= KnightMasks[idx];
+                BlackAttacks |= KnightMasks[idx] & ~black;
 
                 while (thisAttacks != 0)
                 {
@@ -908,7 +912,8 @@ namespace LTChess.Search
         }
 
         /// <summary>
-        /// Returns true if the pawn on <paramref name="idx"/> doesn't have any pawns on the files beside it.
+        /// Returns true if the pawn on <paramref name="idx"/> doesn't have any pawns on any of the squares in the files beside it.
+        /// So IsIsolated(E4) would return true when there are no friendly pawns in the D or F files.
         /// </summary>
         [MethodImpl(Inline)]
         public static bool IsIsolated(int idx)
