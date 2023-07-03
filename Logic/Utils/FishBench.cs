@@ -4,16 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Reflection;
+using LTChess.Properties;
 
 namespace LTChess.Util
 {
     public static class FishBench
     {
         private static Position p;
-
-		private static string Depth4Path = @".\BenchFiles\sf14bench_perft4.txt";
-
-		private static string Depth5Path = @".\BenchFiles\sf14bench_perft5.txt";
 
 		public static Dictionary<string, ulong> FENDepths4 = new Dictionary<string, ulong>();
 		public static Dictionary<string, ulong> FENDepths5 = new Dictionary<string, ulong>();
@@ -58,13 +56,14 @@ namespace LTChess.Util
 
 		static FishBench()
         {
-			Load(Depth4Path, 4);
-			Load(Depth5Path, 5);
+			Load(Resources.sf14bench_perft4, 4);
+			Load(Resources.sf14bench_perft5, 5);
 		}
 
-		public static void Load(string path, int Depth)
+		public static void Load(string str, int Depth)
         {
-			string[] lines = File.ReadAllLines(path);
+
+			string[] lines = str.Split(Environment.NewLine);
 
 			string lastFen = "";
 
@@ -91,6 +90,10 @@ namespace LTChess.Util
             }
 		}
 
+        /// <summary>
+        /// Runs a perft command on each of the positions in BenchFENs, and verifies that the number of nodes
+		/// returned by our perft command is the same as the number that Stockfish 14 reported.
+        /// </summary>
         public static double Go(int Depth = 4)
         {
 			Dictionary<string, ulong> dict = FENDepths4;
