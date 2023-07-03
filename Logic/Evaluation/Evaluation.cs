@@ -109,19 +109,18 @@ namespace LTChess.Search
             if (IsEndgame || IsTBEndgame)
             {
                 gamePhase = GamePhaseEndgame;
-                endgameScore = EvalEndgame(p, ToMove);
-                endgameScore.Scale(ScaleEndgame);
+                double[] eg = EvalEndgame(p, ToMove);
+                endgameScore.white = eg[Color.White];
+                endgameScore.black = eg[Color.Black];
             }
-            else
-            {
-                EvalPawns();
-                EvalKnights();
-                EvalBishops();
-                EvalRooks();
-                EvalQueens();
-                EvalKingSafety();
-                EvalSpace();
-            }
+
+            EvalPawns();
+            EvalKnights();
+            EvalBishops();
+            EvalRooks();
+            EvalQueens();
+            EvalKingSafety();
+            EvalSpace();
 
             pawnScore.Scale(ScalePawns[gamePhase]);
             knightScore.Scale(ScaleKnights[gamePhase]);
@@ -160,7 +159,7 @@ namespace LTChess.Search
                 Log("└─────────────┴──────────┴──────────┴──────────┘");
                 Log("Final: " + FormatEvalTerm(scoreFinal) + "\t\trelative\t" + FormatEvalTerm(relative));
                 Log(ColorToString(ToMove) + " is " + 
-                    (relative < 0 ? "losing" : (relative > 0 ? "winning" : "equal")) + " by " + InCentipawns(scoreFinal) + " cp");
+                    (relative < 0 ? "losing" : (relative > 0 ? "winning" : "equal")) + " by " + InCentipawns(Math.Abs(relative)) + " cp");
             }
 
             return (int)relative;
@@ -458,6 +457,17 @@ namespace LTChess.Search
                 ulong thisMoves = GetBishopMoves(all, idx);
                 WhiteAttacks |= (thisMoves & ~white);
 
+                //  Bonus for bishops that are on the same diagonal as the enemy king
+                if ((BishopRays[idx] & SquareBB[blackKing]) != 0)
+                {
+                    bishopScore.white += ScoreBishopOnKingDiagonal;
+                }
+
+                //  Bonus for bishops that are on the a diagonal next to the king,
+                //  meaning they are able to attack the "king ring" squares.
+                bishopScore.white += (popcount(BishopRays[idx] & blackRing) * ScoreBishopNearKingDiagonal);
+                
+
                 ulong thisAttacks = thisMoves & black;
                 while (thisAttacks != 0)
                 {
@@ -492,6 +502,13 @@ namespace LTChess.Search
 
                 ulong thisMoves = GetBishopMoves(all, idx);
                 BlackAttacks |= (thisMoves & ~black);
+
+                if ((BishopRays[idx] & SquareBB[whiteKing]) != 0)
+                {
+                    bishopScore.black += ScoreBishopOnKingDiagonal;
+                }
+
+                bishopScore.black += (popcount(BishopRays[idx] & whiteRing) * ScoreBishopNearKingDiagonal);
 
                 ulong thisAttacks = GetBishopMoves(all, idx) & white;
                 while (thisAttacks != 0)
@@ -540,7 +557,7 @@ namespace LTChess.Search
                 rookScore.white += ((ScorePerSquare / 2) * popcount(thisMoves & ~all));
                 rookScore.white += (PSQT.Center[idx] * (CoefficientPSQTCenter / 2));
 
-                if (GetIndexRank(idx) == 7)
+                if (GetIndexRank(idx) == 6)
                 {
                     rookScore.white += ScoreRookOn7th;
                 }
@@ -593,7 +610,7 @@ namespace LTChess.Search
                 rookScore.black += ((ScorePerSquare / 2) * popcount(thisMoves & ~all));
                 rookScore.black += (PSQT.Center[idx] * (CoefficientPSQTCenter / 2));
                 
-                if (GetIndexRank(idx) == 2)
+                if (GetIndexRank(idx) == 1)
                 {
                     rookScore.black += ScoreRookOn7th;
                 }
@@ -652,7 +669,7 @@ namespace LTChess.Search
 
                 queenScore.white += (popcount(thisMoves) * ScoreQueenSquares);
 
-                if (GetIndexRank(idx) == 7)
+                if (GetIndexRank(idx) == 6)
                 {
                     queenScore.white += ScoreRookOn7th;
                 }
@@ -694,7 +711,7 @@ namespace LTChess.Search
 
                 queenScore.black += (popcount(thisMoves) * ScoreQueenSquares);
 
-                if (GetIndexRank(idx) == 2)
+                if (GetIndexRank(idx) == 1)
                 {
                     queenScore.black += ScoreRookOn7th;
                 }
