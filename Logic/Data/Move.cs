@@ -159,7 +159,7 @@ namespace LTChess.Data
             ulong pieceBB = (bb.Pieces[pt] & bb.Colors[pc]);
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = position.GenAllLegalMoves(list);
+            int size = position.GenAllLegalMovesTogether(list);
 
             //  If multiple of the same type of piece can move to the same square, We include on of the following to differentiate them:
             //  The file from which they moved.
