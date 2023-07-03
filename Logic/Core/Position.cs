@@ -93,7 +93,7 @@ namespace LTChess.Core
         public bool TryMakeMove(string moveStr)
         {
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = GenAllLegalMoves(list);
+            int size = GenAllLegalMovesTogether(list);
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
@@ -522,24 +522,6 @@ namespace LTChess.Core
             ToMove = Not(ToMove);
         }
 
-        [MethodImpl(Inline)]
-        public int GenAllPseudoMoves(in Span<Move> pseudo)
-        {
-            int size = 0;
-
-            ulong us = bb.Colors[ToMove];
-            ulong usCopy = us;
-
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong theirKing = bb.KingMask(Not(ToMove));
-
-            while (us != 0)
-            {
-                size += GenPseudoMoves(lsb(us), usCopy, them, theirKing, pseudo, size);
-            }
-
-            return size;
-        }
 
         /// <summary>
         /// Generates all legal moves in the provided <paramref name="position"/>.
@@ -548,40 +530,7 @@ namespace LTChess.Core
         /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
         /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
         [MethodImpl(Inline)]
-        public int GenAllLegalMoves(in Span<Move> legal)
-        {
-            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
-            int size = 0;
-
-            ulong pinned = bb.PinnedPieces(ToMove);
-            ulong us = bb.Colors[ToMove];
-            ulong usCopy = us;
-            ulong ourKingMask = bb.KingMask(ToMove);
-
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong theirKingMask = bb.KingMask(Not(ToMove));
-
-            Move move;
-            int thisMovesCount;
-            while (us != 0)
-            {
-                thisMovesCount = GenPseudoMoves(lsb(us), usCopy, them, theirKingMask, pseudo, 0);
-                us = poplsb(us);
-                for (int i = 0; i < thisMovesCount; i++)
-                {
-                    move = pseudo[i];
-                    if (IsLegal(this, bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
-                    {
-                        legal[size++] = move;
-                    }
-                }
-            }
-
-            return size;
-        }
-
-        [MethodImpl(Inline)]
-        public int GenAllLegalMovesTogether(in Span<Move> legal)
+        public int GenAllLegalMovesTogether(in Span<Move> legal, bool onlyCaptures = false)
         {
             Span<Move> pseudo = stackalloc Move[NormalListCapacity];
             int size = 0;
@@ -597,12 +546,12 @@ namespace LTChess.Core
             Move move;
             int thisMovesCount = 0;
 
-            thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount);
-            thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount);
-            thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount);
-            thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount);
-            thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount);
-            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount);
+            thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
 
             for (int i = 0; i < thisMovesCount; i++)
             {
@@ -616,213 +565,6 @@ namespace LTChess.Core
             return size;
         }
 
-        /// <summary>
-        /// Generates the pseudo legal moves for the piece at index <paramref name="idx"/>.
-        /// </summary>
-        /// <param name="position">The position to generate for</param>
-        /// <param name="bb">The <paramref name="position"/>'s Bitboard</param>
-        /// <param name="idx">The index of the piece</param>
-        /// <param name="us">This piece's Color bitboard from the <paramref name="position"/></param>
-        /// <param name="ml">A Span of Move with sufficient size</param>
-        /// <param name="size">The number of moves already generated in <paramref name="ml"/>, which should be 0 if this is being called for the first time.</param>
-        /// <returns>The new value of <paramref name="size"/>, which was incremented for every move placed into <paramref name="ml"/></returns>
-        [MethodImpl(Inline)]
-        public int GenPseudoMoves(int idx, ulong us, ulong them, ulong theirKingMask, in Span<Move> ml, int size)
-        {
-            int ourColor = ToMove;
-            int theirColor = Not(ourColor);
-            int pt = bb.GetPieceAtIndex(idx);
-
-            int theirKing = lsb(theirKingMask);
-
-            ulong all = us | them;
-
-            ulong moves = 0;
-
-            switch (pt)
-            {
-                case Piece.Pawn:
-                    moves = GenPseudoPawnMask(bb, idx, out _, out ulong Promotions);
-                    //  Make promotion moves
-                    while (Promotions != 0)
-                    {
-                        int promotionSquare = lsb(Promotions);
-                        Promotions = poplsb(Promotions);
-
-                        for (int promotionPiece = Piece.Knight; promotionPiece <= Piece.Queen; promotionPiece++)
-                        {
-                            Move m = new Move(idx, promotionSquare, promotionPiece);
-
-                            int cap = bb.GetPieceAtIndex(promotionSquare);
-                            if (cap != Piece.None)
-                            {
-                                bb.Pieces[cap] ^= SquareBB[promotionSquare];
-                                bb.Colors[theirColor] ^= SquareBB[promotionSquare];
-                                m.Capture = true;
-                            }
-                            bb.Pieces[Piece.Pawn] ^= SquareBB[idx];
-                            bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
-                            bb.Colors[ourColor] ^= (SquareBB[idx] | SquareBB[promotionSquare]);
-
-                            ulong attacks = bb.AttackersTo(theirKing, theirColor);
-                            switch (popcount(attacks))
-                            {
-                                case 0:
-                                    break;
-                                case 1:
-                                    m.CausesCheck = true;
-                                    m.idxChecker = lsb(attacks);
-                                    break;
-                                case 2:
-                                    m.CausesDoubleCheck = true;
-                                    m.idxChecker = lsb(attacks);
-                                    m.idxDoubleChecker = msb(attacks);
-                                    break;
-                            }
-
-                            if (cap != Piece.None)
-                            {
-                                bb.Pieces[cap] ^= SquareBB[promotionSquare];
-                                bb.Colors[theirColor] ^= SquareBB[promotionSquare];
-                            }
-                            bb.Pieces[Piece.Pawn] ^= SquareBB[idx];
-                            bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
-                            bb.Colors[ourColor] ^= (SquareBB[idx] | SquareBB[promotionSquare]);
-
-                            ml[size++] = m;
-                        }
-                    }
-                    if (EnPassantTarget != 0 && GenEnPassantMove(bb, idx, EnPassantTarget, out Move EnPassant))
-                    {
-                        ulong moveMask = SquareBB[EnPassant.from] | SquareBB[EnPassant.to];
-                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassant.idxEnPassant]);
-                        bb.Colors[ourColor] ^= moveMask;
-                        bb.Colors[theirColor] ^= (SquareBB[EnPassant.idxEnPassant]);
-
-                        ulong attacks = bb.AttackersTo(theirKing, theirColor);
-
-                        switch (popcount(attacks))
-                        {
-                            case 0:
-                                break;
-                            case 1:
-                                EnPassant.CausesCheck = true;
-                                EnPassant.idxChecker = lsb(attacks);
-                                break;
-                            case 2:
-                                EnPassant.CausesDoubleCheck = true;
-                                EnPassant.idxChecker = lsb(attacks);
-                                EnPassant.idxDoubleChecker = msb(attacks);
-                                break;
-                        }
-
-                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassant.idxEnPassant]);
-                        bb.Colors[ourColor] ^= moveMask;
-                        bb.Colors[theirColor] ^= (SquareBB[EnPassant.idxEnPassant]);
-
-                        ml[size++] = EnPassant;
-                    }
-                    break;
-                case Piece.Knight:
-                    //moves = GenPseudoKnightMask(position, idx);
-                    moves = (PrecomputedData.KnightMasks[idx] & ~us);
-                    break;
-                case Piece.Bishop:
-                    moves = GetBishopMoves(all, idx) & ~us;
-                    break;
-                case Piece.Rook:
-                    moves = GetRookMoves(all, idx) & ~us;
-                    break;
-                case Piece.Queen:
-                    moves = (GetBishopMoves(all, idx) | GetRookMoves(all, idx)) & ~us;
-                    break;
-                case Piece.King:
-                    moves = (PrecomputedData.NeighborsMask[idx] & ~us);
-                    if (!CheckInfo.InCheck && !CheckInfo.InDoubleCheck && GetIndexFile(idx) == Files.E)
-                    {
-                        ulong ourKingMask = bb.KingMask(ourColor);
-                        Span<Move> CastleMoves = stackalloc Move[2];
-                        int numCastleMoves = GenCastlingMoves(bb, idx, us, Castling, CastleMoves, 0);
-                        for (int i = 0; i < numCastleMoves; i++)
-                        {
-                            //  See if this will cause check.
-                            Move m = CastleMoves[i];
-                            int rookTo = m.to switch
-                            {
-                                C1 => D1,
-                                G1 => F1,
-                                C8 => D8,
-                                G8 => F8,
-                            };
-                            ulong between = BetweenBB[rookTo][theirKing];
-                            if (between != 0 && ((between & (all ^ ourKingMask)) == 0))
-                            {
-                                //  Then their king is on the same rank/file/diagonal as the square that our rook will end up at,
-                                //  and there are no pieces which are blocking that ray.
-                                if (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing))
-                                {
-                                    m.CausesCheck = true;
-                                    m.idxChecker = rookTo;
-                                }
-                            }
-
-                            ml[size++] = m;
-                        }
-                    }
-                    break;
-            }
-
-            while (moves != 0)
-            {
-                //  moves = a ulong with bits set wherever the piece can move to.
-                int to = lsb(moves);
-                moves = poplsb(moves);
-
-                Move m = new Move(idx, to);
-
-                ulong moveMask = (SquareBB[idx] | SquareBB[to]);
-                int capturedPiece = bb.GetPieceAtIndex(to);
-                if (capturedPiece != Piece.None)
-                {
-                    bb.Pieces[capturedPiece] ^= SquareBB[to];
-                    bb.Colors[theirColor] ^= SquareBB[to];
-                    m.Capture = true;
-                }
-
-                bb.Pieces[pt] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                ulong att = bb.AttackersToFast(theirKing, bb.Colors[ourColor] | bb.Colors[theirColor]) & bb.Colors[ourColor];
-
-                switch (popcount(att))
-                {
-                    case 0:
-                        break;
-                    case 1:
-                        m.CausesCheck = true;
-                        m.idxChecker = lsb(att);
-                        break;
-                    case 2:
-                        m.CausesDoubleCheck = true;
-                        m.idxChecker = lsb(att);
-                        m.idxDoubleChecker = msb(att);
-                        break;
-                }
-
-                if (capturedPiece != Piece.None)
-                {
-                    bb.Pieces[capturedPiece] ^= SquareBB[to];
-                    bb.Colors[theirColor] ^= SquareBB[to];
-                }
-
-                bb.Pieces[pt] ^= moveMask;
-                bb.Colors[ourColor] ^= moveMask;
-
-                ml[size++] = m;
-            }
-
-            return size;
-        }
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
@@ -937,50 +679,7 @@ namespace LTChess.Core
 
 
         [MethodImpl(Inline)]
-        public ulong GenPseudoPawnMask(in Bitboard bb, int idx, out ulong attacks, out ulong PromotionSquares)
-        {
-            //int ourColor = bb.GetColorAtIndex(idx);
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong moves;
-
-            if (ToMove == Color.White)
-            {
-                attacks = WhitePawnAttackMasks[idx];
-                moves = WhitePawnMoveMasks[idx];
-            }
-            else
-            {
-                attacks = BlackPawnAttackMasks[idx];
-                moves = BlackPawnMoveMasks[idx];
-            }
-
-            //  This pawn can also move 2 squares
-            if (popcount(moves) == 2)
-            {
-                int off = (ToMove == Color.White) ? 8 : -8;
-                if (bb.Occupied(idx + off))
-                {
-                    //  Then a pawn is blocking this pawn from moving forward.
-                    //  This also stops a pawn stuck on the 2nd/6th rank from
-                    //  "jumping" over whatever is in it's way.
-                    moves = 0;
-                }
-            }
-
-            //  moves includes only empty spaces and any of their pieces that we could capture
-            moves &= ~(bb.Colors[Color.White] | bb.Colors[Color.Black]);
-            moves |= (them & attacks);
-
-            //  Promotions are special cases, so take them out
-            PromotionSquares = (moves & PawnPromotionSquares);
-            moves &= ~PawnPromotionSquares;
-
-            return moves;
-        }
-
-
-        [MethodImpl(Inline)]
-        public int GenAllPawnMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllPawnMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong rank7 = (ToMove == Color.White) ? Rank7BB : Rank2BB;
             ulong rank3 = (ToMove == Color.White) ? Rank3BB : Rank6BB;
@@ -1007,24 +706,36 @@ namespace LTChess.Core
 
             int theirKing = bb.KingIndex(theirColor);
 
-            while (moves != 0)
+            if (!onlyCaptures)
             {
-                int to = lsb(moves);
-                moves = poplsb(moves);
+                while (moves != 0)
+                {
+                    int to = lsb(moves);
+                    moves = poplsb(moves);
 
-                Move m = new Move(to - up, to);
-                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
-                ml[size++] = m;
-            }
+                    Move m = new Move(to - up, to);
+                    MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
 
-            while (twoMoves != 0)
-            {
-                int to = lsb(twoMoves);
-                twoMoves = poplsb(twoMoves);
+                while (twoMoves != 0)
+                {
+                    int to = lsb(twoMoves);
+                    twoMoves = poplsb(twoMoves);
 
-                Move m = new Move(to - up - up, to);
-                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
-                ml[size++] = m;
+                    Move m = new Move(to - up - up, to);
+                    MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                    ml[size++] = m;
+                }
+
+                while (promotions != 0)
+                {
+                    int to = lsb(promotions);
+                    promotions = poplsb(promotions);
+
+                    size = MakePromotionChecks(bb, to - up, to, ToMove, theirKing, ml, size);
+                }
+
             }
 
             while (capturesL != 0)
@@ -1045,14 +756,6 @@ namespace LTChess.Core
                 Move m = new Move(to - up - Direction.EAST, to);
                 MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
                 ml[size++] = m;
-            }
-
-            while (promotions != 0)
-            {
-                int to = lsb(promotions);
-                promotions = poplsb(promotions);
-
-                size = MakePromotionChecks(bb, to - up, to, ToMove, theirKing, ml, size);
             }
 
             while (promotionCapturesL != 0)
@@ -1120,7 +823,7 @@ namespace LTChess.Core
         }
 
         [MethodImpl(Inline)]
-        public int GenAllKnightMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllKnightMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Knight] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1129,6 +832,11 @@ namespace LTChess.Core
                 int idx = lsb(ourPieces);
                 ulong moves = (PrecomputedData.KnightMasks[idx] & ~us);
                 ourPieces = poplsb(ourPieces);
+
+                if (onlyCaptures)
+                {
+                    moves &= them;
+                }
 
                 while (moves != 0)
                 {
@@ -1145,7 +853,7 @@ namespace LTChess.Core
         }
 
         [MethodImpl(Inline)]
-        public int GenAllBishopMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllBishopMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Bishop] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1154,6 +862,11 @@ namespace LTChess.Core
                 int idx = lsb(ourPieces);
                 ulong moves = GetBishopMoves(us | them, idx) & ~us;
                 ourPieces = poplsb(ourPieces);
+
+                if (onlyCaptures)
+                {
+                    moves &= them;
+                }
 
                 while (moves != 0)
                 {
@@ -1170,7 +883,7 @@ namespace LTChess.Core
         }
 
         [MethodImpl(Inline)]
-        public int GenAllRookMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllRookMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Rook] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1179,6 +892,11 @@ namespace LTChess.Core
                 int idx = lsb(ourPieces);
                 ulong moves = GetRookMoves(us | them, idx) & ~us;
                 ourPieces = poplsb(ourPieces);
+
+                if (onlyCaptures)
+                {
+                    moves &= them;
+                }
 
                 while (moves != 0)
                 {
@@ -1195,7 +913,7 @@ namespace LTChess.Core
         }
 
         [MethodImpl(Inline)]
-        public int GenAllQueenMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllQueenMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Queen] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1204,6 +922,11 @@ namespace LTChess.Core
                 int idx = lsb(ourPieces);
                 ulong moves = (GetBishopMoves(us | them, idx) | GetRookMoves(us | them, idx)) & ~us;
                 ourPieces = poplsb(ourPieces);
+
+                if (onlyCaptures)
+                {
+                    moves &= them;
+                }
 
                 while (moves != 0)
                 {
@@ -1220,13 +943,19 @@ namespace LTChess.Core
         }
 
         [MethodImpl(Inline)]
-        public int GenAllKingMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size)
+        public int GenAllKingMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             int idx = bb.KingIndex(ToMove);
             int theirKing = bb.KingIndex(Not(ToMove));
 
             ulong moves = (PrecomputedData.NeighborsMask[idx] & ~us);
-            if (!CheckInfo.InCheck && !CheckInfo.InDoubleCheck && GetIndexFile(idx) == Files.E)
+
+            if (onlyCaptures)
+            {
+                moves &= them;
+            }
+
+            if (!CheckInfo.InCheck && !CheckInfo.InDoubleCheck && GetIndexFile(idx) == Files.E && !onlyCaptures)
             {
                 ulong ourKingMask = bb.KingMask(ToMove);
                 Span<Move> CastleMoves = stackalloc Move[2];
@@ -1399,21 +1128,6 @@ namespace LTChess.Core
             return false;
         }
 
-        /// <summary>
-        /// Returns true if the move <paramref name="m"/> would cause a draw by threefold repetition or insufficient material.
-        /// </summary>
-        /// <param name="m"></param>
-        /// <returns></returns>
-        [MethodImpl(Inline)]
-        public bool WouldCauseDraw(Move m)
-        {
-            MakeMove(m);
-            bool check = (IsThreefoldRepetition() || IsInsufficientMaterial());
-            UnmakeMove();
-
-            return check;
-        }
-
 
         /// <summary>
         /// Checks if the position is currently drawn by threefold repetition.
@@ -1530,7 +1244,6 @@ namespace LTChess.Core
             }
 
             Span<Move> mlist = stackalloc Move[NormalListCapacity];
-            //int size = GenAllLegalMoves(mlist);
             int size = GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
             {
