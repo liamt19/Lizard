@@ -16,64 +16,54 @@ namespace LTChess.Search
     {
 
         [MethodImpl(Inline)]
-        public static EvalByColor EvalEndgame(in Position p, int pToMove)
+        public static double[] EvalEndgame(in Position p, int pc)
         {
-            EvalByColor endgameScore = new EvalByColor();
-
+            double[] score = new double[2];
             Bitboard bb = p.bb;
-            ulong white = bb.Colors[Color.White];
-            ulong black = bb.Colors[Color.Black];
-            ulong all = white | black;
 
             int wMat = bb.MaterialCount(Color.White);
             int bMat = bb.MaterialCount(Color.Black);
 
-            endgameScore.white += (wMat * 1.5);
-            endgameScore.black += (bMat * 1.5);
+            int ourKing = bb.KingIndex(pc);
+            int theirKing = bb.KingIndex(Not(pc));
 
             int strong = (wMat > bMat) ? Color.White : Color.Black;
             int weak = Not(strong);
-            int whiteKing = bb.KingIndex(Color.White);
-            int blackKing = bb.KingIndex(Color.Black);
-            int kingDist = SquareDistances[whiteKing][blackKing];
+
+            int strongKing = (strong == pc) ? ourKing : theirKing;
+            int weakKing = (strong == pc) ? theirKing : ourKing;
+
+            int kingDist = SquareDistances[strongKing][weakKing];
 
             bool strongHasRookQueen = ((bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]) & bb.Colors[strong]) != 0;
 
-            if (strong == Color.White)
+            //  Small bonus for material
+            score[Color.White] += wMat;
+            score[Color.Black] += bMat;
+
+            //  Very large bonus for the strong side having their king close the the weak side's king
+            score[strong] += ScoreEGKingDistance[kingDist];
+
+            //  If we have a rook or queen, we want it to be close-ish to their king
+            if (strongHasRookQueen)
             {
-                endgameScore.white += ScoreEGKingDistance[kingDist];
-
-                if (strongHasRookQueen)
+                int ourBestSlider = (lsb(bb.Pieces[Piece.Queen] & bb.Colors[strong]));
+                if (ourBestSlider == LSBEmpty)
                 {
-                    int ourBestSlider = (lsb(bb.Pieces[Piece.Queen] & bb.Colors[strong]));
-                    if (ourBestSlider == LSBEmpty)
-                    {
-                        ourBestSlider = (lsb(bb.Pieces[Piece.Rook] & bb.Colors[strong]));
-                    }
-
-                    int sliderDist = SquareDistances[ourBestSlider][blackKing];
-                    endgameScore.white += ScoreEGSliderDistance[sliderDist];
+                    ourBestSlider = (lsb(bb.Pieces[Piece.Rook] & bb.Colors[strong]));
                 }
-            }
-            else
-            {
-                endgameScore.white += (PSQT.EGWeakKingPosition[blackKing] * CoefficientPSQTEKG);
-                endgameScore.black += ScoreEGKingDistance[kingDist];
 
-                if (strongHasRookQueen)
-                {
-                    int ourBestSlider = (lsb(bb.Pieces[Piece.Queen] & bb.Colors[strong]));
-                    if (ourBestSlider == LSBEmpty)
-                    {
-                        ourBestSlider = (lsb(bb.Pieces[Piece.Rook] & bb.Colors[strong]));
-                    }
+                int sliderDist = SquareDistances[ourBestSlider][weakKing];
 
-                    int sliderDist = SquareDistances[ourBestSlider][whiteKing];
-                    endgameScore.white += ScoreEGSliderDistance[sliderDist];
-                }
+                //  Medium bonus for having that rook/queen close to their king.
+                score[strong] += ScoreEGSliderDistance[sliderDist];
             }
 
-            return endgameScore;
+
+            score[Color.White] *= ScaleEndgame;
+            score[Color.Black] *= ScaleEndgame;
+
+            return score;
         }
 
     }
