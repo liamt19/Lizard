@@ -12,6 +12,7 @@ using System.Threading.Tasks;
 
 using Timer = System.Timers.Timer;
 
+using static System.Formats.Asn1.AsnWriter;
 using static LTChess.Search.SearchConstants;
 using LTChess.Data;
 using LTChess.Util;
@@ -23,7 +24,7 @@ namespace LTChess.Search
         /// <summary>
         /// Check if we have reached/exceeded the maximum search time every x milliseconds
         /// </summary>
-        public const int TimerTickInterval = 20;
+        public const int TimerTickInterval = 100;
 
         /// <summary>
         /// Add this amount of milliseconds to the total search time when checking if the
@@ -32,7 +33,10 @@ namespace LTChess.Search
         /// </summary>
         public const int TimerBuffer = 50;
 
-        public const int MinSearchTime = 200;
+        /// <summary>
+        /// A timer that checks if the search time has reached/exceeded the maximum every <c>TimerTickInterval</c> milliseconds.
+        /// </summary>
+        private static Timer SearchDurationTimer;
 
         /// <summary>
         /// Keeps track of the time spent on during the entire search
@@ -47,7 +51,7 @@ namespace LTChess.Search
         /// <summary>
         /// The evaluation of that best move.
         /// </summary>
-        private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
+        private static int LastBestScore = Evaluation.ScoreDraw;
 
         //  These are inconvenient but work
         delegate void CallSearchFinishDelegate();
@@ -63,6 +67,8 @@ namespace LTChess.Search
         /// </summary>
         public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
+            //  TODO: Clearing the TT for new searches
+            //  to prevent illegal moves defeats the purpose.
             TranspositionTable.Clear();
             TotalSearchTime.Restart();
 
@@ -78,6 +84,40 @@ namespace LTChess.Search
             CallSearchFinishDelegate callSearchFinishDelegate = info.CallSearchFinish;
             bool continueDeepening = true;
             info.NodeCount = 0;
+
+            //  Start checking the search time
+            SearchDurationTimer = new Timer(TimerTickInterval);
+            SearchDurationTimer.Start();
+            SearchDurationTimer.Elapsed += (_, _) =>
+            {
+                //  This will stop the search early if:
+                //  We are about to (or did) go over the max time, OR
+                //  We are at/past the depth to begin checking AND
+                //  We were told to search for more time than we have left AND
+                //  We now have less time than the low time threshold
+                if (TotalSearchTime.Elapsed.TotalMilliseconds > (maxTime - TimerTickInterval - TimerBuffer))
+                {
+                    Log("WARN Stopping early at depth " + depth + ", time: " + TotalSearchTime.Elapsed.TotalMilliseconds + " > (maxtime: " + maxTime + " - interval: " + TimerTickInterval + " - TimerBuffer: " + TimerBuffer + "), current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
+                    TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
+                }
+                else if ((depth >= SearchLowTimeMinDepth && maxTime > playerTimeLeft && (playerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds) < SearchLowTimeThreshold))
+                {
+                    Log("WARN Stopping early at depth " + depth + ", maxTime: " + maxTime + " > playerTimeLeft: " + playerTimeLeft + " and (playerTimeLeft - time): (" + playerTimeLeft + " - " + TotalSearchTime.Elapsed.TotalMilliseconds + ") = " + (playerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds) + ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+                    
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
+                    TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
+                }
+            };
 
             int alpha = AlphaStart;
             int beta = BetaStart;
@@ -105,10 +145,13 @@ namespace LTChess.Search
                 {
                     Log("Received StopSearching command just after Deepen at depth " + depth);
 
-                    info.SearchWasAborted = true;
-                    info.SetLastMove(LastBestMove, LastBestScore);
-                    //info.OnSearchFinish?.Invoke(info);
+                    SearchDurationTimer?.Stop();
+                    stopSearchingDelegate();
+                    setLastMoveDelegate(LastBestMove, LastBestScore);
                     TotalSearchTime.Reset();
+                    callSearchFinishDelegate();
+                    SearchDurationTimer?.Dispose();
+
                     return;
                 }
 
@@ -134,13 +177,44 @@ namespace LTChess.Search
                     continue;
                 }
 
-                info.OnDepthFinish?.Invoke(info);
+                info.OnDepthFinish?.Invoke();
 
-                if (continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
+                if (continueDeepening && Evaluation.IsScoreMate(info.BestScore, out int mateIn))
                 {
                     Log(info.BestMove.ToString(info.Position) + " forces mate in " + mateIn + ", aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
                     TotalSearchTime.Reset();
-                    info.OnSearchFinish?.Invoke(info);
+                    SearchDurationTimer?.Stop();
+                    info.OnSearchFinish?.Invoke();
+                    return;
+                }
+
+                if (info.StopSearching)
+                {
+                    Log("WARN Received StopSearching command late, aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
+
+                    //  We ran out of time before completely searching this depth, and might've missed something critical.
+                    //  If we found a different BestMove before being interrupted, just give the previous best one instead.
+                    if (!info.BestMove.Equals(LastBestMove))
+                    {
+                        if (info.Position.bb.IsPseudoLegal(LastBestMove) && info.Position.IsLegal(LastBestMove))
+                        {
+                            Log("Reverting to previous best move " + LastBestMove + " = " + LastBestScore + "cp instead of " + info.BestMove + " = " + info.BestScore + "cp ");
+
+                            info.BestMove = LastBestMove;
+                            info.BestScore = LastBestScore;
+                        }
+                        else
+                        {
+                            //  This shouldn't happen.
+                            Log("Tried reverting to previous best, but it wasn't legal!");
+                            Log("illegal previous best move " + LastBestMove + " = " + LastBestScore + "cp, current best is " + info.BestMove + " = " + info.BestScore + "cp ");
+                        }
+
+                    }
+
+                    TotalSearchTime.Reset();
+                    SearchDurationTimer?.Stop();
+                    info.OnSearchFinish?.Invoke();
                     return;
                 }
 
@@ -158,7 +232,8 @@ namespace LTChess.Search
             }
 
             TotalSearchTime.Reset();
-            info.OnSearchFinish?.Invoke(info);
+            SearchDurationTimer?.Stop();
+            info.OnSearchFinish?.Invoke();
         }
 
         /// <summary>
@@ -198,49 +273,6 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public static int FindBest(ref SearchInformation info, int alpha, int beta, int depth, bool isPV = false, bool isRoot = false)
         {
-            if ((info.NodeCount & SearchCheckInCount) == 0)
-            {
-                bool doStop = false;
-
-                if (TotalSearchTime.Elapsed.TotalMilliseconds > (info.MaxSearchTime - TimerTickInterval - TimerBuffer))
-                {
-                    //  Stop early because we are about to (or did) go over the max time
-                    Log("WARN Stopping early at depth " + depth + ", time: " + TotalSearchTime.Elapsed.TotalMilliseconds + " > (maxtime: " + info.MaxSearchTime + " - interval: " + TimerTickInterval + " - TimerBuffer: " + TimerBuffer + "), current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
-
-                    doStop = true;
-                }
-                else if ((depth >= SearchLowTimeMinDepth && info.MaxSearchTime > info.PlayerTimeLeft && (info.PlayerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds) < SearchLowTimeThreshold))
-                {
-                    //  Stop early if:
-                    //  We are at/past the depth to begin checking AND
-                    //  We were told to search for more time than we have left AND
-                    //  We now have less time than the low time threshold
-
-                    Log("WARN Stopping early at depth " + depth + ", maxTime: " + info.MaxSearchTime + " > playerTimeLeft: " + info.PlayerTimeLeft + " and (playerTimeLeft - time): (" + info.PlayerTimeLeft + " - " + TotalSearchTime.Elapsed.TotalMilliseconds + ") = " + (info.PlayerTimeLeft - TotalSearchTime.Elapsed.TotalMilliseconds) + ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
-
-                    doStop = true;
-                }
-
-                if (doStop && (TotalSearchTime.Elapsed.TotalMilliseconds < MinSearchTime) && ((info.PlayerTimeLeft - TimerTickInterval - TimerBuffer) > MinSearchTime))
-                {
-                    //  If we ordinarily would stop, try enforcing a minimum search time
-                    //  to prevent the time spent on moves from oscillating to a large degree.
-
-                    //  As long as we have enough time left that this timer will tick (playerTimeLeft - TimerTickInterval - TimerBuffer)
-                    //  Then postpone stopping until TotalSearchTime.Elapsed.TotalMilliseconds > MinSearchTime
-                    Log("WARN Stopping at depth " + depth + " was postponed! maxTime: " + info.MaxSearchTime + " > playerTimeLeft: " + info.PlayerTimeLeft + " but we've only searched for " + TotalSearchTime.Elapsed.TotalMilliseconds + " < MinSearchTime: " + MinSearchTime + ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
-
-                    doStop = false;
-                }
-
-                if (doStop)
-                {
-                    LogString("STOPPING in FindBest! time " + TotalSearchTime.Elapsed.TotalMilliseconds + " > " + info.MaxSearchTime);
-                    info.StopSearching = true;
-                }
-            }
-
-
             if (info.StopSearching || info.NodeCount >= info.MaxNodes)
             {
                 info.StopSearching = true;
@@ -261,20 +293,12 @@ namespace LTChess.Search
             Move BestMove = Move.Null;
             int startingAlpha = alpha;
 
+
             int staticEval = 0;
-            bool isFutilityPrunable = false;
-            bool isNullMovePrunable = false;
-
-            if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
-            {
-                //  Don't bother getting the static evaluation or checking if we can prune nodes.
-                goto MoveLoop;
-            }
-
             ETEntry etEntry = EvaluationTable.Probe(posHash);
             if (etEntry.key == EvaluationTable.InvalidKey || !etEntry.Validate(posHash) || etEntry.score == ETEntry.InvalidScore)
             {
-                staticEval = info.tdEval.Evaluate(pos, pos.ToMove);
+                staticEval = Evaluation.Evaluate(pos, pos.ToMove);
                 EvaluationTable.Save(posHash, (short)staticEval);
             }
             else
@@ -282,8 +306,8 @@ namespace LTChess.Search
                 staticEval = etEntry.score;
             }
 
-            isFutilityPrunable = CanFutilityPrune((pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), isPV, alpha, beta, depth);
-            isNullMovePrunable = CanNullMovePrune(bb, (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), isPV, staticEval, beta, depth);
+            bool isFutilityPrunable = CanFutilityPrune((pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), isPV, alpha, beta, depth);
+            bool isNullMovePrunable = CanNullMovePrune(bb, (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), isPV, staticEval, beta, depth);
 
             if (UseNullMovePruning && isNullMovePrunable)
             {
@@ -303,10 +327,8 @@ namespace LTChess.Search
                 }
             }
 
-            MoveLoop:
-
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllLegalMovesTogether(list);
+            int size = pos.GenAllLegalMoves(list);
 
             //  No legal moves, is this checkmate or a draw?
             if (size == 0)
@@ -317,7 +339,7 @@ namespace LTChess.Search
                 }
                 else
                 {
-                    return -ThreadedEvaluation.ScoreDraw;
+                    return -Evaluation.ScoreDraw;
                 }
             }
 
@@ -357,7 +379,7 @@ namespace LTChess.Search
                 {
                     //  Instead of looking further and probably breaking something,
                     //  Just evaluate this move as a draw here and keep looking at the others.
-                    score = -ThreadedEvaluation.ScoreDraw;
+                    score = -Evaluation.ScoreDraw;
                 }
                 else if (isPV)
                 {
@@ -492,8 +514,8 @@ namespace LTChess.Search
                     }
                     else
                     {
-                        int ourPieceVal = ThreadedEvaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].from]);
-                        int theirPieceVal = ThreadedEvaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
+                        int ourPieceVal = Evaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].from]);
+                        int theirPieceVal = Evaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
                         if (theirPieceVal - ourPieceVal > 0)
                         {
                             scores[i] = MoveScores.WinningCapture;
@@ -603,13 +625,12 @@ namespace LTChess.Search
             return size;
         }
 
-
         [MethodImpl(Inline)]
         public static bool CanFutilityPrune(bool isInCheck, bool isPV, int alpha, int beta, int depth)
         {
             if (!isInCheck && !isPV && depth <= SearchConstants.FutilityPruningMaxDepth)
             {
-                if (!ThreadedEvaluation.IsScoreMate(alpha, out   _) && !ThreadedEvaluation.IsScoreMate(beta, out _))
+                if (!Evaluation.IsScoreMate(alpha, out _) && !Evaluation.IsScoreMate(beta, out _))
                 {
                     return true;
                 }
