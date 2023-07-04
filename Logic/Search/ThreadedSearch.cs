@@ -62,7 +62,7 @@ namespace LTChess.Search
             SearchInformation rootInfo = new SearchInformation(rootPosition, depth, 3000);
 
             Move[] list = new Move[NormalListCapacity];
-            int size = rootPosition.GenAllLegalMoves(list);
+            int size = rootPosition.GenAllLegalMovesTogether(list);
             SimpleSearch.SortByMoveScores(ref rootInfo, list, size, Move.Null);
 
             SearchInformation[] searchInfos = new SearchInformation[size];
@@ -223,14 +223,14 @@ namespace LTChess.Search
                     continue;
                 }
 
-                info.OnDepthFinish?.Invoke();
+                info.OnDepthFinish?.Invoke(info);
 
                 if (continueDeepening && Evaluation.IsScoreMate(info.BestScore, out int mateIn))
                 {
                     Log(info.BestMove.ToString(info.Position) + " forces mate in " + mateIn + ", aborting at depth " + depth + " after " + TotalSearchTime.Elapsed.TotalSeconds + " seconds");
                     //TotalSearchTime.Reset();
                     SearchDurationTimer?.Stop();
-                    info.OnSearchFinish?.Invoke();
+                    info.OnSearchFinish?.Invoke(info);
                     return;
                 }
 
@@ -260,7 +260,7 @@ namespace LTChess.Search
 
                     //TotalSearchTime.Reset();
                     SearchDurationTimer?.Stop();
-                    info.OnSearchFinish?.Invoke();
+                    info.OnSearchFinish?.Invoke(info);
                     return;
                 }
 
@@ -279,7 +279,7 @@ namespace LTChess.Search
 
             //TotalSearchTime.Reset();
             SearchDurationTimer?.Stop();
-            info.OnSearchFinish?.Invoke();
+            info.OnSearchFinish?.Invoke(info);
         }
 
         public void Deepen(ref SearchInformation info, int alpha, int beta)
@@ -321,7 +321,7 @@ namespace LTChess.Search
             int staticEval = 0;
             if (UseFutilityPruning)
             {
-                isFutilityPrunable = SimpleSearch.CanFutilityPrune((pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), alpha, beta, depth);
+                isFutilityPrunable = SimpleSearch.CanFutilityPrune((pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck), false, alpha, beta, depth);
 
                 ETEntry etEntry = EvaluationTable.Probe(posHash);
                 if (etEntry.key == EvaluationTable.InvalidKey || !etEntry.Validate(posHash) || etEntry.score == ETEntry.InvalidScore)
@@ -337,7 +337,7 @@ namespace LTChess.Search
 
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllLegalMoves(list);
+            int size = pos.GenAllLegalMovesTogether(list);
 
             //  No legal moves, is this checkmate or a draw?
             if (size == 0)
@@ -578,7 +578,7 @@ namespace LTChess.Search
             }
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = info.Position.GenAllLegalMoves(list);
+            int size = info.Position.GenAllLegalMovesTogether(list);
 
 
             if (size == 0)

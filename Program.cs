@@ -42,7 +42,7 @@ namespace LTChess
     public static class Program
     {
         private static Position p = new Position();
-        private static SearchInformation info;
+        private static SearchInformation info = new SearchInformation(p);
 
         public static void Main()
         {
@@ -195,7 +195,7 @@ namespace LTChess
                 {
                     string move = input.ToLower().Substring(7).Trim();
                     Span<Move> list = new Move[NormalListCapacity];
-                    int size = p.GenAllLegalMoves(list);
+                    int size = p.GenAllLegalMovesTogether(list);
                     bool failed = true;
                     for (int i = 0; i < size; i++)
                     {
@@ -244,15 +244,12 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
-                    if (info != null)
-                    {
-                        info.StopSearching = true;
-                    }
+                    info.StopSearching = true;
 
                 }
                 else if (input.ContainsIgnoreCase("eval"))
                 {
-                    Evaluation.Evaluate(p, p.ToMove, true);
+                    info.tdEval.Evaluate(p, p.ToMove, true);
                 }
                 else if (input.EqualsIgnoreCase("d"))
                 {
@@ -353,11 +350,8 @@ namespace LTChess
 
         public static void PrintSearchInfo()
         {
-            if (info != null)
-            {
-                Log(info.ToString());
-                Log("\r\n");
-            }
+            Log(info.ToString());
+            Log("\r\n");
             TranspositionTable.PrintStatus();
             Log("\r\n");
             EvaluationTable.PrintStatus();
@@ -368,15 +362,8 @@ namespace LTChess
         public static void PrintMoves()
         {
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllLegalMoves(list);
+            int size = p.GenAllLegalMovesTogether(list);
             Log("Legal (" + size + "): " + list.Stringify(p));
-        }
-
-        public static void PrintPseudoMoves()
-        {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllPseudoMoves(list);
-            Log("Pseudo (" + size + "): " + list.Stringify(p));
         }
 
     }

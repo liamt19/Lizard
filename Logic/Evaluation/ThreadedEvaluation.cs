@@ -181,8 +181,6 @@ namespace LTChess.Search
                     thisPawnAttacks = poplsb(thisPawnAttacks);
                 }
 
-                //  TODO: Bitboards/masks for determining if a knight geometrically can't stop the pawn.
-
                 if (IsIsolated(idx))
                 {
                     score += ScoreIsolatedPawn;

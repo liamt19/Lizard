@@ -19,14 +19,16 @@ namespace LTChess.Util
 {
     public static class Utilities
     {
+        public const int NumPieces = 6;
+
         public const int IndexTop = 7;
         public const int IndexBot = 0;
         public const int IndexLeft = 0;
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "6.0";
-        public const string EngineTagLine = "Now rated 1700 on Lichess!";
+        public const string EngineBuildVersion = "6.1";
+        public const string EngineTagLine = "Now rated 1700 on Lichess (so long as my internet stops making it lose games on time)!";
 
         public const int MaxListCapacity = 512;
         public const int NormalListCapacity = 128;
@@ -503,7 +505,7 @@ namespace LTChess.Util
         /// <br></br>
         /// If <paramref name="TraceEval"/> is true, an evaluation of the position will be printed as well.
         /// </summary>
-        public static string FormatSearchInformation(SearchInformation info, bool TraceEval = false)
+        public static string FormatSearchInformation(SearchInformation info)
         {
             int depth = info.MaxDepth;
             int selDepth = depth;
@@ -511,13 +513,6 @@ namespace LTChess.Util
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
             int nodesPerSec = ((int)(nodes / (time / 1000)));
-
-            if (TraceEval)
-            {
-                Log("\r\n\r\n**** Tracing whichever PV is under this");
-                Position temp = new Position(info.Position.GetFEN());
-                Evaluation.Evaluate(temp, temp.ToMove, true);
-            }
 
             StringBuilder sb = new StringBuilder();
             sb.Append("info depth " + depth);
@@ -534,7 +529,7 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
-            if (Evaluation.IsScoreMate(score, out int mateIn))
+            if (ThreadedEvaluation.IsScoreMate(score, out int mateIn))
             {
                 return "mate " + mateIn;
             }

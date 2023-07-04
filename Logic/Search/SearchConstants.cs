@@ -40,6 +40,10 @@ namespace LTChess.Search
         /// </summary>
         public const int SearchLowTimeMinDepth = 2;
 
+        /// <summary>
+        /// Every 4095 nodes, check to see if we are near or at the maximum search time.
+        /// </summary>
+        public const int SearchCheckInCount = 4095;
 
 
 

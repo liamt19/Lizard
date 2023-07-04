@@ -73,20 +73,6 @@ namespace LTChess.Core
             return PieceTypes[idx] != Piece.None;
         }
 
-        [MethodImpl(Inline)]
-        public bool OccupiedUnsafe(int idx)
-        {
-            return (Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(PieceTypes), idx) != Piece.None);
-        }
-
-        [MethodImpl(Inline)]
-        public unsafe bool OccupiedPtr(int idx)
-        {
-            fixed (int* ptr = PieceTypes)
-            {
-                return ptr[idx] != Piece.None;
-            }
-        }
 
         /// <summary>
         /// Removes the pawn at <paramref name="from"/>, and replaces it with the <paramref name="promotionPiece"/> at the index <paramref name="to"/>.
@@ -323,7 +309,6 @@ namespace LTChess.Core
                 return false;
             }
 
-            //  TODO use WhitePassedPawnMasks
             int ourColor = GetColorAtIndex(idx);
             ulong them = Colors[Not(ourColor)];
             ulong theirPawns = (them & Pieces[Piece.Pawn]);
