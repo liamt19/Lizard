@@ -107,7 +107,7 @@ namespace LTChess.Search
 
                     info.SearchWasAborted = true;
                     info.SetLastMove(LastBestMove, LastBestScore);
-                    //info.OnSearchFinish?.Invoke(info);
+                    info.OnSearchFinish?.Invoke(info);
                     TotalSearchTime.Reset();
                     return;
                 }

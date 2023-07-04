@@ -280,7 +280,7 @@ namespace LTChess.Core
             }
         }
 
-        private void OnDepthDone()
+        private void OnDepthDone(SearchInformation info)
         {
             //  Send the "info depth (number) ..." string
             info.LastSearchInfo = FormatSearchInformation(info);
@@ -313,6 +313,8 @@ namespace LTChess.Core
             bool hasWhiteTime = false;
             bool hasBlackTime = false;
 
+            bool hasDepthCommand = false;
+
             int whiteTime = 0;
             int blackTime = 0;
             int whiteInc = 0;
@@ -338,6 +340,8 @@ namespace LTChess.Core
                         info.MaxDepth = reqDepth;
                         LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
                     }
+
+                    hasDepthCommand = true;
                 }
                 else if (param[i] == "nodes")
                 {
@@ -429,17 +433,27 @@ namespace LTChess.Core
                 }
             }
 
-            DoSearch();
+            if (!hasMoveTime && (info.MaxSearchTime == SearchConstants.DefaultSearchTime) && hasWhiteTime && hasBlackTime)
+            {
+                int inc = this.info.Position.ToMove == Color.White ? whiteInc : blackInc;
+                int playerTime = this.info.Position.ToMove == 0 ? whiteTime : blackTime;
+                long newSearchTime = inc + (playerTime / Math.Max(20, 20 - this.info.Position.Moves.Count));
+
+                info.MaxSearchTime = newSearchTime;
+                LogString("[INFO]: setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
+            }
+
+            DoSearch(hasDepthCommand);
         }
 
-        private void DoSearch()
+        private void DoSearch(bool hasDepthCommand)
         {
-            SimpleSearch.StartSearching(ref info, true);
+            SimpleSearch.StartSearching(ref info, !hasDepthCommand);
             LogString("[INFO]: DoSearch task returned from call to StartSearching");
-            info.OnSearchFinish?.Invoke();
+            //info.OnSearchFinish?.Invoke(info);
         }
 
-        private void OnSearchDone()
+        private void OnSearchDone(SearchInformation info)
         {
             //  TODO: make sure we can't send illegal moves
             if (!info.SearchFinishedCalled)

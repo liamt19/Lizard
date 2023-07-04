@@ -42,11 +42,12 @@ namespace LTChess
     public static class Program
     {
         private static Position p = new Position();
-        private static SearchInformation info = new SearchInformation(p);
+        private static SearchInformation info;
 
         public static void Main()
         {
             InitializeAll();
+            info = new SearchInformation(p);
 
             DoInputLoop();
 
@@ -66,6 +67,8 @@ namespace LTChess
             EvaluationTable.Initialize();
             TranspositionTable.Initialize();
             PSQT.Initialize();
+
+            TranspositionTable.Clear();
 
 #if DEBUG
             Log("InitializeAll done in " + sw.Elapsed.TotalSeconds + " s");
