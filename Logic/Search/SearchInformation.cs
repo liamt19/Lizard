@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace LTChess.Search
 {
-    public class SearchInformation
+    public struct SearchInformation
     {
-        public Action? OnDepthFinish;
-        public Action? OnSearchFinish;
+        public Action<SearchInformation>? OnDepthFinish;
+        public Action<SearchInformation>? OnSearchFinish;
 
         public Position Position;
 
@@ -70,7 +70,7 @@ namespace LTChess.Search
         public void CallSearchFinish()
         {
             SearchWasAborted = true;
-            this.OnSearchFinish?.Invoke();
+            this.OnSearchFinish?.Invoke(this);
         }
 
         /// <summary>
@@ -105,24 +105,14 @@ namespace LTChess.Search
 
         public bool IsMultiThreaded = false;
 
-        public SearchInformation ()
+        public ThreadedEvaluation tdEval;
+
+        public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {
-
-
-            PV = new Move[Utilities.MaxDepth];
-
-            this.OnDepthFinish = PrintSearchInfo;
         }
 
-        public SearchInformation(Position p, int depth)
+        public SearchInformation(Position p, int depth) : this(p, depth, SearchConstants.DefaultSearchTime)
         {
-            this.Position = p;
-            this.MaxDepth = depth;
-            this.RootPositionMoveCount = this.Position.Moves.Count;
-
-            PV = new Move[Utilities.MaxDepth];
-
-            this.OnDepthFinish = PrintSearchInfo;
         }
 
         public SearchInformation(Position p, int depth, int searchTime)
@@ -135,18 +125,20 @@ namespace LTChess.Search
             PV = new Move[Utilities.MaxDepth];
 
             this.OnDepthFinish = PrintSearchInfo;
+
+            tdEval = new ThreadedEvaluation();
         }
 
-        public void PrintSearchInfo()
+        public void PrintSearchInfo(SearchInformation info)
         {
-            this.LastSearchInfo = FormatSearchInformation(this);
+            info.LastSearchInfo = FormatSearchInformation(info);
             if (IsMultiThreaded)
             {
                 Log(Thread.CurrentThread.ManagedThreadId + " ->\t" + LastSearchInfo);
             }
             else
             {
-                Log(LastSearchInfo);
+                Log(info.LastSearchInfo);
             }
         }
 
@@ -173,7 +165,7 @@ namespace LTChess.Search
         public int MakeMateScore()
         {
             int movesMade = (this.Position.Moves.Count - this.RootPositionMoveCount);
-            int mateScore = -Evaluation.ScoreMate - ((movesMade / 2) + 1);
+            int mateScore = -ThreadedEvaluation.ScoreMate - ((movesMade / 2) + 1);
             return mateScore;
         }
 
