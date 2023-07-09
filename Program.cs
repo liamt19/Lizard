@@ -12,15 +12,15 @@ global using static LTChess.Core.Bitboard;
 global using static LTChess.Core.MoveGenerator;
 global using static LTChess.Core.Position;
 global using static LTChess.Core.UCI;
+global using static LTChess.Data.CheckInfo;
 global using static LTChess.Data.PrecomputedData;
 global using static LTChess.Data.RunOptions;
 global using static LTChess.Data.Squares;
 global using static LTChess.Magic.MagicBitboards;
+global using static LTChess.Search.SearchConstants;
 global using static LTChess.Search.SearchStatistics;
 global using static LTChess.Util.Utilities;
-global using static LTChess.Util.CommonFENs;
 global using static LTChess.Util.PositionUtilities;
-global using static LTChess.Search.SearchConstants;
 
 
 using System;
@@ -36,6 +36,7 @@ using System.Threading.Tasks;
 using System.Drawing;
 using System.Formats.Tar;
 using System.Threading;
+using LTChess.Utils;
 
 namespace LTChess
 {
@@ -67,8 +68,6 @@ namespace LTChess
             EvaluationTable.Initialize();
             TranspositionTable.Initialize();
             PSQT.Initialize();
-
-            TranspositionTable.Clear();
 
 #if DEBUG
             Log("InitializeAll done in " + sw.Elapsed.TotalSeconds + " s");
@@ -252,7 +251,7 @@ namespace LTChess
                 }
                 else if (input.ContainsIgnoreCase("eval"))
                 {
-                    info.tdEval.Evaluate(p, p.ToMove, true);
+                    info.GetEvaluation(p, p.ToMove, true);
                 }
                 else if (input.EqualsIgnoreCase("d"))
                 {
