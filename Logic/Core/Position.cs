@@ -48,21 +48,45 @@ namespace LTChess.Core
         /// </summary>
         public FasterStack<Move> Moves;
 
+        /// <summary>
+        /// A stack containing the ID's of the pieces that have been captured since the position was loaded.
+        /// </summary>
         public FasterStack<int> Captures;
 
+        /// <summary>
+        /// A stack containing CastlingStatus enums since the position was loaded.
+        /// </summary>
         public FasterStack<CastlingStatus> Castles;
 
+        /// <summary>
+        /// A stack containing CheckInfo structs since the position was loaded.
+        /// </summary>
         public FasterStack<CheckInfo> Checks;
 
+        /// <summary>
+        /// A stack containing the Zobrist hashes since the position was loaded.
+        /// </summary>
         public FasterStack<ulong> Hashes;
 
+        /// <summary>
+        /// A stack containing the the Halfmove clock counts since the position was loaded.
+        /// </summary>
         public FasterStack<int> HalfmoveClocks;
 
+        /// <summary>
+        /// A stack containing the En Passant targets since the position was loaded.
+        /// </summary>
         public FasterStack<int> EnPassantTargets;
 
+        /// <summary>
+        /// Set to true if white makes a castling move.
+        /// </summary>
         public bool whiteCastled = false;
-        public bool blackCastled = false;
 
+        /// <summary>
+        /// Set to true if black makes a castling move.
+        /// </summary>
+        public bool blackCastled = false;
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
@@ -339,9 +363,9 @@ namespace LTChess.Core
             {
                 //	We are either getting out of a check, or weren't in check at all
                 CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = 64;
+                CheckInfo.idxChecker = LSBEmpty;
                 CheckInfo.InDoubleCheck = false;
-                CheckInfo.idxDoubleChecker = 64;
+                CheckInfo.idxDoubleChecker = LSBEmpty;
             }
 
             ToMove = Not(ToMove);
@@ -493,7 +517,7 @@ namespace LTChess.Core
 
                 if (ourColor == Color.White)
                 {
-                    whiteCastled = true;
+                    whiteCastled = false;
                 }
                 else
                 {
@@ -677,7 +701,9 @@ namespace LTChess.Core
             return true;
         }
 
-
+        /// <summary>
+        /// Generates all pseudo-legal pawn moves available to the side to move in the position, including en passant moves.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllPawnMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -822,6 +848,9 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Generates all pseudo-legal knight moves available to the side to move in the position.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllKnightMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -852,6 +881,9 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Generates all pseudo-legal bishop moves available to the side to move in the position.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllBishopMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -882,6 +914,9 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Generates all pseudo-legal rook moves available to the side to move in the position.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllRookMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -912,6 +947,9 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Generates all pseudo-legal queen moves available to the side to move in the position.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllQueenMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -942,6 +980,9 @@ namespace LTChess.Core
             return size;
         }
 
+        /// <summary>
+        /// Generates all pseudo-legal king moves available to the side to move in the position, including castling moves.
+        /// </summary>
         [MethodImpl(Inline)]
         public int GenAllKingMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
@@ -972,18 +1013,20 @@ namespace LTChess.Core
                         G8 => F8,
                     };
                     ulong between = BetweenBB[rookTo][theirKing];
-                    if (between != 0 && ((between & ((us | them) ^ ourKingMask)) == 0))
+                    if (between != 0 && 
+                        ((between & ((us | them) ^ ourKingMask)) == 0) && 
+                        (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing)))
                     {
                         //  Then their king is on the same rank/file/diagonal as the square that our rook will end up at,
                         //  and there are no pieces which are blocking that ray.
-                        if (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing))
-                        {
-                            m.CausesCheck = true;
-                            m.idxChecker = rookTo;
-                        }
-                    }
 
-                    MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
+                        m.CausesCheck = true;
+                        m.idxChecker = rookTo;
+                    }
+                    else
+                    {
+                        MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
+                    }
 
                     ml[size++] = m;
                 }
@@ -1391,6 +1434,9 @@ namespace LTChess.Core
             return true;
         }
 
+        /// <summary>
+        /// Returns the FEN string of the current position.
+        /// </summary>
         public string GetFEN()
         {
             StringBuilder fen = new StringBuilder();
