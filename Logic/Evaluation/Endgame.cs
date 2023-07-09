@@ -28,6 +28,12 @@ namespace LTChess.Search
             int theirKing = bb.KingIndex(Not(pc));
 
             int strong = (wMat > bMat) ? Color.White : Color.Black;
+
+            if (wMat == bMat)
+            {
+                strong = p.ToMove;
+            }
+
             int weak = Not(strong);
 
             int strongKing = (strong == pc) ? ourKing : theirKing;
