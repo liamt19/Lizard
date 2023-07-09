@@ -16,7 +16,7 @@ namespace LTChess.Transposition
         private static ulong BlackHash;
         private static Random rand;
 
-        private const int randomSeed = 0xBEEF;
+        private const int DefaultSeed = 0xBEEF;
 
         private static bool Initialized = false;
 
@@ -28,7 +28,7 @@ namespace LTChess.Transposition
             }
         }
 
-        public static void Initialize()
+        public static void Initialize(int randomSeed = DefaultSeed)
         {
             ColorPieceSquareHashes = new ulong[2][][];
             CastlingRightsHashes = new ulong[4];
