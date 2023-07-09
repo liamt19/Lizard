@@ -106,6 +106,11 @@ namespace LTChess.Search
         };
 
 
+        /// <summary>
+        /// Contains PSQ tables from Stockfish 15.1 per piece color, type, and index.
+        /// <br></br>
+        /// Index using [Color]  [Type]  [Index]
+        /// </summary>
         public static int[][][] FishPSQT;
 
         private static int[][][] FishPSQTKnight =

@@ -118,9 +118,6 @@ namespace LTChess.Util
         /// So Forward(Color.White) with a bitboard that has A2 set will return one with A3 set,
         /// and Forward(Color.Black) returns one with A1 set instead.
         /// </summary>
-        /// <param name="color">Shifted "up"</param>
-        /// <param name="b"></param>
-        /// <returns></returns>
         [MethodImpl(Inline)]
         public static ulong Forward(int color, ulong b)
         {
@@ -130,6 +127,22 @@ namespace LTChess.Util
             }
 
             return Shift(Direction.SOUTH, b);
+        }
+
+        /// <summary>
+        /// Returns a bitboard with bits set 1 "below" the bits in <paramref name="b"/>.
+        /// So Backward(Color.White) with a bitboard that has A2 set will return one with A1 set,
+        /// and Backward(Color.Black) returns one with A3 set instead.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static ulong Backward(int color, ulong b)
+        {
+            if (color == Color.White)
+            {
+                return Shift(Direction.SOUTH, b);
+            }
+
+            return Shift(Direction.NORTH, b);
         }
 
         [MethodImpl(Inline)]
