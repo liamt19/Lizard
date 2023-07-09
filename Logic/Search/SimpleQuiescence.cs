@@ -49,14 +49,14 @@ namespace LTChess.Search
                     SearchStatistics.ETWrongHashKey++;
 #endif
                     //  This is the lower bound for the score
-                    standingPat = info.tdEval.Evaluate(info.Position, info.Position.ToMove);
+                    standingPat = info.GetEvaluation(info.Position, info.Position.ToMove);
                     EvaluationTable.Save(posHash, (short)standingPat);
                 }
             }
             else
             {
                 //  This is the lower bound for the score
-                standingPat = info.tdEval.Evaluate(info.Position, info.Position.ToMove);
+                standingPat = info.GetEvaluation(info.Position, info.Position.ToMove);
                 EvaluationTable.Save(posHash, (short)standingPat);
             }
 

@@ -46,11 +46,11 @@ namespace LTChess.Search
         public bool SearchWasAborted = false;
         public string LastSearchInfo = string.Empty;
 
-        public void DoStopSearching()
-        {
-            StopSearching = true;
-        }
-
+        /// <summary>
+        /// Replaces the BestMove and BestScore fields when a search is interrupted.
+        /// </summary>
+        /// <param name="move">The best Move from the previous depth</param>
+        /// <param name="score">The evaluation from the previous depth</param>
         public void SetLastMove(Move move, int score)
         {
             if (!move.IsNull())
@@ -66,13 +66,6 @@ namespace LTChess.Search
                 Log("ERROR SetLastMove(" + move + ", " + score + ") " + "[old " + BestMove + ", " + BestScore + "] was illegal in FEN " + Position.GetFEN());
             }
         }
-
-        public void CallSearchFinish()
-        {
-            SearchWasAborted = true;
-            this.OnSearchFinish?.Invoke(this);
-        }
-
         /// <summary>
         /// A list of moves which the search thinks will be played next.
         /// PV[0] is the best move that we found, PV[1] is the best response that we think they have, etc.
@@ -101,11 +94,29 @@ namespace LTChess.Search
         /// </summary>
         public int PlayerTimeLeft = SearchConstants.MaxSearchTime;
 
+        /// <summary>
+        /// The number of moves made so far in the root position.
+        /// This is used to calculate mate scores since that is a bit more complicated than just looking at the depth.
+        /// </summary>
         public int RootPositionMoveCount = 0;
 
+        /// <summary>
+        /// Set to true if this SearchInformation instance is being used in a threaded search.
+        /// </summary>
         public bool IsMultiThreaded = false;
 
-        public ThreadedEvaluation tdEval;
+        /// <summary>
+        /// A private reference to a ThreadedEvaluation instance, which is used by the thread to evaluate the positions
+        /// that it encounters during the search.
+        /// </summary>
+        private ThreadedEvaluation tdEval;
+
+        /// <summary>
+        /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
+        /// </summary>
+        public int GetEvaluation(in Position position, int pc, bool Trace = false) => this.tdEval.Evaluate(position, pc, Trace);
+
+
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {
@@ -129,6 +140,9 @@ namespace LTChess.Search
             tdEval = new ThreadedEvaluation();
         }
 
+        /// <summary>
+        /// Prints out the "info depth (number) ..." string
+        /// </summary>
         public void PrintSearchInfo(SearchInformation info)
         {
             info.LastSearchInfo = FormatSearchInformation(info);
@@ -162,6 +176,9 @@ namespace LTChess.Search
             return copy;
         }
 
+        /// <summary>
+        /// Returns the number of plys from the root position, which is the "3" in "+M3" if white has mate in 3.
+        /// </summary>
         public int MakeMateScore()
         {
             int movesMade = (this.Position.Moves.Count - this.RootPositionMoveCount);
