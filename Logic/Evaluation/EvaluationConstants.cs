@@ -26,6 +26,7 @@ namespace LTChess.Search
         public static int[] PieceValues = { ValuePawn, ValueKnight, ValueBishop, ValueRook, ValueQueen };
 
         public static readonly double[] ScaleMaterial = { 1.75, 2.0 };
+        public static readonly double[] ScalePositional = { 1.75, 2.0 };
         public static readonly double[] ScalePawns = { 0.8, 1.25 };
         public static readonly double[] ScaleKnights = { 0.9, 1.0 };
         public static readonly double[] ScaleBishops = { 0.9, 1.0 };
@@ -56,14 +57,13 @@ namespace LTChess.Search
         public const double ScoreUndevelopedPiece = -20;
         public const double ScoreSupportingPiece = 20;
 
-        //  TODO: is it better to look straight at their king, or at the 2 squares next to them?
-        public const double ScoreBishopOnKingDiagonal = 35;
-        public const double ScoreBishopNearKingDiagonal = 20;
+        public static readonly double[] ScoreBishopOnKingDiagonal = { 35, 5 };
+        public static readonly double[] ScoreBishopNearKingDiagonal = { 20, 0 };
         public const double ScoreBishopOutpost = 15;
         public const double ScoreBishopPair = 50;
 
-        public const double ScoreRookOpenFile = 80;
-        public const double ScoreRookSemiOpenFile = 50;
+        public static readonly double[] ScoreRookOpenFile = { 50, 20 };
+        public static readonly double[] ScoreRookSemiOpenFile = { 20, 10 };
         public const double ScoreRookOn7th = 40;
 
         public const double ScoreQueenSquares = 2;
@@ -73,10 +73,12 @@ namespace LTChess.Search
         public const double CoefficientPositiveTrade = 1.2;
         public const double CoefficientPinnedQueen = 0.4;
 
-        public const double CoefficientPSQTCenterControl = 1.0;
-        public const double CoefficientPSQTCenter = 0.8;
-        public const double CoefficientPSQTPawns = 0.7;
+        public const double CoefficientPSQTCenterControl = 0.0;
+        public const double CoefficientPSQTCenter = 0.7;
+        public const double CoefficientPSQTPawns = 1.0;
         public const double CoefficientPSQTKnights = 1.0;
+        public const double CoefficientPSQTFish = 1.0;
+
 
 
         public const double ScaleEndgame = 1.0;

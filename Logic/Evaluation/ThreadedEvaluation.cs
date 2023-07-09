@@ -33,6 +33,7 @@ namespace LTChess.Search
         private ulong[] AttackMask;
 
         private double[] materialScore;
+        private double[] positionalScore;
         private double[] kingScore;
         private double[] threatScore;
         private double[] spaceScore;
@@ -53,6 +54,7 @@ namespace LTChess.Search
 
             AttackMask = new ulong[2];
             materialScore = new double[2];
+            positionalScore = new double[2];
             kingScore = new double[2];
             threatScore = new double[2];
             spaceScore = new double[2];
@@ -86,7 +88,9 @@ namespace LTChess.Search
             queenScore = new[]  { EvalQueens (Color.White), EvalQueens(Color.Black) };
             spaceScore = new[]  { EvalSpace  (Color.White), EvalSpace(Color.Black) };
             kingScore = new[]   { EvalKingSafety(Color.White), EvalKingSafety(Color.Black) };
-            
+
+            positionalScore[Color.White] *= ScalePositional[gamePhase];
+            positionalScore[Color.Black] *= ScalePositional[gamePhase];
 
             threatScore[Color.White] *= ScaleThreats[gamePhase];
             threatScore[Color.Black] *= ScaleThreats[gamePhase];
@@ -94,15 +98,15 @@ namespace LTChess.Search
             materialScore[Color.White] *= ScaleMaterial[gamePhase];
             materialScore[Color.Black] *= ScaleMaterial[gamePhase];
 
-            double scoreW = materialScore[Color.White] + pawnScore[Color.White] + knightScore[Color.White] + 
-                            bishopScore[Color.White] + rookScore[Color.White] + queenScore[Color.White] +
-                            kingScore[Color.White] + threatScore[Color.White] + spaceScore[Color.White] + 
-                            endgameScore[Color.White];
+            double scoreW = materialScore[Color.White] + positionalScore[Color.White] + pawnScore[Color.White] + 
+                            knightScore[Color.White] + bishopScore[Color.White] + rookScore[Color.White] + 
+                            queenScore[Color.White] + kingScore[Color.White] + threatScore[Color.White] + 
+                            spaceScore[Color.White] + endgameScore[Color.White];
 
-            double scoreB = materialScore[Color.Black] + pawnScore[Color.Black] + knightScore[Color.Black] + 
-                            bishopScore[Color.Black] + rookScore[Color.Black] + queenScore[Color.Black] + 
-                            kingScore[Color.Black] + threatScore[Color.Black] + spaceScore[Color.Black] + 
-                            endgameScore[Color.Black];
+            double scoreB = materialScore[Color.Black] + positionalScore[Color.Black] + pawnScore[Color.Black] + 
+                            knightScore[Color.Black] + bishopScore[Color.Black] + rookScore[Color.Black] + 
+                            queenScore[Color.Black] + kingScore[Color.Black] + threatScore[Color.Black] + 
+                            spaceScore[Color.Black] + endgameScore[Color.Black];
 
             double scoreFinal = scoreW - scoreB;
             double relative = (scoreFinal * (pc == Color.White ? 1 : -1));
@@ -113,6 +117,7 @@ namespace LTChess.Search
                 Log("│     Term    │   White  │   Black  │   Total  │");
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│    Material │ " + FormatEvalTerm(materialScore[Color.White]) + " │ " + FormatEvalTerm(materialScore[Color.Black]) + " │ " + FormatEvalTerm(materialScore[Color.White] - materialScore[Color.Black]) + " │ ");
+                Log("│  Positional │ " + FormatEvalTerm(positionalScore[Color.White]) + " │ " + FormatEvalTerm(positionalScore[Color.Black]) + " │ " + FormatEvalTerm(positionalScore[Color.White] - positionalScore[Color.Black]) + " │ ");
                 Log("│       Pawns │ " + FormatEvalTerm(pawnScore[Color.White]) + " │ " + FormatEvalTerm(pawnScore[Color.Black]) + " │ " + FormatEvalTerm(pawnScore[Color.White] - pawnScore[Color.Black]) + " │ ");
                 Log("│     Knights │ " + FormatEvalTerm(knightScore[Color.White]) + " │ " + FormatEvalTerm(knightScore[Color.Black]) + " │ " + FormatEvalTerm(knightScore[Color.White] - knightScore[Color.Black]) + " │ ");
                 Log("│     Bishops │ " + FormatEvalTerm(bishopScore[Color.White]) + " │ " + FormatEvalTerm(bishopScore[Color.Black]) + " │ " + FormatEvalTerm(bishopScore[Color.White] - bishopScore[Color.Black]) + " │ ");
@@ -142,7 +147,10 @@ namespace LTChess.Search
             ulong us = bb.Colors[pc];
             ulong them = bb.Colors[Not(pc)];
 
-            ulong ourPawns = (us & bb.Pieces[Piece.Pawn]);
+            const int pt = Piece.Pawn;
+            const int thisPieceValue = ValuePawn;
+
+            ulong ourPawns = us & bb.Pieces[pt];
 
             ulong doubledPawns = Forward(pc, ourPawns) & ourPawns;
             score += ((int)popcount(doubledPawns) * ScorePawnDoubled);
@@ -157,13 +165,7 @@ namespace LTChess.Search
                 ulong thisPawnAttacks = PawnAttackMasks[pc][idx];
                 AttackMask[pc] |= thisPawnAttacks;
 
-                ulong temp = (thisPawnAttacks);
-                while (temp != 0)
-                {
-                    int controlledSquare = lsb(temp);
-                    score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
-                    temp = poplsb(temp);
-                }
+                positionalScore[pc] += GetCenterControlScore(thisPawnAttacks);
 
                 while (thisPawnAttacks != 0)
                 {
@@ -175,7 +177,7 @@ namespace LTChess.Search
                     }
                     else if ((them & SquareBB[attackIdx]) != 0)
                     {
-                        threatScore[pc] += GetThreatValue(attackIdx, ValuePawn);
+                        threatScore[pc] += GetThreatValue(attackIdx, thisPieceValue);
                     }
 
                     thisPawnAttacks = poplsb(thisPawnAttacks);
@@ -186,10 +188,10 @@ namespace LTChess.Search
                     score += ScoreIsolatedPawn;
                 }
 
-                score += (PSQT.PawnsByColor[pc][idx] * CoefficientPSQTPawns);
-                score += (PSQT.PawnCenter[idx] * CoefficientPSQTCenter);
+                positionalScore[pc] += (PSQT.PawnsByColor[pc][idx] * CoefficientPSQTPawns);
+                positionalScore[pc] += (PSQT.PawnCenter[idx] * CoefficientPSQTCenter);
 
-                materialScore[pc] += ValuePawn;
+                materialScore[pc] += thisPieceValue;
 
                 ourPawns = poplsb(ourPawns);
             }
@@ -205,35 +207,24 @@ namespace LTChess.Search
             ulong us = bb.Colors[pc];
             ulong them = bb.Colors[Not(pc)];
 
-            ulong ourKnights = us & bb.Pieces[Piece.Knight];
+            const int pt = Piece.Knight;
+            const int thisPieceValue = ValueKnight;
+
+            ulong ourKnights = us & bb.Pieces[pt];
 
             while (ourKnights != 0)
             {
                 int idx = lsb(ourKnights);
 
-                ulong thisAttacks = KnightMasks[idx] & them;
-                AttackMask[pc] |= KnightMasks[idx] & ~us;
+                ulong thisMoves = KnightMasks[idx];
+                AttackMask[pc] |= (thisMoves & ~us);
 
-                ulong temp = (KnightMasks[idx]);
-                while (temp != 0)
-                {
-                    int controlledSquare = lsb(temp);
-                    score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
-                    temp = poplsb(temp);
-                }
+                positionalScore[pc] += GetCenterControlScore(KnightMasks[idx]);
+                threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
-                while (thisAttacks != 0)
-                {
-                    int attackIdx = lsb(thisAttacks);
-
-                    threatScore[pc] += GetThreatValue(attackIdx, ValueKnight);
-
-                    thisAttacks = poplsb(thisAttacks);
-                }
-
-                score += (PSQT.Center[idx] * CoefficientPSQTCenter * CoefficientPSQTKnights);
-
-                materialScore[pc] += ValueKnight;
+                //positionalScore[pc] += (PSQT.Center[idx] * CoefficientPSQTCenter * CoefficientPSQTKnights);
+                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
+                materialScore[pc] += thisPieceValue;
 
                 ourKnights = poplsb(ourKnights);
             }
@@ -249,9 +240,12 @@ namespace LTChess.Search
             ulong us = bb.Colors[pc];
             ulong them = bb.Colors[Not(pc)];
 
+            const int pt = Piece.Bishop;
+            const int thisPieceValue = ValueBishop;
+
             int theirKing = bb.KingIndex(Not(pc));
 
-            ulong ourBishops = us & bb.Pieces[Piece.Bishop];
+            ulong ourBishops = us & bb.Pieces[pt];
 
             if (popcount(ourBishops) == 2)
             {
@@ -265,40 +259,24 @@ namespace LTChess.Search
                 ulong thisMoves = GetBishopMoves((us | them), idx);
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                ulong temp = (thisMoves);
-                while (temp != 0)
-                {
-                    int controlledSquare = lsb(temp);
-                    score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
-                    temp = poplsb(temp);
-                }
+                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
+
+                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
+                materialScore[pc] += thisPieceValue;
 
                 //  Bonus for our bishop being on the same diagonal as their king.
                 if ((BishopRays[idx] & SquareBB[theirKing]) != 0)
                 {
-                    score += ScoreBishopOnKingDiagonal;
+                    score += ScoreBishopOnKingDiagonal[gamePhase];
                 }
 
                 //  Bonus for bishops that are on the a diagonal next to the king,
                 //  meaning they are able to attack the "king ring" squares.
-
-                //score += (popcount(BishopRays[idx] & NeighborsMask[theirKing]) * ScoreBishopNearKingDiagonal);
                 if ((BishopRays[idx] & NeighborsMask[theirKing]) != 0)
                 {
-                    score += ScoreBishopNearKingDiagonal;
+                    score += ScoreBishopNearKingDiagonal[gamePhase];
                 }
-
-                ulong thisAttacks = thisMoves & them;
-                while (thisAttacks != 0)
-                {
-                    int attackIdx = lsb(thisAttacks);
-
-                    threatScore[pc] += GetThreatValue(attackIdx, ValueBishop);
-
-                    thisAttacks = poplsb(thisAttacks);
-                }
-
-                materialScore[pc] += ValueBishop;
 
                 ourBishops = poplsb(ourBishops);
             }
@@ -315,7 +293,10 @@ namespace LTChess.Search
             ulong us = bb.Colors[pc];
             ulong them = bb.Colors[Not(pc)];
 
-            ulong ourRooks = us & bb.Pieces[Piece.Rook];
+            const int pt = Piece.Rook;
+            const int thisPieceValue = ValueRook;
+
+            ulong ourRooks = us & bb.Pieces[pt];
 
             while (ourRooks != 0)
             {
@@ -324,44 +305,43 @@ namespace LTChess.Search
                 ulong thisMoves = GetRookMoves((us | them), idx);
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                ulong temp = (thisMoves);
-                while (temp != 0)
-                {
-                    int controlledSquare = lsb(temp);
-                    score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
-                    temp = poplsb(temp);
-                }
+                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
-                score += (ScoreSupportingPiece * popcount(thisMoves & us));
-                score += ((ScorePerSquare / 2) * popcount(thisMoves & ~(us | them)));
-
-                score += (PSQT.Center[idx] * (CoefficientPSQTCenter / 2));
+                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
+                materialScore[pc] += thisPieceValue;
 
                 if ((pc == Color.White && GetIndexRank(idx) == 6) || (pc == Color.Black && GetIndexRank(idx) == 1))
                 {
                     score += ScoreRookOn7th;
                 }
 
-                ulong thisAttacks = thisMoves & them;
-                while (thisAttacks != 0)
+                if (IsFileSemiOpen(idx, pc))
                 {
-                    int attackIdx = lsb(thisAttacks);
+                    if (IsFileSemiOpen(idx, Not(pc)))
+                    {
+                        //  No pawns of either color
+                        score += ScoreRookOpenFile[gamePhase];
+                    }
+                    else
+                    {
+                        //  Only they have pawns on this file
+                        score += ScoreRookSemiOpenFile[gamePhase];
+                    }
+                }
+                else
+                {
+                    //  Then our rook is behind one of our pawns, which can be good but not if the pawn is blockaded
 
-                    threatScore[pc] += GetThreatValue(attackIdx, ValueRook);
-
-                    thisAttacks = poplsb(thisAttacks);
+                    //  Penalty if our pawn on this file has a piece directly in front of it
+                    if ((bb.Pieces[Piece.Pawn] & GetFileBB(idx) & Backward(pc, us | them)) != 0)
+                    {
+                        score -= (ScoreRookSemiOpenFile[gamePhase] / 2);
+                    }
                 }
 
-                materialScore[pc] += ValueRook;
-
-                if (IsFileOpen(idx))
-                {
-                    score += ScoreRookOpenFile;
-                }
-                else if (IsFileSemiOpen(idx))
-                {
-                    score += ScoreRookSemiOpenFile;
-                }
+                score += (ScoreSupportingPiece * popcount(thisMoves & us));
+                score += ((ScorePerSquare / 2) * popcount(thisMoves & ~(us | them)));
 
                 ourRooks = poplsb(ourRooks);
             }
@@ -377,7 +357,10 @@ namespace LTChess.Search
             ulong us = bb.Colors[pc];
             ulong them = bb.Colors[Not(pc)];
 
-            ulong ourQueens = us & bb.Pieces[Piece.Queen];
+            const int pt = Piece.Queen;
+            const int thisPieceValue = ValueQueen;
+
+            ulong ourQueens = us & bb.Pieces[pt];
 
             while (ourQueens != 0)
             {
@@ -386,32 +369,16 @@ namespace LTChess.Search
                 ulong thisMoves = (GetBishopMoves((us | them), idx) | GetRookMoves((us | them), idx));
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                ulong temp = (thisMoves);
-                while (temp != 0)
-                {
-                    int controlledSquare = lsb(temp);
-                    score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
-                    temp = poplsb(temp);
-                }
+                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
-                score += (popcount(thisMoves) * ScoreQueenSquares);
+                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
+                materialScore[pc] += thisPieceValue;
 
                 if ((pc == Color.White && GetIndexRank(idx) == 6) || (pc == Color.Black && GetIndexRank(idx) == 1))
                 {
-                   score += ScoreRookOn7th;
+                    score += ScoreRookOn7th;
                 }
-
-                ulong thisAttacks = thisMoves & them;
-                while (thisAttacks != 0)
-                {
-                    int attackIdx = lsb(thisAttacks);
-
-                    threatScore[pc] += GetThreatValue(attackIdx, ValueQueen);
-
-                    thisAttacks = poplsb(thisAttacks);
-                }
-
-                materialScore[pc] += ValueQueen;
 
                 ourQueens = poplsb(ourQueens);
             }
@@ -498,6 +465,46 @@ namespace LTChess.Search
             }
 
             return score * ScaleSpace[gamePhase];
+        }
+
+        /// <summary>
+        /// Returns a bonus for each of the squares near the center of the board that a piece can move to.
+        /// </summary>
+        /// <param name="thisMoves">The move mask of a piece, which should include squares that friendly pieces are on (and this piece is supporting).</param>
+        [MethodImpl(Inline)]
+        public double GetCenterControlScore(ulong thisMoves)
+        {
+            double score = 0;
+
+            while (thisMoves != 0)
+            {
+                int controlledSquare = lsb(thisMoves);
+                score += (PSQT.CenterControl[controlledSquare] * CoefficientPSQTCenterControl);
+                thisMoves = poplsb(thisMoves);
+            }
+
+            return score;
+        }
+
+        /// <summary>
+        /// Returns a bonus for each of the squares near the center of the board that a piece can move to.
+        /// </summary>
+        /// <param name="thisMoves">The move mask of a piece, which should include squares that friendly pieces are on (and this piece is supporting).</param>
+        [MethodImpl(Inline)]
+        public double GetAttackThreatScore(ulong thisAttacks, int pt)
+        {
+            double score = 0;
+
+            while (thisAttacks != 0)
+            {
+                int attackIdx = lsb(thisAttacks);
+
+                score += GetThreatValue(attackIdx, PieceValues[pt]);
+
+                thisAttacks = poplsb(thisAttacks);
+            }
+
+            return score;
         }
 
         [MethodImpl(Inline)]
@@ -602,21 +609,17 @@ namespace LTChess.Search
 
 
         /// <summary>
-        /// Returns true if the file of <paramref name="idx"/> is semi-open, which means there are pawns of only one color on it.
+        /// Returns true if the file of <paramref name="idx"/> is semi-open, 
+        /// which means that there are no pawns of the color <paramref name="pc"/> on that file.
+        /// <br></br>
+        /// This will return true for a white rook on A1 if there are no white pawns on A2-A7.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsFileSemiOpen(int idx)
+        public bool IsFileSemiOpen(int idx, int pc)
         {
-            ulong whitePawns = bb.Pieces[Piece.Pawn] & bb.Colors[Color.White];
-            ulong blackPawns = bb.Pieces[Piece.Pawn] & bb.Colors[Color.Black];
-
+            ulong ourPawns = bb.Pieces[Piece.Pawn] & bb.Colors[pc];
             ulong fileMask = GetFileBB(idx);
-            if ((fileMask & whitePawns) == 0)
-            {
-                return ((fileMask & blackPawns) != 0);
-            }
-
-            return ((fileMask & blackPawns) == 0);
+            return ((fileMask & ourPawns) == 0);
         }
 
         /// <summary>
