@@ -126,7 +126,6 @@ namespace LTChess.Core
         /// <summary>
         /// Returns true and sets <paramref name="move"/> if an en passant move was generated.
         /// </summary>
-        /// <returns></returns>
         [MethodImpl(Inline)]
         public static bool GenEnPassantMove(in Bitboard bb, int idx, int EnPassantTarget, out Move move)
         {
@@ -142,7 +141,7 @@ namespace LTChess.Core
 
             int us = bb.GetColorAtIndex(idx);
 
-            int idxPawn = 64;
+            int idxPawn = LSBEmpty;
             if ((bb.Pieces[Piece.Pawn] & SquareBB[EnPassantTarget - 8]) != 0)
             {
                 idxPawn = EnPassantTarget - 8;

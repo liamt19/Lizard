@@ -278,7 +278,7 @@ namespace LTChess.Core
         {
 #if DEBUG
             ulong u = KingMask(pc);
-            Debug.Assert(lsb(u) != 64);
+            Debug.Assert(lsb(u) != LSBEmpty);
 #endif
 
             return lsb(KingMask(pc));
