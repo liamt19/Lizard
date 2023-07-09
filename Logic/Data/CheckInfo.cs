@@ -17,7 +17,14 @@ namespace LTChess.Data
         public int idxChecker = NoCheckers;
         public int idxDoubleChecker = NoCheckers;
 
+        /// <summary>
+        /// Set to true if the side to move's king is in check from a single piece.
+        /// </summary>
         public bool InCheck = false;
+
+        /// <summary>
+        /// Set to true if the side to move's king is in check from two pieces.
+        /// </summary>
         public bool InDoubleCheck = false;
 
         public CheckInfo()

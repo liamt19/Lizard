@@ -16,7 +16,14 @@ namespace LTChess.Data
     {
         public static Move Null = new Move();
 
+        /// <summary>
+        /// The index on the board that the piece is coming from
+        /// </summary>
         public int from;
+
+        /// <summary>
+        /// The index on the board that the piece is going to
+        /// </summary>
         public int to;
 
         /// <summary>
@@ -27,17 +34,53 @@ namespace LTChess.Data
         /// <summary>
         /// Set to the index of the piece that causes the check, which is this.to unless this move causes a discovery
         /// </summary>
-        public int idxChecker = 64;
-        public int idxDoubleChecker = 64;
+        public int idxChecker = NoCheckers;
+
+        /// <summary>
+        /// Set to the index of the piece that now has a discovered attack on their king after this piece moved.
+        /// </summary>
+        public int idxDoubleChecker = NoCheckers;
+
+        /// <summary>
+        /// The ID of the piece that this pawn is promoting to.
+        /// </summary>
         public int PromotionTo = Piece.None;
 
+        /// <summary>
+        /// True if this move captures an enemy piece.
+        /// </summary>
         public bool Capture = false;
+
+        /// <summary>
+        /// True if this move is a pawn capturing another en passant.
+        /// </summary>
         public bool EnPassant = false;
+
+        /// <summary>
+        /// True if this move is a kingside/queenside castling move.
+        /// </summary>
         public bool Castle = false;
+
+        /// <summary>
+        /// True if this move directly checks the enemy king, or discovers an attack on their king.
+        /// Mutually exclusive with <c>CausesDoubleCheck</c>.
+        /// </summary>
         public bool CausesCheck = false;
+
+        /// <summary>
+        /// True if this move causes our opponent's king to be in check from this piece as well as another.
+        /// Mutually exclusive with <c>CausesCheck</c>.
+        /// </summary>
         public bool CausesDoubleCheck = false;
+
+        /// <summary>
+        /// True if this move is a pawn promotion.
+        /// </summary>
         public bool Promotion = false;
 
+        /// <summary>
+        /// Must be set manually, only changes the "+" to a "#" (or adds a "#") in the ToString method.
+        /// </summary>
         public bool IsMate = false;
 
 

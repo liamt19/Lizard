@@ -32,6 +32,11 @@ namespace LTChess.Search
         /// </summary>
         public const int TimerBuffer = 50;
 
+        /// <summary>
+        /// The minimum amount of time to search, regardless of the other limitations of the search.
+        /// This only applies to the amount of time that we were told to search for (i.e. "movetime 100").
+        /// If we receive a "stop" command from the UCI, this does no apply and we stop as soon as possible.
+        /// </summary>
         public const int MinSearchTime = 200;
 
         /// <summary>
@@ -48,11 +53,6 @@ namespace LTChess.Search
         /// The evaluation of that best move.
         /// </summary>
         private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
-
-        //  These are inconvenient but work
-        delegate void CallSearchFinishDelegate();
-        delegate void StopSearchingDelegate();
-        delegate void SetLastMoveDelegate(Move move, int score);
 
         /// <summary>
         /// Begin a new search with the parameters in <paramref name="info"/>.
@@ -73,9 +73,6 @@ namespace LTChess.Search
 
             info.RootPositionMoveCount = info.Position.Moves.Count;
 
-            StopSearchingDelegate stopSearchingDelegate = info.DoStopSearching;
-            SetLastMoveDelegate setLastMoveDelegate = info.SetLastMove;
-            CallSearchFinishDelegate callSearchFinishDelegate = info.CallSearchFinish;
             bool continueDeepening = true;
             info.NodeCount = 0;
 
@@ -198,6 +195,7 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public static int FindBest(ref SearchInformation info, int alpha, int beta, int depth, bool isPV = false, bool isRoot = false)
         {
+            //  Check every few thousand nodes if we need to stop the search.
             if ((info.NodeCount & SearchCheckInCount) == 0)
             {
                 bool doStop = false;
@@ -247,6 +245,8 @@ namespace LTChess.Search
                 return 0;
             }
 
+            //  At depth 0, we go into a Quiescence search, which verifies that the evaluation at this depth is reasonable
+            //  by checking all of the available captures after the last move (in depth 1).
             if (depth <= 0)
             {
                 return SimpleQuiescence.FindBest(ref info, alpha, beta, depth);
@@ -274,7 +274,7 @@ namespace LTChess.Search
             ETEntry etEntry = EvaluationTable.Probe(posHash);
             if (etEntry.key == EvaluationTable.InvalidKey || !etEntry.Validate(posHash) || etEntry.score == ETEntry.InvalidScore)
             {
-                staticEval = info.tdEval.Evaluate(pos, pos.ToMove);
+                staticEval = info.GetEvaluation(pos, pos.ToMove);
                 EvaluationTable.Save(posHash, (short)staticEval);
             }
             else
