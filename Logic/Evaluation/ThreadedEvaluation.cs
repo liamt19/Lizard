@@ -435,8 +435,8 @@ namespace LTChess.Search
 
             double theirAttacks = popcount(ourKingRing & AttackMask[Not(pc)]);
             double theirAttacksOut = popcount(ourKingRingOut & AttackMask[Not(pc)]);
-            score -= (theirAttacks * ScoreKingRingAttack);
-            score -= (theirAttacksOut * ScoreKingOutterRingAttack);
+            score -= (theirAttacks * ScoreKingRingAttack) * (gamePhase == GamePhaseEndgame ? CoefficientEndgameKingThreats : 1.0);
+            score -= (theirAttacksOut * ScoreKingOutterRingAttack) * (gamePhase == GamePhaseEndgame ? CoefficientEndgameKingThreats : 1.0); ;
 
             //  I really don't know why it likes playing Ka1/Kh1 so often,
             //  so giving it a small penalty here to stop it from doing so

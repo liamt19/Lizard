@@ -82,6 +82,7 @@ namespace LTChess.Search
         public const double ScaleEndgame = 1.0;
 
         public const double CoefficientPSQTEKG = 0.5;
+        public const double CoefficientEndgameKingThreats = 0.25;
 
         /// <summary>
         /// Score given to the strong side for their king being however many squares away from the weak side's.
