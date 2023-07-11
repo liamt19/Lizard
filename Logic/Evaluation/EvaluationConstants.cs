@@ -25,7 +25,7 @@ namespace LTChess.Search
 
         public static int[] PieceValues = { ValuePawn, ValueKnight, ValueBishop, ValueRook, ValueQueen };
 
-        public static readonly double[] ScaleMaterial = { 1.75, 2.0 };
+        public static readonly double[] ScaleMaterial = { 1.75, 2.00 };
         public static readonly double[] ScalePositional = { 1.75, 2.0 };
         public static readonly double[] ScalePawns = { 0.8, 1.25 };
         public static readonly double[] ScaleKnights = { 0.9, 1.0 };
@@ -36,15 +36,20 @@ namespace LTChess.Search
         public static readonly double[] ScaleThreats = { 0.5, 0.5 };
         public static readonly double[] ScaleSpace = { 1.1, 1.0 };
 
+        public const double ScorePawnOverloaded = -25;
+
+        public const double ScorePawnUndermineSupported = 10;
+        public const double ScorePawnUndermine = 30;
+
         public const double ScorePawnDoubled = -30;
         public const double ScorePawnDoubledDistant = -10;
         public const double ScorePawnSupport = 15;
-        public const double ScoreIsolatedPawn = -10;
+        public const double ScoreIsolatedPawn = -20;
         public const double ScorePasser = 40 - ScoreIsolatedPawn;
         public const double ScoreNearlyPromotingPawn = (ValueQueen - (ValuePawn * 2)) / 2;
         public const double ScorePromotingPawn = ValueQueen - (ValuePawn * 2);
 
-        public const double ScoreKingRingAttack = 8;
+        public const double ScoreKingRingAttack = 7;
         public const double ScoreKingOutterRingAttack = 3;
         public const double ScoreKingInCorner = -40;
         public const double ScoreDefendedPieceNearKing = 30;
@@ -57,9 +62,11 @@ namespace LTChess.Search
         public const double ScoreUndevelopedPiece = -20;
         public const double ScoreSupportingPiece = 20;
 
+        public static readonly double[] ScoreKnightOutpost = { 50, 40 };
+
         public static readonly double[] ScoreBishopOnKingDiagonal = { 35, 5 };
         public static readonly double[] ScoreBishopNearKingDiagonal = { 20, 0 };
-        public const double ScoreBishopOutpost = 15;
+        public static readonly double[] ScoreBishopOutpost = { 25, 20 };
         public const double ScoreBishopPair = 50;
 
         public static readonly double[] ScoreRookOpenFile = { 50, 20 };
@@ -85,6 +92,10 @@ namespace LTChess.Search
 
         public const double CoefficientPSQTEKG = 0.5;
         public const double CoefficientEndgameKingThreats = 0.25;
+        public const double ScoreEndgamePawnDistancePenalty = -20;
+        public const int PawnRelativeDistanceMultiplier = 2;
+
+        public static readonly int[] ScoreEGPawnPromotionDistance = { 0, 320, 160, 80, 50, 30, 40, 0 };
 
         /// <summary>
         /// Score given to the strong side for their king being however many squares away from the weak side's.
