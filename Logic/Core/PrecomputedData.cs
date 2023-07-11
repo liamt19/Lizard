@@ -56,6 +56,7 @@ namespace LTChess.Data
         public static DiagonalInfo[][] InfoA1H8 = new DiagonalInfo[64][];
         public static DiagonalInfo[][] InfoA8H1 = new DiagonalInfo[64][];
 
+
         /// <summary>
         /// Bitboards containing all of the squares that a White pawn on an index attacks. A White pawn on A2 attacks B3 etc.
         /// </summary>
@@ -71,6 +72,9 @@ namespace LTChess.Data
         public static ulong[] WhitePawnMoveMasks = new ulong[64];
         public static ulong[] BlackPawnMoveMasks = new ulong[64];
 
+
+        public static ulong[][] PassedPawnMasks = new ulong[2][];
+
         /// <summary>
         /// At each index, contains a mask of all of the squares above the index which determine whether or not a pawn is passed.
         /// </summary>
@@ -80,6 +84,12 @@ namespace LTChess.Data
         /// At each index, contains a mask of all of the squares below the index which determine whether or not a pawn is passed.
         /// </summary>
         public static ulong[] BlackPassedPawnMasks = new ulong[64];
+
+        /// <summary>
+        /// At each index, contains a mask of the files to the left and right of the square as well as the file the square is in.
+        /// So NeighborsFileMasks[D6] would have every square in the B/C/D files masked.
+        /// </summary>
+        public static ulong[] NeighborsFileMasks = new ulong[64];
 
         /// <summary>
         /// At each index, contains a ulong equal to (1UL << index).
@@ -100,6 +110,13 @@ namespace LTChess.Data
         /// </summary>
         public static ulong[][] BetweenBB = new ulong[64][];
 
+        public static int[][] FileDistances = new int[64][];
+        public static int[][] RankDistances = new int[64][];
+
+        /// <summary>
+        /// At each index, contains the distance from that square to every other square.
+        /// This is the Min(file distance, rank distance) between the two squares.
+        /// </summary>
         public static int[][] SquareDistances = new int[64][];
 
         private static bool Initialized = false;
@@ -152,6 +169,8 @@ namespace LTChess.Data
         {
             for (int s1 = 0; s1 < 64; s1++)
             {
+                FileDistances[s1] = new int[64];
+                RankDistances[s1] = new int[64];
                 SquareDistances[s1] = new int[64];
                 IndexToCoord(s1, out int s1x, out int s1y);
                 for (int s2 = 0; s2 < 64; s2++)
@@ -159,6 +178,8 @@ namespace LTChess.Data
                     IndexToCoord(s2, out int s2x, out int s2y);
                     int fileDistance = Math.Abs(s1x - s2x);
                     int rankDistance = Math.Abs(s1y - s2y);
+                    FileDistances[s1][s2] = fileDistance;
+                    RankDistances[s1][s2] = rankDistance;
                     SquareDistances[s1][s2] = Math.Max(fileDistance, rankDistance);
                 }
             }
@@ -309,6 +330,22 @@ namespace LTChess.Data
                     mask |= (1UL << mv);
                 }
                 NeighborsMask[i] = mask;
+
+                if (GetIndexFile(i) > Files.A)
+                {
+                    //  Mask squares to the left
+                    NeighborsFileMasks[i] |= GetFileBB(i - 1);
+                }
+
+                //  Mask squares above and below.
+                NeighborsFileMasks[i] |= GetFileBB(i);
+
+                if (GetIndexFile(i) < Files.H)
+                {
+                    //  Mask squares to the right
+                    NeighborsFileMasks[i] |= GetFileBB(i + 1);
+                }
+
             }
         }
 
@@ -473,6 +510,9 @@ namespace LTChess.Data
 
         private static void DoPassedPawns()
         {
+            PassedPawnMasks[Color.White] = new ulong[64];
+            PassedPawnMasks[Color.Black] = new ulong[64];
+
             for (int idx = 0; idx < 64; idx++)
             {
                 IndexToCoord(idx, out int x, out int y);
@@ -501,6 +541,10 @@ namespace LTChess.Data
 
                 WhitePassedPawnMasks[idx] = whiteRanks & files;
                 BlackPassedPawnMasks[idx] = blackRanks & files;
+
+                PassedPawnMasks[Color.White][idx] = WhitePassedPawnMasks[idx];
+                PassedPawnMasks[Color.Black][idx] = BlackPassedPawnMasks[idx];
+
             }
         }
 
