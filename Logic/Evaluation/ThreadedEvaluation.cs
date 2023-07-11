@@ -130,9 +130,9 @@ namespace LTChess.Search
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│       Total │ " + FormatEvalTerm(scoreW) + " │ " + FormatEvalTerm(scoreB) + " │ " + FormatEvalTerm(scoreFinal) + " │ ");
                 Log("└─────────────┴──────────┴──────────┴──────────┘");
-                Log("Final: " + FormatEvalTerm(scoreFinal) + "\t\trelative\t" + FormatEvalTerm(relative));
+                Log("Final: " + FormatEvalTerm(relative));
                 Log(ColorToString(pc) + " is " +
-                    (relative < 0 ? "losing" : (relative > 0 ? "winning" : "equal")) + " by " + InCentipawns(scoreFinal) + " cp");
+                    (relative < 0 ? "losing" : (relative > 0 ? "winning" : "equal")) + " by " + (int)InCentipawns(Math.Abs(scoreFinal) * 100) + " cp");
             }
 
             return (int)relative;
@@ -178,6 +178,22 @@ namespace LTChess.Search
                     else if ((them & SquareBB[attackIdx]) != 0)
                     {
                         threatScore[pc] += GetThreatValue(attackIdx, thisPieceValue);
+
+                        //  If the piece that this pawn is attacking is also a pawn,
+                        //  and that pawn is supporting a non-pawn piece, we are undermining that piece.
+                        if ((them & bb.Pieces[Piece.Pawn] & SquareBB[attackIdx]) != 0)
+                        {
+                            if ((them & ~bb.Pieces[Piece.Pawn] & PawnAttackMasks[Not(pc)][attackIdx]) != 0)
+                            {
+                                score += ScorePawnUndermine;
+
+                                //  Small additional bonus if the pawn that is doing the undermining is supported.
+                                if ((us & PawnAttackMasks[Not(pc)][idx] & bb.Pieces[Piece.Pawn]) != 0)
+                                {
+                                    score += ScorePawnUndermineSupported;
+                                }
+                            }
+                        }
                     }
 
                     thisPawnAttacks = poplsb(thisPawnAttacks);
@@ -222,9 +238,20 @@ namespace LTChess.Search
                 positionalScore[pc] += GetCenterControlScore(KnightMasks[idx]);
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
-                //positionalScore[pc] += (PSQT.Center[idx] * CoefficientPSQTCenter * CoefficientPSQTKnights);
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
                 materialScore[pc] += thisPieceValue;
+
+                if ((SquareBB[idx] & OutpostSquares[pc]) != 0)
+                {
+                    //  Then this knight is on an outpost square,
+                    //  but that square also needs to not be attacked by one of their pawns,
+                    //  and must be supported by one of our pawns
+                    if ((PawnAttackMasks[pc][idx] & bb.Pieces[Piece.Pawn] & them) == 0 &&
+                        (PawnAttackMasks[Not(pc)][idx] & bb.Pieces[Piece.Pawn] & us) != 0)
+                    {
+                        score += ScoreKnightOutpost[gamePhase];
+                    }
+                }
 
                 ourKnights = poplsb(ourKnights);
             }
@@ -249,6 +276,8 @@ namespace LTChess.Search
 
             if (popcount(ourBishops) == 2)
             {
+                //  Moderate bonus for having 2 bishops.
+                //  If both players have 2 bishops, this does nothing anyways.
                 score += ScoreBishopPair;
             }
 
@@ -264,6 +293,15 @@ namespace LTChess.Search
 
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
                 materialScore[pc] += thisPieceValue;
+
+                if ((SquareBB[idx] & OutpostSquares[pc]) != 0)
+                {
+                    if ((PawnAttackMasks[pc][idx] & bb.Pieces[Piece.Pawn] & them) == 0 &&
+                        (PawnAttackMasks[Not(pc)][idx] & bb.Pieces[Piece.Pawn] & us) != 0)
+                    {
+                        score += ScoreBishopOutpost[gamePhase];
+                    }
+                }
 
                 //  Bonus for our bishop being on the same diagonal as their king.
                 if ((BishopRays[idx] & SquareBB[theirKing]) != 0)
@@ -487,9 +525,9 @@ namespace LTChess.Search
         }
 
         /// <summary>
-        /// Returns a bonus for each of the squares near the center of the board that a piece can move to.
+        /// Calculates the threat score for a piece of type <paramref name="pt"/> 
+        /// for each of the squares in <paramref name="thisAttacks"/> that it can capture pieces on.
         /// </summary>
-        /// <param name="thisMoves">The move mask of a piece, which should include squares that friendly pieces are on (and this piece is supporting).</param>
         [MethodImpl(Inline)]
         public double GetAttackThreatScore(ulong thisAttacks, int pt)
         {
@@ -507,6 +545,13 @@ namespace LTChess.Search
             return score;
         }
 
+        /// <summary>
+        /// Returns the difference in material value for pieces that the piece on <paramref name="attackIdx"/> can capture.
+        /// Bonuses are given for hanging pieces or pieces worth more than ours.
+        /// </summary>
+        /// <param name="attackIdx">The square that the piece is on</param>
+        /// <param name="ourPieceValue">The value of the piece on <paramref name="attackIdx"/></param>
+        /// <returns></returns>
         [MethodImpl(Inline)]
         public double GetThreatValue(int attackIdx, int ourPieceValue)
         {
