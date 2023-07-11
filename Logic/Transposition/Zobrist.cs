@@ -10,9 +10,9 @@ namespace LTChess.Transposition
 {
     public static unsafe class Zobrist
     {
-        private static ulong[][][] ColorPieceSquareHashes;
+        public static ulong[][][] ColorPieceSquareHashes;
         private static ulong[] CastlingRightsHashes;
-        private static ulong[] EnPessantFileHashes;
+        private static ulong[] EnPassantFileHashes;
         private static ulong BlackHash;
         private static Random rand;
 
@@ -32,7 +32,7 @@ namespace LTChess.Transposition
         {
             ColorPieceSquareHashes = new ulong[2][][];
             CastlingRightsHashes = new ulong[4];
-            EnPessantFileHashes = new ulong[8];
+            EnPassantFileHashes = new ulong[8];
             rand = new Random(randomSeed);
 
             ColorPieceSquareHashes[Color.White] = new ulong[6][];
@@ -57,7 +57,7 @@ namespace LTChess.Transposition
 
             for (int i = 0; i < 8; i++)
             {
-                EnPessantFileHashes[i] = rand.NextUlong();
+                EnPassantFileHashes[i] = rand.NextUlong();
             }
 
             BlackHash = rand.NextUlong();
@@ -112,7 +112,7 @@ namespace LTChess.Transposition
 
             if (position.EnPassantTarget != 0)
             {
-                hash ^= EnPessantFileHashes[GetIndexFile(position.EnPassantTarget)];
+                hash ^= EnPassantFileHashes[GetIndexFile(position.EnPassantTarget)];
             }
 
             if (position.ToMove == Color.Black)
@@ -167,7 +167,7 @@ namespace LTChess.Transposition
         [MethodImpl(Inline)]
         public static ulong ZobristEnPassant(this ulong hash, int file)
         {
-            return hash ^ EnPessantFileHashes[file];
+            return hash ^ EnPassantFileHashes[file];
         }
 
         /// <summary>
