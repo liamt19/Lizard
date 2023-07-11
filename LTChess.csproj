@@ -39,6 +39,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Logic\Tablebase\**" />
+    <EmbeddedResource Remove="Logic\Tablebase\**" />
+    <None Remove="Logic\Tablebase\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="Logic\Core\HashPerft.cs" />
     <Compile Remove="Logic\Evaluation\Evaluation.cs" />
     <Compile Remove="Logic\Search\Mate.cs" />
@@ -71,6 +77,15 @@
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="TB_Files\KPvK.rtbw">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="TB_Files\KPvK.rtbz">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
