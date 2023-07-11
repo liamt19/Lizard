@@ -73,6 +73,11 @@ namespace LTChess.Util
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
         /// <summary>
+        /// A mask of the ranks that outpost squares can be on for each color
+        /// </summary>
+        public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
+
+        /// <summary>
         /// This is set to true when the program receives the "uci" command, 
         /// and causes calls to the Log method to write to a file rather than stdout.
         /// </summary>
