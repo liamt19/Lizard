@@ -348,6 +348,7 @@ namespace LTChess.Search
                 }
 
                 bool kingCheckExtension = (bb.GetPieceAtIndex(list[i].from) == Piece.King && (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck));
+                bool passedPawnExtension = (DistanceFromPromotion(list[i].from, pos.ToMove) <= PassedPawnExtensionDistance && bb.IsPasser(list[i].from));
 
                 pos.MakeMove(list[i]);
 
@@ -381,6 +382,11 @@ namespace LTChess.Search
                         }
 
                         if (kingCheckExtension)
+                        {
+                            reduction--;
+                        }
+
+                        if (passedPawnExtension)
                         {
                             reduction--;
                         }
