@@ -135,6 +135,13 @@ namespace LTChess.Magic
             }
         }
 
+        /// <summary>
+        /// Returns all of the squares that a rook on <paramref name="idx"/> could move to.
+        /// <br></br>
+        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
+        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
+        /// Friendly pieces will need to be masked out so we aren't able to capture them.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ulong GetRookMoves(ulong boardAll, int idx)
         {
@@ -142,6 +149,13 @@ namespace LTChess.Magic
             return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
         }
 
+        /// <summary>
+        /// Returns all of the squares that a bishop on <paramref name="idx"/> could move to.
+        /// <br></br>
+        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
+        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
+        /// Friendly pieces will need to be masked out so we aren't able to capture them.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ulong GetBishopMoves(ulong boardAll, int idx)
         {
