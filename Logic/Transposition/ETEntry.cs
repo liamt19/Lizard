@@ -12,20 +12,20 @@ namespace LTChess.Transposition
         public const short InvalidScore = short.MaxValue - 3;
         public const int KeyShift = 48;
 
-        public ushort key;
-        public short score = InvalidScore;
+        public ushort Key;
+        public short Score = InvalidScore;
 
 
         public ETEntry(ulong hash, short score)
         {
-            this.key = (ushort)(hash >> KeyShift);
-            this.score = score;
+            this.Key = (ushort)(hash >> KeyShift);
+            this.Score = score;
         }
 
         [MethodImpl(Inline)]
         public bool Validate(ulong hash)
         {
-            return key == (ushort)(hash >> KeyShift);
+            return Key == (ushort)(hash >> KeyShift);
         }
     }
 }
