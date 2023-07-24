@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
+using System.Numerics;
 
 
 namespace LTChess.Data
@@ -18,6 +19,12 @@ namespace LTChess.Data
     /// </summary>
     public static class PrecomputedData
     {
+        /// <summary>
+        /// Index using [depth][moveIndex]
+        /// </summary>
+        public static int[][] LogarithmicReductionTable = new int[MaxDepth][];
+
+
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
         /// </summary>
@@ -145,6 +152,8 @@ namespace LTChess.Data
             DoPassedPawns();
 
             DoBetweenBBs();
+
+            DoReductionTable();
 
             Initialized = true;
         }
@@ -617,6 +626,25 @@ namespace LTChess.Data
                 }
             }
         }
+
+        private static void DoReductionTable()
+        {
+            for (int depth = 0; depth < MaxDepth; depth++)
+            {
+                LogarithmicReductionTable[depth] = new int[NormalListCapacity];
+                for (int moveIndex = 0; moveIndex < NormalListCapacity; moveIndex++)
+                {
+                    LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
+                    if (LogarithmicReductionTable[depth][moveIndex] < 1)
+                    {
+                        LogarithmicReductionTable[depth][moveIndex] = 0;
+                    }
+                }
+            }
+        }
+
+
+
 
         /// <summary>
         /// Returns true if <paramref name="index1"/> and <paramref name="index2"/> exist on the same diagonal.
