@@ -11,40 +11,28 @@ using LTChess.Data;
 using static LTChess.Data.Squares;
 using System.Diagnostics;
 using LTChess.Core;
-
+using System.Reflection;
+using System.Xml.Linq;
+using System.Text.RegularExpressions;
 
 namespace LTChess.Core
 {
     public class UCI
     {
-        public SearchInformation info;
+        private SearchInformation info;
 
         public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
 
         public static int DefaultMoveOverhead = 10;
 
-        public Dictionary<string, UCIOption> options;
+        private Dictionary<string, UCIOption> Options;
 
-        private static object logFileLock = new object();
+        private static object LogFileLock = new object();
 
         public UCI()
         {
-            
-
-            options = new Dictionary<string, UCIOption>
-            {
-                { UCIOption.Opt_DefaultMoveOverhead, new UCIOption(UCIOption.Opt_DefaultMoveOverhead, "spin", DefaultMoveOverhead.ToString(), "1", "3000")},
-                { UCIOption.Opt_DefaultSearchTime, new UCIOption(UCIOption.Opt_DefaultSearchTime, "spin", (DefaultSearchTime / 1000).ToString(), "1", "120")},
-                { UCIOption.Opt_DefaultSearchDepth, new UCIOption(UCIOption.Opt_DefaultSearchDepth, "spin", DefaultSearchDepth.ToString(), "1", "99")},
-                { UCIOption.Opt_UseAspirationWindows, new UCIOption(UCIOption.Opt_UseAspirationWindows, "check", UseAspirationWindows.ToString().ToLower(), "", "")},
-                { UCIOption.Opt_AspirationWindowMargin, new UCIOption(UCIOption.Opt_AspirationWindowMargin, "spin", AspirationWindowMargin.ToString(), "10", "250")},
-                { UCIOption.Opt_AspirationMarginPerDepth, new UCIOption(UCIOption.Opt_AspirationMarginPerDepth, "spin", AspirationMarginPerDepth.ToString(), "0", "50")},
-                { UCIOption.Opt_UseDeltaPruning, new UCIOption(UCIOption.Opt_UseDeltaPruning, "check", UseDeltaPruning.ToString().ToLower(), "", "")},
-                { UCIOption.Opt_DeltaPruningMargin, new UCIOption(UCIOption.Opt_DeltaPruningMargin, "spin", DeltaPruningMargin.ToString(), "200", "220")},
-                { UCIOption.Opt_UseFutilityPruning, new UCIOption(UCIOption.Opt_UseFutilityPruning, "check", UseFutilityPruning.ToString().ToLower(), "", "")},
-                { UCIOption.Opt_UseStaticExchangeEval, new UCIOption(UCIOption.Opt_UseStaticExchangeEval, "check", UseStaticExchangeEval.ToString().ToLower(), "", "")},
-            };
+            ProcessUCIOptions();
 
             info = new SearchInformation(new Position(), DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
@@ -63,9 +51,12 @@ namespace LTChess.Core
             LogString("[OUT]: " + s);
         }
 
+        /// <summary>
+        /// Appends the string <paramref name="s"/> to the file <see cref="LogFileName"/>
+        /// </summary>
         public static void LogString(string s)
         {
-            lock (logFileLock)
+            lock (LogFileLock)
             {
                 using (FileStream fs = new FileStream(LogFileName, FileMode.Append, FileAccess.Write, FileShare.Read))
                 {
@@ -107,9 +98,9 @@ namespace LTChess.Core
 
             SendString("id name LTChess " + EngineBuildVersion);
             SendString("id author Liam McGuire");
-            foreach (string k in options.Keys)
+            foreach (string k in Options.Keys)
             {
-                SendString(options[k].ToString());
+                SendString(Options[k].ToString());
             }
             SendString("uciok");
             InputLoop();
@@ -208,7 +199,7 @@ namespace LTChess.Core
                 }
                 else if (cmd == "setoption")
                 {
-                    if (param.Length <= 4)
+                    try
                     {
                         //  param[0] == "name"
                         string optName = param[1];
@@ -232,48 +223,12 @@ namespace LTChess.Core
                         }
 
                         //  param[2] == "value"
-                        
-
-                        if (!options.ContainsKey(optName)) 
-                        {
-                            LogString("[INFO]: Got setoption for '" + optName + "' but that isn't an option!");
-                            continue;
-                        }
-
-                        LogString("[INFO]: Changing '" + optName + "' from " + options[optName].DefaultValue + " to " + optValue);
-                        switch (optName)
-                        {
-                            case UCIOption.Opt_DefaultMoveOverhead:
-                                DefaultMoveOverhead = int.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_DefaultSearchTime:
-                                DefaultSearchTime = int.Parse(optValue) * 1000;
-                                break;
-                            case UCIOption.Opt_DefaultSearchDepth:
-                                DefaultSearchDepth = int.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_UseAspirationWindows:
-                                UseAspirationWindows = bool.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_AspirationWindowMargin:
-                                AspirationWindowMargin = int.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_AspirationMarginPerDepth:
-                                AspirationMarginPerDepth = int.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_UseDeltaPruning:
-                                UseDeltaPruning = bool.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_DeltaPruningMargin:
-                                DeltaPruningMargin = int.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_UseFutilityPruning:
-                                UseFutilityPruning = bool.Parse(optValue);
-                                break;
-                            case UCIOption.Opt_UseStaticExchangeEval:
-                                UseStaticExchangeEval = bool.Parse(optValue);
-                                break;
-                        }
+                        HandleSetOption(optName, optValue);
+                    }
+                    catch (Exception e)
+                    {
+                        LogString("[ERROR]: Failed parsing setoption command, got '" + param.ToString() + "'");
+                        LogString(e.ToString());
                     }
 
                 }
@@ -297,9 +252,11 @@ namespace LTChess.Core
         /// <br> depth -> search until a specific depth (in plies) </br>
         /// <br> nodes -> only look at a maximum number of nodes </br>
         /// <br> infinite -> keep looking until we get a "stop" command </br>
+        /// <br> (w/b)time -> the specified player has x amount of milliseconds left</br>
+        /// <br> (w/b)inc -> the specified player gains x milliseconds after they move</br>
         /// 
         /// <para> Currently ignored: </para>
-        /// <br> ponder, wtime / btime, winc/binc, movestogo, mate </br>
+        /// <br> ponder, movestogo, mate </br>
         /// 
         /// </summary>
         /// <param name="param">List of parameters sent with the "go" command.</param>
@@ -337,11 +294,11 @@ namespace LTChess.Core
                     }
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
+                        hasDepthCommand = (info.MaxDepth != reqDepth);
                         info.MaxDepth = reqDepth;
                         LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
                     }
 
-                    hasDepthCommand = true;
                 }
                 else if (param[i] == "nodes")
                 {
@@ -479,6 +436,65 @@ namespace LTChess.Core
             {
                 LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
             }
+        }
+
+        private void HandleSetOption(string optName, string optValue)
+        {
+            if (!Options.ContainsKey(optName))
+            {
+                LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
+                return;
+            }
+
+            try
+            {
+                LogString("[INFO]: Changing '" + optName + "' from " + Options[optName].DefaultValue + " to " + optValue);
+                UCIOption opt = Options[optName];
+                if (opt.FieldHandle.FieldType == typeof(bool))
+                {
+                    opt.FieldHandle.SetValue(null, bool.Parse(optValue));
+                }
+                else if (opt.FieldHandle.FieldType == typeof(int))
+                {
+                    opt.FieldHandle.SetValue(null, int.Parse(optValue));
+                }
+                else
+                {
+                    opt.FieldHandle.SetValue(null, optValue);
+                }
+
+            }
+            catch (Exception e)
+            {
+                LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
+                LogString(e.ToString());
+            }
+            
+            
+        }
+
+        private void ProcessUCIOptions()
+        {
+            Options = new Dictionary<string, UCIOption>();
+
+            //  Get all "public static" fields, and specifically exclude constant fields (which have field.IsLiteral == true)
+            List<FieldInfo>? fields = typeof(SearchConstants).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
+
+            foreach (FieldInfo field in fields)
+            {
+                //  Give that field a friendly name, which has spaces between capital letters.
+                //  i.e. "UseQuiescenceSEE" is presented as "Use Quiescence SEE"
+                string friendlyName = Regex.Replace(field.Name, "([A-Z]+)", (match) => { return " " + match; }).Trim();
+
+                //  Most options are numbers and are called "spin"
+                //  If they are true/false, they are called "check"
+                string fieldType = (field.FieldType == typeof(bool) ? "check" : "spin");
+                string defaultValue = field.GetValue(null).ToString().ToLower();
+
+                UCIOption opt = new UCIOption(friendlyName, fieldType, defaultValue, field);
+                Options.Add(friendlyName, opt);
+            }
+
         }
     }
 }
