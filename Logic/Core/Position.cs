@@ -81,12 +81,14 @@ namespace LTChess.Core
         /// <summary>
         /// Set to true if white makes a castling move.
         /// </summary>
-        public bool whiteCastled = false;
+        public bool WhiteCastled = false;
 
         /// <summary>
         /// Set to true if black makes a castling move.
         /// </summary>
-        public bool blackCastled = false;
+        public bool BlackCastled = false;
+
+        private int MaterialCount = 0;
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
@@ -210,10 +212,14 @@ namespace LTChess.Core
                 bb.EnPassant(move.from, move.to, thisColor, move.idxEnPassant);
                 Hash = Hash.ZobristMove(move.from, move.to, ToMove, Piece.Pawn);
                 Hash = Hash.ZobristToggleSquare(otherColor, Piece.Pawn, move.idxEnPassant);
+
+                MaterialCount -= GetPieceValue(Piece.Pawn);
             }
             else if (move.Capture)
             {
                 Captures.Push(otherPiece);
+
+                MaterialCount -= GetPieceValue(otherPiece);
 
                 if (otherPiece == Piece.Rook)
                 {
@@ -246,6 +252,9 @@ namespace LTChess.Core
                     Hash = Hash.ZobristToggleSquare(otherColor, otherPiece, move.to);
                     Hash = Hash.ZobristToggleSquare(thisColor, thisPiece, move.from);
                     Hash = Hash.ZobristToggleSquare(thisColor, move.PromotionTo, move.to);
+
+                    MaterialCount -= GetPieceValue(Piece.Pawn);
+                    MaterialCount += GetPieceValue(move.PromotionTo);
                 }
                 else
                 {
@@ -253,6 +262,8 @@ namespace LTChess.Core
                     bb.Move(move.from, move.to, thisColor, thisPiece, otherPiece);
                     Hash = Hash.ZobristToggleSquare(otherColor, otherPiece, move.to);
                     Hash = Hash.ZobristMove(move.from, move.to, thisColor, thisPiece);
+
+
                 }
             }
             else if (move.Castle)
@@ -286,13 +297,13 @@ namespace LTChess.Core
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
                     Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                    whiteCastled = true;
+                    WhiteCastled = true;
                 }
                 else
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.BK | CastlingStatus.BQ));
                     Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                    blackCastled = true;
+                    BlackCastled = true;
                 }
             }
             else if (move.Promotion)
@@ -300,6 +311,9 @@ namespace LTChess.Core
                 bb.Promote(move.from, move.to, move.PromotionTo);
                 Hash = Hash.ZobristToggleSquare(thisColor, thisPiece, move.from);
                 Hash = Hash.ZobristToggleSquare(thisColor, move.PromotionTo, move.to);
+
+                MaterialCount -= GetPieceValue(Piece.Pawn);
+                MaterialCount += GetPieceValue(move.PromotionTo);
             }
             else
             {
@@ -460,6 +474,7 @@ namespace LTChess.Core
             if (move.Capture)
             {
                 int capturedPiece = Captures.Pop();
+                MaterialCount += GetPieceValue(capturedPiece);
 
                 if (move.Promotion)
                 {
@@ -472,6 +487,9 @@ namespace LTChess.Core
 
                     bb.PieceTypes[move.to] = capturedPiece;
                     bb.PieceTypes[move.from] = Piece.Pawn;
+
+                    MaterialCount -= GetPieceValue(move.PromotionTo);
+                    MaterialCount += GetPieceValue(Piece.Pawn);
                 }
                 else
                 {
@@ -493,6 +511,8 @@ namespace LTChess.Core
                 bb.PieceTypes[move.from] = Piece.Pawn;
                 bb.PieceTypes[move.idxEnPassant] = Piece.Pawn;
                 bb.PieceTypes[move.to] = Piece.None;
+
+                MaterialCount += GetPieceValue(Piece.Pawn);
             }
             else if (move.Castle)
             {
@@ -517,11 +537,11 @@ namespace LTChess.Core
 
                 if (ourColor == Color.White)
                 {
-                    whiteCastled = false;
+                    WhiteCastled = false;
                 }
                 else
                 {
-                    blackCastled = false;
+                    BlackCastled = false;
                 }
             }
             else if (move.Promotion)
@@ -532,6 +552,9 @@ namespace LTChess.Core
 
                 bb.PieceTypes[move.to] = Piece.None;
                 bb.PieceTypes[move.from] = Piece.Pawn;
+
+                MaterialCount -= GetPieceValue(move.PromotionTo);
+                MaterialCount += GetPieceValue(Piece.Pawn);
             }
             else
             {
@@ -624,7 +647,7 @@ namespace LTChess.Core
 
             if (position.CheckInfo.InCheck)
             {
-                //  We have 3 options: block the check, take the piece giving check, or move our king out of it.
+                //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
                 if (pt == Piece.King)
                 {
@@ -1297,7 +1320,7 @@ namespace LTChess.Core
                 UnmakeMove();
                 list.Add(pn);
 
-                Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
+                //Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
             }
 
             return list;
@@ -1430,6 +1453,10 @@ namespace LTChess.Core
 
                 return false;
             }
+
+            this.bb.DetermineCheck(ToMove, ref CheckInfo);
+            Hash = Zobrist.GetHash(this);
+            MaterialCount = bb.MaterialCount(Color.White) + bb.MaterialCount(Color.Black);
 
             return true;
         }
