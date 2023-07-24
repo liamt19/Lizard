@@ -1,5 +1,5 @@
 ﻿
-#define SHOW_STATS
+//#define SHOW_STATS
 
 
 using System;
@@ -15,49 +15,58 @@ namespace LTChess.Search
 {
     public static class SimpleQuiescence
     {
+        /// <summary>
+        /// A table containing move scores given to captures based on the value of the attacking piece in comparison to the piece being captured.
+        /// We want to look at PxQ before QxQ because it would win more material if their queen was actually defended.
+        /// <br></br>
+        /// For example, the value of a bishop capturing a queen would be <see cref="MvvLva"/>[<see cref="Piece.Queen"/>][<see cref="Piece.Bishop"/>], which is 6003
+        /// </summary>
+        public static readonly int[][] MvvLva =
+        {
+            //          pawn, knight, bishop, rook, queen, king
+            new int[] { 1005, 1004, 1003, 1002, 1001, 1000 },
+            new int[] { 2005, 2004, 2003, 2002, 2001, 2000 },
+            new int[] { 3005, 3004, 3003, 3002, 3001, 3000 },
+            new int[] { 4005, 4004, 4003, 4002, 4001, 4000 },
+            new int[] { 5005, 5004, 5003, 5002, 5001, 5000 },
+            new int[] { 6005, 6004, 6003, 6002, 6001, 6000 }
+        };
+
+
         [MethodImpl(Inline)]
-        public static int FindBest(ref SearchInformation info, int alpha, int beta, int curDepth)
+        public static int QSearch<NodeType>(ref SearchInformation info, int alpha, int beta, int depth, int ply) where NodeType : SearchNodeType
         {
             if (info.StopSearching)
             {
                 return 0;
             }
 
-            info.NodeCount++;
-
-            int standingPat;
-
 #if DEBUG || SHOW_STATS
-            SearchStatistics.QuiescenceNodes++;
+            SearchStatistics.QCalls++;
 #endif
 
-            ulong posHash = info.Position.Hash;
-            ETEntry stored = EvaluationTable.Probe(posHash);
-            if (stored.key != EvaluationTable.InvalidKey)
+
+            int standingPat = EvaluationTable.ProbeOrEval(ref info);
+
+            bool isPV = typeof(NodeType) == typeof(PVNode);
+            if (isPV && ply > info.SelectiveDepth)
             {
-                if (stored.Validate(posHash))
-                {
-                    //  Use stored evaluation
-                    standingPat = stored.score;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.ETHits++;
-#endif
-                }
-                else
-                {
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.ETWrongHashKey++;
-#endif
-                    //  This is the lower bound for the score
-                    standingPat = info.GetEvaluation(info.Position, info.Position.ToMove);
-                    EvaluationTable.Save(posHash, (short)standingPat);
-                }
+                info.SelectiveDepth = ply;
             }
-            else
+
+            if (!isPV)
             {
-                //  This is the lower bound for the score
-                standingPat = info.GetEvaluation(info.Position, info.Position.ToMove);
-                EvaluationTable.Save(posHash, (short)standingPat);
+                TTEntry ttEntry = TranspositionTable.Probe(info.Position.Hash);
+                if (ttEntry.NodeType != TTNodeType.Invalid && ttEntry.Validate(info.Position.Hash))
+                {
+                    if (ttEntry.NodeType == TTNodeType.Exact || ttEntry.NodeType == TTNodeType.Beta && ttEntry.Eval >= beta)
+                    {
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.QuiescenceNodesTTHits++;
+#endif
+                        return ttEntry.Eval;
+                    }
+                }
             }
 
 
@@ -75,7 +84,7 @@ namespace LTChess.Search
             int size = info.Position.GenAllLegalMovesTogether(list, true);
 
 
-            if (size == 0)
+            if (false && size == 0)
             {
                 //  We are only generating captures, so if there aren't any captures left
                 //  we will have to see if there are still legal moves to see if this is a draw/mate or not
@@ -103,12 +112,13 @@ namespace LTChess.Search
             }
 
             int numCaps = SortByCaptureValueFast(ref info.Position.bb, list, size);
-
             for (int i = 0; i < numCaps; i++)
             {
+                info.NodeCount++;
+
                 if (UseDeltaPruning)
                 {
-                    int theirPieceVal = ThreadedEvaluation.GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
+                    int theirPieceVal = GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
 
                     if (standingPat + theirPieceVal + DeltaPruningMargin < alpha)
                     {
@@ -116,17 +126,30 @@ namespace LTChess.Search
                     }
                 }
 
+                if (UseQuiescenceSEE)
+                {
+                    int see = SEE(ref info.Position.bb, ref list[i]);
+                    if (standingPat + see > beta)
+                    {
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.QuiescenceSEECuts++;
+                        SearchStatistics.QuiescenceSEETotalCuts += (ulong) (numCaps - i);
+#endif
+                        return standingPat + see;
+                    }
+                }
+
 
                 info.Position.MakeMove(list[i]);
 
-                if (info.Position.IsThreefoldRepetition() || info.Position.IsInsufficientMaterial())
-                {
-                    info.Position.UnmakeMove();
-                    return -ThreadedEvaluation.ScoreDraw;
-                }
+#if DEBUG || SHOW_STATS
+                SearchStatistics.QuiescenceNodes++;
+#endif
+
+                info.NodeCount++;
 
                 //  Keep making moves until there aren't any captures left.
-                var score = -SimpleQuiescence.FindBest(ref info, -beta, -alpha, curDepth - 1);
+                var score = -QSearch<NodeType>(ref info, -beta, -alpha, depth - 1, ply + 1);
                 info.Position.UnmakeMove();
 
                 if (score > alpha)
@@ -140,6 +163,9 @@ namespace LTChess.Search
                 }
             }
 
+#if DEBUG || SHOW_STATS
+            SearchStatistics.QCompletes++;
+#endif
             return alpha;
         }
 
@@ -152,7 +178,7 @@ namespace LTChess.Search
             {
                 if (list[i].Capture)
                 {
-                    int theirPieceVal = ThreadedEvaluation.GetPieceValue(bb.PieceTypes[list[i].to]);
+                    int theirPieceVal = GetPieceValue(bb.PieceTypes[list[i].to]);
                     scores[i] = theirPieceVal;
                     numCaps++;
                 }
@@ -170,13 +196,9 @@ namespace LTChess.Search
                     }
                 }
 
-                Move tempMove = list[i];
-                list[i] = list[max];
-                list[max] = tempMove;
+                (list[max], list[i]) = (list[i], list[max]);
 
-                int tempScore = scores[i];
-                scores[i] = scores[max];
-                scores[max] = tempScore;
+                (scores[max], scores[i]) = (scores[i], scores[max]);
             }
 
             return numCaps;
@@ -192,15 +214,13 @@ namespace LTChess.Search
                 max = i;
                 for (int j = i + 1; j < size; j++)
                 {
-                    if (ThreadedEvaluation.GetPieceValue(bb.PieceTypes[list[j].to]) > ThreadedEvaluation.GetPieceValue(bb.PieceTypes[list[max].to]))
+                    if (GetPieceValue(bb.PieceTypes[list[j].to]) > GetPieceValue(bb.PieceTypes[list[max].to]))
                     {
                         max = j;
                     }
                 }
 
-                Move tempMove = list[i];
-                list[i] = list[max];
-                list[max] = tempMove;
+                (list[max], list[i]) = (list[i], list[max]);
             }
 
             return size;
@@ -219,7 +239,7 @@ namespace LTChess.Search
 
             int depth = 0;
             int[] gain = new int[32];
-            gain[0] = ThreadedEvaluation.GetPieceValue(bb.GetPieceAtIndex(square));
+            gain[0] = GetPieceValue(bb.GetPieceAtIndex(square));
 
             ulong debug_wtemp = bb.Colors[Color.White];
             ulong debug_btemp = bb.Colors[Color.Black];
@@ -237,7 +257,7 @@ namespace LTChess.Search
 
                 depth++;
                 int ourPieceType = bb.GetPieceAtIndex(ourPieceIndex);
-                gain[depth] = (ThreadedEvaluation.GetPieceValue(ourPieceType) - gain[depth - 1]);
+                gain[depth] = (GetPieceValue(ourPieceType) - gain[depth - 1]);
 
                 if (Math.Max(-gain[depth - 1], gain[depth]) < 0)
                 {
@@ -266,6 +286,21 @@ namespace LTChess.Search
             }
 
             return gain[0];
+        }
+
+        [MethodImpl(Inline)]
+        public static int SEE(ref Bitboard bb, ref Move move)
+        {
+            int theirValue = (move.EnPassant ? ValuePawn : GetPieceValue(bb.GetPieceAtIndex(move.to)));
+            
+            if (move.Promotion)
+            {
+                return theirValue - (GetPieceValue(move.PromotionTo) - ValuePawn);
+            }
+
+            int ourValue = GetPieceValue(bb.GetPieceAtIndex(move.from));
+
+            return theirValue - ourValue;
         }
     }
 }
