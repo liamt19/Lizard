@@ -8,6 +8,9 @@ namespace LTChess.Search
 {
     public static class SearchConstants
     {
+        public const int AlphaStart = -100000;
+        public const int BetaStart = 100000;
+
         /// <summary>
         /// The halfmove clock needs to be at least 8 before a draw by threefold repetition can occur.
         /// </summary>
@@ -17,16 +20,6 @@ namespace LTChess.Search
         /// The maximum amount of time to search, in milliseconds.
         /// </summary>
         public const int MaxSearchTime = int.MaxValue - 1;
-
-        /// <summary>
-        /// The default depth to search to.
-        /// </summary>
-        public static int DefaultSearchDepth = 7;
-
-        /// <summary>
-        /// Default amount of time in milliseconds that a search will run for before it is cancelled.
-        /// </summary>
-        public static int DefaultSearchTime = 5 * 1000;
 
         /// <summary>
         /// If we have fewer than this amount of milliseconds on our clock, we are in "low time".
@@ -44,6 +37,18 @@ namespace LTChess.Search
         /// Every 4095 nodes, check to see if we are near or at the maximum search time.
         /// </summary>
         public const int SearchCheckInCount = 4095;
+
+
+        /// <summary>
+        /// The default depth to search to.
+        /// </summary>
+        public static int DefaultSearchDepth = 7;
+
+        /// <summary>
+        /// Default amount of time in milliseconds that a search will run for before it is cancelled.
+        /// </summary>
+        public static int DefaultSearchTime = 5 * 1000;
+
 
 
 
@@ -70,7 +75,7 @@ namespace LTChess.Search
         /// The margins for the aspiration windows will increase by this much per depth.
         /// This represents our uncertainty about which way the position is heading.
         /// </summary>
-        public static int AspirationMarginPerDepth = 10;
+        public static int AspirationMarginPerDepth = 30;
 
 
 
@@ -86,9 +91,12 @@ namespace LTChess.Search
         /// Nodes need to be at this depth of higher to be considered for pruning.
         /// This also influences the reduced depth that the following nodes are searched
         /// at, which is calculated by adding this flat amount to a node's depth divided by this amount.
-        /// i.e. R = 3 + (depth / 3)
+        /// i.e. R = <see cref="NullMovePruningMinDepth"/> + (depth / <see cref="NullMovePruningMinDepth"/>)
         /// </summary>
         public static int NullMovePruningMinDepth = 3;
+
+
+
 
         /// <summary>
         /// Delta pruning will ignore captures which wouldn't help the losing side improve their position during quiescence searches.
@@ -116,6 +124,9 @@ namespace LTChess.Search
         /// </summary>
         public static bool UseStaticExchangeEval = false;
 
+        public static bool UseQuiescenceSEE = true;
+
+
 
 
         /// <summary>
@@ -125,15 +136,56 @@ namespace LTChess.Search
         public static bool UseFutilityPruning = true;
 
         /// <summary>
-        /// the depth must be less than or equal to this for futility pruning to be considered.
+        /// The depth must be less than or equal to this for futility pruning to be considered.
         /// </summary>
-        public const int FutilityPruningMaxDepth = 6;
+        public static int FutilityPruningMaxDepth = 6;
 
         /// <summary>
         /// This margin is added to the pruning check, per depth.
         /// </summary>
-        public const int FutilityPruningMarginPerDepth = 120;
+        public static int FutilityPruningMarginPerDepth = 120;
 
+
+
+
+        public static bool UseReverseFutilityPruning = true;
+
+        /// <summary>
+        /// The depth must be less than or equal to this for reverse futility pruning to be considered.
+        /// </summary>
+        public static int ReverseFutilityPruningMaxDepth = 8;
+
+        public static int ReverseFutilityPruningBaseMargin = 140;
+
+
+
+        public static bool UseRazoring = true;
+
+        public static int RazoringMargin = 160;
+
+
+
+        public static bool UseHistoryHeuristic = false;
+
+
+        public static bool UseKillerHeuristic = false;
+
+
+        /// <summary>
+        /// Late Move Pruning will only look at a certain amount of quiet moves (which are non-captures)
+        /// based on the current search depth before stopping the search in the branch.
+        /// <br></br>
+        /// If the search has found at least one decent move before the cutoff, it will ignore the rest
+        /// of the moves at that depth, with the reasoning being that our move ordering should've put 
+        /// the best quiet moves before that cutoff (and most if not all non-quiet moves before those), 
+        /// so it is likely that the remaining quiet moves aren't good enough to be searched.
+        /// </summary>
+        public static bool UseLateMovePruning = true;
+
+        /// <summary>
+        /// The depth must be at or below this to be considered for move count based pruning.
+        /// </summary>
+        public static int LMPDepth = 3;
 
 
 
@@ -174,10 +226,5 @@ namespace LTChess.Search
         /// </summary>
         public static int PassedPawnExtensionDistance = 3;
 
-
-
-
-        public const int AlphaStart = -100000;
-        public const int BetaStart = 100000;
     }
 }
