@@ -52,13 +52,19 @@ namespace LTChess.Data
         All = WK | WQ | BK | BQ,
     }
 
-    public enum NodeType
+    public enum TTNodeType
     {
         Invalid,
         Beta,
         Alpha,
         Exact = Beta | Alpha
     };
+
+    public interface SearchNodeType { }
+    public struct PVNode : SearchNodeType { }
+    public struct NonPVNode : SearchNodeType { }
+    public struct RootNode : SearchNodeType { }
+
 
     public class Files
     {
