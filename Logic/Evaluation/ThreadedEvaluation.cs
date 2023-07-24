@@ -66,7 +66,7 @@ namespace LTChess.Search
             bool IsEndgame = (whitePieces + blackPieces) <= EndgamePieces;
 
             //  Also check if there are just queens and pawns, and possibly 2 (+2 kings) other pieces.
-            if (!IsEndgame && popcount(bb.Pieces[Piece.Pawn] | bb.Pieces[Piece.Queen]) + 2 + 2 > (whitePieces + blackPieces))
+            if (!IsEndgame && (popcount(bb.Pieces[Piece.Pawn] | bb.Pieces[Piece.Queen]) + 2 + 2 >= (whitePieces + blackPieces)))
             {
                 IsEndgame = true;
             }
@@ -204,6 +204,12 @@ namespace LTChess.Search
                     score += ScoreIsolatedPawn;
                 }
 
+                if (bb.IsPasser(idx))
+                {
+                    //  Bonus for passed pawns that are advanced
+                    score += ScorePasser * (PassedPawnPromotionDistanceFactor - DistanceFromPromotion(idx, pc));
+                }
+
                 positionalScore[pc] += (PSQT.PawnsByColor[pc][idx] * CoefficientPSQTPawns);
                 positionalScore[pc] += (PSQT.PawnCenter[idx] * CoefficientPSQTCenter);
 
@@ -238,7 +244,9 @@ namespace LTChess.Search
                 positionalScore[pc] += GetCenterControlScore(KnightMasks[idx]);
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
-                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
+                positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish) / 2;
+                score += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish) / 2;
+
                 materialScore[pc] += thisPieceValue;
 
                 if ((SquareBB[idx] & OutpostSquares[pc]) != 0)
@@ -251,6 +259,11 @@ namespace LTChess.Search
                     {
                         score += ScoreKnightOutpost[gamePhase];
                     }
+                }
+
+                //  Small bonus for knights under our pawns
+                if ((SquareBB[idx] & Backward(pc, (us & bb.Pieces[Piece.Pawn])) & (Rank3BB | Rank4BB | Rank5BB | Rank6BB)) != 0) {
+                    score += ScoreKnightUnderPawn[gamePhase];
                 }
 
                 ourKnights = poplsb(ourKnights);
@@ -311,9 +324,19 @@ namespace LTChess.Search
 
                 //  Bonus for bishops that are on the a diagonal next to the king,
                 //  meaning they are able to attack the "king ring" squares.
-                if ((BishopRays[idx] & NeighborsMask[theirKing]) != 0)
+                score += (int) (popcount(BishopRays[idx] & NeighborsMask[theirKing]) * ScoreBishopNearKingDiagonal[gamePhase]);
+
+
+                var centerSquaresInRay = popcount(BishopRays[idx] & Center);
+
+                //  Bonus for our bishop being on a long diagonal
+                if (centerSquaresInRay == 2)
                 {
-                    score += ScoreBishopNearKingDiagonal[gamePhase];
+                    score += ScoreBishopOnCenterDiagonal[gamePhase];
+                }
+                else if (centerSquaresInRay == 1)
+                {
+                    score += ScoreBishopNearCenterDiagonal[gamePhase];
                 }
 
                 ourBishops = poplsb(ourBishops);
@@ -333,6 +356,8 @@ namespace LTChess.Search
 
             const int pt = Piece.Rook;
             const int thisPieceValue = ValueRook;
+
+            ulong theirPieces = them & ~bb.Pieces[Piece.Pawn];
 
             ulong ourRooks = us & bb.Pieces[pt];
 
@@ -378,8 +403,8 @@ namespace LTChess.Search
                     }
                 }
 
-                score += (ScoreSupportingPiece * popcount(thisMoves & us));
-                score += ((ScorePerSquare / 2) * popcount(thisMoves & ~(us | them)));
+                //score += (ScoreSupportingPiece * popcount(thisMoves & us));
+                //score += ((ScorePerSquare / 2) * popcount(thisMoves & ~(us | them)));
 
                 ourRooks = poplsb(ourRooks);
             }
@@ -497,7 +522,7 @@ namespace LTChess.Search
 
             score += ((int)popcount(ourUndeveloped) * ScoreUndevelopedPiece);
 
-            if ((pc == Color.White && p.whiteCastled) || (pc == Color.Black && p.blackCastled))
+            if ((pc == Color.White && p.WhiteCastled) || (pc == Color.Black && p.BlackCastled))
             {
                 score += ScoreKingCastled;
             }
@@ -510,7 +535,7 @@ namespace LTChess.Search
         /// </summary>
         /// <param name="thisMoves">The move mask of a piece, which should include squares that friendly pieces are on (and this piece is supporting).</param>
         [MethodImpl(Inline)]
-        public double GetCenterControlScore(ulong thisMoves)
+        private double GetCenterControlScore(ulong thisMoves)
         {
             double score = 0;
 
@@ -529,7 +554,7 @@ namespace LTChess.Search
         /// for each of the squares in <paramref name="thisAttacks"/> that it can capture pieces on.
         /// </summary>
         [MethodImpl(Inline)]
-        public double GetAttackThreatScore(ulong thisAttacks, int pt)
+        private double GetAttackThreatScore(ulong thisAttacks, int pt)
         {
             double score = 0;
 
@@ -553,7 +578,7 @@ namespace LTChess.Search
         /// <param name="ourPieceValue">The value of the piece on <paramref name="attackIdx"/></param>
         /// <returns></returns>
         [MethodImpl(Inline)]
-        public double GetThreatValue(int attackIdx, int ourPieceValue)
+        private double GetThreatValue(int attackIdx, int ourPieceValue)
         {
             double score = 0;
 
@@ -586,7 +611,7 @@ namespace LTChess.Search
         }
 
         [MethodImpl]
-        public int NearestPawn(in Bitboard bb, int color)
+        private int NearestPawn(in Bitboard bb, int color)
         {
             int nearestIdx = 0;
             int nearestDist = 64;
@@ -617,7 +642,7 @@ namespace LTChess.Search
         /// <param name="idx"></param>
         /// <returns></returns>
         [MethodImpl(Inline)]
-        public bool WillPromote(int idx)
+        private bool WillPromote(int idx)
         {
             int ourColor = bb.GetColorAtIndex(idx);
             int theirKing = bb.KingIndex(Not(ourColor));
@@ -633,7 +658,7 @@ namespace LTChess.Search
         /// Returns true if the pawn on <paramref name="idx"/> doesn't have any pawns on the files beside it.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsIsolated(int idx)
+        private bool IsIsolated(int idx)
         {
             int ourColor = bb.GetColorAtIndex(idx);
             ulong us = bb.Colors[ourColor];
@@ -660,7 +685,7 @@ namespace LTChess.Search
         /// This will return true for a white rook on A1 if there are no white pawns on A2-A7.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsFileSemiOpen(int idx, int pc)
+        private bool IsFileSemiOpen(int idx, int pc)
         {
             ulong ourPawns = bb.Pieces[Piece.Pawn] & bb.Colors[pc];
             ulong fileMask = GetFileBB(idx);
@@ -671,7 +696,7 @@ namespace LTChess.Search
         /// Returns true if the file of <paramref name="idx"/> is an open file, meaning there aren't any pawns on it
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsFileOpen(int idx)
+        private bool IsFileOpen(int idx)
         {
             return ((GetFileBB(idx) & bb.Pieces[Piece.Pawn]) == 0);
         }
