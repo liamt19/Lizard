@@ -19,6 +19,11 @@ namespace LTChess.Search
         public int MaxDepth = DefaultSearchDepth;
 
         /// <summary>
+        /// The ply of the deepest Pv search so far, which should be at least equal to MaxDepth but almost always higher.
+        /// </summary>
+        public int SelectiveDepth = 0;
+
+        /// <summary>
         /// The number of nodes the search should stop at.
         /// </summary>
         public ulong MaxNodes = ulong.MaxValue - 1;
@@ -114,7 +119,10 @@ namespace LTChess.Search
         /// <summary>
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
         /// </summary>
-        public int GetEvaluation(in Position position, int pc, bool Trace = false) => this.tdEval.Evaluate(position, pc, Trace);
+        public int GetEvaluation(in Position position, int pc, bool Trace = false)
+        {
+            return this.tdEval.Evaluate(position, pc, Trace);
+        }
 
 
 
@@ -154,6 +162,8 @@ namespace LTChess.Search
             {
                 Log(info.LastSearchInfo);
             }
+
+            SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.SearchTime);
         }
 
         /// <summary>

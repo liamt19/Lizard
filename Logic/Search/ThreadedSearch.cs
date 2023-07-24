@@ -59,62 +59,7 @@ namespace LTChess.Search
 
         public static ulong StartNew(in Position rootPosition, int depth, int threads)
         {
-            SearchInformation rootInfo = new SearchInformation(rootPosition, depth, 3000);
-
-            Move[] list = new Move[NormalListCapacity];
-            int size = rootPosition.GenAllLegalMovesTogether(list);
-            SimpleSearch.SortByMoveScores(ref rootInfo, list, size, Move.Null);
-
-            SearchInformation[] searchInfos = new SearchInformation[size];
-            for (int i = 0; i < size; i++)
-            {
-                searchInfos[i] = SearchInformation.Clone(rootInfo);
-                searchInfos[i].Position = new Position(rootPosition.GetFEN());
-                searchInfos[i].Position.MakeMove(list[i]);
-                searchInfos[i].IsMultiThreaded = true;
-
-            }
-
-            Log("Made " + searchInfos.Length + " searchInfos with " + threads + " threads for " + size + " legal moves at depth " + depth);
-
-            ulong totalNodes = 0;
-
-            List<(int index, int resultEval, string resultPV)> results = new List<(int, int, string)>(size);
-
-            ParallelOptions opts = new ParallelOptions();
-            opts.MaxDegreeOfParallelism = threads;
-
-            ThreadedSearch.TotalSearchTime = Stopwatch.StartNew();
-
-            Parallel.For(0, size, opts, (i) =>
-            {
-                SearchInformation thisInfo = searchInfos[i];
-                ThreadedSearch thisSearchThread = new ThreadedSearch(thisInfo);
-
-                if (ThreadedSearch.TotalSearchTime.Elapsed.TotalMilliseconds >= (rootInfo.MaxSearchTime - ThreadedSearch.TimerBuffer))
-                {
-                    Log(Thread.CurrentThread.ManagedThreadId + " ->\tran out of time before being searched!");
-                }
-                else
-                {
-                    Log(Thread.CurrentThread.ManagedThreadId + " ->\thas " + thisInfo.Position.Moves.Peek().ToString() + ", MaxDepth = " + thisInfo.MaxDepth);
-                    thisSearchThread.StartSearching();
-                    Log(Thread.CurrentThread.ManagedThreadId + " ->\tLine: " + thisInfo.GetPVString() + " = " + FormatMoveScore(thisInfo.BestScore));
-                    totalNodes += thisInfo.NodeCount;
-                    results.Add((i, thisInfo.BestScore, thisInfo.GetPVString()));
-                }
-            });
-
-            ThreadedSearch.TotalSearchTime.Reset();
-
-            Log("\n\n");
-            var sorted = results.OrderBy(x => x.resultEval).ToArray();
-            for (int i = 0; i < results.Count; i++)
-            {
-                Log(list[i].ToString(rootPosition) + "\tEval\t" + sorted[i].resultEval + " Line " + sorted[i].resultPV);
-            }
-
-            return totalNodes;
+            return 1;
         }
 
 

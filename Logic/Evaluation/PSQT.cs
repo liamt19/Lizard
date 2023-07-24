@@ -45,7 +45,7 @@ namespace LTChess.Search
 
         //  From white's perspective.
         //  Small bonus for fianchetto and for center pawns
-        public static int[] _Pawns = new int[]
+        private static int[] _Pawns = new int[]
         {
              0,  0,   0,   0,   0,   0,  0,  0,
             50, 50,  50,  50,  50,  50, 50, 50,

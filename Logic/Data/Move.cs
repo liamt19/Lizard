@@ -58,6 +58,8 @@ namespace LTChess.Data
 
         /// <summary>
         /// True if this move is a kingside/queenside castling move.
+        /// <br></br>
+        /// <see langword="this"></see>.from will be the index of the king, and <see langword="this"></see>.to will be C1/8 or g1/8.
         /// </summary>
         public bool Castle = false;
 

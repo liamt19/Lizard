@@ -31,46 +31,14 @@ namespace LTChess.Transposition
         public static void Clear() => Array.Clear(Table);
 
         [MethodImpl(Inline)]
-        public static void Save(ulong key, short eval, NodeType nodeType, int depth, Move m)
+        public static void Save(ulong key, short eval, TTNodeType nodeType, int depth, Move m)
         {
-#if DEBUG
-            SearchStatistics.TTSaves++;
-            if (Table[key % Size].NodeType != NodeType.Invalid)
-            {
-                if (Table[key % Size].NodeType == NodeType.Exact && nodeType== NodeType.Beta)
-                {
-                    TTReplacementsE_to_B++;
-                }
-                else if (Table[key % Size].NodeType == NodeType.Beta && nodeType == NodeType.Exact)
-                {
-                    TTReplacementsB_to_E++;
-                }
-                SearchStatistics.TTReplacements++;
-            }
-            else if (Table[key % Size].Key == TTEntry.MakeKey(key))
-            {
-                if (Table[key % Size].Depth > depth)
-                {
-                    SearchStatistics.TTDepthIncreased++;
-                }
-                else
-                {
-                    SearchStatistics.TTReplacementOther++;
-                }
-            }
-#endif
             Table[key % Size] = new TTEntry(key, eval, nodeType, depth, m);
         }
 
         [MethodImpl(Inline)]
         public static TTEntry Probe(ulong hash)
         {
-#if DEBUG
-            if (Table[hash % Size].NodeType != NodeType.Invalid)
-            {
-                SearchStatistics.TTHits++;
-            }
-#endif
             return Table[hash % Size];
         }
 
@@ -86,38 +54,38 @@ namespace LTChess.Transposition
             for (int i = 0; i < Table.Length; i++)
             {
                 var tt = Table[i];
-                if (!tt.BestMove.IsNull())
+
+                if (tt.NodeType == TTNodeType.Beta)
                 {
-                    if (tt.NodeType == NodeType.Beta)
-                    {
-                        Beta++;
-                    }
-                    else if (tt.NodeType == NodeType.Alpha)
-                    {
-                        Alpha++;
-                    }
-                    else if (tt.NodeType == NodeType.Exact)
-                    {
-                        Exact++;
-                    }
-                    else
-                    {
-                        Invalid++;
-                    }
+                    Beta++;
                 }
-                else if (tt.Key != 0)
+                else if (tt.NodeType == TTNodeType.Alpha)
+                {
+                    Alpha++;
+                }
+                else if (tt.NodeType == TTNodeType.Exact)
+                {
+                    Exact++;
+                }
+                else
+                {
+                    Invalid++;
+                }
+
+                if (tt.BestMove.IsNull() && tt.NodeType != TTNodeType.Invalid)
                 {
                     NullMoves++;
                 }
             }
 
-            int entries = Invalid + Beta + Alpha + Exact + NullMoves;
+            int entries = Beta + Alpha + Exact;
             double percent = (double)entries / Size;
-            Log("TT:\t" + entries + " / " + Size + " = " + (percent * 100) + "%");
-            Log("Alpha:\t" + Alpha);
-            Log("Beta:\t" + Beta);
-            Log("Exact:\t" + Exact);
-            Log("Null:\t" + NullMoves);
+            Log("TT:\t " + entries + " / " + Size + " = " + (percent * 100) + "%");
+            Log("Alpha:\t " + Alpha);
+            Log("Beta:\t " + Beta);
+            Log("Exact:\t " + Exact);
+            Log("Invalid: " + Invalid);
+            Log("Null:\t " + NullMoves);
         }
     }
 }

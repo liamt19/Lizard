@@ -19,11 +19,11 @@ namespace LTChess.Transposition
         public const int KeyShift = 48;
 
         public short Eval;
-        public NodeType NodeType;
+        public TTNodeType NodeType;
         public byte Depth;
         public Move BestMove;
 
-        public TTEntry(ulong key, short eval, NodeType nodeType, int depth, Move move)
+        public TTEntry(ulong key, short eval, TTNodeType nodeType, int depth, Move move)
         {
             this.Key = (ushort)(key >> KeyShift);
             this.Eval = eval;
@@ -38,9 +38,15 @@ namespace LTChess.Transposition
             return (ushort)(posHash >> KeyShift);
         }
 
+        [MethodImpl(Inline)]
+        public bool Validate(ulong hash)
+        {
+            return Key == (ushort)(hash >> KeyShift);
+        }
+
         public override string ToString()
         {
-            return NodeType.ToString() + "entry , depth " + Depth + ", move " + BestMove.ToString() + " eval " + Eval + ", key " + Key;
+            return NodeType.ToString() + ", depth " + Depth + ", move " + BestMove.ToString() + " eval " + Eval + ", key " + Key;
         }
     }
 }

@@ -32,7 +32,7 @@ namespace LTChess.Transposition
         {
 #if DEBUG
             SearchStatistics.ETSaves++;
-            if (Table[hash % Size].key != 0 && Table[hash % Size].score != 0)
+            if (Table[hash % Size].Key != 0 && Table[hash % Size].Score != 0)
             {
                 SearchStatistics.ETReplacements++;
             }
@@ -46,6 +46,25 @@ namespace LTChess.Transposition
             return Table[hash % Size];
         }
 
+        [MethodImpl(Inline)]
+        public static int ProbeOrEval(ref SearchInformation info)
+        {
+            int staticEval;
+
+            ETEntry etEntry = EvaluationTable.Probe(info.Position.Hash);
+            if (etEntry.Key == EvaluationTable.InvalidKey || !etEntry.Validate(info.Position.Hash) || etEntry.Score == ETEntry.InvalidScore)
+            {
+                staticEval = info.GetEvaluation(info.Position, info.Position.ToMove);
+                EvaluationTable.Save(info.Position.Hash, (short) staticEval);
+            }
+            else
+            {
+                staticEval = etEntry.Score;
+            }
+
+            return staticEval;
+        }
+
         public static void PrintStatus()
         {
             int entries = 0;
@@ -54,11 +73,11 @@ namespace LTChess.Transposition
             for (int i = 0; i < Table.Length; i++)
             {
                 var item = Table[i];
-                if (item.key != 0)
+                if (item.Key != 0)
                 {
                     entries++;
                 }
-                else if (item.score != 0)
+                else if (item.Score != 0)
                 {
                     keylessScores++;
                 }
