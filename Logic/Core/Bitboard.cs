@@ -293,7 +293,7 @@ namespace LTChess.Core
             {
                 int idx = lsb(temp);
 
-                mat += ThreadedEvaluation.GetPieceValue(GetPieceAtIndex(idx));
+                mat += GetPieceValue(GetPieceAtIndex(idx));
 
                 temp = poplsb(temp);
             }
