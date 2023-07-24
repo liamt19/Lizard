@@ -19,6 +19,7 @@ global using static LTChess.Data.Squares;
 global using static LTChess.Magic.MagicBitboards;
 global using static LTChess.Search.SearchConstants;
 global using static LTChess.Search.SearchStatistics;
+global using static LTChess.Search.ThreadedEvaluation;
 global using static LTChess.Util.Utilities;
 global using static LTChess.Util.PositionUtilities;
 
@@ -68,6 +69,9 @@ namespace LTChess
             EvaluationTable.Initialize();
             TranspositionTable.Initialize();
             PSQT.Initialize();
+
+            WarmUpJIT();
+
 
 #if DEBUG
             Log("InitializeAll done in " + sw.Elapsed.TotalSeconds + " s");
@@ -249,7 +253,7 @@ namespace LTChess
                     info.StopSearching = true;
 
                 }
-                else if (input.ContainsIgnoreCase("eval"))
+                else if (input.EqualsIgnoreCase("eval"))
                 {
                     info.GetEvaluation(p, p.ToMove, true);
                 }
@@ -260,6 +264,14 @@ namespace LTChess
                 else if (input.ContainsIgnoreCase("searchinfo"))
                 {
                     PrintSearchInfo();
+                }
+                else if (input.EqualsIgnoreCase("snapshots"))
+                {
+                    SearchStatistics.PrintSnapshots();
+                }
+                else if (input.EqualsIgnoreCase("terms"))
+                {
+                    EvaluationConstants.PrintConstants();
                 }
                 else if (input.ContainsIgnoreCase("time perft"))
                 {
@@ -278,12 +290,38 @@ namespace LTChess
                 else
                 {
                     //  You can just copy paste in a FEN string rather than typing "position fen" before it.
-                    if (input.Where(x => x == '/').Count() != 7 || !p.LoadFromFEN(input.Trim()))
+                    if (input.Where(x => x == '/').Count() == 7)
+                    {
+                        if (p.LoadFromFEN(input.Trim()))
+                        {
+                            Log("Loaded fen");
+                        }
+                    }
+                    else
                     {
                         Log("Unknown token '" + input + "'");
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// The first time a search is performed, we have to spend about 50ms JIT'ing the various little functions in the search and evaluation classes.
+        /// This can be done as soon as the engine starts so the time spent during the first search command isn't lost.
+        /// </summary>
+        private static void WarmUpJIT()
+        {
+            JITHasntSeenSearch = true;
+
+            info = new SearchInformation(p);
+            info.MaxDepth = 3;
+            SimpleSearch.StartSearching(ref info);
+            DoPerftDivide(4);
+
+            SearchStatistics.Zero();
+
+
+            JITHasntSeenSearch = false;
         }
 
         public static void TimePerftToDepth(int depth)

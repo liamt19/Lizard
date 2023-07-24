@@ -27,8 +27,8 @@ namespace LTChess.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "6.1";
-        public const string EngineTagLine = "Now rated 1700 on Lichess (so long as my internet stops making it lose games on time)!";
+        public const string EngineBuildVersion = "6.2";
+        public const string EngineTagLine = "Now includes tactical awareness!";
 
         public const int MaxListCapacity = 512;
         public const int NormalListCapacity = 128;
@@ -83,10 +83,20 @@ namespace LTChess.Util
         /// </summary>
         public static bool UCIMode = false;
 
+        public static bool JITHasntSeenSearch = false;
+
         public static long debug_time_off = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
+        /// <summary>
+        /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
+        /// </summary>
         public static void Log(string s)
         {
+            if (JITHasntSeenSearch)
+            {
+                return;
+            }
+
             if (!UCIMode)
             {
                 Console.WriteLine(s);
@@ -230,6 +240,9 @@ namespace LTChess.Util
             return "None";
         }
 
+        /// <summary>
+        /// Returns a random ulong using the Random instance <paramref name="random"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ulong NextUlong(this Random random)
         {
@@ -301,20 +314,6 @@ namespace LTChess.Util
         }
 
         public static int FENToColor(char c) => char.IsUpper(c) ? Color.White : Color.Black;
-
-        public static int IndexOf(this int[] arr, int value)
-        {
-            for (int i = 0; i < arr.Length; i++)
-            {
-                if (arr[i] == value)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
 
         /// <summary>
         /// Returns the file (x coordinate) for the index, which is between A=0 and H=7.
@@ -393,6 +392,9 @@ namespace LTChess.Util
             return sb.ToString() + "\r\n";
         }
 
+        /// <summary>
+        /// Returns the string <paramref name="s"/> backwards.
+        /// </summary>
         public static string Flip(this string s)
         {
             char[] charArray = s.ToCharArray();
@@ -451,6 +453,10 @@ namespace LTChess.Util
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns a string containing a ToString() version of a list of moves in human readable format.
+        /// This would return something similar to "g1f3, e2e4, d2d4".
+        /// </summary>
         public static string Stringify(this Span<Move> list)
         {
             StringBuilder sb = new StringBuilder();
@@ -469,6 +475,10 @@ namespace LTChess.Util
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns a string containing a ToString() version of a list of moves in human readable format.
+        /// So instead of seeing "g1f3, e2e4, d2d4" it would show "Nf3, e4, d4".
+        /// </summary>
         public static string Stringify(this Span<Move> list, Position position)
         {
             StringBuilder sb = new StringBuilder();
@@ -526,7 +536,7 @@ namespace LTChess.Util
         public static string FormatSearchInformation(SearchInformation info)
         {
             int depth = info.MaxDepth;
-            int selDepth = depth;
+            int selDepth = info.SelectiveDepth;
             double time = Math.Max(1, Math.Round(info.SearchTime));
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
@@ -544,6 +554,9 @@ namespace LTChess.Util
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns an appropriately formatted string representing the Score, which is either "cp #" or "mate #".
+        /// </summary>
         [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
@@ -557,6 +570,10 @@ namespace LTChess.Util
             }
         }
 
+        /// <summary>
+        /// Used in evaluation traces to truncate the evaluation term's Score <paramref name="normalScore"/> to two decimal places,
+        /// and to keep that number centered within its column, which has a size of <paramref name="sz"/>.
+        /// </summary>
         public static string FormatEvalTerm(double normalScore, int sz = 8)
         {
             return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
@@ -564,7 +581,6 @@ namespace LTChess.Util
 
 
         //http://graphics.stanford.edu/%7Eseander/bithacks.html
-        //https://sharplab.io/
         private static int[] BitScanValues = {
         0,  1,  48,  2, 57, 49, 28,  3,
         61, 58, 50, 42, 38, 29, 17,  4,
@@ -625,6 +641,10 @@ namespace LTChess.Util
 #endif
         }
 
+        /// <summary>
+        /// Returns the index of the most significant bit (highest, toward the square H8) 
+        /// set in the mask <paramref name="value"/> using <c>Lzcnt.X64.LeadingZeroCount</c>
+        /// </summary>
         [MethodImpl(Inline)]
         public static int msb(ulong value)
         {
@@ -635,6 +655,10 @@ namespace LTChess.Util
 #endif
         }
 
+        /// <summary>
+        /// Sets the most significant bit to 0. 
+        /// So popmsb(10110_2) returns 00110_2.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ulong popmsb(ulong value)
         {
