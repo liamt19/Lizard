@@ -30,6 +30,7 @@ namespace LTChess.Search
             int wMat = bb.MaterialCount(Color.White);
             int bMat = bb.MaterialCount(Color.Black);
 
+            bool isKRQVK = (popcount((bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen])) != 0 && popcount(bb.Pieces[Piece.Pawn]) <= 2);
             bool isKPVKP = (popcount(bb.Colors[Color.White] | bb.Colors[Color.Black]) == popcount(bb.Pieces[Piece.Pawn]) + 2);
             if (isKPVKP)
             {
@@ -55,7 +56,7 @@ namespace LTChess.Search
                             //  Penalize their king for being distant from this pawn
                             score[Not(pc)] += (ScoreEndgamePawnDistancePenalty * fileDist);
 
-                            score[pc] += (ScorePromotingPawn / 3) * (6 - promotionDistance);
+                            score[pc] += (ScorePromotingPawn / 3) * (PassedPawnPromotionDistanceFactor - promotionDistance);
                         }
 
                         if (bb.IsPasser(idx))
@@ -90,7 +91,7 @@ namespace LTChess.Search
                 }
 
             }
-            else
+            else if (isKRQVK)
             {
 
                 int ourKing = bb.KingIndex(ToMove);
@@ -130,6 +131,11 @@ namespace LTChess.Search
                     score[strong] += ScoreEGSliderDistance[sliderDist];
                 }
 
+            }
+            else
+            {
+                score[Color.White] += (PSQT.Center[p.bb.KingIndex(Color.White)] * CoefficientPSQTEKG);
+                score[Color.Black] += (PSQT.Center[p.bb.KingIndex(Color.Black)] * CoefficientPSQTEKG);
             }
 
             score[Color.White] *= ScaleEndgame;
