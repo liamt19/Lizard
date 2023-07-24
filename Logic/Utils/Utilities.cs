@@ -27,7 +27,7 @@ namespace LTChess.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "6.2";
+        public const string EngineBuildVersion = "7.0";
         public const string EngineTagLine = "Now includes tactical awareness!";
 
         public const int MaxListCapacity = 512;
