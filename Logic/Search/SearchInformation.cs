@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace LTChess.Search
 {
@@ -29,12 +25,8 @@ namespace LTChess.Search
         public ulong MaxNodes = ulong.MaxValue - 1;
 
         /// <summary>
-        /// The time in milliseconds that the search should stop at.
-        /// </summary>
-        public long MaxSearchTime = DefaultSearchTime;
-
-        /// <summary>
-        /// The best move found.
+        /// The best move found. This may be modified at the end of any call to <c>SimpleSearch.FindBest</c>,
+        /// but <c>SimpleSearch.LastBestMove</c> is kept correct at all times.
         /// </summary>
         public Move BestMove = Move.Null;
 
@@ -48,29 +40,16 @@ namespace LTChess.Search
         /// </summary>
         public bool SearchFinishedCalled = false;
 
-        public bool SearchWasAborted = false;
-        public string LastSearchInfo = string.Empty;
+        /// <summary>
+        /// Set to true while a search is ongoing, and false otherwise.
+        /// </summary>
+        public bool SearchActive = false;
 
         /// <summary>
-        /// Replaces the BestMove and BestScore fields when a search is interrupted.
+        /// Set to the last "info depth ..." string that was sent.
         /// </summary>
-        /// <param name="move">The best Move from the previous depth</param>
-        /// <param name="score">The evaluation from the previous depth</param>
-        public void SetLastMove(Move move, int score)
-        {
-            if (!move.IsNull())
-            {
-                Log("SetLastMove(" + move + ", " + score + ") is replacing previous " + BestMove + ", " + BestScore);
+        public string LastSearchInfo = string.Empty;
 
-                this.BestMove = move;
-                this.BestScore = score;
-            }
-            else
-            {
-                //  This shouldn't happen.
-                Log("ERROR SetLastMove(" + move + ", " + score + ") " + "[old " + BestMove + ", " + BestScore + "] was illegal in FEN " + Position.GetFEN());
-            }
-        }
         /// <summary>
         /// A list of moves which the search thinks will be played next.
         /// PV[0] is the best move that we found, PV[1] is the best response that we think they have, etc.
@@ -83,21 +62,14 @@ namespace LTChess.Search
         public int BestScore = 0;
 
         /// <summary>
-        /// The time currently spent during the search.
-        /// </summary>
-        public double SearchTime = 0;
-
-        /// <summary>
         /// The number of nodes/positions evaluated during the search.
         /// </summary>
         public ulong NodeCount = 0;
 
         /// <summary>
-        /// Set to the value of wtime/btime if one was provided during a UCI "go" command.
-        /// If the search time gets too close to this, the search will stop prematurely so
-        /// we don't lose on time.
+        /// The color of the player to move in the root position.
         /// </summary>
-        public int PlayerTimeLeft = SearchConstants.MaxSearchTime;
+        public int RootPlayerToMove = Color.White;
 
         /// <summary>
         /// The number of moves made so far in the root position.
@@ -116,15 +88,13 @@ namespace LTChess.Search
         /// </summary>
         private ThreadedEvaluation tdEval;
 
+        public TimeManager TimeManager;
+
         /// <summary>
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
         /// </summary>
-        public int GetEvaluation(in Position position, int pc, bool Trace = false)
-        {
-            return this.tdEval.Evaluate(position, pc, Trace);
-        }
-
-
+        [MethodImpl(Inline)]
+        public int GetEvaluation(in Position position, int pc, bool Trace = false) => this.tdEval.Evaluate(position, pc, Trace);
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {
@@ -138,7 +108,10 @@ namespace LTChess.Search
         {
             this.Position = p;
             this.MaxDepth = depth;
-            this.MaxSearchTime = searchTime;
+
+            this.TimeManager = new TimeManager();
+            this.TimeManager.MaxSearchTime = searchTime;
+
             this.RootPositionMoveCount = this.Position.Moves.Count;
 
             PV = new Move[Utilities.MaxDepth];
@@ -148,9 +121,46 @@ namespace LTChess.Search
             tdEval = new ThreadedEvaluation();
         }
 
+        public static SearchInformation Infinite(Position p)
+        {
+            SearchInformation si = new SearchInformation(p, Utilities.MaxDepth, SearchConstants.MaxSearchTime);
+            si.MaxNodes = ulong.MaxValue - 1;
+            return si;
+        }
+
+        [MethodImpl(Inline)]
+        public void SetMoveTime(int moveTime)
+        {
+            TimeManager.MoveTime = moveTime;
+            TimeManager.HasMoveTime = true;
+        }
+
+        /// <summary>
+        /// Replaces the BestMove and BestScore fields when a search is interrupted.
+        /// </summary>
+        /// <param name="move">The best Move from the previous depth</param>
+        /// <param name="score">The evaluation from the previous depth</param>
+        [MethodImpl(Inline)]
+        public void SetLastMove(Move move, int score)
+        {
+            if (!move.IsNull())
+            {
+                Log("SetLastMove(" + move + ", " + score + ") is replacing previous " + BestMove + ", " + BestScore);
+
+                this.BestMove = move;
+                this.BestScore = score;
+            }
+            else
+            {
+                //  This shouldn't happen.
+                Log("ERROR SetLastMove(" + move + ", " + score + ") " + "[old " + BestMove + ", " + BestScore + "] was illegal in FEN " + Position.GetFEN());
+            }
+        }
+
         /// <summary>
         /// Prints out the "info depth (number) ..." string
         /// </summary>
+        [MethodImpl(Inline)]
         public void PrintSearchInfo(SearchInformation info)
         {
             info.LastSearchInfo = FormatSearchInformation(info);
@@ -163,11 +173,11 @@ namespace LTChess.Search
                 Log(info.LastSearchInfo);
             }
 
-            SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.SearchTime);
+            SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.TimeManager.GetSearchTime());
         }
 
         /// <summary>
-        /// Creates a deep copy of an existing <c>SearchInformation</c>
+        /// Creates a deep copy of an existing <see cref="SearchInformation"/>
         /// </summary>
         public static SearchInformation Clone(SearchInformation other)
         {
@@ -189,6 +199,7 @@ namespace LTChess.Search
         /// <summary>
         /// Returns the number of plys from the root position, which is the "3" in "+M3" if white has mate in 3.
         /// </summary>
+        [MethodImpl(Inline)]
         public int MakeMateScore()
         {
             int movesMade = (this.Position.Moves.Count - this.RootPositionMoveCount);
@@ -211,13 +222,14 @@ namespace LTChess.Search
             //  Start fresh, since a PV at depth 3 could write to PV[0-2] and the time we call GetPV
             //  it could fail at PV[1] and leave the wrong move in PV[2].
             Array.Clear(this.PV);
-            SimpleSearch.GetPV(this, this.PV, 0);
+            SimpleSearch.GetPV(this.PV);
 
             Position temp = new Position(this.Position.GetFEN());
             for (int i = 0; i < this.MaxDepth; i++)
             {
                 if (this.PV[i].IsNull())
                 {
+                    Log("ERROR GetPVString's PV[0] was null!");
                     break;
                 }
 
@@ -256,8 +268,8 @@ namespace LTChess.Search
 
         public override string ToString()
         {
-            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", " 
-                + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + SearchTime + ", " 
+            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
+                + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + TimeManager.GetSearchTime() + ", "
                 + "NodeCount: " + NodeCount + ", " + "StopSearching: " + StopSearching;
         }
     }

@@ -1,6 +1,9 @@
 ﻿
 //  Thanks C# 10!
-global using LTChess;
+
+global using System.Runtime.CompilerServices;
+
+
 global using LTChess.Core;
 global using LTChess.Data;
 global using LTChess.Magic;
@@ -8,9 +11,7 @@ global using LTChess.Search;
 global using LTChess.Transposition;
 global using LTChess.Util;
 
-global using static LTChess.Core.Bitboard;
 global using static LTChess.Core.MoveGenerator;
-global using static LTChess.Core.Position;
 global using static LTChess.Core.UCI;
 global using static LTChess.Data.CheckInfo;
 global using static LTChess.Data.PrecomputedData;
@@ -18,26 +19,12 @@ global using static LTChess.Data.RunOptions;
 global using static LTChess.Data.Squares;
 global using static LTChess.Magic.MagicBitboards;
 global using static LTChess.Search.SearchConstants;
-global using static LTChess.Search.SearchStatistics;
 global using static LTChess.Search.ThreadedEvaluation;
-global using static LTChess.Util.Utilities;
 global using static LTChess.Util.PositionUtilities;
+global using static LTChess.Util.Utilities;
 
-
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
-using System.Drawing;
-using System.Formats.Tar;
-using System.Threading;
-using LTChess.Utils;
+
 
 namespace LTChess
 {
@@ -118,7 +105,7 @@ namespace LTChess
                         info.MaxDepth = selDepth;
                     }
 
-                    info.MaxSearchTime = SearchConstants.MaxSearchTime;
+                    info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
 
                     Task.Run(() =>
                     {
@@ -141,12 +128,12 @@ namespace LTChess
                         input = input.Substring(0, input.Length - 1);
                     }
 
-                    if (input.Length > 8 && long.TryParse(input.Substring(8), out long searchTime))
+                    if (input.Length > 8 && int.TryParse(input.Substring(8), out int searchTime))
                     {
-                        info.MaxSearchTime = searchTime;
+                        info.TimeManager.MaxSearchTime = searchTime;
                         if (!timeInMS)
                         {
-                            info.MaxSearchTime *= 1000;
+                            info.TimeManager.MaxSearchTime *= 1000;
                         }
                     }
 
@@ -159,7 +146,7 @@ namespace LTChess
                 else if (input.EqualsIgnoreCase("go") || input.EqualsIgnoreCase("go infinite"))
                 {
                     info = new SearchInformation(p, MaxDepth);
-                    info.MaxSearchTime = SearchConstants.MaxSearchTime;
+                    info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
 
                     Task.Run(() =>
                     {
@@ -314,7 +301,8 @@ namespace LTChess
             JITHasntSeenSearch = true;
 
             info = new SearchInformation(p);
-            info.MaxDepth = 3;
+            info.MaxDepth = 4;
+            info.SetMoveTime(1000);
             SimpleSearch.StartSearching(ref info);
             DoPerftDivide(4);
 
