@@ -1,16 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 
 using Timer = System.Timers.Timer;
-
-using static System.Formats.Asn1.AsnWriter;
-using static LTChess.Search.SearchConstants;
-using LTChess.Data;
-using LTChess.Util;
 
 namespace LTChess.Search
 {
@@ -67,7 +57,7 @@ namespace LTChess.Search
 
         public void StartSearching(SearchInformation info)
         {
-            
+
         }
 
         public void Deepen(ref SearchInformation info, int alpha, int beta)

@@ -1,19 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-
-using static LTChess.Magic.MagicBitboards;
-using LTChess.Data;
-
-
-namespace LTChess.Core
+﻿namespace LTChess.Core
 {
     /// <summary>
     /// Class to generate moves
@@ -149,8 +134,8 @@ namespace LTChess.Core
             else
             {
 #if DEBUG
-                Debug.Assert((bb.Pieces[Piece.Pawn] & SquareBB[EnPassantTarget + 8]) != 0, 
-                    "EnPassantTarget is " + IndexToString(EnPassantTarget) + " but no pawns are set on " + 
+                Debug.Assert((bb.Pieces[Piece.Pawn] & SquareBB[EnPassantTarget + 8]) != 0,
+                    "EnPassantTarget is " + IndexToString(EnPassantTarget) + " but no pawns are set on " +
                     IndexToString(EnPassantTarget - 8) + " or " + IndexToString(EnPassantTarget + 8));
 #endif
 

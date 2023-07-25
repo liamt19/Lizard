@@ -1,15 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-
-namespace LTChess.Util
+﻿namespace LTChess.Util
 {
     public static unsafe class PositionUtilities
     {
@@ -76,7 +65,7 @@ namespace LTChess.Util
             ulong ourPawnAttacks = (bb.Pieces[Piece.Pawn] & pawnBB[idx]);
             ulong ourKingDefender = (SquareBB[bb.KingIndex(ourColor)] & NeighborsMask[idx]);
             ulong defenders = (ourDiags | ourStraights | ourKnightAttacks | ourPawnAttacks | ourKingDefender) & us;
-            
+
             return defenders;
         }
 

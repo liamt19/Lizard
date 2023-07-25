@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Magic
+﻿namespace LTChess.Magic
 {
     /// <summary>
     /// Contains information for one square of the magic bitboard for rooks or bishops

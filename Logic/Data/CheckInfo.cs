@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
-namespace LTChess.Data
+﻿namespace LTChess.Data
 {
     /// <summary>
     /// Stores the status of the position in terms of checks and double checks.

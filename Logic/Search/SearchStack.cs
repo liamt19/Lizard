@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Search
+﻿namespace LTChess.Search
 {
     /// <summary>
     /// Used during a search to keep track of the static evaluations of previous positions.

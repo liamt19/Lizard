@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
-namespace LTChess.Search
+﻿namespace LTChess.Search
 {
     public static class PSQT
     {
@@ -264,7 +257,7 @@ namespace LTChess.Search
             FishPSQT[Color.White] = new int[NumPieces][];
             FishPSQT[Color.Black] = new int[NumPieces][];
 
-            for (int pt = Piece.Knight; pt <= Piece.King ; pt++)
+            for (int pt = Piece.Knight; pt <= Piece.King; pt++)
             {
                 FishPSQT[Color.White][pt] = new int[64];
                 FishPSQT[Color.Black][pt] = new int[64];

@@ -1,13 +1,6 @@
 ﻿
-//#define SHOW_STATS
+#define SHOW_STATS
 
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 using static LTChess.Search.EvaluationConstants;
 
@@ -133,7 +126,7 @@ namespace LTChess.Search
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.QuiescenceSEECuts++;
-                        SearchStatistics.QuiescenceSEETotalCuts += (ulong) (numCaps - i);
+                        SearchStatistics.QuiescenceSEETotalCuts += (ulong)(numCaps - i);
 #endif
                         return standingPat + see;
                     }
@@ -292,7 +285,7 @@ namespace LTChess.Search
         public static int SEE(ref Bitboard bb, ref Move move)
         {
             int theirValue = (move.EnPassant ? ValuePawn : GetPieceValue(bb.GetPieceAtIndex(move.to)));
-            
+
             if (move.Promotion)
             {
                 return theirValue - (GetPieceValue(move.PromotionTo) - ValuePawn);

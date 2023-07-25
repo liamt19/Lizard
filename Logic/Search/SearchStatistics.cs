@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 
 
 namespace LTChess.Search
@@ -45,7 +39,6 @@ namespace LTChess.Search
         public static ulong QuiescenceSEECuts = 0;
         public static ulong QuiescenceSEETotalCuts = 0;
 
-
         public static ulong NMCalls = 0;
         public static ulong NMCalls_NOTQ = 0;
         public static ulong NMCompletes = 0;
@@ -71,6 +64,7 @@ namespace LTChess.Search
         public static ulong Scores_SEE_calls = 0;
         public static ulong Scores_HistoryHeuristic = 0;
         public static ulong Scores_PV_TT_Move = 0;
+        public static ulong Scores_Promotion = 0;
         public static ulong Scores_Killer_1 = 0;
         public static ulong Scores_Killer_2 = 0;
         public static ulong Scores_WinningCapture = 0;
@@ -87,8 +81,7 @@ namespace LTChess.Search
         public static ulong ETReplacements = 0;
         public static ulong ETWrongHashKey = 0;
 
-        public static ulong SetTTs = 0;
-        public static ulong NotSetTTs = 0;
+        public static ulong Checkups = 0;
 
         public static void PrintStatistics()
         {
@@ -120,6 +113,7 @@ namespace LTChess.Search
             foreach (var field in _snapshot_fields)
             {
                 field.SetValue(null, default(ulong));
+                _snapshots[field.Name].Clear();
             }
         }
 
@@ -140,7 +134,7 @@ namespace LTChess.Search
 
         private static int _shots = 0;
         private static List<FieldInfo>? _snapshot_fields;
-        private static Dictionary<string, List<ulong>> _snapshots= new Dictionary<string, List<ulong>>();
+        private static Dictionary<string, List<ulong>> _snapshots = new Dictionary<string, List<ulong>>();
         public static void TakeSnapshot(ulong nodeCount = 0, ulong time = 0)
         {
             foreach (var field in _snapshot_fields)

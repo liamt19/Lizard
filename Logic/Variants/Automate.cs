@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-
 namespace LTChess.Variants
 {
     /// <summary>
@@ -51,7 +44,7 @@ namespace LTChess.Variants
             whitePoints = MaxPoints;
             blackPoints = MaxPoints;
 
-            
+
             Setup();
 
             Log("Finished placing pieces! Position: ");
@@ -76,7 +69,6 @@ namespace LTChess.Variants
                 }
 
                 int idx = A1;
-                int pt = Piece.None;
                 bool gotInput = false;
                 while (!gotInput)
                 {

@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Search.Ordering
+﻿namespace LTChess.Search.Ordering
 {
     /// <summary>
     /// Wrapper class for storing killer moves, which are non-capture moves which caused a beta cutoff 

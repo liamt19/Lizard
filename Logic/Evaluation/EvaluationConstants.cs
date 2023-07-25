@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Search
+﻿namespace LTChess.Search
 {
     public static class EvaluationConstants
     {
@@ -112,7 +105,7 @@ namespace LTChess.Search
         public static readonly int[] ScoreEGSliderDistance = { 0, 130, 70, 30, 10, 5, 0, -50 };
 
 
-        
+
 
 
         /// <summary>
@@ -124,9 +117,9 @@ namespace LTChess.Search
             foreach (var term in fields)
             {
                 Console.Write(term.Name + ": ");
-                if ( term.GetType() == typeof(int[]) || term.GetType() == typeof(double[]) )
+                if (term.GetType() == typeof(int[]) || term.GetType() == typeof(double[]))
                 {
-                    object[] arr = (object[]) term.GetValue(null);
+                    object[] arr = (object[])term.GetValue(null);
                     Console.Write("[");
                     for (int i = 0; i < arr.Length; i++)
                     {

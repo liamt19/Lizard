@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Data
+﻿namespace LTChess.Data
 {
     /// <summary>
     /// Represents a branch during perft

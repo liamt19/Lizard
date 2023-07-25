@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
 
 namespace LTChess.Data
 {
@@ -38,7 +32,7 @@ namespace LTChess.Data
             data |= (m.idxEnPassant << (DataSize - (3 * IndexSize)));
             data |= (m.idxChecker << (DataSize - (4 * IndexSize)));
             data |= (m.idxDoubleChecker << (DataSize - (5 * IndexSize)));
-            
+
             flags = (short)(m.PromotionTo << PromotionToIndex);
             flags |= (short)((m.Capture ? 1 : 0) << 5);
             flags |= (short)((m.EnPassant ? 1 : 0) << 4);
@@ -57,7 +51,7 @@ namespace LTChess.Data
             m.idxEnPassant = idxEnPassant;
             m.idxChecker = idxChecker;
             m.idxDoubleChecker = idxDoubleChecker;
-            
+
             m.Capture = Capture;
             m.EnPassant = EnPassant;
             m.Castle = Castle;
@@ -94,11 +88,11 @@ namespace LTChess.Data
         }
 
         public int From => (data >> (DataSize - IndexSize));
-        
+
         public int To => (data >> (DataSize - (2 * IndexSize)));
-        
+
         public int idxEnPassant => (data >> (DataSize - (3 * IndexSize)));
-        
+
         public int idxChecker => (data >> (DataSize - (4 * IndexSize)));
 
         public int idxDoubleChecker => (data >> (DataSize - (5 * IndexSize)));

@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Search
+﻿namespace LTChess.Search
 {
     /// <summary>
     /// Wrapper class storing moves that are within our principal variation line.

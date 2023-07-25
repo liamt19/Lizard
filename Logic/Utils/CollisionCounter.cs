@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using LTChess.Util;
-
-namespace LTChess.Utils
+﻿namespace LTChess.Util
 {
     /// <summary>
     /// Used to find better random seeds for Zobrist hashing.

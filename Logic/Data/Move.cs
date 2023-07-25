@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+﻿using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
 
 namespace LTChess.Data
 {
@@ -198,7 +190,7 @@ namespace LTChess.Data
         {
             //  TODO: this.
             Bitboard bb = position.bb;
-            
+
             int pt = bb.GetPieceAtIndex(from);
             int pc = bb.GetColorAtIndex(from);
             ulong pieceBB = (bb.Pieces[pt] & bb.Colors[pc]);

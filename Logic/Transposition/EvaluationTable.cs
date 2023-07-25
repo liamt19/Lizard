@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Runtime.CompilerServices;
-
-namespace LTChess.Transposition
+﻿namespace LTChess.Transposition
 {
     public class EvaluationTable
     {
@@ -55,7 +47,7 @@ namespace LTChess.Transposition
             if (etEntry.Key == EvaluationTable.InvalidKey || !etEntry.Validate(info.Position.Hash) || etEntry.Score == ETEntry.InvalidScore)
             {
                 staticEval = info.GetEvaluation(info.Position, info.Position.ToMove);
-                EvaluationTable.Save(info.Position.Hash, (short) staticEval);
+                EvaluationTable.Save(info.Position.Hash, (short)staticEval);
             }
             else
             {

@@ -1,16 +1,4 @@
-﻿
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-
-namespace LTChess.Core
+﻿namespace LTChess.Core
 {
     /// <summary>
     /// Manages the bitboards for the position
@@ -44,7 +32,7 @@ namespace LTChess.Core
         public string SquareToString(int idx)
         {
             return ColorToString(GetColorAtIndex(idx)) + " " +
-                   PieceToString(PieceTypes[idx]) + " on " + 
+                   PieceToString(PieceTypes[idx]) + " on " +
                    IndexToString(idx);
         }
 
@@ -332,9 +320,9 @@ namespace LTChess.Core
             ulong them = Colors[Not(pc)];
 
             int ourKing = KingIndex(pc);
-            ulong pinners = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) | 
+            ulong pinners = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) |
                            (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
-            
+
             while (pinners != 0)
             {
                 int idx = lsb(pinners);
@@ -369,11 +357,11 @@ namespace LTChess.Core
         [MethodImpl(Inline)]
         public ulong AttackersToFast(int idx, ulong occupied)
         {
-            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen])) 
-                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) 
+            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
+                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
                   | (Pieces[Piece.Knight] & KnightMasks[idx])
                   | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
-                  |  (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
+                  | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
 
             //return (diagonals | straights | knights | pawns);
         }
@@ -393,7 +381,7 @@ namespace LTChess.Core
             ulong pawnBB = (defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx];
 
             ulong occupied = (us | them) & ~mask;
-                 
+
             ulong diagonals = (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]));
             ulong straights = (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]));
 

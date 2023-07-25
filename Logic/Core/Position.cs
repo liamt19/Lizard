@@ -1,10 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
 using System.Text;
-
-using LTChess.Data;
-using LTChess.Util;
 
 namespace LTChess.Core
 {
@@ -159,7 +154,7 @@ namespace LTChess.Core
 #if DEBUG
             if (otherPiece != Piece.None && thisColor == bb.GetColorAtIndex(move.to))
             {
-                 Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(otherPiece) + " on " + IndexToString(move.to));
+                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(otherPiece) + " on " + IndexToString(move.to));
             }
             if (otherPiece == Piece.King)
             {
@@ -639,7 +634,7 @@ namespace LTChess.Core
                 return false;
             }
 
-            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(move.to) != Piece.None), 
+            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(move.to) != Piece.None),
                 "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(position) + ") is trying to capture a piece on an empty square!");
 
             int ourColor = bb.GetColorAtIndex(move.from);
@@ -1036,8 +1031,8 @@ namespace LTChess.Core
                         G8 => F8,
                     };
                     ulong between = BetweenBB[rookTo][theirKing];
-                    if (between != 0 && 
-                        ((between & ((us | them) ^ ourKingMask)) == 0) && 
+                    if (between != 0 &&
+                        ((between & ((us | them) ^ ourKingMask)) == 0) &&
                         (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing)))
                     {
                         //  Then their king is on the same rank/file/diagonal as the square that our rook will end up at,
@@ -1235,7 +1230,7 @@ namespace LTChess.Core
             return HalfMoves >= 100;
         }
 
-        
+
 
         /// <summary>
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
@@ -1333,7 +1328,7 @@ namespace LTChess.Core
         /// <param name="fen">The FEN to set the position to</param>
         public bool LoadFromFEN(string fen)
         {
-            Position temp = (Position) this.MemberwiseClone();
+            Position temp = (Position)this.MemberwiseClone();
 
             temp.Moves = this.Moves.Clone();
             temp.Captures = this.Captures.Clone();
@@ -1438,11 +1433,11 @@ namespace LTChess.Core
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log("Failed parsing '" + fen + "': ");
                 Log(ex.ToString());
-                
+
                 this.Moves.CopyFromArray(temp.Moves);
                 this.Captures.CopyFromArray(temp.Captures);
                 this.Castles.CopyFromArray(temp.Castles);

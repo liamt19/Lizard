@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
-using System.Numerics;
+﻿using System.Diagnostics;
 
 
 namespace LTChess.Data
@@ -422,7 +412,7 @@ namespace LTChess.Data
                 }
 
                 ulong mask = 0UL;
-                foreach(int mv in temp)
+                foreach (int mv in temp)
                 {
                     mask |= (1UL << mv);
                 }

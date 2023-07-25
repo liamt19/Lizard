@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
-
-using static LTChess.Magic.MagicBitboards;
-using static LTChess.Search.Endgame;
+﻿using static LTChess.Search.Endgame;
 using static LTChess.Search.EvaluationConstants;
 
 namespace LTChess.Search
@@ -98,14 +89,14 @@ namespace LTChess.Search
             materialScore[Color.White] *= ScaleMaterial[gamePhase];
             materialScore[Color.Black] *= ScaleMaterial[gamePhase];
 
-            double scoreW = materialScore[Color.White] + positionalScore[Color.White] + pawnScore[Color.White] + 
-                            knightScore[Color.White] + bishopScore[Color.White] + rookScore[Color.White] + 
-                            queenScore[Color.White] + kingScore[Color.White] + threatScore[Color.White] + 
+            double scoreW = materialScore[Color.White] + positionalScore[Color.White] + pawnScore[Color.White] +
+                            knightScore[Color.White] + bishopScore[Color.White] + rookScore[Color.White] +
+                            queenScore[Color.White] + kingScore[Color.White] + threatScore[Color.White] +
                             spaceScore[Color.White] + endgameScore[Color.White];
 
-            double scoreB = materialScore[Color.Black] + positionalScore[Color.Black] + pawnScore[Color.Black] + 
-                            knightScore[Color.Black] + bishopScore[Color.Black] + rookScore[Color.Black] + 
-                            queenScore[Color.Black] + kingScore[Color.Black] + threatScore[Color.Black] + 
+            double scoreB = materialScore[Color.Black] + positionalScore[Color.Black] + pawnScore[Color.Black] +
+                            knightScore[Color.Black] + bishopScore[Color.Black] + rookScore[Color.Black] +
+                            queenScore[Color.Black] + kingScore[Color.Black] + threatScore[Color.Black] +
                             spaceScore[Color.Black] + endgameScore[Color.Black];
 
             double scoreFinal = scoreW - scoreB;
@@ -262,7 +253,8 @@ namespace LTChess.Search
                 }
 
                 //  Small bonus for knights under our pawns
-                if ((SquareBB[idx] & Backward(pc, (us & bb.Pieces[Piece.Pawn])) & (Rank3BB | Rank4BB | Rank5BB | Rank6BB)) != 0) {
+                if ((SquareBB[idx] & Backward(pc, (us & bb.Pieces[Piece.Pawn])) & (Rank3BB | Rank4BB | Rank5BB | Rank6BB)) != 0)
+                {
                     score += ScoreKnightUnderPawn[gamePhase];
                 }
 
@@ -324,7 +316,7 @@ namespace LTChess.Search
 
                 //  Bonus for bishops that are on the a diagonal next to the king,
                 //  meaning they are able to attack the "king ring" squares.
-                score += (int) (popcount(BishopRays[idx] & NeighborsMask[theirKing]) * ScoreBishopNearKingDiagonal[gamePhase]);
+                score += (int)(popcount(BishopRays[idx] & NeighborsMask[theirKing]) * ScoreBishopNearKingDiagonal[gamePhase]);
 
 
                 var centerSquaresInRay = popcount(BishopRays[idx] & Center);

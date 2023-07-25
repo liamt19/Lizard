@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using System.Runtime.CompilerServices;
-
-namespace LTChess.Transposition
+﻿namespace LTChess.Transposition
 {
     public static unsafe class Zobrist
     {
@@ -158,7 +150,7 @@ namespace LTChess.Transposition
                 int idx = lsb((ulong)curr);
                 return hash ^ CastlingRightsHashes[idx];
             }
-            
+
         }
 
         /// <summary>

@@ -1,8 +1,5 @@
-﻿
-#define INLINE
+﻿#define INLINE
 //#define NOINLINING
-
-using System.Runtime.CompilerServices;
 
 namespace LTChess.Data
 {
