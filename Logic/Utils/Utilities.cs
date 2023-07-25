@@ -1,19 +1,6 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
 using System.Runtime.Intrinsics.X86;
-
-using static LTChess.Data.RunOptions;
-using LTChess.Data;
-using static LTChess.Data.Squares;
-using LTChess.Search;
-using LTChess.Core;
+using System.Text;
 
 namespace LTChess.Util
 {
@@ -108,18 +95,18 @@ namespace LTChess.Util
 
             Debug.WriteLine(s);
         }
-		
+
         public static class Direction
         {
-          public const int NORTH =  8;
-          public const int EAST  =  1;
-          public const int SOUTH = -NORTH;
-          public const int WEST  = -EAST;
+            public const int NORTH =  8;
+            public const int EAST  =  1;
+            public const int SOUTH = -NORTH;
+            public const int WEST  = -EAST;
 
-          public const int NORTH_EAST = NORTH + EAST;
-          public const int SOUTH_EAST = SOUTH + EAST;
-          public const int SOUTH_WEST = SOUTH + WEST;
-          public const int NORTH_WEST = NORTH + WEST;
+            public const int NORTH_EAST = NORTH + EAST;
+            public const int SOUTH_EAST = SOUTH + EAST;
+            public const int SOUTH_WEST = SOUTH + WEST;
+            public const int NORTH_WEST = NORTH + WEST;
         }
 
         /// <summary>
@@ -537,7 +524,7 @@ namespace LTChess.Util
         {
             int depth = info.MaxDepth;
             int selDepth = info.SelectiveDepth;
-            double time = Math.Max(1, Math.Round(info.SearchTime));
+            double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
             var score = FormatMoveScore(info.BestScore);
             double nodes = info.NodeCount;
             int nodesPerSec = ((int)(nodes / (time / 1000)));
@@ -549,6 +536,7 @@ namespace LTChess.Util
             sb.Append(" score " + score);
             sb.Append(" nodes " + nodes);
             sb.Append(" nps " + nodesPerSec);
+            sb.Append(" hashfull " + TranspositionTable.GetHashFull());
             sb.Append(" pv " + info.GetPVString(true));
 
             return sb.ToString();

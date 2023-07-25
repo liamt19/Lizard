@@ -1,13 +1,4 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
+﻿using System.Diagnostics;
 
 namespace LTChess.Transposition
 {
@@ -41,6 +32,24 @@ namespace LTChess.Transposition
         {
             return Table[hash % Size];
         }
+
+        [MethodImpl(Inline)]
+        public static int GetHashFull()
+        {
+            int entries = 0;
+            Debug.Assert(Size > 1000, "Hash is undersized!");
+
+            for (int i = 0; i < 1000; i++)
+            {
+                if (Table[i].NodeType != TTNodeType.Invalid)
+                {
+                    entries++;
+                }
+            }
+
+            return entries;
+        }
+
 
         public static void PrintStatus()
         {
