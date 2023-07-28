@@ -17,8 +17,8 @@ namespace LTChess.Search
             double[] score = new double[2];
             Bitboard bb = p.bb;
 
-            int wMat = bb.MaterialCount(Color.White);
-            int bMat = bb.MaterialCount(Color.Black);
+            int wMat = p.MaterialCount[Color.White];
+            int bMat = p.MaterialCount[Color.Black];
 
             bool isKRQVK = (popcount((bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen])) != 0 && popcount(bb.Pieces[Piece.Pawn]) <= 2);
             bool isKPVKP = (popcount(bb.Colors[Color.White] | bb.Colors[Color.Black]) == popcount(bb.Pieces[Piece.Pawn]) + 2);
