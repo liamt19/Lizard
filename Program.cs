@@ -2,7 +2,7 @@
 //  Thanks C# 10!
 
 global using System.Runtime.CompilerServices;
-
+global using System.Diagnostics;
 
 global using LTChess.Core;
 global using LTChess.Data;
@@ -22,12 +22,16 @@ global using static LTChess.Search.SearchConstants;
 global using static LTChess.Search.ThreadedEvaluation;
 global using static LTChess.Util.PositionUtilities;
 global using static LTChess.Util.Utilities;
+global using static LTChess.Util.Interop;
 
-using System.Diagnostics;
+using System.Reflection;
 
+using LTChess.Book;
+using System.Runtime.InteropServices;
 
 namespace LTChess
 {
+
     public static class Program
     {
         private static Position p = new Position();
@@ -36,6 +40,7 @@ namespace LTChess
         public static void Main()
         {
             InitializeAll();
+            p = new Position();
             info = new SearchInformation(p);
 
             DoInputLoop();
@@ -50,12 +55,12 @@ namespace LTChess
             Stopwatch sw = Stopwatch.StartNew();
 #endif
 
-            MagicBitboards.Initialize();
-            PrecomputedData.Initialize();
-            Zobrist.Initialize();
-            EvaluationTable.Initialize();
-            TranspositionTable.Initialize();
-            PSQT.Initialize();
+            Utilities.CheckConcurrency();
+
+            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
+            {
+                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+            }
 
             WarmUpJIT();
 
