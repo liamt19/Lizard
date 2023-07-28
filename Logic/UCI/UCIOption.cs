@@ -9,6 +9,7 @@ namespace LTChess.Core
         public string DefaultValue;
         public string MinValue;
         public string MaxValue;
+        public int ValueArrayIndex = -1;
 
         public FieldInfo FieldHandle;
 

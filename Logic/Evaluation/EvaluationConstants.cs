@@ -17,16 +17,16 @@
 
         public static readonly int[] PieceValues = { ValuePawn, ValueKnight, ValueBishop, ValueRook, ValueQueen };
 
-        public static readonly double[] ScaleMaterial = { 1.75, 2.00 };
-        public static readonly double[] ScalePositional = { 1.75 - 0.20, 2.00 - 0.20 };
-        public static readonly double[] ScalePawns = { 0.8, 1.25 };
-        public static readonly double[] ScaleKnights = { 0.9, 1.0 };
-        public static readonly double[] ScaleBishops = { 0.9, 1.0 };
-        public static readonly double[] ScaleRooks = { 0.9, 1.0 };
-        public static readonly double[] ScaleQueens = { 0.9, 1.1 };
-        public static readonly double[] ScaleKingSafety = { 0.9, 0.6 };
-        public static readonly double[] ScaleThreats = { 0.50 - 0.40, 0.50 - 0.40 };
-        public static readonly double[] ScaleSpace = { 1.1, 1.0 };
+        public static double[] ScaleMaterial = { 1.75, 2.00 };
+        public static double[] ScalePositional = { 1.55, 1.80 };
+        public static double[] ScalePawns = { 0.8, 1.25 };
+        public static double[] ScaleKnights = { 0.9, 1.0 };
+        public static double[] ScaleBishops = { 0.9, 1.0 };
+        public static double[] ScaleRooks = { 0.9, 1.0 };
+        public static double[] ScaleQueens = { 0.9, 1.1 };
+        public static double[] ScaleKingSafety = { 0.9, 0.6 };
+        public static double[] ScaleThreats = { 0.10, 0.10 };
+        public static double[] ScaleSpace = { 1.1, 1.0 };
 
         public const double ScorePawnOverloaded = -25;
         public const double ScorePawnUndermineSupported = 10;
@@ -117,9 +117,18 @@
             foreach (var term in fields)
             {
                 Console.Write(term.Name + ": ");
-                if (term.GetType() == typeof(int[]) || term.GetType() == typeof(double[]))
+                if (term.FieldType == typeof(int[]))
                 {
-                    object[] arr = (object[])term.GetValue(null);
+                    int[] arr = (int[])term.GetValue(null);
+                    Console.Write("[");
+                    for (int i = 0; i < arr.Length; i++)
+                    {
+                        Console.Write(arr[i] + (i != arr.Length - 1 ? ", " : string.Empty));
+                    }
+                    Console.Write("]");
+                }
+                else if (term.FieldType == typeof(double[])) {
+                    double[] arr = (double[])term.GetValue(null);
                     Console.Write("[");
                     for (int i = 0; i < arr.Length; i++)
                     {
