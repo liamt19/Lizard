@@ -40,6 +40,8 @@ namespace LTChess.Search
         /// </summary>
         public int MaxSearchTime = DefaultSearchTime;
 
+        public int MovesToGo = -1;
+
         /// <summary>
         /// Set to the value of winc/binv if one was provided during a UCI "go" command.
         /// Only used
@@ -121,7 +123,7 @@ namespace LTChess.Search
 
 
         [MethodImpl(Inline)]
-        private static string GetFormattedTime()
+        public static string GetFormattedTime()
         {
             return ",\tcurrent time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
         }
@@ -132,8 +134,13 @@ namespace LTChess.Search
             int inc = PlayerIncrement[ToMove];
             int newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / Math.Max(20, 20 - moveCount));
 
+            if (MovesToGo != -1)
+            {
+                newSearchTime = Math.Max(newSearchTime, PlayerTime[ToMove] / MovesToGo);
+            }
+
             this.MaxSearchTime = newSearchTime;
-            Log("[INFO]: setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
+            Log("Setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
         }
     }
 }
