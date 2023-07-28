@@ -1,6 +1,11 @@
-﻿using System.Diagnostics;
+﻿
+#define TUNE
+
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
+
+using LTChess.Book;
 
 namespace LTChess.Core
 {
@@ -46,6 +51,11 @@ namespace LTChess.Core
         /// </summary>
         public static void LogString(string s)
         {
+            if (IsRunningConcurrently)
+            {
+                return;
+            }
+
             lock (LogFileLock)
             {
                 using (FileStream fs = new FileStream(LogFileName, FileMode.Append, FileAccess.Write, FileShare.Read))
@@ -371,6 +381,10 @@ namespace LTChess.Core
                 {
                     info.TimeManager.PlayerIncrement[Color.Black] = int.Parse(param[i + 1]);
                 }
+                else if (param[i] == "movestogo")
+                {
+                    info.TimeManager.MovesToGo = int.Parse(param[i + 1]);
+                }
             }
 
             if ((hasWhiteTime && info.Position.ToMove == Color.White && hasMoveTime && (whiteTime < info.TimeManager.MaxSearchTime)) ||
@@ -396,6 +410,38 @@ namespace LTChess.Core
 
                 //info.TimeManager.MaxSearchTime = newSearchTime;
                 //LogString("[INFO]: setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
+            }
+
+            bool gotBookMove = false;
+            if (SearchConstants.UsePolyglot && info.Position.Moves.Count < (SearchConstants.PolyglotMaxPly * 2))
+            {
+                if (Polyglot.Probe(info.Position, Polyglot.DefaultMethod, out Move bookMove, out int moveWeight))
+                {
+                    gotBookMove = true;
+                    info.BestMove = bookMove;
+                    info.BestScore = moveWeight;
+                    Log("Polyglot probe returned " + bookMove.ToString(info.Position) + " eval " + moveWeight);
+
+                    SendString("info depth 1 seldepth 1 time 1 score cp " + moveWeight + " nodes 1 nps 1 hashfull 0 pv " + bookMove.ToString());
+
+                    if (SearchConstants.PolyglotSimulateTime)
+                    {
+                        Log("PolyglotSimulateTime is true, sleeping for " + info.TimeManager.MaxSearchTime + " ms" + TimeManager.GetFormattedTime());
+                        Thread.Sleep(info.TimeManager.MaxSearchTime);
+                        Log("Woke up" + TimeManager.GetFormattedTime());
+                    }
+
+                    info.OnSearchFinish?.Invoke(info);
+                }
+                else
+                {
+                    Log("Polyglot probe failed");
+                }
+            }
+
+            if (gotBookMove)
+            {
+                return;
             }
 
             SimpleSearch.StartSearching(ref info, !hasDepthCommand);
@@ -435,10 +481,30 @@ namespace LTChess.Core
 
         private void HandleSetOption(string optName, string optValue)
         {
+            //  This checks if optName was sent in it's "friendly format" (Use Quiescence SEE), or sent regularly (UseQuiescenceSEE)
             if (!Options.ContainsKey(optName))
             {
-                LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
-                return;
+                string noSpaces = optName.Replace(" ", string.Empty);
+                string addedSpaces = Regex.Replace(optName, "([A-Z]+)", (match) => { return " " + match; }).Trim();
+
+                bool fixedName = false;
+                foreach (var key in Options.Keys)
+                {
+                    if (key == noSpaces || key == addedSpaces)
+                    {
+                        LogString("[WARN]: Fixed name for setoption command '" + optName + "' -> '" + key + "'");
+                        optName = key;
+                        fixedName = true;
+                        break;
+                    }
+                }
+
+                if (!fixedName)
+                {
+                    LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
+                    return;
+                }
+
             }
 
             try
@@ -453,9 +519,11 @@ namespace LTChess.Core
                 {
                     opt.FieldHandle.SetValue(null, int.Parse(optValue));
                 }
-                else
+                else if (opt.FieldHandle.FieldType == typeof(double[]))
                 {
-                    opt.FieldHandle.SetValue(null, optValue);
+                    double[] arr = (double[]) opt.FieldHandle.GetValue(null);
+                    arr[opt.ValueArrayIndex] = double.Parse(optValue);
+                    opt.FieldHandle.SetValue(null, arr);
                 }
 
             }
@@ -489,6 +557,26 @@ namespace LTChess.Core
                 UCIOption opt = new UCIOption(friendlyName, fieldType, defaultValue, field);
                 Options.Add(friendlyName, opt);
             }
+
+            //  Add some of the terms in EvaluationConstants as UCI options
+#if TUNE
+            fields = typeof(EvaluationConstants).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => (!x.IsLiteral && x.Name.StartsWith("Scale"))).ToList();
+
+            foreach (FieldInfo field in fields)
+            {
+                string fieldType = (field.FieldType == typeof(bool) ? "check" : "spin");
+
+                string defaultValueMG = ((double[])field.GetValue(null))[EvaluationConstants.GamePhaseNormal].ToString().ToLower();
+                UCIOption optMG = new UCIOption(field.Name + "MG", fieldType, defaultValueMG, field);
+                optMG.ValueArrayIndex = EvaluationConstants.GamePhaseNormal;
+                Options.Add(optMG.Name, optMG);
+
+                string defaultValueEG = ((double[])field.GetValue(null))[EvaluationConstants.GamePhaseEndgame].ToString().ToLower();
+                UCIOption optEG = new UCIOption(field.Name + "EG", fieldType, defaultValueEG, field);
+                optEG.ValueArrayIndex = EvaluationConstants.GamePhaseEndgame;
+                Options.Add(optEG.Name, optEG);
+            }
+#endif
 
         }
     }

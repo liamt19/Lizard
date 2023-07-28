@@ -200,6 +200,7 @@
         /// </summary>
         public static int LMRDepth = 3;
 
+        public static bool UseLogReductionTable = false;
 
 
 
@@ -219,6 +220,28 @@
         /// A pawn must be at or closer than this distance to cause an extension.
         /// </summary>
         public static int PassedPawnExtensionDistance = 3;
+
+
+
+        /// <summary>
+        /// Whether to use the included (small) Polyglot opening book file.
+        /// Most UCI's will handle this automatically, but using a book can add some variety to the 
+        /// first couple moves that engines make.
+        /// </summary>
+        public static bool UsePolyglot = false;
+
+        /// <summary>
+        /// How many moves to try to play from the Polyglot file. 
+        /// A ply of X means that from the starting position it will try probing for the first X moves that it makes.
+        /// </summary>
+        public static int PolyglotMaxPly = 4;
+
+        /// <summary>
+        /// Whether to simulate the time it would ordinarily take to search when using an opening book.
+        /// Probing a Polyglot file only takes 5-20 ms, so to make things more fair for engines that don't use books,
+        /// this will pick the move it wants to make in ~10 ms and waste the remaining few seconds before responding with that move.
+        /// </summary>
+        public static bool PolyglotSimulateTime = false;
 
     }
 }

@@ -61,6 +61,16 @@ namespace LTChess.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] baron30 {
+            get {
+                object obj = ResourceManager.GetObject("baron30", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Position: 1/35 (rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1)
         ///a2a3: 8457
         ///b2b3: 9345

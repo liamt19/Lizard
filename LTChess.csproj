@@ -50,12 +50,17 @@
     <Compile Remove="Logic\Search\Mate.cs" />
     <Compile Remove="Logic\Search\NegaMax.cs" />
     <Compile Remove="Logic\Search\Quiescence.cs" />
-    <Compile Remove="Logic\Utils\CommonFENs.cs" />
-    <Compile Remove="Logic\Utils\Stockfish.cs" />
+    <Compile Remove="Logic\Util\CommonFENs.cs" />
+    <Compile Remove="Logic\Util\Stockfish.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\baron30.bin" />
   </ItemGroup>
 
 
   <ItemGroup>
+    <EmbeddedResource Include="Resources\baron30.bin" />
     <EmbeddedResource Include="Resources\sf14bench_perft4.txt" />
     <EmbeddedResource Include="Resources\sf14bench_perft5.txt" />
   </ItemGroup>
