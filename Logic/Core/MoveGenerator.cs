@@ -156,7 +156,6 @@
                 int cl = CoordToIndex(x - 1, y1);
                 move = new Move(idx, cl);
                 move.EnPassant = true;
-                move.idxEnPassant = idxPawn;
                 return true;
             }
 
@@ -166,7 +165,6 @@
                 int cr = CoordToIndex(x + 1, y1);
                 move = new Move(idx, cr);
                 move.EnPassant = true;
-                move.idxEnPassant = idxPawn;
                 return true;
             }
 

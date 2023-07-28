@@ -312,6 +312,9 @@
             }
         }
 
+        /// <summary>
+        /// Returns a mask of pieces which are pinned to <paramref name="pc"/>'s king.
+        /// </summary>
         [MethodImpl(Inline)]
         public ulong PinnedPieces(int pc)
         {
@@ -326,14 +329,15 @@
             while (pinners != 0)
             {
                 int idx = lsb(pinners);
-                pinners = poplsb(pinners);
 
                 temp = BetweenBB[ourKing][idx] & (Colors[pc] | them);
 
-                if (popcount(temp) == 1 && (temp & them) == 0)
+                if (temp != 0 && !MoreThanOne(temp))
                 {
                     pinned |= temp;
                 }
+
+                pinners = poplsb(pinners);
             }
 
             return pinned;
@@ -445,12 +449,12 @@
         [MethodImpl(Inline)]
         public bool IsPseudoLegal(in Move move)
         {
-            if (GetPieceAtIndex(move.from) != Piece.None)
+            if (GetPieceAtIndex(move.From) != Piece.None)
             {
-                if (GetPieceAtIndex(move.to) != Piece.None)
+                if (GetPieceAtIndex(move.To) != Piece.None)
                 {
                     //  We can't capture our own color pieces
-                    return GetColorAtIndex(move.from) != GetColorAtIndex(move.to);
+                    return GetColorAtIndex(move.From) != GetColorAtIndex(move.To);
                 }
 
                 //  This is a move to an empty square.

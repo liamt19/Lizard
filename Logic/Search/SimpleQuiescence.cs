@@ -38,30 +38,13 @@ namespace LTChess.Search
             SearchStatistics.QCalls++;
 #endif
 
-
-            int standingPat = EvaluationTable.ProbeOrEval(ref info);
-
             bool isPV = typeof(NodeType) == typeof(PVNode);
             if (isPV && ply > info.SelectiveDepth)
             {
                 info.SelectiveDepth = ply;
             }
 
-            if (!isPV)
-            {
-                TTEntry ttEntry = TranspositionTable.Probe(info.Position.Hash);
-                if (ttEntry.NodeType != TTNodeType.Invalid && ttEntry.Validate(info.Position.Hash))
-                {
-                    if (ttEntry.NodeType == TTNodeType.Exact || ttEntry.NodeType == TTNodeType.Beta && ttEntry.Eval >= beta)
-                    {
-#if DEBUG || SHOW_STATS
-                        SearchStatistics.QuiescenceNodesTTHits++;
-#endif
-                        return ttEntry.Eval;
-                    }
-                }
-            }
-
+            int standingPat = EvaluationTable.ProbeOrEval(ref info);
 
             if (standingPat >= beta)
             {
@@ -76,34 +59,6 @@ namespace LTChess.Search
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = info.Position.GenAllLegalMovesTogether(list, true);
 
-
-            if (false && size == 0)
-            {
-                //  We are only generating captures, so if there aren't any captures left
-                //  we will have to see if there are still legal moves to see if this is a draw/mate or not
-
-                if (info.Position.GenAllLegalMovesTogether(list) == 0)
-                {
-                    //  We have no legal moves
-
-                    if ((info.Position.CheckInfo.InCheck || info.Position.CheckInfo.InDoubleCheck))
-                    {
-                        //  If we have no legal moves and are in check, this is mate.
-                        return info.MakeMateScore();
-                    }
-                    else
-                    {
-                        //  If we have no legal moves and are NOT in check, this is a stalemate.
-                        return -ThreadedEvaluation.ScoreDraw;
-                    }
-                }
-                else
-                {
-                    //  We do have legal moves left but they aren't captures, so stop doing quiescence and return alpha.
-                    return alpha;
-                }
-            }
-
             int numCaps = SortByCaptureValueFast(ref info.Position.bb, list, size);
             for (int i = 0; i < numCaps; i++)
             {
@@ -111,7 +66,7 @@ namespace LTChess.Search
 
                 if (UseDeltaPruning)
                 {
-                    int theirPieceVal = GetPieceValue(info.Position.bb.PieceTypes[list[i].to]);
+                    int theirPieceVal = GetPieceValue(info.Position.bb.PieceTypes[list[i].To]);
 
                     if (standingPat + theirPieceVal + DeltaPruningMargin < alpha)
                     {
@@ -171,7 +126,7 @@ namespace LTChess.Search
             {
                 if (list[i].Capture)
                 {
-                    int theirPieceVal = GetPieceValue(bb.PieceTypes[list[i].to]);
+                    int theirPieceVal = GetPieceValue(bb.PieceTypes[list[i].To]);
                     scores[i] = theirPieceVal;
                     numCaps++;
                 }
@@ -207,7 +162,7 @@ namespace LTChess.Search
                 max = i;
                 for (int j = i + 1; j < size; j++)
                 {
-                    if (GetPieceValue(bb.PieceTypes[list[j].to]) > GetPieceValue(bb.PieceTypes[list[max].to]))
+                    if (GetPieceValue(bb.PieceTypes[list[j].To]) > GetPieceValue(bb.PieceTypes[list[max].To]))
                     {
                         max = j;
                     }
@@ -284,14 +239,14 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public static int SEE(ref Bitboard bb, ref Move move)
         {
-            int theirValue = (move.EnPassant ? ValuePawn : GetPieceValue(bb.GetPieceAtIndex(move.to)));
+            int theirValue = (move.EnPassant ? ValuePawn : GetPieceValue(bb.GetPieceAtIndex(move.To)));
 
             if (move.Promotion)
             {
                 return theirValue - (GetPieceValue(move.PromotionTo) - ValuePawn);
             }
 
-            int ourValue = GetPieceValue(bb.GetPieceAtIndex(move.from));
+            int ourValue = GetPieceValue(bb.GetPieceAtIndex(move.From));
 
             return theirValue - ourValue;
         }

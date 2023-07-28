@@ -3,118 +3,164 @@ using System.Text;
 
 namespace LTChess.Data
 {
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Auto)]
     public unsafe struct Move
     {
-        public static Move Null = new Move();
+        public static readonly Move Null = new Move();
 
-        /// <summary>
-        /// The index on the board that the piece is coming from
-        /// </summary>
-        public int from;
+        //  7 bits for: idxChecker and idxDoubleChecker since they can be 64.
+        //  6 bits for: From, To, and PromotionTo
+        //  Total of 32.
+        private int _data;
 
-        /// <summary>
-        /// The index on the board that the piece is going to
-        /// </summary>
-        public int to;
+        //  1 bit for each of the 6 flags.
+        //  Total of 6.
+        //  This could be a byte instead since we only need 6 bits
+        //  but it will be padded to a size of 4 bytes anyways.
+        private int _flags;
 
-        /// <summary>
-        /// Set to the index of the pawn that would be captured via en passant
-        /// </summary>
-        public int idxEnPassant = 0;
+        private const int FlagCapture =     0b000001;
+        private const int FlagEnPassant =   0b000010;
+        private const int FlagCastle =      0b000100;
+        private const int FlagCheck =       0b001000;
+        private const int FlagDoubleCheck = 0b010000;
+        private const int FlagPromotion =   0b100000;
 
-        /// <summary>
-        /// Set to the index of the piece that causes the check, which is this.to unless this move causes a discovery
-        /// </summary>
-        public int idxChecker = NoCheckers;
+        public int To
+        {
+            get => (_data & 0x3F);
+            set => _data = ((_data & ~0x3F) | value);
+        }
 
-        /// <summary>
-        /// Set to the index of the piece that now has a discovered attack on their king after this piece moved.
-        /// </summary>
-        public int idxDoubleChecker = NoCheckers;
+        public int From
+        {
+            get => ((_data >> 6) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
+        }
 
-        /// <summary>
-        /// The ID of the piece that this pawn is promoting to.
-        /// </summary>
-        public int PromotionTo = Piece.None;
+        public int PromotionTo
+        {
+            get => ((_data >> 12) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 12)) | (value << 12));
+        }
 
-        /// <summary>
-        /// True if this move captures an enemy piece.
-        /// </summary>
-        public bool Capture = false;
+        public int SqChecker
+        {
+            get => ((_data >> 18) & 0x7F);
+            set => _data = ((_data & ~(0x7F << 18)) | (value << 18));
+        }
+        
+        public int SqDoubleChecker
+        {
+            get => ((_data >> 25) & 0x7F);
+            set => _data = ((_data & ~(0x7F << 25)) | (value << 25));
+        }
 
-        /// <summary>
-        /// True if this move is a pawn capturing another en passant.
-        /// </summary>
-        public bool EnPassant = false;
+        public bool Capture
+        {
+            get => ((_flags & FlagCapture) != 0);
+            set => _flags |= FlagCapture;
+        }
 
-        /// <summary>
-        /// True if this move is a kingside/queenside castling move.
-        /// <br></br>
-        /// <see langword="this"></see>.from will be the index of the king, and <see langword="this"></see>.to will be C1/8 or g1/8.
-        /// </summary>
-        public bool Castle = false;
+        public bool EnPassant
+        {
+            get => ((_flags & FlagEnPassant) != 0);
+            set => _flags |= FlagEnPassant;
+        }
 
-        /// <summary>
-        /// True if this move directly checks the enemy king, or discovers an attack on their king.
-        /// Mutually exclusive with <c>CausesDoubleCheck</c>.
-        /// </summary>
-        public bool CausesCheck = false;
+        public bool Castle
+        {
+            get => ((_flags & FlagCastle) != 0);
+            set => _flags |= FlagCastle;
+        }
 
-        /// <summary>
-        /// True if this move causes our opponent's king to be in check from this piece as well as another.
-        /// Mutually exclusive with <c>CausesCheck</c>.
-        /// </summary>
-        public bool CausesDoubleCheck = false;
+        public bool CausesCheck
+        {
+            get => ((_flags & FlagCheck) != 0);
+            set => _flags |= FlagCheck;
+        }
 
-        /// <summary>
-        /// True if this move is a pawn promotion.
-        /// </summary>
-        public bool Promotion = false;
+        public bool CausesDoubleCheck
+        {
+            get => ((_flags & FlagDoubleCheck) != 0);
+            set => _flags |= FlagDoubleCheck;
+        }
 
-        /// <summary>
-        /// Must be set manually, only changes the "+" to a "#" (or adds a "#") in the ToString method.
-        /// </summary>
-        public bool IsMate = false;
+        public bool Promotion
+        {
+            get => ((_flags & FlagPromotion) != 0);
+            set => _flags |= FlagPromotion;
+        }
 
 
         public Move(int from, int to)
         {
-            this.from = from;
-            this.to = to;
+            _data |= (to);
+            _data |= (from << 6);
         }
 
-        public Move(int from, int to, int promotion)
+        public Move(int from, int to, int promotionTo)
         {
-            this.from = from;
-            this.to = to;
-
-            this.Promotion = true;
-            this.PromotionTo = promotion;
+            _data |= (to);
+            _data |= (from << 6);
+            _data |= (promotionTo << 12);
+            Promotion = true;
         }
 
-        public Move()
+        public Move(Move m)
         {
-            this.from = 0;
-            this.to = 0;
-            this.idxChecker = 0;
-            this.idxDoubleChecker = 0;
-            this.PromotionTo = 0;
+            _data |= (m.To);
+            _data |= (m.From << 6);
+            _data |= (m.PromotionTo << 12);
+            _data |= (m.SqChecker << 18);
+            _data |= (m.SqDoubleChecker << 25);
+
+
+            if (m.Capture)
+            {
+                _flags |= FlagCapture;
+            }
+            if (m.EnPassant)
+            {
+                _flags |= FlagEnPassant;
+            }
+            if (m.Castle)
+            {
+                _flags |= FlagCastle;
+            }
+            if (m.CausesCheck)
+            {
+                _flags |= FlagCheck;
+            }
+            if (m.CausesDoubleCheck)
+            {
+                _flags |= FlagDoubleCheck;
+            }
+            if (m.Promotion)
+            {
+                _flags |= FlagPromotion;
+            }
+
         }
+
 
         [MethodImpl(Inline)]
         public bool IsNull()
         {
-            return (from == 0 && to == 0 && idxChecker == 0);
+            return (From == 0 && To == 0 && SqChecker == 0);
         }
 
-        /// <summary>
-        /// This notation is what chess UCI's use, which just shows the "from" square and "to" square. So 1. e4 looks like "e2e4".
-        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong GetMoveMask()
+        {
+            return (SquareBB[From] | SquareBB[To]);
+        }
+
+        [MethodImpl(Inline)]
         public string SmithNotation()
         {
-            IndexToCoord(from, out int fx, out int fy);
-            IndexToCoord(to, out int tx, out int ty);
+            IndexToCoord(From, out int fx, out int fy);
+            IndexToCoord(To, out int tx, out int ty);
 
             if (Promotion)
             {
@@ -126,14 +172,15 @@ namespace LTChess.Data
             }
         }
 
+        [MethodImpl(Inline)]
         public string ToString(Position position)
         {
             StringBuilder sb = new StringBuilder();
-            int pt = position.bb.PieceTypes[from];
+            int pt = position.bb.PieceTypes[From];
 
             if (Castle)
             {
-                if (to > from)
+                if (To > From)
                 {
                     sb.Append("O-O");
                 }
@@ -144,13 +191,13 @@ namespace LTChess.Data
             }
             else
             {
-                bool cap = position.bb.Occupied(to);
+                bool cap = position.bb.Occupied(To);
 
                 if (pt == Piece.Pawn)
                 {
                     if (cap || EnPassant)
                     {
-                        sb.Append(GetFileChar(GetIndexFile(from)));
+                        sb.Append(GetFileChar(GetIndexFile(From)));
                     }
                 }
                 else
@@ -164,7 +211,7 @@ namespace LTChess.Data
                 }
 
 
-                sb.Append(IndexToString(to));
+                sb.Append(IndexToString(To));
 
                 if (Promotion)
                 {
@@ -172,11 +219,7 @@ namespace LTChess.Data
                 }
             }
 
-            if (IsMate)
-            {
-                sb.Append("#");
-            }
-            else if (CausesCheck || CausesDoubleCheck)
+            if (CausesCheck || CausesDoubleCheck)
             {
                 sb.Append("+");
             }
@@ -185,127 +228,83 @@ namespace LTChess.Data
             return sb.ToString();
         }
 
-
-        public string ToStringCorrect(Position position)
-        {
-            //  TODO: this.
-            Bitboard bb = position.bb;
-
-            int pt = bb.GetPieceAtIndex(from);
-            int pc = bb.GetColorAtIndex(from);
-            ulong pieceBB = (bb.Pieces[pt] & bb.Colors[pc]);
-
-            Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = position.GenAllLegalMovesTogether(list);
-
-            //  If multiple of the same type of piece can move to the same square, We include on of the following to differentiate them:
-            //  The file from which they moved.
-            //  The rank from which they moved.
-            //  Both the file and rank.
-
-            //  7k/2N1N3/1N6/8/1N3N2/2N1N3/8/K7 w - - 0 1
-
-            ulong rankBB = GetRankBB(from) & pieceBB;
-            ulong fileBB = GetFileBB(from) & pieceBB;
-
-            StringBuilder sb = new StringBuilder();
-            if (Castle)
-            {
-                if (to > from)
-                {
-                    sb.Append("O-O");
-                }
-                else
-                {
-                    sb.Append("O-O-O");
-                }
-            }
-            else
-            {
-                bool cap = position.bb.Occupied(to);
-
-                if (pt == Piece.Pawn)
-                {
-                    if (cap || EnPassant)
-                    {
-                        sb.Append(GetFileChar(GetIndexFile(from)));
-                    }
-                }
-                else
-                {
-                    sb.Append(PieceToFENChar(pt));
-                }
-
-                if (pt == Piece.Knight && popcount(PrecomputedData.KnightMasks[to] & pieceBB) > 1)
-                {
-                    if (popcount(fileBB) == 1)
-                    {
-                        sb.Append(GetFileChar(GetIndexFile(from)));
-                    }
-                    else if (popcount(rankBB) == 1)
-                    {
-                        sb.Append(GetIndexRank(from) + 1);
-                    }
-                    else
-                    {
-                        sb.Append(GetFileChar(GetIndexFile(from)));
-                        sb.Append(GetIndexRank(from) + 1);
-                    }
-                }
-
-                if (cap || EnPassant)
-                {
-                    sb.Append('x');
-                }
-
-
-                sb.Append(IndexToString(to));
-
-                if (Promotion)
-                {
-                    sb.Append("=" + PieceToFENChar(PromotionTo));
-                }
-            }
-
-            if (IsMate)
-            {
-                sb.Append("#");
-            }
-            else if (CausesCheck || CausesDoubleCheck)
-            {
-                sb.Append("+");
-            }
-
-
-            return sb.ToString();
-        }
-
+        [MethodImpl(Inline)]
         public override string ToString()
         {
             return SmithNotation();
-        }
 
-        /// <summary>
-        /// Returns a ulong with bits set at the indices this.from and this.to, to be xor'd with the board.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public ulong GetMoveMask()
-        {
-            return (SquareBB[from] | SquareBB[to]);
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append(Convert.ToString(_data, 2));
+            if (sb.Length != 32)
+            {
+                sb.Insert(0, "0", 32 - sb.Length);
+            }
+
+            sb.Insert(26, " ");
+            sb.Insert(20, " ");
+            sb.Insert(14, " ");
+            sb.Insert(7, " ");
+
+            //sb.Append(Convert.ToString(flags, 2));
+
+            return sb.ToString();
         }
 
         [MethodImpl(Inline)]
         public override bool Equals(object? obj)
         {
             Move other = (Move)obj;
-            return (other.from == this.from && other.to == this.to && other.idxChecker == this.idxChecker);
+            return (other.From == this.From && other.To == this.To && other.SqChecker == this.SqChecker);
         }
 
+        [MethodImpl(Inline)]
+        public bool ExactlyEqual(object? obj)
+        {
+            Move other = (Move)obj;
+            if (other.From != this.From || other.To != this.To)
+            {
+                return false;
+            }
+
+            if (other.SqChecker != this.SqChecker || other.SqDoubleChecker != this.SqDoubleChecker)
+            {
+                return false;
+            }
+
+            if (other.PromotionTo != this.PromotionTo)
+            {
+                return false;
+            }
+
+            if (other.CausesCheck != this.CausesCheck || other.CausesDoubleCheck != this.CausesDoubleCheck)
+            {
+                return false;
+            }
+
+            if (other.Castle != this.Castle || other.Capture != this.Capture)
+            {
+                return false;
+            }
+
+            if (other.EnPassant != this.EnPassant || other.Promotion != this.Promotion)
+            {
+                return false;
+            }
+
+
+            return true;
+        }
+
+
+        [MethodImpl(Inline)]
         public static bool operator ==(Move left, Move right)
         {
             return left.Equals(right);
         }
 
+        [MethodImpl(Inline)]
         public static bool operator !=(Move left, Move right)
         {
             return !(left == right);
