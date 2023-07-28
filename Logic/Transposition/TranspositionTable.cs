@@ -2,13 +2,23 @@
 
 namespace LTChess.Transposition
 {
-    public class TranspositionTable
+    public static class TranspositionTable
     {
         private static TTEntry[] Table;
         private static ulong Size;
 
+        private static bool Initialized = false;
+
+        static TranspositionTable()
+        {
+            if (!Initialized)
+            {
+                Initialize();
+            }
+        }
+
         /// <summary>
-        /// 16 mb is enough for 381300 entries
+        /// 1 mb is enough for 65,536 entries. 
         /// </summary>
         public static unsafe void Initialize(int mb = 16)
         {
