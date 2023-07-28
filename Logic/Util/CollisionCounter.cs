@@ -13,7 +13,7 @@
         private static Random r;
 
         public static Dictionary<int, ulong> SeedCollisionDict = new Dictionary<int, ulong>();
-        public static Dictionary<ushort, ulong> KeyHashDict = new Dictionary<ushort, ulong>();
+        public static Dictionary<uint, ulong> KeyHashDict = new Dictionary<uint, ulong>();
 
         public static ulong CollisionCount = 0;
 
@@ -39,7 +39,7 @@
                     string fen = FishBench.BenchFENs[i];
                     KeyHashDict.Clear();
                     p = new Position(fen);
-                    Perft(Depth);
+                    ColPerft(Depth);
 
                     if (i == 10)
                         break;
@@ -56,7 +56,7 @@
 
 
         [MethodImpl(Inline)]
-        public static ulong Perft(int depth)
+        public static ulong ColPerft(int depth)
         {
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMovesTogether(list);
@@ -76,7 +76,7 @@
             {
                 p.MakeMove(list[i]);
 
-                ushort thisKey = TTEntry.MakeKey(p.Hash);
+                uint thisKey = TTEntry.MakeKey(p.Hash);
 
                 if (KeyHashDict.ContainsKey(thisKey))
                 {
@@ -90,7 +90,7 @@
                     KeyHashDict.Add(thisKey, p.Hash);
                 }
 
-                n += Perft(depth - 1);
+                n += ColPerft(depth - 1);
                 p.UnmakeMove();
             }
 
