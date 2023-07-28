@@ -16,7 +16,7 @@
         }
 
         [MethodImpl(Inline)]
-        public bool Validate(ulong hash)
+        public bool ValidateKey(ulong hash)
         {
             return Key == (ushort)(hash >> KeyShift);
         }

@@ -1,18 +1,26 @@
 ﻿namespace LTChess.Transposition
 {
-    public class EvaluationTable
+    public static class EvaluationTable
     {
-        public const int DefaultEvaluationTableSizeMB = 32;
-
         public const ulong InvalidKey = 0UL;
 
         private static ETEntry[] Table;
         private static ulong Size;
 
+        private static bool Initialized = false;
+
+        static EvaluationTable()
+        {
+            if (!Initialized)
+            {
+                Initialize();
+            }
+        }
+
         /// <summary>
-        /// 8mb is enough for 2097152 entries
+        /// 1mb is enough for 262,144 entries
         /// </summary>
-        public static unsafe void Initialize(int mb = DefaultEvaluationTableSizeMB)
+        public static unsafe void Initialize(int mb = 16)
         {
             //  1024 * 1024 = 1048576 == 0x100000UL
             Size = ((ulong)mb * 0x100000UL) / (ulong)sizeof(ETEntry);
@@ -44,7 +52,7 @@
             int staticEval;
 
             ETEntry etEntry = EvaluationTable.Probe(info.Position.Hash);
-            if (etEntry.Key == EvaluationTable.InvalidKey || !etEntry.Validate(info.Position.Hash) || etEntry.Score == ETEntry.InvalidScore)
+            if (etEntry.Key == EvaluationTable.InvalidKey || !etEntry.ValidateKey(info.Position.Hash) || etEntry.Score == ETEntry.InvalidScore)
             {
                 staticEval = info.GetEvaluation(info.Position, info.Position.ToMove);
                 EvaluationTable.Save(info.Position.Hash, (short)staticEval);
