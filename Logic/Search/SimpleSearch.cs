@@ -2,6 +2,7 @@
 #define SHOW_STATS
 
 
+using LTChess.Data;
 using LTChess.Search.Ordering;
 
 namespace LTChess.Search
@@ -224,7 +225,7 @@ namespace LTChess.Search
             Move BestMove = Move.Null;
             int startingAlpha = alpha;
             TTEntry ttEntry = TranspositionTable.Probe(posHash);
-            if (ttEntry.NodeType != TTNodeType.Invalid && ttEntry.Validate(posHash))
+            if (ttEntry.NodeType != TTNodeType.Invalid && ttEntry.ValidateKey(posHash))
             {
                 if (!isPV && ttEntry.Depth >= depth)
                 {
@@ -258,6 +259,8 @@ namespace LTChess.Search
 
             int staticEval = ETEntry.InvalidScore;
 
+            TTNodeType nodeTypeToSave = TTNodeType.Invalid;
+
             bool isFutilityPrunable = false;
             bool isLateMovePrunable = false;
             bool isRazoringPrunable = false;
@@ -267,7 +270,7 @@ namespace LTChess.Search
 
             if (isInCheck)
             {
-                SearchStack[ply].StaticEval = staticEval;
+                SearchStack[ply].StaticEval = ETEntry.InvalidScore;
 
                 //  Don't bother getting the static evaluation or checking if we can prune nodes.
                 goto MoveLoop;
@@ -372,6 +375,8 @@ namespace LTChess.Search
                     {
                         if (i == 0)
                         {
+                            //  In the off chance that the move ordered first would fail futility pruning,
+                            //  we should at least check the next node to see if it will too.
                             continue;
                         }
                         else
@@ -385,6 +390,7 @@ namespace LTChess.Search
                     }
                 }
 
+                //  Only prune if our alpha has changed, meaning we have found at least 1 good move.
                 if (UseLateMovePruning && isLateMovePrunable && (alpha != AlphaStart) && (quietMoves > lmpCutoff))
                 {
 #if DEBUG || SHOW_STATS
@@ -394,7 +400,7 @@ namespace LTChess.Search
                     break;
                 }
 
-                bool kingCheckExtension = (bb.GetPieceAtIndex(list[i].from) == Piece.King && (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck));
+                bool kingCheckExtension = (bb.GetPieceAtIndex(list[i].From) == Piece.King && (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck));
                 //bool passedPawnExtension = (DistanceFromPromotion(list[i].from, pos.ToMove) <= PassedPawnExtensionDistance && bb.IsPasser(list[i].from));
 
                 pos.MakeMove(list[i]);
@@ -409,6 +415,8 @@ namespace LTChess.Search
                 }
                 else if (i == 0)
                 {
+                    //  This is the move ordered first, so we treat this as our PV and search
+                    //  without any reductions.
                     score = -SimpleSearch.FindBest<PVNode>(ref info, -beta, -alpha, depth - 1, ply + 1);
                 }
                 else
@@ -431,6 +439,7 @@ namespace LTChess.Search
 #if DEBUG || SHOW_STATS
                             SearchStatistics.ReductionsKingChecked++;
 #endif
+                            //  Their last move put us in check, and we need to respond precisely to that, so search an additional ply.
                             nextDepth += 1;
                         }
 
@@ -439,6 +448,8 @@ namespace LTChess.Search
 #if DEBUG || SHOW_STATS
                             SearchStatistics.ReductionsNotImproving++;
 #endif
+                            //  Our position doesn't seem to be getting better after our last move,
+                            //  so our last move might've just been a bad one and we shouldn't search this node as closely.
                             nextDepth -= 1;
                         }
 
@@ -458,7 +469,15 @@ namespace LTChess.Search
 #if DEBUG || SHOW_STATS
                         SearchStatistics.LMRReductions++;
 #endif
-                        int reduction = GetLateMoveReductionAmount(size, i, depth);
+                        int reduction;
+                        if (UseLogReductionTable)
+                        {
+                            reduction = LogarithmicReductionTable[depth][i];
+                        }
+                        else
+                        {
+                            reduction = GetLateMoveReductionAmount(size, i, depth);
+                        }
 
 #if DEBUG || SHOW_STATS
                         SearchStatistics.LMRReductionTotal += (ulong)reduction;
@@ -501,33 +520,14 @@ namespace LTChess.Search
 
                 pos.UnmakeMove();
 
-                if (score >= beta)
-                {
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.BetaCutoffs++;
-#endif
-
-                    if (!list[i].Capture)
-                    {
-                        if (KillerMoves[ply, 0] != list[i])
-                        {
-                            KillerMoves.Replace(ply, list[i]);
-                        }
-
-                        int history = (depth * depth);
-
-                        HistoryMoves[pos.ToMove, bb.GetPieceAtIndex(list[i].from), list[i].to] += history;
-                    }
-
-                    TranspositionTable.Save(posHash, (short)alpha, TTNodeType.Beta, depth, BestMove);
-
-                    return beta;
-                }
 
                 if (score > alpha)
                 {
+                    //  This is the best move so far
                     alpha = score;
                     BestMove = list[i];
+
+                    nodeTypeToSave = TTNodeType.Exact;
 
                     if (isPV)
                     {
@@ -543,39 +543,50 @@ namespace LTChess.Search
                     }
 
                 }
+
+                if (score >= beta)
+                {
+#if DEBUG || SHOW_STATS
+                    SearchStatistics.BetaCutoffs++;
+#endif
+
+                    if (!list[i].Capture)
+                    {
+                        if (KillerMoves[ply, 0] != list[i])
+                        {
+                            KillerMoves.Replace(ply, list[i]);
+                        }
+
+                        int history = (depth * depth);
+
+                        HistoryMoves[pos.ToMove, bb.GetPieceAtIndex(list[i].From), list[i].To] += history;
+                    }
+
+                    nodeTypeToSave = TTNodeType.Beta;
+                    TranspositionTable.Save(posHash, (short)beta, nodeTypeToSave, depth, BestMove);
+
+                    return beta;
+                }
+
             }
 
             //  We want to replace entries that we have searched to a higher depth since the new evaluation will be more accurate.
             //  But this is only done if the TTEntry was null (move hadn't already been looked at)
             //  or we are sure that this move changes the alpha Score after searching at a higher depth
-            bool setTT = (ttEntry.Depth <= depth && (ttEntry.NodeType == TTNodeType.Invalid || alpha != startingAlpha));
-            if (setTT)
+
+            if (alpha != startingAlpha)
             {
-                TTNodeType nodeType;
-                if (alpha >= beta)
+                if (ttEntry.Depth <= depth || ttEntry.NodeType == TTNodeType.Invalid)
                 {
-                    nodeType = TTNodeType.Beta;
+                    TranspositionTable.Save(posHash, (short)alpha, nodeTypeToSave, depth, BestMove);
                 }
-                else if (alpha == startingAlpha)
-                {
-                    nodeType = TTNodeType.Alpha;
-                }
-                else
-                {
-                    nodeType = TTNodeType.Exact;
-                }
-
-                if (BestMove.IsNull())
-                {
-                    //var tt = new TTEntry(posHash, (short)alpha, nodeType, depth, BestMove);
-                    //Log("Saving null move in TT in fen " + info.Position.GetFEN() + "\t-> " + tt.ToString());
-                }
-
-                TranspositionTable.Save(posHash, (short)alpha, nodeType, depth, BestMove);
 
                 info.BestMove = BestMove;
                 info.BestScore = alpha;
             }
+
+
+
 
 #if DEBUG || SHOW_STATS
             SearchStatistics.NMCompletes++;
@@ -620,8 +631,8 @@ namespace LTChess.Search
                 }
                 else if (list[i].Capture)
                 {
-                    int victim = info.Position.bb.GetPieceAtIndex(list[i].to);
-                    int aggressor = info.Position.bb.GetPieceAtIndex(list[i].to);
+                    int victim = info.Position.bb.GetPieceAtIndex(list[i].To);
+                    int aggressor = info.Position.bb.GetPieceAtIndex(list[i].To);
                     scores[i] = SimpleQuiescence.MvvLva[victim][aggressor] * 10000;
                 }
                 else if (list[i].Equals(killer1))
@@ -640,9 +651,9 @@ namespace LTChess.Search
                 }
 
                 int pc = info.Position.ToMove;
-                pt = info.Position.bb.GetPieceAtIndex(list[i].from);
+                pt = info.Position.bb.GetPieceAtIndex(list[i].From);
 
-                int history = HistoryMoves[pc, pt, list[i].to];
+                int history = HistoryMoves[pc, pt, list[i].To];
                 //Console.WriteLine("\t\t\t" + "Move " + list[i] + " history " + history);
                 if (UseHistoryHeuristic && history > 0)
                 {
@@ -740,9 +751,6 @@ namespace LTChess.Search
         {
             if (!isInCheck && !isPV && depth >= SearchConstants.NullMovePruningMinDepth && staticEval >= beta)
             {
-                //  TODO: endgames aren't really the issue here. Material counting is too slow
-                return true;
-
                 //  Shouldn't be used in endgames.
                 int weakerSideMaterial = Math.Min(bb.MaterialCount(Color.White), bb.MaterialCount(Color.Black));
                 return (weakerSideMaterial > EvaluationConstants.EndgameMaterial);
@@ -777,7 +785,7 @@ namespace LTChess.Search
                 return false;
             }
 
-            if (info.Position.bb.IsPasser(m.from))
+            if (info.Position.bb.IsPasser(m.From))
             {
                 return false;
             }
