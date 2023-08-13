@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Platforms>AnyCPU;x64</Platforms>
@@ -16,31 +16,47 @@
 	<GenerateDocumentationFile>False</GenerateDocumentationFile>
 	<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+  <EnablePreviewFeatures>true</EnablePreviewFeatures>
+  <LangVersion>8.6</LangVersion>
+  <EnableNETAnalyzers>False</EnableNETAnalyzers>
+
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <PublishSingleFile>true</PublishSingleFile>
+    
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT</DefineConstants>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT</DefineConstants>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT</DefineConstants>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT</DefineConstants>
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Logic\NN\HalfKA_HM\**" />
     <Compile Remove="Logic\Tablebase\**" />
+    <EmbeddedResource Remove="Logic\NN\HalfKA_HM\**" />
     <EmbeddedResource Remove="Logic\Tablebase\**" />
+    <None Remove="Logic\NN\HalfKA_HM\**" />
     <None Remove="Logic\Tablebase\**" />
   </ItemGroup>
 
