@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace LTChess.Search
+namespace LTChess.Logic.Search
 {
     public class TimeManager
     {
@@ -137,6 +137,12 @@ namespace LTChess.Search
             if (MovesToGo != -1)
             {
                 newSearchTime = Math.Max(newSearchTime, PlayerTime[ToMove] / MovesToGo);
+            }
+
+            if (newSearchTime > PlayerTime[ToMove])
+            {
+                Log("WARN: MakeMoveTime tried setting time to " + newSearchTime + " > time left " + PlayerTime[ToMove]);
+                newSearchTime = PlayerTime[ToMove];
             }
 
             this.MaxSearchTime = newSearchTime;
