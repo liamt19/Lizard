@@ -1,7 +1,10 @@
-﻿using static LTChess.Search.Endgame;
-using static LTChess.Search.EvaluationConstants;
+﻿using System.Linq.Expressions;
 
-namespace LTChess.Search
+using static System.Formats.Asn1.AsnWriter;
+using static LTChess.Logic.Search.Endgame;
+using static LTChess.Logic.Search.EvaluationConstants;
+
+namespace LTChess.Logic.Search
 {
     public unsafe class ThreadedEvaluation
     {
@@ -22,12 +25,13 @@ namespace LTChess.Search
         private ulong blackPieces;
 
         private ulong[] AttackMask;
+        private ulong[] MobilityArea;
 
         private double[] materialScore;
         private double[] positionalScore;
         private double[] kingScore;
         private double[] threatScore;
-        private double[] spaceScore;
+        private double[] mobilityScore;
         private double[] endgameScore;
 
         private double[] pawnScore = new double[2];
@@ -36,7 +40,6 @@ namespace LTChess.Search
         private double[] rookScore = new double[2];
         private double[] queenScore = new double[2];
 
-
         [MethodImpl(Inline)]
         public int Evaluate(in Position position, int pc, bool Trace = false)
         {
@@ -44,11 +47,13 @@ namespace LTChess.Search
             bb = p.bb;
 
             AttackMask = new ulong[2];
+            MobilityArea = new ulong[2];
+
             materialScore = new double[2];
             positionalScore = new double[2];
             kingScore = new double[2];
             threatScore = new double[2];
-            spaceScore = new double[2];
+            mobilityScore = new double[2];
             endgameScore = new double[2];
 
             whitePieces = popcount(bb.Colors[Color.White]);
@@ -72,14 +77,20 @@ namespace LTChess.Search
                 endgameScore = EvalEndgame(p, pc);
             }
 
+            for (int i = 0; i < 2; i++)
+            {
+                ulong b = (bb.Pieces[Piece.Pawn] & bb.Colors[i]) & (Shift(ShiftDownDir(i), bb.Occupancy) | LowRanks[i]);
+                MobilityArea[i] = ~(b | ((bb.Pieces[Piece.King] | bb.Pieces[Piece.Queen]) & bb.Colors[i]));
+            }
+
             pawnScore = new[]   { EvalPawns  (Color.White), EvalPawns(Color.Black) };
             knightScore = new[] { EvalKnights(Color.White), EvalKnights(Color.Black) };
             bishopScore = new[] { EvalBishops(Color.White), EvalBishops(Color.Black) };
             rookScore = new[]   { EvalRooks  (Color.White), EvalRooks(Color.Black) };
             queenScore = new[]  { EvalQueens (Color.White), EvalQueens(Color.Black) };
-            spaceScore = new[]  { EvalSpace  (Color.White), EvalSpace(Color.Black) };
             kingScore = new[]   { EvalKingSafety(Color.White), EvalKingSafety(Color.Black) };
 
+ 
             positionalScore[Color.White] *= ScalePositional[gamePhase];
             positionalScore[Color.Black] *= ScalePositional[gamePhase];
 
@@ -89,15 +100,18 @@ namespace LTChess.Search
             materialScore[Color.White] *= ScaleMaterial[gamePhase];
             materialScore[Color.Black] *= ScaleMaterial[gamePhase];
 
+            //mobilityScore[Color.White] *= ScaleMobility[gamePhase];
+            //mobilityScore[Color.Black] *= ScaleMobility[gamePhase];
+
             double scoreW = materialScore[Color.White] + positionalScore[Color.White] + pawnScore[Color.White] +
                             knightScore[Color.White] + bishopScore[Color.White] + rookScore[Color.White] +
                             queenScore[Color.White] + kingScore[Color.White] + threatScore[Color.White] +
-                            spaceScore[Color.White] + endgameScore[Color.White];
+                            mobilityScore[Color.White] + endgameScore[Color.White];
 
             double scoreB = materialScore[Color.Black] + positionalScore[Color.Black] + pawnScore[Color.Black] +
                             knightScore[Color.Black] + bishopScore[Color.Black] + rookScore[Color.Black] +
                             queenScore[Color.Black] + kingScore[Color.Black] + threatScore[Color.Black] +
-                            spaceScore[Color.Black] + endgameScore[Color.Black];
+                            mobilityScore[Color.Black] + endgameScore[Color.Black];
 
             double scoreFinal = scoreW - scoreB;
             double relative = (scoreFinal * (pc == Color.White ? 1 : -1));
@@ -109,6 +123,7 @@ namespace LTChess.Search
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│    Material │ " + FormatEvalTerm(materialScore[Color.White]) + " │ " + FormatEvalTerm(materialScore[Color.Black]) + " │ " + FormatEvalTerm(materialScore[Color.White] - materialScore[Color.Black]) + " │ ");
                 Log("│  Positional │ " + FormatEvalTerm(positionalScore[Color.White]) + " │ " + FormatEvalTerm(positionalScore[Color.Black]) + " │ " + FormatEvalTerm(positionalScore[Color.White] - positionalScore[Color.Black]) + " │ ");
+                Log("│    Mobility │ " + FormatEvalTerm(mobilityScore[Color.White]) + " │ " + FormatEvalTerm(mobilityScore[Color.Black]) + " │ " + FormatEvalTerm(mobilityScore[Color.White] - mobilityScore[Color.Black]) + " │ "); 
                 Log("│       Pawns │ " + FormatEvalTerm(pawnScore[Color.White]) + " │ " + FormatEvalTerm(pawnScore[Color.Black]) + " │ " + FormatEvalTerm(pawnScore[Color.White] - pawnScore[Color.Black]) + " │ ");
                 Log("│     Knights │ " + FormatEvalTerm(knightScore[Color.White]) + " │ " + FormatEvalTerm(knightScore[Color.Black]) + " │ " + FormatEvalTerm(knightScore[Color.White] - knightScore[Color.Black]) + " │ ");
                 Log("│     Bishops │ " + FormatEvalTerm(bishopScore[Color.White]) + " │ " + FormatEvalTerm(bishopScore[Color.Black]) + " │ " + FormatEvalTerm(bishopScore[Color.White] - bishopScore[Color.Black]) + " │ ");
@@ -116,7 +131,6 @@ namespace LTChess.Search
                 Log("│      Queens │ " + FormatEvalTerm(queenScore[Color.White]) + " │ " + FormatEvalTerm(queenScore[Color.Black]) + " │ " + FormatEvalTerm(queenScore[Color.White] - queenScore[Color.Black]) + " │ ");
                 Log("│ King safety │ " + FormatEvalTerm(kingScore[Color.White]) + " │ " + FormatEvalTerm(kingScore[Color.Black]) + " │ " + FormatEvalTerm(kingScore[Color.White] - kingScore[Color.Black]) + " │ ");
                 Log("│     Threats │ " + FormatEvalTerm(threatScore[Color.White]) + " │ " + FormatEvalTerm(threatScore[Color.Black]) + " │ " + FormatEvalTerm(threatScore[Color.White] - threatScore[Color.Black]) + " │ ");
-                Log("│       Space │ " + FormatEvalTerm(spaceScore[Color.White]) + " │ " + FormatEvalTerm(spaceScore[Color.Black]) + " │ " + FormatEvalTerm(spaceScore[Color.White] - spaceScore[Color.Black]) + " │ ");
                 Log("│     Endgame │ " + FormatEvalTerm(endgameScore[Color.White]) + " │ " + FormatEvalTerm(endgameScore[Color.Black]) + " │ " + FormatEvalTerm(endgameScore[Color.White] - endgameScore[Color.Black]) + " │ ");
                 Log("├─────────────┼──────────┼──────────┼──────────┤");
                 Log("│       Total │ " + FormatEvalTerm(scoreW) + " │ " + FormatEvalTerm(scoreB) + " │ " + FormatEvalTerm(scoreFinal) + " │ ");
@@ -156,7 +170,13 @@ namespace LTChess.Search
                 ulong thisPawnAttacks = PawnAttackMasks[pc][idx];
                 AttackMask[pc] |= thisPawnAttacks;
 
-                positionalScore[pc] += GetCenterControlScore(thisPawnAttacks);
+                MobilityArea[Not(pc)] &= (~thisPawnAttacks);
+
+                //positionalScore[pc] += GetCenterControlScore(thisPawnAttacks);
+                positionalScore[pc] += (PSQT.PawnsByColor[pc][idx] * CoefficientPSQTPawns);
+                positionalScore[pc] += (PSQT.PawnCenter[idx] * CoefficientPSQTCenter);
+
+                materialScore[pc] += thisPieceValue;
 
                 while (thisPawnAttacks != 0)
                 {
@@ -201,11 +221,6 @@ namespace LTChess.Search
                     score += ScorePasser * (PassedPawnPromotionDistanceFactor - DistanceFromPromotion(idx, pc));
                 }
 
-                positionalScore[pc] += (PSQT.PawnsByColor[pc][idx] * CoefficientPSQTPawns);
-                positionalScore[pc] += (PSQT.PawnCenter[idx] * CoefficientPSQTCenter);
-
-                materialScore[pc] += thisPieceValue;
-
                 ourPawns = poplsb(ourPawns);
             }
 
@@ -232,9 +247,11 @@ namespace LTChess.Search
                 ulong thisMoves = KnightMasks[idx];
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                positionalScore[pc] += GetCenterControlScore(KnightMasks[idx]);
+                mobilityScore[pc] += GetPieceMobility(pc, pt, thisMoves & ~us);
+                
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
+                //positionalScore[pc] += GetCenterControlScore(KnightMasks[idx]);
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish) / 2;
                 score += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish) / 2;
 
@@ -293,9 +310,11 @@ namespace LTChess.Search
                 ulong thisMoves = GetBishopMoves((us | them), idx);
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                mobilityScore[pc] += GetPieceMobility(pc, pt, thisMoves & ~us);
+
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
+                //positionalScore[pc] += GetCenterControlScore(thisMoves);
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
                 materialScore[pc] += thisPieceValue;
 
@@ -349,8 +368,6 @@ namespace LTChess.Search
             const int pt = Piece.Rook;
             const int thisPieceValue = ValueRook;
 
-            ulong theirPieces = them & ~bb.Pieces[Piece.Pawn];
-
             ulong ourRooks = us & bb.Pieces[pt];
 
             while (ourRooks != 0)
@@ -360,9 +377,11 @@ namespace LTChess.Search
                 ulong thisMoves = GetRookMoves((us | them), idx);
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                mobilityScore[pc] += GetPieceMobility(pc, pt, thisMoves & ~us);
+
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
+                //positionalScore[pc] += GetCenterControlScore(thisMoves);
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
                 materialScore[pc] += thisPieceValue;
 
@@ -424,9 +443,11 @@ namespace LTChess.Search
                 ulong thisMoves = (GetBishopMoves((us | them), idx) | GetRookMoves((us | them), idx));
                 AttackMask[pc] |= (thisMoves & ~us);
 
-                positionalScore[pc] += GetCenterControlScore(thisMoves);
+                mobilityScore[pc] += GetPieceMobility(pc, pt, thisMoves & ~us);
+
                 threatScore[pc] += GetAttackThreatScore(thisMoves & them, pt);
 
+                //positionalScore[pc] += GetCenterControlScore(thisMoves);
                 positionalScore[pc] += (PSQT.FishPSQT[pc][pt][idx] * CoefficientPSQTFish);
                 materialScore[pc] += thisPieceValue;
 
@@ -457,8 +478,8 @@ namespace LTChess.Search
 
             double theirAttacks = popcount(ourKingRing & AttackMask[Not(pc)]);
             double theirAttacksOut = popcount(ourKingRingOut & AttackMask[Not(pc)]);
-            score -= (theirAttacks * ScoreKingRingAttack) * (gamePhase == GamePhaseEndgame ? CoefficientEndgameKingThreats : 1.0);
-            score -= (theirAttacksOut * ScoreKingOutterRingAttack) * (gamePhase == GamePhaseEndgame ? CoefficientEndgameKingThreats : 1.0); ;
+            score -= (theirAttacks * ScoreKingRingAttack[gamePhase]);
+            score -= (theirAttacksOut * ScoreKingOutterRingAttack[gamePhase]);
 
             //  I really don't know why it likes playing Ka1/Kh1 so often,
             //  so giving it a small penalty here to stop it from doing so
@@ -466,6 +487,21 @@ namespace LTChess.Search
             if ((SquareBB[ourKing] & Corners) != 0)
             {
                 score += ScoreKingInCorner;
+            }
+
+            if (MoreThanOne(NeighborsFileMasks[ourKing] & them & (bb.Pieces[Piece.Queen] | bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Bishop]))) {
+                if (GetIndexFile(ourKing) > Files.A && IsFileOpen(ourKing - 1))
+                {
+                    score += ScoreKingNearOpenFile[gamePhase];
+                }
+                if (IsFileOpen(ourKing))
+                {
+                    score += ScoreKingNearOpenFile[gamePhase];
+                }
+                if (GetIndexFile(ourKing) < Files.A && IsFileOpen(ourKing + 1))
+                {
+                    score += ScoreKingNearOpenFile[gamePhase];
+                }
             }
 
             //  Divide the threat score because it might be risky to actually capture the piece (deflection)
@@ -497,29 +533,6 @@ namespace LTChess.Search
             score += (popcount(ourKingRingOut & us) * (ScoreKingWithHomies / 3));
 
             return score * ScaleKingSafety[gamePhase];
-        }
-
-        [MethodImpl(Inline)]
-        private double EvalSpace(int pc)
-        {
-            double score = 0;
-
-            ulong us = bb.Colors[pc];
-            ulong them = bb.Colors[Not(pc)];
-
-            score += ((int)popcount(AttackMask[pc]) * ScorePerSquare);
-
-            ulong ourBackRank = (pc == Color.White ? Rank1BB : Rank8BB);
-            ulong ourUndeveloped = ((ourBackRank & us) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Knight]));
-
-            score += ((int)popcount(ourUndeveloped) * ScoreUndevelopedPiece);
-
-            if ((pc == Color.White && p.WhiteCastled) || (pc == Color.Black && p.BlackCastled))
-            {
-                score += ScoreKingCastled;
-            }
-
-            return score * ScaleSpace[gamePhase];
         }
 
         /// <summary>
@@ -601,6 +614,18 @@ namespace LTChess.Search
 
             return score;
         }
+
+        private int GetPieceMobility(int pc, int pt, ulong moves)
+        {
+            return MobilityBonus[gamePhase][pt - 1][popcount(MobilityArea[pc] & moves)];
+
+
+            ulong innerSquares = popcount(MobilityArea[pc] & moves & MobilityInner);
+            ulong outterSquares = popcount(MobilityArea[pc] & moves & MobilityOutter);
+
+            return (int) ((innerSquares * MobilityScoreInner) + (outterSquares * MobilityScoreOutter));
+        }
+
 
         [MethodImpl]
         private int NearestPawn(in Bitboard bb, int color)
