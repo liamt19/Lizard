@@ -1,4 +1,4 @@
-﻿namespace LTChess.Transposition
+﻿namespace LTChess.Logic.Transposition
 {
     public struct ETEntry
     {

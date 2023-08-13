@@ -1,4 +1,4 @@
-﻿namespace LTChess.Transposition
+﻿namespace LTChess.Logic.Transposition
 {
     public static unsafe class Zobrist
     {

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Util
+﻿namespace LTChess.Logic.Util
 {
     /// <summary>
     /// Used to find better random seeds for Zobrist hashing.

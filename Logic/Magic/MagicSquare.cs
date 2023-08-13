@@ -1,4 +1,4 @@
-﻿namespace LTChess.Magic
+﻿namespace LTChess.Logic.Magic
 {
     /// <summary>
     /// Contains information for one square of the magic bitboard for rooks or bishops

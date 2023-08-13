@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-namespace LTChess.Transposition
+namespace LTChess.Logic.Transposition
 {
     public static class TranspositionTable
     {
@@ -20,7 +20,7 @@ namespace LTChess.Transposition
         /// <summary>
         /// 1 mb is enough for 65,536 entries. 
         /// </summary>
-        public static unsafe void Initialize(int mb = 16)
+        public static unsafe void Initialize(int mb = 8)
         {
             var entrySize = sizeof(TTEntry);
 

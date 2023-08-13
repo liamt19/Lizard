@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 
 
-namespace LTChess.Data
+namespace LTChess.Logic.Data
 {
 
     /// <summary>
@@ -625,6 +625,8 @@ namespace LTChess.Data
                 for (int moveIndex = 0; moveIndex < NormalListCapacity; moveIndex++)
                 {
                     LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
+                    //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth * moveIndex * moveIndex));
+
                     if (LogarithmicReductionTable[depth][moveIndex] < 1)
                     {
                         LogarithmicReductionTable[depth][moveIndex] = 0;

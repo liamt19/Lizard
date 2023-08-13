@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search.Ordering
+﻿namespace LTChess.Logic.Search.Ordering
 {
     public static class MoveScores
     {

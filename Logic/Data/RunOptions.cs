@@ -1,7 +1,11 @@
-﻿#define INLINE
+﻿
+
+#define INLINE
 //#define NOINLINING
 
-namespace LTChess.Data
+#define OPTIMIZE
+
+namespace LTChess.Logic.Data
 {
     public static class RunOptions
     {
@@ -14,6 +18,12 @@ namespace LTChess.Data
         public const MethodImplOptions Inline = MethodImplOptions.PreserveSig;
 #endif
 
+#if (OPTIMIZE)
+        public const MethodImplOptions Optimize = MethodImplOptions.AggressiveOptimization;
+#else
+        public const MethodImplOptions Optimize = MethodImplOptions.PreserveSig;
+#endif
+
 
 #if IS64BIT
         public const bool Is64Bit = true;
@@ -21,17 +31,6 @@ namespace LTChess.Data
         public const bool Is64Bit = false;
 #endif
 
-#if PEXT
-        public const bool Pext = true;
-#else
-        public const bool Pext = false;
-#endif
-
-#if BMI
-        public const bool BMI = true;
-#else
-        public const bool BMI = false;
-#endif
 
     }
 }

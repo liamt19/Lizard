@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-using LTChess.Data;
+using LTChess.Logic.Data;
 
-namespace LTChess.Core
+namespace LTChess.Logic.Core
 {
     /// <summary>
     /// Used for tuning parameters. Any parameters that were changed here were hypothesized to be better than the baseline.
@@ -43,6 +43,8 @@ namespace LTChess.Core
             {
                 double[] arr = ((double[])field.GetValue(null));
 
+                //Log(field.Name + ": " + arr[EvaluationConstants.GamePhaseNormal] + " -> " + Math.Round(arr[EvaluationConstants.GamePhaseNormal] * scaleFactorMG, 2));
+
                 field.SetValue(null, new double[] {
                     Math.Round(arr[EvaluationConstants.GamePhaseNormal] * scaleFactorMG, 2),
                     Math.Round(arr[EvaluationConstants.GamePhaseEndgame] * scaleFactorEG, 2),
@@ -52,22 +54,24 @@ namespace LTChess.Core
             baseLineField.SetValue(null, new double[] {
                     Math.Round(baseLine[EvaluationConstants.GamePhaseNormal] * scaleFactorMG, 2),
                     Math.Round(baseLine[EvaluationConstants.GamePhaseEndgame] * scaleFactorEG, 2),
-                });
+            });
 
+            //Log(baseLineField.Name + ": " + baseLine[EvaluationConstants.GamePhaseNormal] + " -> " + Math.Round(baseLine[EvaluationConstants.GamePhaseNormal] * scaleFactorMG, 2));
         }
 
         public static void TuneTerms()
         {
-            EvaluationConstants.ScaleMaterial[0] = 1.95;
-            EvaluationConstants.ScalePositional[0] = 1.73;
+            EvaluationConstants.ScaleMaterial[0] = 1.21;
 
-            EvaluationConstants.ScalePawns[0] = 0.49;
-            EvaluationConstants.ScaleKnights[0] = 0.53;
-            EvaluationConstants.ScaleBishops[0] = 0.68;
-            EvaluationConstants.ScaleRooks[0] = 0.34;
-            EvaluationConstants.ScaleQueens[0] = 0.56;
+            //EvaluationConstants.ScalePositional[0] = 1.75;
 
-            EvaluationConstants.ScaleKingSafety[0] = 0.81;
+            //EvaluationConstants.ScalePawns[0] = 0.49;
+            //EvaluationConstants.ScaleKnights[0] = 0.53;
+            //EvaluationConstants.ScaleBishops[0] = 0.68;
+            //EvaluationConstants.ScaleRooks[0] = 0.34;
+            //EvaluationConstants.ScaleQueens[0] = 0.56;
+
+            //EvaluationConstants.ScaleKingSafety[0] = 1.1;
             //EvaluationConstants.ScaleSpace[0] = 1.09;
             //EvaluationConstants.ScaleThreats[0] = 0.12;
 

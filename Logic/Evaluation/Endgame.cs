@@ -1,6 +1,6 @@
-﻿using static LTChess.Search.EvaluationConstants;
+﻿using static LTChess.Logic.Search.EvaluationConstants;
 
-namespace LTChess.Search
+namespace LTChess.Logic.Search
 {
     public static class Endgame
     {

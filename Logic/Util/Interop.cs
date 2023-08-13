@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Security.Principal;
@@ -10,9 +11,9 @@ using System.Threading.Tasks;
 
 using Microsoft.Win32.SafeHandles;
 
-using static LTChess.Util.Interop.Pinvoke;
+using static LTChess.Logic.Util.Interop.Pinvoke;
 
-namespace LTChess.Util
+namespace LTChess.Logic.Util
 {
 
     public static class Interop
@@ -37,18 +38,21 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static ulong popcount(ulong value)
         {
-#if BMI
-            return Popcnt.X64.PopCount(value);
-#else
-            var count = 0ul;
-            while (value > 0)
+            if (Popcnt.X64.IsSupported)
             {
-                value = poplsb(value);
-                count++;
+                return Popcnt.X64.PopCount(value);
             }
+            else
+            {
+                var count = 0ul;
+                while (value > 0)
+                {
+                    value = poplsb(value);
+                    count++;
+                }
 
-            return count;
-#endif
+                return count;
+            }
         }
 
         [MethodImpl(Inline)]
@@ -64,11 +68,14 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static int lsb(ulong value)
         {
-#if BMI
-            return (int)Bmi1.X64.TrailingZeroCount(value);
-#else
-            return BitScanValues[((ulong)((long)value & -(long)value) * 0x03F79D71B4CB0A89) >> 58];
-#endif
+            if (Bmi1.X64.IsSupported)
+            {
+                return (int)Bmi1.X64.TrailingZeroCount(value);
+            }
+            else
+            {
+                return BitScanValues[((ulong)((long)value & -(long)value) * 0x03F79D71B4CB0A89) >> 58];
+            }
         }
 
         /// <summary>
@@ -78,11 +85,14 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static ulong poplsb(ulong value)
         {
-#if BMI
-            return Bmi1.X64.ResetLowestSetBit(value);
-#else
-            return value & (value - 1);
-#endif
+            if (Bmi1.X64.IsSupported)
+            {
+                return Bmi1.X64.ResetLowestSetBit(value);
+            }
+            else
+            {
+                return value & (value - 1);
+            }
         }
 
         /// <summary>
@@ -92,11 +102,14 @@ namespace LTChess.Util
         [MethodImpl(Inline)]
         public static int msb(ulong value)
         {
-#if BMI
-            return (int)(63 - Lzcnt.X64.LeadingZeroCount(value));
-#else
-            return (BitOperations.Log2(x - 1) + 1);
-#endif
+            if (Lzcnt.X64.IsSupported)
+            {
+                return (int)(63 - Lzcnt.X64.LeadingZeroCount(value));
+            }
+            else
+            {
+                return (BitOperations.Log2(value - 1) + 1);
+            }
         }
 
         /// <summary>
@@ -109,23 +122,28 @@ namespace LTChess.Util
             return value ^ (1UL << msb(value));
         }
 
+
+
         [MethodImpl(Inline)]
         public static ulong pext(ulong b, ulong mask)
         {
-#if PEXT
-            return Bmi2.X64.ParallelBitExtract(b, mask);
-#else
-            ulong res = 0;
-            for (ulong bb = 1; mask != 0; bb += bb)
+            if (Bmi2.X64.IsSupported)
             {
-                if ((b & mask & (0UL-mask)) != 0)
-                {
-                    res |= bb;
-                }
-                mask &= mask - 1;
+                return Bmi2.X64.ParallelBitExtract(b, mask);
             }
-            return res;
-#endif
+            else
+            {
+                ulong res = 0;
+                for (ulong bb = 1; mask != 0; bb += bb)
+                {
+                    if ((b & mask & (0UL - mask)) != 0)
+                    {
+                        res |= bb;
+                    }
+                    mask &= mask - 1;
+                }
+                return res;
+            }
         }
     
         

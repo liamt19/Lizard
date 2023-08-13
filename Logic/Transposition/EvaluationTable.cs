@@ -1,4 +1,4 @@
-﻿namespace LTChess.Transposition
+﻿namespace LTChess.Logic.Transposition
 {
     public static class EvaluationTable
     {
@@ -20,12 +20,15 @@
         /// <summary>
         /// 1mb is enough for 262,144 entries
         /// </summary>
-        public static unsafe void Initialize(int mb = 16)
+        public static unsafe void Initialize(int mb = 24)
         {
             //  1024 * 1024 = 1048576 == 0x100000UL
             Size = ((ulong)mb * 0x100000UL) / (ulong)sizeof(ETEntry);
             Table = new ETEntry[Size];
         }
+
+        [MethodImpl(Inline)]
+        public static void Clear() => Array.Clear(Table);
 
         [MethodImpl(Inline)]
         public static void Save(ulong hash, short score)

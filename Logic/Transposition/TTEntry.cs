@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace LTChess.Transposition
+namespace LTChess.Logic.Transposition
 {
     /// <summary>
     /// Represents an entry within a transposition table.

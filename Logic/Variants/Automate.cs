@@ -1,4 +1,4 @@
-namespace LTChess.Variants
+namespace LTChess.Logic.Variants
 {
     /// <summary>
     /// TODO: Chess.com's Automate

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Data
+﻿namespace LTChess.Logic.Data
 {
     public class Diagonal
     {
@@ -17,20 +17,23 @@
 
     public class Color
     {
-        public const int None = 2;
         public const int White = 0;
         public const int Black = 1;
+
+        public const int ColorNB = 2;
     }
 
     public class Piece
     {
-        public const int None = 6;
         public const int Pawn = 0;
         public const int Knight = 1;
         public const int Bishop = 2;
         public const int Rook = 3;
         public const int Queen = 4;
         public const int King = 5;
+
+        public const int None = 6;
+        public const int PieceNB = 6;
     }
 
     [Flags]
@@ -137,5 +140,7 @@
         public const int F8 = 61;
         public const int G8 = 62;
         public const int H8 = 63;
+
+        public const int SquareNB = 64;
     }
 }

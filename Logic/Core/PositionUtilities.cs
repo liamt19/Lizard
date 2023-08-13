@@ -1,4 +1,4 @@
-﻿namespace LTChess.Util
+﻿namespace LTChess.Logic.Util
 {
     public static unsafe class PositionUtilities
     {

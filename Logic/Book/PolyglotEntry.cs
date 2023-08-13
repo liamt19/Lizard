@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LTChess.Book
+namespace LTChess.Logic.Book
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct PolyglotEntry

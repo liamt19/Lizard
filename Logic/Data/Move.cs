@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LTChess.Data
+namespace LTChess.Logic.Data
 {
     [StructLayout(LayoutKind.Auto)]
     public unsafe struct Move

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Data
+﻿namespace LTChess.Logic.Data
 {
     /// <summary>
     /// Represents a branch during perft

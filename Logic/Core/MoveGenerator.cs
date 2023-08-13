@@ -1,4 +1,4 @@
-﻿namespace LTChess.Core
+﻿namespace LTChess.Logic.Core
 {
     /// <summary>
     /// Class to generate moves

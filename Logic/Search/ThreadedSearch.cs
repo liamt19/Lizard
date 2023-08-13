@@ -2,7 +2,7 @@
 
 using Timer = System.Timers.Timer;
 
-namespace LTChess.Search
+namespace LTChess.Logic.Search
 {
     public class ThreadedSearch
     {

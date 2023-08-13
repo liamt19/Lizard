@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search
+﻿namespace LTChess.Logic.Search
 {
     /// <summary>
     /// Wrapper class storing moves that are within our principal variation line.

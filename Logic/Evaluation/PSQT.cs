@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search
+﻿namespace LTChess.Logic.Search
 {
     public static class PSQT
     {

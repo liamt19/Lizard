@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search.Ordering
+﻿namespace LTChess.Logic.Search.Ordering
 {
     /// <summary>
     /// Wrapper class for storing killer moves, which are non-capture moves which caused a beta cutoff 

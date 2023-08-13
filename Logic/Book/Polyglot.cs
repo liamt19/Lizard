@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 using LTChess.Properties;
 
-namespace LTChess.Book
+namespace LTChess.Logic.Book
 {
     /// <summary>
     /// Reads Polyglot opening book files
@@ -200,7 +200,7 @@ namespace LTChess.Book
             ulong enPassantHash = 0;
             if (pos.EnPassantTarget != 0)
             {
-                int up = Up(pos.ToMove);
+                int up = ShiftUpDir(pos.ToMove);
                 int epPawnSquare = pos.EnPassantTarget - up;
                 if ((GetRankBB(epPawnSquare) & NeighborsMask[epPawnSquare] & bb.Pieces[Piece.Pawn] & bb.Colors[pos.ToMove]) != 0)
                 {

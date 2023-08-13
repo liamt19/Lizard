@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search
+﻿namespace LTChess.Logic.Search
 {
     /// <summary>
     /// Used during a search to keep track of the static evaluations of previous positions.

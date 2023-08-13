@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace LTChess.Data
+namespace LTChess.Logic.Data
 {
     public class FasterStack<T>
     {

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search.Ordering
+﻿namespace LTChess.Logic.Search.Ordering
 {
     /// <summary>
     /// Wrapper class for applying the history heuristic, which gives bonuses to the squares that 
