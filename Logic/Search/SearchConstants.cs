@@ -1,4 +1,4 @@
-﻿namespace LTChess.Search
+﻿namespace LTChess.Logic.Search
 {
     public static class SearchConstants
     {
@@ -63,7 +63,7 @@
         /// Smaller margins will eliminate more nodes from the search (saves time), but if the margin is too small
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
-        public static int AspirationWindowMargin = 40;
+        public static int AspirationWindowMargin = 60;
 
         /// <summary>
         /// The margins for the aspiration windows will increase by this much per depth.
@@ -113,14 +113,10 @@
         /// Static Exchange Evaluation checks whether a series of captures on a square gains or loses material.
         /// This is meant to help speed up quiescence search since we can determine if a series of 8 captures
         /// in a row wins us material without having to make/unmake 8 moves.
-        /// <para></para>
-        /// Set to false right now as it is currently a bit slower than just going into a quiescence search.
         /// </summary>
-        public static bool UseStaticExchangeEval = false;
-
         public static bool UseQuiescenceSEE = true;
 
-
+        public static bool UseAggressiveQPruning = false;
 
 
         /// <summary>
@@ -149,7 +145,8 @@
         /// </summary>
         public static int ReverseFutilityPruningMaxDepth = 8;
 
-        public static int ReverseFutilityPruningBaseMargin = 140;
+        public static int ReverseFutilityPruningPerDepth = 70;
+        public static int ReverseFutilityPruningImproving = 75;
 
 
 
@@ -162,7 +159,7 @@
         public static bool UseHistoryHeuristic = false;
 
 
-        public static bool UseKillerHeuristic = false;
+        public static bool UseKillerHeuristic = true;
 
 
         /// <summary>
@@ -200,7 +197,7 @@
         /// </summary>
         public static int LMRDepth = 3;
 
-        public static bool UseLogReductionTable = false;
+        public static bool UseLogReductionTable = true;
 
 
 
