@@ -2,29 +2,15 @@
 #define SHOW_STATS
 
 
-using static LTChess.Search.EvaluationConstants;
+using LTChess.Logic.Data;
 
-namespace LTChess.Search
+using static LTChess.Logic.Search.EvaluationConstants;
+using static LTChess.Logic.Search.Ordering.MoveOrdering;
+
+namespace LTChess.Logic.Search
 {
     public static class SimpleQuiescence
     {
-        /// <summary>
-        /// A table containing move scores given to captures based on the value of the attacking piece in comparison to the piece being captured.
-        /// We want to look at PxQ before QxQ because it would win more material if their queen was actually defended.
-        /// <br></br>
-        /// For example, the value of a bishop capturing a queen would be <see cref="MvvLva"/>[<see cref="Piece.Queen"/>][<see cref="Piece.Bishop"/>], which is 6003
-        /// </summary>
-        public static readonly int[][] MvvLva =
-        {
-            //          pawn, knight, bishop, rook, queen, king
-            new int[] { 1005, 1004, 1003, 1002, 1001, 1000 },
-            new int[] { 2005, 2004, 2003, 2002, 2001, 2000 },
-            new int[] { 3005, 3004, 3003, 3002, 3001, 3000 },
-            new int[] { 4005, 4004, 4003, 4002, 4001, 4000 },
-            new int[] { 5005, 5004, 5003, 5002, 5001, 5000 },
-            new int[] { 6005, 6004, 6003, 6002, 6001, 6000 }
-        };
-
 
         [MethodImpl(Inline)]
         public static int QSearch<NodeType>(ref SearchInformation info, int alpha, int beta, int depth, int ply) where NodeType : SearchNodeType
@@ -58,11 +44,30 @@ namespace LTChess.Search
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = info.Position.GenAllLegalMovesTogether(list, true);
+            
+            Span<int> scores = stackalloc int[size];
+            AssignQuiescenceMoveScores(ref info.Position.bb, list, scores, size);
 
-            int numCaps = SortByCaptureValueFast(ref info.Position.bb, list, size);
-            for (int i = 0; i < numCaps; i++)
+            for (int i = 0; i < size; i++)
             {
                 info.NodeCount++;
+#if DEBUG || SHOW_STATS
+                SearchStatistics.QuiescenceNodes++;
+#endif
+
+                OrderNextMove(list, scores, size, i);
+
+                if (UseAggressiveQPruning)
+                {
+                    if (scores[i] < -(ValueRook - ValueKnight))
+                    {
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.AggressiveQPruningCuts++;
+                        SearchStatistics.AggressiveQPruningTotalCuts += (ulong)(size - i);
+#endif
+                        break;
+                    }
+                }
 
                 if (UseDeltaPruning)
                 {
@@ -70,6 +75,10 @@ namespace LTChess.Search
 
                     if (standingPat + theirPieceVal + DeltaPruningMargin < alpha)
                     {
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.QuiescenceFutilityPrunes++;
+                        SearchStatistics.QuiescenceFutilityPrunesTotal += (ulong)(size - i);
+#endif
                         break;
                     }
                 }
@@ -77,11 +86,12 @@ namespace LTChess.Search
                 if (UseQuiescenceSEE)
                 {
                     int see = SEE(ref info.Position.bb, ref list[i]);
+                    //int see = scores[i];
                     if (standingPat + see > beta)
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.QuiescenceSEECuts++;
-                        SearchStatistics.QuiescenceSEETotalCuts += (ulong)(numCaps - i);
+                        SearchStatistics.QuiescenceSEETotalCuts += (ulong)(size - i);
 #endif
                         return standingPat + see;
                     }
@@ -89,12 +99,6 @@ namespace LTChess.Search
 
 
                 info.Position.MakeMove(list[i]);
-
-#if DEBUG || SHOW_STATS
-                SearchStatistics.QuiescenceNodes++;
-#endif
-
-                info.NodeCount++;
 
                 //  Keep making moves until there aren't any captures left.
                 var score = -QSearch<NodeType>(ref info, -beta, -alpha, depth - 1, ply + 1);
@@ -116,65 +120,6 @@ namespace LTChess.Search
 #endif
             return alpha;
         }
-
-        [MethodImpl(Inline)]
-        public static int SortByCaptureValue(in Bitboard bb, in Span<Move> list, int size)
-        {
-            Span<int> scores = stackalloc int[size];
-            int numCaps = 0;
-            for (int i = 0; i < size; i++)
-            {
-                if (list[i].Capture)
-                {
-                    int theirPieceVal = GetPieceValue(bb.PieceTypes[list[i].To]);
-                    scores[i] = theirPieceVal;
-                    numCaps++;
-                }
-            }
-
-            int max;
-            for (int i = 0; i < size - 1; i++)
-            {
-                max = i;
-                for (int j = i + 1; j < size; j++)
-                {
-                    if (scores[j] > scores[max])
-                    {
-                        max = j;
-                    }
-                }
-
-                (list[max], list[i]) = (list[i], list[max]);
-
-                (scores[max], scores[i]) = (scores[i], scores[max]);
-            }
-
-            return numCaps;
-        }
-
-
-        [MethodImpl(Inline)]
-        public static int SortByCaptureValueFast(ref Bitboard bb, in Span<Move> list, int size)
-        {
-            int max;
-            for (int i = 0; i < size - 1; i++)
-            {
-                max = i;
-                for (int j = i + 1; j < size; j++)
-                {
-                    if (GetPieceValue(bb.PieceTypes[list[j].To]) > GetPieceValue(bb.PieceTypes[list[max].To]))
-                    {
-                        max = j;
-                    }
-                }
-
-                (list[max], list[i]) = (list[i], list[max]);
-            }
-
-            return size;
-        }
-
-
 
 
         [MethodImpl(Inline)]
