@@ -1,4 +1,4 @@
-﻿namespace LTChess.Core
+﻿namespace LTChess.Logic.Core
 {
     /// <summary>
     /// Manages the bitboards for the position
@@ -28,6 +28,8 @@
             PieceTypes = new int[64];
             Array.Fill(PieceTypes, Piece.None);
         }
+
+        public ulong Occupancy => Colors[Color.White] | Colors[Color.Black];
 
         public string SquareToString(int idx)
         {
@@ -237,30 +239,45 @@
             PieceTypes[to] = Piece.Pawn;
         }
 
+        /// <summary>
+        /// Returns the <see cref="Color"/> of the piece on the square <paramref name="idx"/>
+        /// </summary>
         [MethodImpl(Inline)]
         public int GetColorAtIndex(int idx)
         {
             return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
         }
 
+        /// <summary>
+        /// Returns the type of the <see cref="Piece"/> on the square <paramref name="idx"/>
+        /// </summary>
         [MethodImpl(Inline)]
         public int GetPieceAtIndex(int idx)
         {
             return PieceTypes[idx];
         }
 
+        /// <summary>
+        /// Returns true if the square <paramref name="idx"/> has a piece of the <see cref="Color"/> <paramref name="pc"/> on it.
+        /// </summary>
         [MethodImpl(Inline)]
         public bool IsColorSet(int pc, int idx)
         {
             return (Colors[pc] & SquareBB[idx]) != 0;
         }
 
+        /// <summary>
+        /// Returns a mask with a single bit set at the index of the <see cref="Color"/> <paramref name="pc"/>'s king.
+        /// </summary>
         [MethodImpl(Inline)]
         public ulong KingMask(int pc)
         {
             return (Colors[pc] & Pieces[Piece.King]);
         }
 
+        /// <summary>
+        /// Returns the index of the square that the <see cref="Color"/> <paramref name="pc"/>'s king is on.
+        /// </summary>
         [MethodImpl(Inline)]
         public int KingIndex(int pc)
         {
@@ -272,6 +289,9 @@
             return lsb(KingMask(pc));
         }
 
+        /// <summary>
+        /// Returns the sum of the <see cref="Piece"/> values for the <see cref="Color"/> <paramref name="pc"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public int MaterialCount(int pc)
         {
@@ -289,6 +309,13 @@
             return mat;
         }
 
+        /// <summary>
+        /// Returns true if there is a pawn on the square <paramref name="idx"/>, 
+        /// and there are no enemy pawns on its file or to the files beside it for
+        /// each of the ranks it needs to move through to promote. 
+        /// <br></br>
+        /// So a White pawn on E4 is a passer if there are no black pawns on D7-F5.
+        /// </summary>
         [MethodImpl(Inline)]
         public bool IsPasser(int idx)
         {
@@ -367,7 +394,6 @@
                   | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
                   | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
 
-            //return (diagonals | straights | knights | pawns);
         }
 
         /// <summary>
@@ -454,7 +480,13 @@
                 if (GetPieceAtIndex(move.To) != Piece.None)
                 {
                     //  We can't capture our own color pieces
-                    return GetColorAtIndex(move.From) != GetColorAtIndex(move.To);
+                    return (move.Capture && GetColorAtIndex(move.From) != GetColorAtIndex(move.To));
+                }
+
+                if (move.Capture)
+                {
+                    //  This move is trying to capture a piece when the square is empty.
+                    return false;
                 }
 
                 //  This is a move to an empty square.
