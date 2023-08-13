@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 
 
-namespace LTChess.Search
+namespace LTChess.Logic.Search
 {
     /// <summary>
     /// Contains different statistics that are updated during a search, like the number of nodes that were discarded
@@ -9,12 +9,19 @@ namespace LTChess.Search
     /// </summary>
     public static class SearchStatistics
     {
+
+        public static ulong AggressiveQPruningCuts = 0;
+        public static ulong AggressiveQPruningTotalCuts = 0;
+
+
+
         public static ulong RazoredNodes = 0;
 
         public static ulong LateMovePrunings = 0;
         public static ulong LateMovePrunedMoves = 0;
 
         public static ulong ReverseFutilityPrunedNodes = 0;
+
 
         public static ulong FutilityPrunedCaptures = 0;
         public static ulong FutilityPrunedNoncaptures = 0;
@@ -38,6 +45,8 @@ namespace LTChess.Search
 
         public static ulong QuiescenceSEECuts = 0;
         public static ulong QuiescenceSEETotalCuts = 0;
+        public static ulong QuiescenceFutilityPrunes = 0;
+        public static ulong QuiescenceFutilityPrunesTotal = 0;
 
         public static ulong NMCalls = 0;
         public static ulong NMCalls_NOTQ = 0;
@@ -65,6 +74,7 @@ namespace LTChess.Search
         public static ulong Scores_HistoryHeuristic = 0;
         public static ulong Scores_PV_TT_Move = 0;
         public static ulong Scores_Promotion = 0;
+        public static ulong Scores_MvvLva = 0;
         public static ulong Scores_Killer_1 = 0;
         public static ulong Scores_Killer_2 = 0;
         public static ulong Scores_WinningCapture = 0;
@@ -113,8 +123,14 @@ namespace LTChess.Search
             foreach (var field in _snapshot_fields)
             {
                 field.SetValue(null, default(ulong));
-                _snapshots[field.Name].Clear();
             }
+
+            foreach (var key in _snapshots.Keys)
+            {
+                _snapshots[key].Clear();
+            }
+
+            _shots = 0;
         }
 
 
@@ -150,6 +166,11 @@ namespace LTChess.Search
 
         public static void PrintSnapshots()
         {
+            if (_shots == 0)
+            {
+                return;
+            }
+
             Console.Write("Depth: ");
             for (int i = 0; i < _shots; i++)
             {
