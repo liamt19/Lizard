@@ -1,6 +1,9 @@
 ﻿using System.Text;
 
-namespace LTChess.Search
+using LTChess.Logic.NN.HalfKP;
+using LTChess.Logic.NN.Simple768;
+
+namespace LTChess.Logic.Search
 {
     public struct SearchInformation
     {
@@ -94,7 +97,20 @@ namespace LTChess.Search
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GetEvaluation(in Position position, int pc, bool Trace = false) => this.tdEval.Evaluate(position, pc, Trace);
+        public int GetEvaluation(in Position position, int pc, bool Trace = false)
+        {
+            if (Position.UseNNUE768)
+            {
+                int eval = NNUEEvaluation.GetEvaluation(position);
+                return eval;
+            }
+            else if (Position.UseHalfKP)
+            {
+                return HalfKP.GetEvaluation(position);
+            }
+
+            return this.tdEval.Evaluate(position, pc, Trace);
+        }
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {
@@ -163,7 +179,7 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public void PrintSearchInfo(SearchInformation info)
         {
-            info.LastSearchInfo = FormatSearchInformation(info);
+            info.LastSearchInfo = FormatSearchInformation(ref info);
             if (IsMultiThreaded)
             {
                 Log(Thread.CurrentThread.ManagedThreadId + " ->\t" + LastSearchInfo);
@@ -173,7 +189,9 @@ namespace LTChess.Search
                 Log(info.LastSearchInfo);
             }
 
+#if DEBUG
             SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.TimeManager.GetSearchTime());
+#endif
         }
 
         /// <summary>
@@ -229,16 +247,17 @@ namespace LTChess.Search
             {
                 if (this.PV[i].IsNull())
                 {
-                    Log("ERROR GetPVString's PV[0] was null!");
+                    //  TODO: this happens at PV[5] for mate in 4, PV[3] for mate in 2
+                    Log("WARN GetPVString's PV[" + i + "] was null!");
                     break;
                 }
 
                 if (EngineFormat)
                 {
-                    if (temp.IsLegal(this.PV[i]))
+                    if (temp.bb.IsPseudoLegal(this.PV[i]) && temp.IsLegal(this.PV[i]))
                     {
                         pv.Append(this.PV[i] + " ");
-                        temp.MakeMove(this.PV[i]);
+                        temp.MakeMove(this.PV[i], false);
                     }
                     else
                     {
@@ -250,7 +269,7 @@ namespace LTChess.Search
                     if (temp.bb.IsPseudoLegal(this.PV[i]))
                     {
                         pv.Append(this.PV[i].ToString(temp) + " ");
-                        temp.MakeMove(this.PV[i]);
+                        temp.MakeMove(this.PV[i], false);
                     }
                     else
                     {

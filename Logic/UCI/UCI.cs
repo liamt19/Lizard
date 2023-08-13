@@ -1,13 +1,14 @@
 ﻿
-#define TUNE
+//#define TUNE
 
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-using LTChess.Book;
+using LTChess.Logic.Book;
+using LTChess.Logic.NN.HalfKP;
 
-namespace LTChess.Core
+namespace LTChess.Logic.Core
 {
     public class UCI
     {
@@ -195,6 +196,12 @@ namespace LTChess.Core
                         }
 
                     }
+
+                    if (Position.UseHalfKP)
+                    {
+                        HalfKP.RefreshNN(info.Position);
+                        HalfKP.ResetNN();
+                    }
                 }
                 else if (cmd == "go")
                 {
@@ -255,7 +262,7 @@ namespace LTChess.Core
         private void OnDepthDone(SearchInformation info)
         {
 
-            info.LastSearchInfo = FormatSearchInformation(info);
+            info.LastSearchInfo = FormatSearchInformation(ref info);
             SendString(info.LastSearchInfo);
         }
 
@@ -319,7 +326,7 @@ namespace LTChess.Core
                     }
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
-                        hasDepthCommand = (info.MaxDepth != reqDepth);
+                        hasDepthCommand = true;
                         info.MaxDepth = reqDepth;
                         LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
                     }
@@ -525,6 +532,8 @@ namespace LTChess.Core
                     arr[opt.ValueArrayIndex] = double.Parse(optValue);
                     opt.FieldHandle.SetValue(null, arr);
                 }
+
+                Tune.NormalizeTerms();
 
             }
             catch (Exception e)

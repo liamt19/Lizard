@@ -71,6 +71,35 @@ namespace LTChess.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to FeatureWeight:[3,0,-8,7,4,-1,-9,-3,-8,-8,2,-7,-8,-7,4,2,8,9,7,-4,-3,-4,-5,-3,-8,5,8,0,-4,1,2,0,-2,-3,6,-3,-6,6,3,5,-5,7,-3,-1,-8,2,-8,-7,3,-4,3,8,-1,-2,8,-8,-8,-8,4,8,-1,-8,2,-2,-7,9,-3,3,-1,-4,-8,-6,4,2,5,-3,1,-7,2,2,0,-4,-1,7,-8,-3,-6,-8,-9,5,4,-1,1,3,-6,2,-2,1,3,-7,-4,-5,2,1,-6,-3,4,-3,-8,3,1,-9,-7,-7,4,-5,2,0,7,0,-4,0,2,5,8,7,8,-6,2,0,7,0,6,-2,7,-6,-3,-9,-4,-4,-2,0,2,9,0,0,-9,4,-8,-6,-1,5,8,4,0,3,8,-6,0,3,2,-7,0,4,-1,3,1,-8,-3,7,-9,-3,-1,-6,3,-4,5,-2,3,-8,-9,-8,2,-8,-7,-1,-6,-5,3,-7,0,-2,-5,0,-5,-1,2,4, [rest of string was truncated]&quot;;.
+        /// </summary>
+        public static string network {
+            get {
+                return ResourceManager.GetString("network", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] nn_62ef826d1a6d {
+            get {
+                object obj = ResourceManager.GetObject("nn-62ef826d1a6d", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] nn_97f742aaefcd {
+            get {
+                object obj = ResourceManager.GetObject("nn-97f742aaefcd", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Position: 1/35 (rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1)
         ///a2a3: 8457
         ///b2b3: 9345

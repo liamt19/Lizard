@@ -1,8 +1,9 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
-namespace LTChess.Util
+namespace LTChess.Logic.Util
 {
     public static class Utilities
     {
@@ -14,10 +15,11 @@ namespace LTChess.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "7.0";
-        public const string EngineTagLine = "Now includes tactical awareness!";
+        public const string EngineBuildVersion = "8.0";
+        public const string EngineTagLine = "I wish C# had reinterpret_cast!";
 
         public const int MaxListCapacity = 512;
+        public const int ExtendedListCapacity = 256;
         public const int NormalListCapacity = 128;
         public const int LSBEmpty = 64;
         public const int MaxDepth = 64;
@@ -54,6 +56,15 @@ namespace LTChess.Util
         public const ulong KingSide = FileEBB | FileFBB | FileGBB | FileHBB;
         public const ulong Center = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
 
+        public const ulong MobilityInner = 0x3C3C3C3C0000;
+        public const ulong MobilityOutter = AllSquares ^ MobilityInner;
+
+        public static readonly ulong[] LowRanks = new ulong[]
+        {
+            (Rank2BB | Rank3BB),
+            (Rank7BB | Rank6BB),
+        };
+
         public const ulong WhiteKingsideMask = (1UL << F1) | (1UL << G1);
         public const ulong WhiteQueensideMask = (1UL << B1) | (1UL << C1) | (1UL << D1);
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
@@ -79,6 +90,7 @@ namespace LTChess.Util
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
         /// </summary>
+        [MethodImpl(Inline)]
         public static void Log(string s)
         {
             if (JITHasntSeenSearch)
@@ -114,6 +126,13 @@ namespace LTChess.Util
             }
         }
 
+        [MethodImpl(Inline)]
+        public static int Rotate180(int square)
+        {
+            return square ^ 0x3F;
+        }
+
+
         public static class Direction
         {
             public const int NORTH =  8;
@@ -131,7 +150,10 @@ namespace LTChess.Util
         /// Returns the <c>Direction</c> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
         /// </summary>
         [MethodImpl(Inline)]
-        public static int Up(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
+        public static int ShiftUpDir(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
+
+        [MethodImpl(Inline)]
+        public static int ShiftDownDir(int color) => (color == Color.Black) ? Direction.NORTH : Direction.SOUTH;
 
         /// <summary>
         /// Returns a bitboard with bits set 1 "above" the bits in <paramref name="b"/>.
@@ -540,7 +562,7 @@ namespace LTChess.Util
         /// <br></br>
         /// If <paramref name="TraceEval"/> is true, an evaluation of the position will be printed as well.
         /// </summary>
-        public static string FormatSearchInformation(SearchInformation info)
+        public static string FormatSearchInformation(ref SearchInformation info)
         {
             int depth = info.MaxDepth;
             int selDepth = info.SelectiveDepth;

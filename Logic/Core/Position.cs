@@ -1,10 +1,17 @@
 ﻿using System.Diagnostics;
 using System.Text;
 
-namespace LTChess.Core
+using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKP;
+using LTChess.Logic.NN.Simple768;
+
+namespace LTChess.Logic.Core
 {
     public unsafe class Position
     {
+        public const bool UseNNUE768 = false;
+        public const bool UseHalfKP = true;
+
         public Bitboard bb;
 
         /// <summary>
@@ -74,16 +81,10 @@ namespace LTChess.Core
         public FasterStack<int> EnPassantTargets;
 
         /// <summary>
-        /// Set to true if white makes a castling move.
+        /// The sum of the material in the position, indexed by piece color.
         /// </summary>
-        public bool WhiteCastled = false;
-
-        /// <summary>
-        /// Set to true if black makes a castling move.
-        /// </summary>
-        public bool BlackCastled = false;
-
         public int[] MaterialCount;
+
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
@@ -105,6 +106,18 @@ namespace LTChess.Core
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
             Hash = Zobrist.GetHash(this);
+
+            if (UseNNUE768)
+            {
+                NNUEEvaluation.RefreshNN(this);
+                NNUEEvaluation.ResetNN();
+            }
+
+            if (UseHalfKP)
+            {
+                HalfKP.RefreshNN(this);
+                HalfKP.ResetNN();
+            }
         }
 
         /// <summary>
@@ -119,7 +132,7 @@ namespace LTChess.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
-                if (m.ToString(this).ToLower().Equals(moveStr) || m.ToString().ToLower().Equals(moveStr))
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
                 {
                     MakeMove(m);
                     return true;
@@ -134,17 +147,56 @@ namespace LTChess.Core
         }
 
         /// <summary>
+        /// Generates the legal moves in the current position and makes the move that corresponds to the <paramref name="moveStr"/> if one exists.
+        /// </summary>
+        /// <param name="moveStr">The Algebraic notation for a move i.e. Nxd4+, or the Smith notation i.e. e2e4</param>
+        /// <returns>True if <paramref name="moveStr"/> was a recognized and legal move.</returns>
+        public bool TryFindMove(string moveStr, out Move move)
+        {
+            Span<Move> list = stackalloc Move[NormalListCapacity];
+            int size = GenAllLegalMovesTogether(list);
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
+                {
+                    move = m;
+                    return true;
+                }
+                if (i == size - 1)
+                {
+                    Log("No move '" + moveStr + "' found, try one of the following: ");
+                    Log(list.Stringify(this) + "\r\n" + list.Stringify());
+                }
+            }
+
+            move = Move.Null;
+            return false;
+        }
+
+        /// <summary>
         /// Pushes the current state, then performs the move <paramref name="move"/> and updates the state of the board.
         /// </summary>
         /// <param name="move">The move to make, which needs to be generated from MoveGenerator.GenAllLegalMoves or strange things might happen.</param>
         [MethodImpl(Inline)]
-        public void MakeMove(in Move move)
+        public void MakeMove(in Move move, bool MakeMoveNN = true)
         {
             Castles.Push(Castling);
             Checks.Push(CheckInfo);
             Hashes.Push(Hash);
             HalfmoveClocks.Push(HalfMoves);
             EnPassantTargets.Push(EnPassantTarget);
+
+            bool kingMove = bb.GetPieceAtIndex(move.From) == Piece.King;
+
+            if (UseNNUE768 && MakeMoveNN)
+            {
+                NNUEEvaluation.MakeMoveNN(this, move);
+            }
+            else if (UseHalfKP && MakeMoveNN)
+            {
+                HalfKP.MakeMove(this, move);
+            }
 
             int ourPiece = bb.GetPieceAtIndex(move.From);
             int ourColor = bb.GetColorAtIndex(move.From);
@@ -260,8 +312,6 @@ namespace LTChess.Core
                     bb.Move(move.From, move.To, ourColor, ourPiece, theirPiece);
                     Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, move.To);
                     Hash = Hash.ZobristMove(move.From, move.To, ourColor, ourPiece);
-
-
                 }
             }
             else if (move.Castle)
@@ -295,13 +345,11 @@ namespace LTChess.Core
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
                     Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                    WhiteCastled = true;
                 }
                 else
                 {
                     Hash = Hash.ZobristCastle(Castling, (CastlingStatus.BK | CastlingStatus.BQ));
                     Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                    BlackCastled = true;
                 }
             }
             else if (move.Promotion)
@@ -383,6 +431,11 @@ namespace LTChess.Core
             ToMove = Not(ToMove);
             Moves.Push(move);
             Hash = Hash.ZobristChangeToMove();
+
+            if (UseHalfKP && MakeMoveNN && kingMove)
+            {
+                HalfKP.RefreshNN(this);
+            }
         }
 
         /// <summary>
@@ -435,14 +488,14 @@ namespace LTChess.Core
         /// Undoes the last move that was made by popping from the Position's stacks.
         /// </summary>
         [MethodImpl(Inline)]
-        public void UnmakeMove() => UnmakeMove(Moves.Pop());
+        public void UnmakeMove(bool UnmakeMoveNN = true) => UnmakeMove(Moves.Pop(), UnmakeMoveNN);
 
         /// <summary>
         /// Undoes the provided <paramref name="move"/> by popping from the stacks.
         /// </summary>
         /// <param name="move">This should only ever be from Moves.Pop() for now.</param>
         [MethodImpl(Inline)]
-        private void UnmakeMove(in Move move)
+        private void UnmakeMove(in Move move, bool UnmakeMoveNN = true)
         {
             //  Assume that "we" just made the last move, and "they" are undoing it.
             int ourPiece = bb.GetPieceAtIndex(move.To);
@@ -454,7 +507,7 @@ namespace LTChess.Core
             this.Hash = Hashes.Pop();
             this.HalfMoves = HalfmoveClocks.Pop();
             this.EnPassantTarget = EnPassantTargets.Pop();
-
+            
             ulong mask = (SquareBB[move.From] | SquareBB[move.To]);
 
             if (move.Capture)
@@ -489,7 +542,7 @@ namespace LTChess.Core
             }
             else if (move.EnPassant)
             {
-                int idxPawn = EnPassantTarget + Up(ToMove);
+                int idxPawn = EnPassantTarget + ShiftUpDir(ToMove);
                 ulong epMask = SquareBB[idxPawn];
                 bb.Colors[theirColor] ^= epMask;
                 bb.Colors[ourColor] ^= mask;
@@ -521,15 +574,6 @@ namespace LTChess.Core
                     //  move.to == G8
                     bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
                 }
-
-                if (ourColor == Color.White)
-                {
-                    WhiteCastled = false;
-                }
-                else
-                {
-                    BlackCastled = false;
-                }
             }
             else if (move.Promotion)
             {
@@ -554,6 +598,16 @@ namespace LTChess.Core
             }
 
             ToMove = Not(ToMove);
+
+            if (UseNNUE768 && UnmakeMoveNN)
+            {
+                NNUEEvaluation.UnmakeMoveNN();
+            }
+
+            if (UseHalfKP && UnmakeMoveNN)
+            {
+                HalfKP.UnmakeMoveNN();
+            }
         }
 
 
@@ -690,7 +744,7 @@ namespace LTChess.Core
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
 
-                int idxPawn = move.To - Up(ourColor);
+                int idxPawn = move.To - ShiftUpDir(ourColor);
 
                 ulong moveMask = (SquareBB[move.From] | SquareBB[move.To]);
                 bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
@@ -727,7 +781,7 @@ namespace LTChess.Core
             ulong rank7 = (ToMove == Color.White) ? Rank7BB : Rank2BB;
             ulong rank3 = (ToMove == Color.White) ? Rank3BB : Rank6BB;
 
-            int up = Up(ToMove);
+            int up = ShiftUpDir(ToMove);
 
             int theirColor = Not(ToMove);
 
@@ -1253,9 +1307,9 @@ namespace LTChess.Core
 
             for (int i = 0; i < size; i++)
             {
-                MakeMove(list[i]);
+                MakeMove(list[i], false);
                 n += Perft(depth - 1);
-                UnmakeMove();
+                UnmakeMove(false);
             }
 
             return n;
@@ -1285,7 +1339,7 @@ namespace LTChess.Core
                 Position threadPosition = new Position(rootFEN);
 
                 pn.root = mlist[i].ToString();
-                threadPosition.MakeMove(mlist[i]);
+                threadPosition.MakeMove(mlist[i], false);
                 pn.number = threadPosition.Perft(depth - 1);
 
                 list.Add(pn);
@@ -1445,6 +1499,17 @@ namespace LTChess.Core
                 this.EnPassantTargets.CopyFromArray(temp.EnPassantTargets);
 
                 return false;
+            }
+
+            if (UseNNUE768)
+            {
+                NNUEEvaluation.RefreshNN(this);
+                NNUEEvaluation.ResetNN();
+            }
+
+            if (Position.UseHalfKP)
+            {
+                HalfKP.ResetNN();
             }
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);

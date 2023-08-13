@@ -2,10 +2,14 @@
 #define SHOW_STATS
 
 
-using LTChess.Data;
-using LTChess.Search.Ordering;
+using LTChess.Logic.Data;
+using LTChess.Logic.NN.HalfKP;
+using LTChess.Logic.NN.Simple768;
+using LTChess.Logic.Search.Ordering;
 
-namespace LTChess.Search
+using static LTChess.Logic.Search.Ordering.MoveOrdering;
+
+namespace LTChess.Logic.Search
 {
     public static class SimpleSearch
     {
@@ -21,9 +25,9 @@ namespace LTChess.Search
 
         private static SearchStack SearchStack = new SearchStack();
 
-        private static KillerMoveTable KillerMoves = new KillerMoveTable();
+        public static KillerMoveTable KillerMoves = new KillerMoveTable();
 
-        private static HistoryMoveTable HistoryMoves = new HistoryMoveTable();
+        public static HistoryMoveTable HistoryMoves = new HistoryMoveTable();
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
 
@@ -34,12 +38,17 @@ namespace LTChess.Search
         /// If <paramref name="allowDepthIncrease"/> is true, then the search will continue above the requested maximum depth
         /// so long as there is still search time remaining.
         /// </summary>
+        [MethodImpl(Optimize)]
         public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
             TranspositionTable.Clear();
             SearchStack.Clear();
-            KillerMoves.Clear();
             PvMoves.Clear();
+
+            if (UseKillerHeuristic)
+            {
+                KillerMoves.Clear();
+            }
 
             info.TimeManager.RestartTimer();
 
@@ -70,11 +79,17 @@ namespace LTChess.Search
 #endif
                 }
 
-                HistoryMoves.Reduce();
+                if (UseHistoryHeuristic)
+                {
+                    HistoryMoves.Reduce();
+                }
 
                 aspirationFailed = false;
                 ulong prevNodes = info.NodeCount;
-                Deepen(ref info, alpha, beta);
+
+                int score = SimpleSearch.FindBest<RootNode>(ref info, alpha, beta, info.MaxDepth, 0);
+                info.BestScore = score;
+
                 ulong afterNodes = info.NodeCount;
 
                 if (info.StopSearching)
@@ -84,6 +99,12 @@ namespace LTChess.Search
 
                     //  If our search was interrupted, info.BestMove probably doesn't contain the actual best move,
                     //  and instead has the best move from whichever call to FindBest set it last.
+
+                    if (PvMoves.Get(0) != LastBestMove)
+                    {
+                        Log("WARN PvMoves[0] " + PvMoves.Get(0).ToString(info.Position) + " != LastBestMove " + LastBestMove.ToString(info.Position));
+                    }
+
                     info.SetLastMove(LastBestMove, LastBestScore);
                     info.OnSearchFinish?.Invoke(info);
                     info.TimeManager.ResetTimer();
@@ -117,9 +138,7 @@ namespace LTChess.Search
                 if (continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
                 {
                     Log(info.BestMove.ToString(info.Position) + " forces mate in " + mateIn + ", aborting at depth " + depth + " after " + info.TimeManager.GetSearchTime() + "ms");
-                    info.OnSearchFinish?.Invoke(info);
-                    info.TimeManager.ResetTimer();
-                    return;
+                    break;
                 }
 
                 depth++;
@@ -137,16 +156,18 @@ namespace LTChess.Search
 
             info.OnSearchFinish?.Invoke(info);
             info.TimeManager.ResetTimer();
+
+            if (Position.UseNNUE768)
+            {
+                NNUEEvaluation.ResetNN();
+            }
+
+            if (Position.UseHalfKP)
+            {
+                HalfKP.ResetNN();
+            }
         }
 
-        /// <summary>
-        /// Performs one pass of deepening, at the depth specified in <paramref name="info"/>.maxDepthStart
-        /// </summary>
-        public static void Deepen(ref SearchInformation info, int alpha = AlphaStart, int beta = BetaStart)
-        {
-            int score = SimpleSearch.FindBest<RootNode>(ref info, alpha, beta, info.MaxDepth, 0);
-            info.BestScore = score;
-        }
 
         /// <summary>
         /// Finds the best move according to the Evaluation function, looking at least <paramref name="depth"/> moves in the future.
@@ -302,16 +323,12 @@ namespace LTChess.Search
 #endif
                     return beta;
                 }
-                else if (staticEval - 67 * depth + 76 * (improving ? 1 : 0) >= beta)
-                {
-                    return beta;
-                }
             }
 
             isFutilityPrunable = CanFutilityPrune(isInCheck, isPV, alpha, beta, depth);
             isLateMovePrunable = CanLateMovePrune(isInCheck, isPV, isRoot, depth);
             isRazoringPrunable = CanRazoringPrune(isInCheck, isPV, staticEval, alpha, depth);
-            isNullMovePrunable = CanNullMovePrune(bb, isInCheck, isPV, staticEval, beta, depth);
+            isNullMovePrunable = CanNullMovePrune(pos, isInCheck, isPV, staticEval, beta, depth);
 
             if (UseRazoring && isRazoringPrunable)
             {
@@ -357,19 +374,22 @@ namespace LTChess.Search
                 }
             }
 
-            SortByMoveScoresFast(ref info, list, size, ply, ttEntry.BestMove);
+            Span<int> scores = stackalloc int[size];
+            AssignNormalMoveScores(ref info, list, scores, size, ply, ttEntry.BestMove);
 
             int quietMoves = 0;
             int lmpCutoff = SearchConstants.LMPDepth + (depth * depth);
+            //int bestScore = AlphaStart;
 
             for (int i = 0; i < size; i++)
             {
+                OrderNextMove(list, scores, size, i);
                 if (!list[i].Capture)
                 {
                     quietMoves++;
                 }
 
-                if (UseFutilityPruning && isFutilityPrunable && (!list[i].Capture && !isPV))
+                if (UseFutilityPruning && isFutilityPrunable && !list[i].Capture)
                 {
                     if (staticEval + (SearchConstants.FutilityPruningMarginPerDepth * depth) < alpha)
                     {
@@ -391,6 +411,7 @@ namespace LTChess.Search
                 }
 
                 //  Only prune if our alpha has changed, meaning we have found at least 1 good move.
+                //if (UseLateMovePruning && isLateMovePrunable && (bestScore > AlphaStart) && (quietMoves > lmpCutoff))
                 if (UseLateMovePruning && isLateMovePrunable && (alpha != AlphaStart) && (quietMoves > lmpCutoff))
                 {
 #if DEBUG || SHOW_STATS
@@ -401,13 +422,12 @@ namespace LTChess.Search
                 }
 
                 bool kingCheckExtension = (bb.GetPieceAtIndex(list[i].From) == Piece.King && (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck));
-                //bool passedPawnExtension = (DistanceFromPromotion(list[i].from, pos.ToMove) <= PassedPawnExtensionDistance && bb.IsPasser(list[i].from));
 
                 pos.MakeMove(list[i]);
                 info.NodeCount++;
 
                 int score;
-                if (info.Position.IsThreefoldRepetition() || info.Position.IsInsufficientMaterial())
+                if ((info.Position.IsThreefoldRepetition() || info.Position.IsInsufficientMaterial()))
                 {
                     //  Instead of looking further and probably breaking something,
                     //  Just evaluate this move as a draw here and keep looking at the others.
@@ -463,7 +483,7 @@ namespace LTChess.Search
                         nextDepth = Math.Max(nextDepth, 1);
                     }
 
-                    if (UseLateMoveReduction && CanLateMoveReduce(ref info, list[i], depth, isPV))
+                    if (UseLateMoveReduction && CanLateMoveReduce(ref info, list[i], depth))
                     {
 
 #if DEBUG || SHOW_STATS
@@ -520,7 +540,6 @@ namespace LTChess.Search
 
                 pos.UnmakeMove();
 
-
                 if (score > alpha)
                 {
                     //  This is the best move so far
@@ -541,7 +560,6 @@ namespace LTChess.Search
 
                         PvMoves.UpdateLength(ply);
                     }
-
                 }
 
                 if (score >= beta)
@@ -552,14 +570,29 @@ namespace LTChess.Search
 
                     if (!list[i].Capture)
                     {
-                        if (KillerMoves[ply, 0] != list[i])
+                        if (UseKillerHeuristic && KillerMoves[ply, 0] != list[i])
                         {
                             KillerMoves.Replace(ply, list[i]);
                         }
 
-                        int history = (depth * depth);
+                        if (UseHistoryHeuristic)
+                        {
+                            int history = (depth * depth);
+                            HistoryMoves[pos.ToMove, bb.GetPieceAtIndex(list[i].From), list[i].To] += history;
+                        }
+                    }
 
-                        HistoryMoves[pos.ToMove, bb.GetPieceAtIndex(list[i].From), list[i].To] += history;
+                    if (isPV)
+                    {
+                        PvMoves.Insert(ply, list[i]);
+                        int nextPly = ply + 1;
+                        while (PvMoves.PlyInitialized(ply, nextPly))
+                        {
+                            PvMoves.Copy(ply, nextPly);
+                            nextPly++;
+                        }
+
+                        PvMoves.UpdateLength(ply);
                     }
 
                     nodeTypeToSave = TTNodeType.Beta;
@@ -573,20 +606,12 @@ namespace LTChess.Search
             //  We want to replace entries that we have searched to a higher depth since the new evaluation will be more accurate.
             //  But this is only done if the TTEntry was null (move hadn't already been looked at)
             //  or we are sure that this move changes the alpha Score after searching at a higher depth
-
-            if (alpha != startingAlpha)
+            if (nodeTypeToSave == TTNodeType.Exact || ttEntry.Depth <= depth || ttEntry.NodeType == TTNodeType.Invalid)
             {
-                if (ttEntry.Depth <= depth || ttEntry.NodeType == TTNodeType.Invalid)
-                {
-                    TranspositionTable.Save(posHash, (short)alpha, nodeTypeToSave, depth, BestMove);
-                }
-
-                info.BestMove = BestMove;
-                info.BestScore = alpha;
+                TranspositionTable.Save(posHash, (short)alpha, nodeTypeToSave, depth, BestMove);
             }
-
-
-
+            info.BestMove = BestMove;
+            info.BestScore = alpha;
 
 #if DEBUG || SHOW_STATS
             SearchStatistics.NMCompletes++;
@@ -595,96 +620,7 @@ namespace LTChess.Search
             return alpha;
         }
 
-        /// <summary>
-        /// Assigns each move in the list a Score based on things like whether it is a capture, causes check, etc.
-        /// This is important for iterative deepening since we generally have a good idea of which moves are good/bad
-        /// based on the results from the previous depth, and don't necessarily want to spend time looking at 
-        /// a "bad" move's entire search tree again when we already have a couple moves that look promising.
-        /// </summary>
-        /// <param name="ply">The current ply of the search, used to determine what the killer moves are for that ply</param>
-        /// <param name="pvOrTTMove">This is set to the TTEntry.BestMove from the previous depth, or possibly Move.Null</param>
-        [MethodImpl(Inline)]
-        public static int SortByMoveScoresFast(ref SearchInformation info, in Span<Move> list, int size, int ply, Move pvOrTTMove)
-        {
-            Span<int> scores = stackalloc int[size];
-            int theirKing = info.Position.bb.KingIndex(Not(info.Position.ToMove));
-            int pt;
-
-            Move killer1 = KillerMoves[ply, 0];
-            Move killer2 = KillerMoves[ply, 1];
-
-            for (int i = 0; i < size; i++)
-            {
-                if (list[i].Equals(pvOrTTMove))
-                {
-                    scores[i] = int.MaxValue - 10;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_PV_TT_Move++;
-#endif
-                }
-                else if (list[i].Promotion)
-                {
-                    scores[i] = int.MaxValue - 100 + list[i].PromotionTo;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_Promotion++;
-#endif
-                }
-                else if (list[i].Capture)
-                {
-                    int victim = info.Position.bb.GetPieceAtIndex(list[i].To);
-                    int aggressor = info.Position.bb.GetPieceAtIndex(list[i].To);
-                    scores[i] = SimpleQuiescence.MvvLva[victim][aggressor] * 10000;
-                }
-                else if (list[i].Equals(killer1))
-                {
-                    scores[i] = 100000;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_Killer_1++;
-#endif          
-                }
-                else if (list[i].Equals(killer2))
-                {
-                    scores[i] = 90000;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_Killer_2++;
-#endif
-                }
-
-                int pc = info.Position.ToMove;
-                pt = info.Position.bb.GetPieceAtIndex(list[i].From);
-
-                int history = HistoryMoves[pc, pt, list[i].To];
-                //Console.WriteLine("\t\t\t" + "Move " + list[i] + " history " + history);
-                if (UseHistoryHeuristic && history > 0)
-                {
-                    scores[i] = history;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_HistoryHeuristic++;
-#endif
-                }
-            }
-
-            int max;
-            for (int i = 0; i < size - 1; i++)
-            {
-                max = i;
-                for (int j = i + 1; j < size; j++)
-                {
-                    if (scores[j] > scores[max])
-                    {
-                        max = j;
-                    }
-                }
-
-                (list[max], list[i]) = (list[i], list[max]);
-
-                (scores[max], scores[i]) = (scores[i], scores[max]);
-            }
-
-            return size;
-        }
-
-
+        
         [MethodImpl(Inline)]
         public static bool CanLateMovePrune(bool isInCheck, bool isPV, bool isRoot, int depth)
         {
@@ -742,17 +678,17 @@ namespace LTChess.Search
         [MethodImpl(Inline)]
         public static int GetReverseFutilityMargin(int depth, bool improving)
         {
-            return SearchConstants.ReverseFutilityPruningBaseMargin * (depth - (improving ? 1 : 0));
+            return (depth * SearchConstants.ReverseFutilityPruningPerDepth) - ((improving ? 1 : 0) * SearchConstants.ReverseFutilityPruningImproving);
         }
 
 
         [MethodImpl(Inline)]
-        public static bool CanNullMovePrune(in Bitboard bb, bool isInCheck, bool isPV, int staticEval, int beta, int depth)
+        public static bool CanNullMovePrune(Position p, bool isInCheck, bool isPV, int staticEval, int beta, int depth)
         {
             if (!isInCheck && !isPV && depth >= SearchConstants.NullMovePruningMinDepth && staticEval >= beta)
             {
                 //  Shouldn't be used in endgames.
-                int weakerSideMaterial = Math.Min(bb.MaterialCount(Color.White), bb.MaterialCount(Color.Black));
+                int weakerSideMaterial = Math.Min(p.MaterialCount[Color.White], p.MaterialCount[Color.Black]);
                 return (weakerSideMaterial > EvaluationConstants.EndgameMaterial);
             }
 
@@ -763,24 +699,14 @@ namespace LTChess.Search
 
 
         [MethodImpl(Inline)]
-        public static bool CanLateMoveReduce(ref SearchInformation info, Move m, int depth, bool isPV)
+        public static bool CanLateMoveReduce(ref SearchInformation info, Move m, int depth)
         {
-            if (info.Position.CheckInfo.InCheck || info.Position.CheckInfo.InDoubleCheck)
+            if (info.Position.CheckInfo.InCheck || info.Position.CheckInfo.InDoubleCheck || m.CausesCheck || m.CausesDoubleCheck)
             {
                 return false;
             }
 
-            if (m.CausesCheck || m.CausesDoubleCheck)
-            {
-                return false;
-            }
-
-            if (m.Capture || m.Promotion)
-            {
-                return false;
-            }
-
-            if (isPV || depth < SearchConstants.LMRDepth)
+            if (m.Capture || m.Promotion || depth < SearchConstants.LMRDepth)
             {
                 return false;
             }

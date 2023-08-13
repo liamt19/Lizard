@@ -4,29 +4,36 @@
 global using System.Runtime.CompilerServices;
 global using System.Diagnostics;
 
-global using LTChess.Core;
-global using LTChess.Data;
-global using LTChess.Magic;
-global using LTChess.Search;
-global using LTChess.Transposition;
-global using LTChess.Util;
+global using LTChess.Logic.Core;
+global using LTChess.Logic.Data;
+global using LTChess.Logic.Magic;
+global using LTChess.Logic.Search;
+global using LTChess.Logic.Transposition;
+global using LTChess.Logic.Util;
 
-global using static LTChess.Core.MoveGenerator;
-global using static LTChess.Core.UCI;
-global using static LTChess.Data.CheckInfo;
-global using static LTChess.Data.PrecomputedData;
-global using static LTChess.Data.RunOptions;
-global using static LTChess.Data.Squares;
-global using static LTChess.Magic.MagicBitboards;
-global using static LTChess.Search.SearchConstants;
-global using static LTChess.Search.ThreadedEvaluation;
-global using static LTChess.Util.PositionUtilities;
-global using static LTChess.Util.Utilities;
-global using static LTChess.Util.Interop;
+global using static LTChess.Logic.Core.MoveGenerator;
+global using static LTChess.Logic.Core.UCI;
+global using static LTChess.Logic.Data.CheckInfo;
+global using static LTChess.Logic.Data.PrecomputedData;
+global using static LTChess.Logic.Data.RunOptions;
+global using static LTChess.Logic.Data.Squares;
+global using static LTChess.Logic.Data.Color;
+global using static LTChess.Logic.Data.Piece;
+global using static LTChess.Logic.Magic.MagicBitboards;
+global using static LTChess.Logic.Search.SearchConstants;
+global using static LTChess.Logic.Search.ThreadedEvaluation;
+global using static LTChess.Logic.Util.PositionUtilities;
+global using static LTChess.Logic.Util.Utilities;
+global using static LTChess.Logic.Util.Interop;
 
+
+using LTChess.Logic.Book;
+using LTChess.Logic.NN.Simple768;
+using LTChess.Logic.NN.HalfKP;
+using LTChess.Logic.NN.HalfKP.Layers;
+using System.Runtime.Intrinsics;
 using System.Reflection;
-
-using LTChess.Book;
+using LTChess.Logic.NN;
 using System.Runtime.InteropServices;
 
 namespace LTChess
@@ -63,6 +70,17 @@ namespace LTChess
             }
 
             WarmUpJIT();
+
+            if (Position.UseNNUE768)
+            {
+                NNUEEvaluation.ResetNN();
+                NNUEEvaluation.RefreshNN(p);
+            }
+
+            if (Position.UseHalfKP)
+            {
+                HalfKP.ResetNN();
+            }
 
 
 #if DEBUG
@@ -247,7 +265,18 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    info.GetEvaluation(p, p.ToMove, true);
+                    if (Position.UseNNUE768)
+                    {
+                        Log("NNUE Eval: " + NNUEEvaluation.GetEvaluation(p));
+                    }
+                    else if (Position.UseHalfKP)
+                    {
+                        Log("HalfKP Eval: " + HalfKP.GetEvaluation(p));
+                    }
+                    else
+                    {
+                        info.GetEvaluation(p, p.ToMove, true);
+                    }
                 }
                 else if (input.EqualsIgnoreCase("d"))
                 {
@@ -287,6 +316,12 @@ namespace LTChess
                         if (p.LoadFromFEN(input.Trim()))
                         {
                             Log("Loaded fen");
+
+                            if (Position.UseHalfKP)
+                            {
+                                HalfKP.RefreshNN(p);
+                                HalfKP.ResetNN();
+                            }
                         }
                     }
                     else
@@ -309,9 +344,9 @@ namespace LTChess
             info.MaxDepth = 4;
             info.SetMoveTime(1000);
             SimpleSearch.StartSearching(ref info);
-            DoPerftDivide(4);
 
             SearchStatistics.Zero();
+            EvaluationTable.Clear();
 
 
             JITHasntSeenSearch = false;
@@ -392,13 +427,19 @@ namespace LTChess
             SearchStatistics.PrintStatistics();
         }
 
-        public static void PrintMoves()
+
+        public static void DotTraceProfile(int depth = 14)
         {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllLegalMovesTogether(list);
-            Log("Legal (" + size + "): " + list.Stringify(p));
+
+            info = new SearchInformation(p, depth);
+            Task.Run(() =>
+            {
+                SimpleSearch.StartSearching(ref info);
+                Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
+            }).Wait();
         }
 
+    
     }
 
 }
