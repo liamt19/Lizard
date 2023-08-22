@@ -15,8 +15,8 @@ namespace LTChess.Logic.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "8.0";
-        public const string EngineTagLine = "I wish C# had reinterpret_cast!";
+        public const string EngineBuildVersion = "8.1";
+        public const string EngineTagLine = "MemoryMarshal.Cast saved the day!";
 
         public const int MaxListCapacity = 512;
         public const int ExtendedListCapacity = 256;
