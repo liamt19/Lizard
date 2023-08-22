@@ -63,13 +63,13 @@
         /// Smaller margins will eliminate more nodes from the search (saves time), but if the margin is too small
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
-        public static int AspirationWindowMargin = 60;
+        public static int AspirationWindowMargin = 40;
 
         /// <summary>
         /// The margins for the aspiration windows will increase by this much per depth.
         /// This represents our uncertainty about which way the position is heading.
         /// </summary>
-        public static int AspirationMarginPerDepth = 30;
+        public static int AspirationMarginPerDepth = 20;
 
 
 
