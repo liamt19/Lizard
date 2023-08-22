@@ -1,8 +1,11 @@
 ﻿
-#define SHOW_STATS
+//#define SHOW_STATS
 
 
+using LTChess.Logic.Core;
 using LTChess.Logic.Data;
+using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Search.Ordering;
@@ -157,14 +160,19 @@ namespace LTChess.Logic.Search
             info.OnSearchFinish?.Invoke(info);
             info.TimeManager.ResetTimer();
 
-            if (Position.UseNNUE768)
+            if (UseSimple768)
             {
                 NNUEEvaluation.ResetNN();
             }
 
-            if (Position.UseHalfKP)
+            if (UseHalfKP)
             {
                 HalfKP.ResetNN();
+            }
+
+            if (UseHalfKA)
+            {
+                HalfKA_HM.ResetNN();
             }
         }
 

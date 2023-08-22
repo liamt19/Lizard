@@ -127,8 +127,8 @@
   <data name="nn-62ef826d1a6d" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\nn-62ef826d1a6d.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="nn-97f742aaefcd" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\nn-97f742aaefcd.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="nn-e8321e467bf6" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\nn-e8321e467bf6.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="sf14bench_perft4" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\resources\sf14bench_perft4.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>

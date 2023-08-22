@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 
 using LTChess.Logic.Book;
+using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.HalfKP;
 
 namespace LTChess.Logic.Core
@@ -197,10 +199,17 @@ namespace LTChess.Logic.Core
 
                     }
 
-                    if (Position.UseHalfKP)
+                    if (UseHalfKP)
                     {
+                        //  TODO: is this necessary?
                         HalfKP.RefreshNN(info.Position);
                         HalfKP.ResetNN();
+                    }
+
+                    if (UseHalfKA)
+                    {
+                        HalfKA_HM.RefreshNN(info.Position);
+                        HalfKA_HM.ResetNN();
                     }
                 }
                 else if (cmd == "go")

@@ -1,5 +1,6 @@
 ﻿using System.Text;
-
+using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 
@@ -97,19 +98,24 @@ namespace LTChess.Logic.Search
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GetEvaluation(in Position position, int pc, bool Trace = false)
+        public int GetEvaluation(in Position position, bool Trace = false)
         {
-            if (Position.UseNNUE768)
+            if (UseSimple768)
             {
-                int eval = NNUEEvaluation.GetEvaluation(position);
-                return eval;
+                return NNUEEvaluation.GetEvaluation(position);
             }
-            else if (Position.UseHalfKP)
+            
+            if (UseHalfKP)
             {
                 return HalfKP.GetEvaluation(position);
             }
 
-            return this.tdEval.Evaluate(position, pc, Trace);
+            if (UseHalfKA)
+            {
+                return HalfKA_HM.GetEvaluation(position);
+            }
+
+            return this.tdEval.Evaluate(position, position.ToMove, Trace);
         }
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)

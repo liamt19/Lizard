@@ -1,7 +1,9 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Text;
 
 using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 
@@ -9,9 +11,6 @@ namespace LTChess.Logic.Core
 {
     public unsafe class Position
     {
-        public const bool UseNNUE768 = false;
-        public const bool UseHalfKP = true;
-
         public Bitboard bb;
 
         /// <summary>
@@ -107,7 +106,7 @@ namespace LTChess.Logic.Core
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
             Hash = Zobrist.GetHash(this);
 
-            if (UseNNUE768)
+            if (UseSimple768)
             {
                 NNUEEvaluation.RefreshNN(this);
                 NNUEEvaluation.ResetNN();
@@ -117,6 +116,12 @@ namespace LTChess.Logic.Core
             {
                 HalfKP.RefreshNN(this);
                 HalfKP.ResetNN();
+            }
+
+            if (UseHalfKA)
+            {
+                HalfKA_HM.RefreshNN(this);
+                HalfKA_HM.ResetNN();
             }
         }
 
@@ -189,13 +194,17 @@ namespace LTChess.Logic.Core
 
             bool kingMove = bb.GetPieceAtIndex(move.From) == Piece.King;
 
-            if (UseNNUE768 && MakeMoveNN)
+            if (UseSimple768 && MakeMoveNN)
             {
                 NNUEEvaluation.MakeMoveNN(this, move);
             }
             else if (UseHalfKP && MakeMoveNN)
             {
                 HalfKP.MakeMove(this, move);
+            }
+            else if (UseHalfKA && MakeMoveNN)
+            {
+                HalfKA_HM.MakeMove(this, move);
             }
 
             int ourPiece = bb.GetPieceAtIndex(move.From);
@@ -436,6 +445,10 @@ namespace LTChess.Logic.Core
             {
                 HalfKP.RefreshNN(this);
             }
+            else if (UseHalfKA && MakeMoveNN && kingMove)
+            {
+                HalfKA_HM.RefreshNN(this);
+            }
         }
 
         /// <summary>
@@ -599,14 +612,19 @@ namespace LTChess.Logic.Core
 
             ToMove = Not(ToMove);
 
-            if (UseNNUE768 && UnmakeMoveNN)
+            if (UseSimple768 && UnmakeMoveNN)
             {
                 NNUEEvaluation.UnmakeMoveNN();
             }
-
+            
             if (UseHalfKP && UnmakeMoveNN)
             {
                 HalfKP.UnmakeMoveNN();
+            }
+
+            if (UseHalfKA && UnmakeMoveNN)
+            {
+                HalfKA_HM.UnmakeMoveNN();
             }
         }
 
@@ -1501,15 +1519,20 @@ namespace LTChess.Logic.Core
                 return false;
             }
 
-            if (UseNNUE768)
+            if (UseSimple768)
             {
                 NNUEEvaluation.RefreshNN(this);
                 NNUEEvaluation.ResetNN();
             }
 
-            if (Position.UseHalfKP)
+            if (UseHalfKP)
             {
                 HalfKP.ResetNN();
+            }
+
+            if (UseHalfKA)
+            {
+                HalfKA_HM.ResetNN();
             }
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
