@@ -25,7 +25,7 @@ global using static LTChess.Logic.Search.ThreadedEvaluation;
 global using static LTChess.Logic.Util.PositionUtilities;
 global using static LTChess.Logic.Util.Utilities;
 global using static LTChess.Logic.Util.Interop;
-
+global using static LTChess.Logic.NN.NNRunOptions;
 
 using LTChess.Logic.Book;
 using LTChess.Logic.NN.Simple768;
@@ -35,6 +35,7 @@ using System.Runtime.Intrinsics;
 using System.Reflection;
 using LTChess.Logic.NN;
 using System.Runtime.InteropServices;
+using LTChess.Logic.NN.HalfKA_HM;
 
 namespace LTChess
 {
@@ -71,15 +72,21 @@ namespace LTChess
 
             WarmUpJIT();
 
-            if (Position.UseNNUE768)
+
+            if (UseSimple768)
             {
                 NNUEEvaluation.ResetNN();
                 NNUEEvaluation.RefreshNN(p);
             }
 
-            if (Position.UseHalfKP)
+            if (UseHalfKP)
             {
                 HalfKP.ResetNN();
+            }
+
+            if (UseHalfKA)
+            {
+                HalfKA_HM.ResetNN();
             }
 
 
@@ -265,17 +272,28 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    if (Position.UseNNUE768)
+                    if (UseSimple768)
                     {
                         Log("NNUE Eval: " + NNUEEvaluation.GetEvaluation(p));
                     }
-                    else if (Position.UseHalfKP)
+                    else if (UseHalfKP)
                     {
                         Log("HalfKP Eval: " + HalfKP.GetEvaluation(p));
                     }
+                    else if (UseHalfKA)
+                    {
+                        Log("HalfKA Eval: " + HalfKA_HM.GetEvaluation(p));
+                    }
                     else
                     {
-                        info.GetEvaluation(p, p.ToMove, true);
+                        info.GetEvaluation(p, true);
+                    }
+                }
+                else if (input.EqualsIgnoreCase("trace"))
+                {
+                    if (UseHalfKA)
+                    {
+                        HalfKA_HM.Trace(p);
                     }
                 }
                 else if (input.EqualsIgnoreCase("d"))
@@ -317,10 +335,16 @@ namespace LTChess
                         {
                             Log("Loaded fen");
 
-                            if (Position.UseHalfKP)
+                            if (UseHalfKP)
                             {
                                 HalfKP.RefreshNN(p);
                                 HalfKP.ResetNN();
+                            }
+
+                            if (UseHalfKA)
+                            {
+                                HalfKA_HM.RefreshNN(p);
+                                HalfKA_HM.ResetNN();
                             }
                         }
                     }
@@ -340,9 +364,11 @@ namespace LTChess
         {
             JITHasntSeenSearch = true;
 
+            p.Perft(4);
+
             info = new SearchInformation(p);
             info.MaxDepth = 4;
-            info.SetMoveTime(1000);
+            info.SetMoveTime(250);
             SimpleSearch.StartSearching(ref info);
 
             SearchStatistics.Zero();
