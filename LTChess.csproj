@@ -52,11 +52,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Logic\NN\HalfKA_HM\**" />
     <Compile Remove="Logic\Tablebase\**" />
-    <EmbeddedResource Remove="Logic\NN\HalfKA_HM\**" />
     <EmbeddedResource Remove="Logic\Tablebase\**" />
-    <None Remove="Logic\NN\HalfKA_HM\**" />
     <None Remove="Logic\Tablebase\**" />
   </ItemGroup>
 
