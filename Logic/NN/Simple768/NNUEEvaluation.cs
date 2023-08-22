@@ -30,7 +30,7 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void Initialize()
         {
-            if (Initialized || !Position.UseNNUE768)
+            if (Initialized || !UseSimple768)
             {
                 return;
             }

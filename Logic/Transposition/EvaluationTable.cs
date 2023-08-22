@@ -57,7 +57,7 @@
             ETEntry etEntry = EvaluationTable.Probe(info.Position.Hash);
             if (etEntry.Key == EvaluationTable.InvalidKey || !etEntry.ValidateKey(info.Position.Hash) || etEntry.Score == ETEntry.InvalidScore)
             {
-                staticEval = info.GetEvaluation(info.Position, info.Position.ToMove);
+                staticEval = info.GetEvaluation(info.Position);
                 EvaluationTable.Save(info.Position.Hash, (short)staticEval);
             }
             else

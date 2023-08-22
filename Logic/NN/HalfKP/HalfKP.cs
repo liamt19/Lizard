@@ -28,6 +28,13 @@ namespace LTChess.Logic.NN.HalfKP
     /// from https://github.com/TheBlackPlague/StockNemo/tree/master/Backend/Engine/NNUE.
     /// Stockfish 12 used a "StateInfo" struct which contained an Accumulator for each position,
     /// but to keep things simpler and use less pointers, this stack concept works just as well.
+    /// <para></para>
+    /// 
+    /// Generally works pretty well, although there are sometimes issues with this architecture. For example:
+    /// Stockfish 12's static NNUE evaluation for the position (2K5/p7/1b6/1P6/6p1/7k/5p2/8 b - - 1 70) is -16.12.
+    /// If you promote to a queen, it is -13.90.
+    /// If you promote to a knight, it is -15.19.
+    /// Guess which one this engine chose :) https://lichess.org/GKOKPEcG/black#140
     /// 
     /// </summary>
     public static class HalfKP
@@ -38,7 +45,6 @@ namespace LTChess.Logic.NN.HalfKP
         /// </summary>
         public static bool IsLEB128 = false;
 
-        public const string Stockfish12DefaultNet = @"nn-97f742aaefcd.nnue";
         public const string Stockfish12FinalNet =   @"nn-62ef826d1a6d.nnue";
 
         public const string Name = "HalfKP(Friend)";
@@ -84,7 +90,7 @@ namespace LTChess.Logic.NN.HalfKP
 
         public static void Initialize()
         {
-            if (Initialized || !Position.UseHalfKP)
+            if (Initialized || !UseHalfKP)
             {
                 return;
             }
@@ -129,7 +135,7 @@ namespace LTChess.Logic.NN.HalfKP
 
                 networkToLoad = Stockfish12FinalNet;
 
-                string resourceName = (Stockfish12FinalNet.Replace(".nnue", string.Empty));
+                string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
                 byte[] data = (byte[])Resources.ResourceManager.GetObject(resourceName);
                 kpFile = new MemoryStream(data);
             }
@@ -387,7 +393,7 @@ namespace LTChess.Logic.NN.HalfKP
 
 
         /// <summary>
-        /// Removed the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
+        /// Removes the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
         /// </summary>
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKPIndex"/></param>

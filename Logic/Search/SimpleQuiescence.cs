@@ -1,5 +1,5 @@
 ﻿
-#define SHOW_STATS
+//#define SHOW_STATS
 
 
 using LTChess.Logic.Data;
