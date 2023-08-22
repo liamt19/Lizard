@@ -28,7 +28,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
         /// <summary>
         /// The number of items within the Vector256<T> that this class uses, which is 32 / sizeof(int) = 8.
         /// </summary>
-        public static int VectorSize = Vector256<int>.Count;
+        public static int VectorSize = VSize.Int;
 
         public ClippedReLU(AffineTransform? prev)
         {

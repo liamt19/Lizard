@@ -11,6 +11,7 @@ using System.Drawing;
 using System.Net;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection;
+using System.Reflection.Metadata;
 
 namespace LTChess.Logic.NN
 {
@@ -27,7 +28,7 @@ namespace LTChess.Logic.NN
         /// <br></br>
         /// Fox example, MultiplyAddAdjacent256([A1, A2, ...], [B1, B2, ...]) returns [(A1 * B1) + (A2 * B2), ...]
         /// <br></br>
-        /// Uses <see cref="Avx2"/> if the CPU supports it.
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.MultiplyAddAdjacent(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static Vector256<int> MultiplyAddAdjacent256(Vector256<short> left, Vector256<short> right)
@@ -38,15 +39,15 @@ namespace LTChess.Logic.NN
             }
             else
             {
-                Span<int> products = stackalloc int[Vector256<short>.Count];
-                for (int i = 0; i < Vector256<short>.Count; i++)
+                Span<int> products = stackalloc int[VSize.Short];
+                for (int i = 0; i < VSize.Short; i++)
                 {
                     products[i] = left[i] * right[i];
                 }
 
                 int vectI = 0;
-                int[] result = new int[Vector256<int>.Count];
-                for (int i = 0; i < Vector256<int>.Count; i++)
+                int[] result = new int[VSize.Int];
+                for (int i = 0; i < VSize.Int; i++)
                 {
                     result[i] = products[vectI++] + products[vectI++];
                 }
@@ -59,7 +60,7 @@ namespace LTChess.Logic.NN
         /// <summary>
         /// Returns a vector with the elements of <paramref name="left"/> minus <paramref name="right"/>.
         /// <br></br>
-        /// Uses <see cref="Avx2"/> if the CPU supports it.
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Subtract(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static Vector256<short> Sub256(Vector256<short> left, Vector256<short> right)
@@ -68,17 +69,15 @@ namespace LTChess.Logic.NN
             {
                 return Avx2.Subtract(left, right);
             }
-            else
-            {
-                return Vector256.Subtract(left, right);
-            }
+
+            return Vector256.Subtract(left, right);
         }
 
 
         /// <summary>
         /// Returns a vector with the elements of <paramref name="left"/> plus <paramref name="right"/>.
         /// <br></br>
-        /// Uses <see cref="Avx2"/> if the CPU supports it.
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Add(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static Vector256<short> Add256(Vector256<short> left, Vector256<short> right)
@@ -87,16 +86,32 @@ namespace LTChess.Logic.NN
             {
                 return Avx2.Add(left, right);
             }
-            else
-            {
-                return Vector256.Add(left, right);
-            }
+
+            return Vector256.Add(left, right);
         }
+
+
+        /// <summary>
+        /// Returns a vector with the elements of <paramref name="left"/> plus <paramref name="right"/>.
+        /// <br></br>
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Add(Vector256{int}, Vector256{int})"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static Vector256<int> Add256(Vector256<int> left, Vector256<int> right)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx2.Add(left, right);
+            }
+
+            return Vector256.Add(left, right);
+        }
+
 
         /// <summary>
         /// Writes without alignment the values in <paramref name="vector"/> into the <paramref name="array"/> beginning at the <paramref name="index"/>.
-        /// <br></br>
-        /// Uses <see cref="Avx2"/> if the CPU supports it.
+        /// <para></para>
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.Store"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static void Store256(ref Vector256<short> vector, short[] array, int index)
@@ -111,11 +126,25 @@ namespace LTChess.Logic.NN
             }
         }
 
+        /// <inheritdoc cref="Store256"/>
+        [MethodImpl(Inline)]
+        public static void Store256(ref Vector256<int> vector, int[] array, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx.Store((int*)UnsafeAddrOfPinnedArrayElementUnchecked(array, index), vector);
+            }
+            else
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.As<int, byte>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index)), vector);
+            }
+        }
+
 
         /// <summary>
         /// Loads an unaligned <see cref="Vector256"/> from the <paramref name="array"/> beginning at the <paramref name="index"/>.
         /// <br></br>
-        /// Uses <see cref="Avx2"/> if the CPU supports it.
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.LoadDquVector256"/>
         /// </summary>
         [MethodImpl(Inline)]
         public static Vector256<short> Load256(short[] array, int index)
@@ -128,6 +157,31 @@ namespace LTChess.Logic.NN
             return Unsafe.ReadUnaligned<Vector256<short>>(ref Unsafe.As<short, byte>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index)));
         }
 
+
+
+        /// <inheritdoc cref="Load256"/>
+        [MethodImpl(Inline)]
+        public static Vector256<int> Load256(int[] array, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx.LoadDquVector256((int*)UnsafeAddrOfPinnedArrayElementUnchecked(array, index));
+            }
+
+            return Unsafe.ReadUnaligned<Vector256<int>>(ref Unsafe.As<int, byte>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index)));
+        }
+
+        /// <inheritdoc cref="Load256"/>
+        [MethodImpl(Inline)]
+        public static Vector256<sbyte> Load256(sbyte[] array, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx.LoadDquVector256((sbyte*)UnsafeAddrOfPinnedArrayElementUnchecked(array, index));
+            }
+
+            return Unsafe.ReadUnaligned<Vector256<sbyte>>(ref Unsafe.As<sbyte, byte>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index)));
+        }
 
 
         /// <summary>

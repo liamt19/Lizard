@@ -39,7 +39,7 @@ namespace LTChess.Logic.NN.HalfKP
         /// <summary>
         /// The number of items within the Vector256<T> that this class uses, which is 32 / sizeof(short) = 16.
         /// </summary>
-        public static int VectorSize = Vector256<short>.Count;
+        public static int VectorSize = VSize.Short;
 
 
         /// <summary>
@@ -68,10 +68,10 @@ namespace LTChess.Logic.NN.HalfKP
 
                 for (int j = 0; j < NumChunks; ++j)
                 {
-                    int vectIndex = (int) (offset + (j * Vector256<sbyte>.Count));
+                    int vectIndex = (int) (offset + (j * VSize.SByte));
 
-                    Vector256<short> sum0 = Load256(accumulation, (j * 2 + 0) * Vector256<short>.Count);
-                    Vector256<short> sum1 = Load256(accumulation, (j * 2 + 1) * Vector256<short>.Count);
+                    Vector256<short> sum0 = Load256(accumulation, (j * 2 + 0) * VSize.Short);
+                    Vector256<short> sum1 = Load256(accumulation, (j * 2 + 1) * VSize.Short);
 
                     Vector256<sbyte> saturated = Avx2.PackSignedSaturate(sum0, sum1);
                     Vector256<sbyte> maxVec = Avx2.Max(saturated, Zero);
@@ -117,10 +117,10 @@ namespace LTChess.Logic.NN.HalfKP
 
                     for (int j = 0; j < NumChunks; j++)
                     {
-                        int vectIndex = j * Vector256<short>.Count;
+                        int vectIndex = j * VSize.Short;
                         Vector256<short> inV = Load256(accumulation, vectIndex);
 
-                        int columnIndex = (int)(offset + (j * Vector256<short>.Count));
+                        int columnIndex = (int)(offset + (j * VSize.Short));
                         Vector256<short> row = Load256(Weights, columnIndex);
 
                         inV = Avx2.Add(inV, row);

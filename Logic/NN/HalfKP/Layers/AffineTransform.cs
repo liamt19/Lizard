@@ -37,7 +37,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
         /// <summary>
         /// The number of items within the Vector256<T> that this class uses, which is 32 / sizeof(sbyte) = 32.
         /// </summary>
-        public static int VectorSize = Vector256<sbyte>.Count;
+        public static int VectorSize = VSize.SByte;
 
         /// <summary>
         /// Creates a new Affine layer, which takes input from the <see cref="ClippedReLU"/> layer that came before it
