@@ -39,6 +39,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public AffineTransform OutputLayer;
 
+        public int NetworkSize => OutputLayer.BufferSize;
+
         public Network(int inputSize = SliceSize, int layerSize1 = Layer1Size, int layerSize2 = Layer2Size, int outputSize = OutputSize)
         {
             InputLayer = new InputSlice(inputSize);
