@@ -47,6 +47,8 @@ namespace LTChess.Logic.Search
             TranspositionTable.Clear();
             SearchStack.Clear();
             PvMoves.Clear();
+            LastBestMove = Move.Null;
+            LastBestScore = ThreadedEvaluation.ScoreDraw;
 
             if (UseKillerHeuristic)
             {
@@ -60,6 +62,7 @@ namespace LTChess.Logic.Search
             int maxDepthStart = info.MaxDepth;
             double maxTime = info.TimeManager.MaxSearchTime;
 
+            info.OneLegalMove = false;
             info.RootPositionMoveCount = info.Position.Moves.Count;
             info.NodeCount = 0;
             info.SearchActive = true;
@@ -137,6 +140,16 @@ namespace LTChess.Logic.Search
                 }
 
                 info.OnDepthFinish?.Invoke(info);
+
+                if (info.OneLegalMove && UCI.Active)
+                {
+                    //  If the "go" command was given by a UCI, we will stop searching if there is only 1 legal move
+                    //  The transposition table is cleared after every search, and the evaluations of deeper positions
+                    //  will be calculated on our next move anyway, so it's pointless to look deeper if we only have 1 choice.
+
+                    Log(info.BestMove.ToString(info.Position) + " is the only legal move, aborting at depth " + depth + " after " + info.TimeManager.GetSearchTime() + "ms");
+                    break;
+                }
 
                 if (continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
                 {
@@ -381,13 +394,16 @@ namespace LTChess.Logic.Search
                     return -ThreadedEvaluation.ScoreDraw;
                 }
             }
+            else if (isRoot && size == 1)
+            {
+                info.OneLegalMove = true;
+            }
 
             Span<int> scores = stackalloc int[size];
             AssignNormalMoveScores(ref info, list, scores, size, ply, ttEntry.BestMove);
 
             int quietMoves = 0;
             int lmpCutoff = SearchConstants.LMPDepth + (depth * depth);
-            //int bestScore = AlphaStart;
 
             for (int i = 0; i < size; i++)
             {

@@ -49,6 +49,8 @@ namespace LTChess.Logic.Search
         /// </summary>
         public bool SearchActive = false;
 
+        public bool OneLegalMove = false;
+
         /// <summary>
         /// Set to the last "info depth ..." string that was sent.
         /// </summary>
