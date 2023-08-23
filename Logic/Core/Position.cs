@@ -1380,9 +1380,9 @@ namespace LTChess.Logic.Core
             {
                 PerftNode pn = new PerftNode();
                 pn.root = mlist[i].ToString();
-                MakeMove(mlist[i]);
+                MakeMove(mlist[i], false);
                 pn.number = Perft(depth - 1);
-                UnmakeMove();
+                UnmakeMove(false);
                 list.Add(pn);
 
                 //Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
