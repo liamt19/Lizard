@@ -14,26 +14,24 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// </summary>
     public struct AccumulatorPSQT
     {
-        public short[] White;
-        public short[] Black;
+        //  Intellisense incorrectly marks "var accumulation = accumulator[perspectives[p]]" in FeatureTransformer.TransformFeatures
+        //  as an error when this uses a primary constructor with "size" as a parameter.
+        //  https://github.com/dotnet/roslyn/issues/69663
 
-        public int[] PSQTWhite;
-        public int[] PSQTBlack;
+        public const int size = HalfKA_HM.TransformedFeatureDimensions;
+        public short[] White = new short[size];
+        public short[] Black = new short[size];
+
+        public int[] PSQTWhite = new int[PSQTBuckets];
+        public int[] PSQTBlack = new int[PSQTBuckets];
 
         /// <summary>
         /// Set to true when a king move is made, in which case every feature in that side's accumulator
         /// needs to be recalculated.
         /// </summary>
-        public bool NeedsRefresh;
+        public bool NeedsRefresh = true;
 
-        public AccumulatorPSQT(int size = HalfKP.HalfKP.TransformedFeatureDimensions)
-        {
-            White = new short[size];
-            Black = new short[size];
-
-            PSQTWhite = new int[PSQTBuckets];
-            PSQTBlack = new int[PSQTBuckets];
-        }
+        public AccumulatorPSQT() { }
 
         public short[] this[int perspective]
         {
@@ -42,15 +40,16 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 return (perspective == Color.White) ? White : Black;
             }
         }
+    
 
-        [MethodImpl(Inline)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int[] PSQ(int perspective)
         {
             return (perspective == Color.White) ? PSQTWhite : PSQTBlack;
         }
 
         [MethodImpl(Inline)]
-        public void CopyTo(AccumulatorPSQT target)
+        public void CopyTo(ref AccumulatorPSQT target)
         {
             ref short a = ref MemoryMarshal.GetArrayDataReference(White);
             ref short b = ref MemoryMarshal.GetArrayDataReference(Black);
