@@ -25,12 +25,5 @@ namespace LTChess.Logic.Data
 #endif
 
 
-#if IS64BIT
-        public const bool Is64Bit = true;
-#else
-        public const bool Is64Bit = false;
-#endif
-
-
     }
 }
