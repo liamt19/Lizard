@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using System.Numerics;
 using System.Drawing;
 using System.Net;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Reflection;
 using System.Reflection.Metadata;
 
@@ -64,6 +63,18 @@ namespace LTChess.Logic.NN
         /// </summary>
         [MethodImpl(Inline)]
         public static Vector256<short> Sub256(Vector256<short> left, Vector256<short> right)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx2.Subtract(left, right);
+            }
+
+            return Vector256.Subtract(left, right);
+        }
+
+        /// <inheritdoc cref="Sub256"/>
+        [MethodImpl(Inline)]
+        public static Vector256<int> Sub256(Vector256<int> left, Vector256<int> right)
         {
             if (Avx2.IsSupported)
             {
@@ -201,6 +212,101 @@ namespace LTChess.Logic.NN
         }
 
 
+        /// <summary>
+        /// Writes without alignment the values in <paramref name="vector"/> into the <paramref name="span"/> beginning at the <paramref name="index"/>.
+        /// <para></para>
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.Store"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static void StoreSpan256(ref Vector256<int> vector, Span<int> span, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx.Store((int*) Unsafe.AsPointer(ref span[index]), vector);
+            }
+            else
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.As<int, byte>(ref span[index]), vector);
+            }
+        }
+
+        /// <inheritdoc cref="StoreSpan256"/>
+        [MethodImpl(Inline)]
+        public static void StoreSpan256(ref Vector256<int> vector, Span<sbyte> span, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx.Store((int*) Unsafe.AsPointer(ref span[index]), vector);
+            }
+            else
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.As<sbyte, byte>(ref span[index]), vector);
+            }
+        }
+
+
+
+        /// <summary>
+        /// Loads an unaligned <see cref="Vector256"/> from the <paramref name="span"/> beginning at the <paramref name="index"/>.
+        /// <br></br>
+        /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.LoadDquVector256"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static Vector256<int> LoadSpan256(Span<int> span, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx.LoadDquVector256((int*) Unsafe.AsPointer(ref span[index]));
+            }
+
+            return Unsafe.ReadUnaligned<Vector256<int>>(ref Unsafe.As<int, byte>(ref span[index]));
+        }
+        
+        /// <inheritdoc cref="LoadSpan256"/>
+        [MethodImpl(Inline)]
+        public static Vector256<byte> LoadSpan256(Span<sbyte> span, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx.LoadDquVector256((byte*) Unsafe.AsPointer(ref span[index]));
+            }
+
+            return Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.As<sbyte, byte>(ref span[index]));
+        }
+
+        /// <summary>
+        /// Loads an unaligned <see cref="Vector128"/> from the <paramref name="span"/> beginning at the <paramref name="index"/>.
+        /// <br></br>
+        /// Uses <see cref="Sse2"/> if the CPU supports it: <inheritdoc cref="Sse2.LoadVector128"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static Vector128<int> LoadSpan128(Span<int> span, int index)
+        {
+            if (Sse2.IsSupported)
+            {
+                Sse2.LoadVector128((int*) Unsafe.AsPointer(ref span[index]));
+            }
+
+            return Unsafe.ReadUnaligned<Vector128<int>>(ref Unsafe.As<int, byte>(ref span[index]));
+        }
+
+        /// <summary>
+        /// Writes without alignment the values in <paramref name="vector"/> into the <paramref name="span"/> beginning at the <paramref name="index"/>.
+        /// <br></br>
+        /// Uses <see cref="Sse2"/> if the CPU supports it: <inheritdoc cref="Sse2.Store"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static void StoreSpan128(ref Vector128<sbyte> vector, Span<sbyte> span, int index)
+        {
+            if (Sse2.IsSupported)
+            {
+                Sse2.Store((sbyte*) Unsafe.AsPointer(ref span[index]), vector);
+            }
+            else
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.As<sbyte, byte>(ref span[index]), vector);
+            }
+        }
 
 
 
@@ -208,7 +314,7 @@ namespace LTChess.Logic.NN
         /// Same as <see cref="Marshal.UnsafeAddrOfPinnedArrayElement{T}(T[], int)"/> but doesn't check if <paramref name="arr"/> is null
         /// </summary>
         [MethodImpl(Inline)]
-        public static unsafe IntPtr UnsafeAddrOfPinnedArrayElementUnchecked<T>(T[] arr, int index)
+        public static IntPtr UnsafeAddrOfPinnedArrayElementUnchecked<T>(T[] arr, int index)
         {
             void* pRawData = Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(arr));
 #pragma warning disable 8500 // sizeof of managed types

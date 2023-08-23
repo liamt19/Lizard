@@ -88,24 +88,17 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             Weights = new sbyte[OutputDimensions * PaddedInputDimensions];
         }
 
-        [MethodImpl(Optimize)]
-        public int[] Propagate(sbyte[] transformedFeatures)
-        {
-            sbyte[] input;
-            if (IsInputSliceLayer)
-            {
-                input = InputLayer.Propagate(transformedFeatures);
-            }
-            else
-            {
-                input = PreviousLayer.Propagate(transformedFeatures);
-            }
-
-            int[] output = new int[OutputDimensions];
+        [MethodImpl(Inline)]
+        public Span<int> Propagate(Span<sbyte> transformedFeatures, Span<byte> buffer) {
+            
+            Span<sbyte> input = IsInputSliceLayer ? InputLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize)) : PreviousLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize));
+            Span<int> output = MemoryMarshal.Cast<byte, int>(buffer);
+            
 
             if (OutputDimensions % OutputSimdWidth == 0 && InputDimensions == 8)
             {
-                Buffer.BlockCopy(Biases, 0, output, 0, OutputDimensions * OutputTypeSize);
+                Buffer.MemoryCopy((void*)Marshal.UnsafeAddrOfPinnedArrayElement(Biases, 0), Unsafe.AsPointer(ref output[0]), OutputDimensions * OutputTypeSize, OutputDimensions * OutputTypeSize);
+
                 var input32 = MemoryMarshal.Cast<sbyte, int>(input);
 
                 const int vectorStride = VSize.Int;
@@ -115,12 +108,15 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int j = 0; j * OutputSimdWidth < OutputDimensions; ++j)
                 {
-                    Vector256<int> outVec = Load256(output, j * vectorStride);
+                    Vector256<int> outVec = LoadSpan256(output, j * vectorStride);
+
                     Vector256<sbyte> col0 = Load256(Weights, (j * VSize.SByte));
                     Vector256<sbyte> col1 = Load256(Weights, (j * VSize.SByte) + (OutputDimensions * 4));
 
                     m256_add_dpbusd_epi32x2(ref outVec, in0.AsByte(), in1.AsByte(), col0, col1);
-                    Store256(ref outVec, output, j * vectorStride);
+
+                    StoreSpan256(ref outVec, output, j * vectorStride);
+
                 }
             }
             else if (OutputDimensions % OutputSimdWidth == 0)
@@ -157,7 +153,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int k = 0; k < NumRegs; k++)
                 {
-                    Store256(ref outs[k], output, k * vectorStride);
+                    StoreSpan256(ref outs[k], output, k * vectorStride);
                 }
             }
             else if (OutputDimensions == 1)
@@ -168,8 +164,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int j = 0; j < NumChunks; j++)
                 {
-
-                    Vector256<byte> inp = Avx.LoadDquVector256((byte*)UnsafeAddrOfPinnedArrayElementUnchecked(input, j * vectorStride));
+                    Vector256<byte> inp = LoadSpan256(input, j * vectorStride);
                     Vector256<sbyte> weightVec = Load256(Weights, j * vectorStride);
                     m256_add_dpbusd_epi32(ref sum0, inp, weightVec);
                 }

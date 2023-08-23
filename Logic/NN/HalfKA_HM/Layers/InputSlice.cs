@@ -1,6 +1,5 @@
 ﻿
 
-
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
     public class InputSlice
@@ -17,11 +16,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         }
 
         [MethodImpl(Inline)]
-        public sbyte[] Propagate(sbyte[] transformedFeatures)
+        public Span<sbyte> Propagate(Span<sbyte> transformedFeatures, Span<byte> buffer)
         {
             return transformedFeatures;
         }
-
 
         public bool ReadParameters(BinaryReader br)
         {

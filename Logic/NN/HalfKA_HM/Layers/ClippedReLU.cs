@@ -48,34 +48,33 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         /// <summary>
         /// Clamps the output from the previous <see cref="AffineTransform"/> layer between [0, 127]
         /// </summary>
-        [MethodImpl(Optimize)]
-        public sbyte[] Propagate(sbyte[] transformedFeatures)
+        [MethodImpl(Inline)]
+        public Span<sbyte> Propagate(Span<sbyte> transformedFeatures, Span<byte> buffer)
         {
-            int[] input = PreviousLayer.Propagate(transformedFeatures);
-            sbyte[] output = new sbyte[input.Length];
+            Span<int> input = PreviousLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize));
+            Span<sbyte> output = MemoryMarshal.Cast<byte, sbyte>(buffer);
 
             if (InputDimensions % SimdWidth == 0)
             {
                 int NumChunks = InputDimensions / SimdWidth;
                 Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
                 Vector256<int> Offsets = Vector256.Create(0, 4, 1, 5, 2, 6, 3, 7);
-                //var _in = MemoryMarshal.Cast<int, Vector256<int>>(input);
-                //var _out = MemoryMarshal.Cast<sbyte, Vector256<sbyte>>(output);
+                
                 for (int i = 0; i < NumChunks; i++)
                 {
                     Vector256<short> words0 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                        Avx.LoadVector256((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 0) * VectorSize)),
-                        Avx.LoadVector256((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 1) * VectorSize))), WeightScaleBits);
+                        LoadSpan256(input, (i * 4 + 0) * VectorSize),
+                        LoadSpan256(input, (i * 4 + 1) * VectorSize)), WeightScaleBits);
 
                     Vector256<short> words1 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                        Avx.LoadVector256((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 2) * VectorSize)),
-                        Avx.LoadVector256((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 3) * VectorSize))), WeightScaleBits);
+                        LoadSpan256(input, (i * 4 + 2) * VectorSize),
+                        LoadSpan256(input, (i * 4 + 3) * VectorSize)), WeightScaleBits);
 
                     Vector256<sbyte> packed = Avx2.PackSignedSaturate(words0, words1);
                     Vector256<sbyte> max = Avx2.Max(packed, Zero);
                     Vector256<int> permuted = Avx2.PermuteVar8x32(max.AsInt32(), Offsets);
 
-                    Avx2.Store((int*)UnsafeAddrOfPinnedArrayElementUnchecked(output, i * VectorSize), permuted);
+                    StoreSpan256(ref permuted, output, i * VectorSize);
                 }
             }
             else
@@ -87,16 +86,16 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 for (int i = 0; i < NumChunks; i++)
                 {
                     Vector128<short> words0 = Sse2.ShiftRightArithmetic(Sse2.PackSignedSaturate(
-                        Sse2.LoadVector128((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 0) * VectorSize)),
-                        Sse2.LoadVector128((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 1) * VectorSize))), WeightScaleBits);
+                        LoadSpan128(input, (i * 4 + 0) * VectorSize),
+                        LoadSpan128(input, (i * 4 + 1) * VectorSize)), WeightScaleBits);
 
                     Vector128<short> words1 = Sse2.ShiftRightArithmetic(Sse2.PackSignedSaturate(
-                        Sse2.LoadVector128((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 2) * VectorSize)),
-                        Sse2.LoadVector128((int*)UnsafeAddrOfPinnedArrayElementUnchecked(input, (i * 4 + 3) * VectorSize))), WeightScaleBits);
-
+                        LoadSpan128(input, (i * 4 + 2) * VectorSize),
+                        LoadSpan128(input, (i * 4 + 3) * VectorSize)), WeightScaleBits);
                     Vector128<sbyte> packed = Sse2.PackSignedSaturate(words0, words1);
                     Vector128<sbyte> max = Sse41.Max(packed, Zero);
-                    Avx2.Store((sbyte*)UnsafeAddrOfPinnedArrayElementUnchecked(output, i * VectorSize), max);
+
+                    StoreSpan128(ref max, output, i * VectorSize);
                 }
             }
 
