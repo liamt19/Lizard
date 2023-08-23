@@ -30,7 +30,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public const uint InputDimensions = HalfKA_HM.Dimensions;
         public const uint OutputDimensions = HalfDimensions * 2;
 
-        public const long BufferSize = OutputDimensions * sizeof(ushort);
+        public const int BufferSize = (int) (OutputDimensions * sizeof(ushort));
 
         public static uint GetHashValue() => HalfKA_HM.HashValue ^ OutputDimensions;
 
@@ -38,6 +38,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public short[] Weights = new short[HalfDimensions * InputDimensions];
         public int[] PSQTWeights = new int[InputDimensions * PSQTBuckets];
 
+        private static readonly Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
 
         public const int NumRegs = 16;
         public const int NumPsqtRegs = 1;
@@ -47,19 +48,20 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public const int TileHeight = NumRegs * VSize.Byte / 2;
         public const int PsqtTileHeight = NumPsqtRegs * VSize.Byte / 4;
 
-
         /// <summary>
         /// Takes the input from the <paramref name="accumulator"/> and places them into <paramref name="output"/>,
         /// refreshing the <paramref name="accumulator"/> if necessary.
         /// </summary>
         [MethodImpl(Optimize)]
-        public int TransformFeatures(Position pos, sbyte[] output, ref AccumulatorPSQT accumulator, int bucket)
+        public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
-            RefreshAccumulator(pos, ref accumulator);
-
-            uint NumChunks = HalfDimensions / SimdWidth;
+            if (accumulator.NeedsRefresh)
+            {
+                RefreshAccumulator(pos, ref accumulator);
+            }
+            
+            const uint NumChunks = HalfDimensions / SimdWidth;
             const int Control = 0b11011000;
-            Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
 
             int[] perspectives = { pos.ToMove, Not(pos.ToMove) };
 
@@ -84,7 +86,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<long> permuted = Avx2.Permute4x64(maxVec.AsInt64(), Control);
 
                     Vector256<sbyte> toStore = permuted.AsSByte();
-                    Avx2.Store((sbyte*)UnsafeAddrOfPinnedArrayElementUnchecked(output, vectIndex), toStore);
+
+                    Avx2.Store((sbyte*) Unsafe.AsPointer(ref output[vectIndex]), toStore);
                 }
             }
 

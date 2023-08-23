@@ -58,11 +58,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public const int OutputDimensions = 512 * 2;
 
-        
         public static AccumulatorPSQT[] AccumulatorStack;
         public static int CurrentAccumulator;
 
-        public static Network Layers;
         public static Network[] LayerStack;
 
         public static FeatureTransformer Transformer;
@@ -89,7 +87,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             AccumulatorStack = new AccumulatorPSQT[MaxListCapacity];
             for (int i = 0; i < MaxListCapacity; i++)
             {
-                AccumulatorStack[i] = new AccumulatorPSQT(TransformedFeatureDimensions);
+                AccumulatorStack[i] = new AccumulatorPSQT();
             }
             CurrentAccumulator = 0;
 
@@ -159,12 +157,21 @@ namespace LTChess.Logic.NN.HalfKA_HM
             kpFile.Dispose();
         }
 
+        /// <summary>
+        /// Resets <see cref="CurrentAccumulator"/> to 0
+        /// </summary>
         [MethodImpl(Inline)]
         private static void ResetAccumulator() => CurrentAccumulator = 0;
 
+        /// <summary>
+        /// Copies the current accumulator to the next accumulator in the stack, and increments <see cref="CurrentAccumulator"/>
+        /// </summary>
         [MethodImpl(Inline)]
-        private static void PushAccumulator() => AccumulatorStack[CurrentAccumulator].CopyTo(AccumulatorStack[++CurrentAccumulator]);
+        private static void PushAccumulator() => AccumulatorStack[CurrentAccumulator].CopyTo(ref AccumulatorStack[++CurrentAccumulator]);
 
+        /// <summary>
+        /// Decrements <see cref="CurrentAccumulator"/>
+        /// </summary>
         [MethodImpl(Inline)]
         private static void PullAccumulator() => CurrentAccumulator--;
 
@@ -226,33 +233,42 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
 
 
-
         /// <summary>
         /// Transforms the features on the board into network input, and returns the network output as the evaluation of the position
         /// </summary>
         [MethodImpl(Inline)]
         public static int GetEvaluation(Position pos, bool adjusted = true)
         {
-            sbyte[] transformed_features = new sbyte[FeatureTransformer.BufferSize];
-
-            var Accumulator = AccumulatorStack[CurrentAccumulator];
-
+            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             int bucket = (int) (popcount(pos.bb.Occupancy) - 1) / 4;
 
+            int networkSize = LayerStack[0].NetworkSize;
+
+            Span<sbyte> transformed_features = stackalloc sbyte[FeatureTransformer.BufferSize];
+            Span<byte> buffer = new byte[networkSize];
+
             int psqt = Transformer.TransformFeatures(pos, transformed_features, ref Accumulator, bucket);
-            var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features);
+            var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features, buffer);
+
+            /**
+            
+            if (adjusted)
+            {
+                //  Not worrying about this for now.
+                int delta_npm = Math.Abs((pos.MaterialCount[White] - ((int)popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[White]) * GetPieceValue(Pawn)))
+                                         - (pos.MaterialCount[Black] - ((int)popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[Black]) * GetPieceValue(Pawn))));
+                int entertainment = (adjusted && delta_npm <= GetPieceValue(Bishop) - GetPieceValue(Knight) ? 7 : 0);
+
+                int A = 128 - entertainment;
+                int B = 128 + entertainment;
+
+                int sum = (A * psqt + B * output[0]) / 128;
+                return sum / NNCommon.OutputScale;
+            }
+
+             */
 
             return (psqt + output[0]) / 16;
-
-            int delta_npm = Math.Abs((pos.MaterialCount[White] - ((int) popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[White]) * GetPieceValue(Pawn)))
-                                   - (pos.MaterialCount[Black] - ((int) popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[Black]) * GetPieceValue(Pawn))));
-            int entertainment = (adjusted && delta_npm <= GetPieceValue(Bishop) - GetPieceValue(Knight) ? 7 : 0);
-            
-            int A = 128 - entertainment;
-            int B = 128 + entertainment;
-
-            int sum = (A * psqt + B * output[0]) / 128;
-            return sum / NNCommon.OutputScale;
         }
 
         public static void Trace(Position pos)
@@ -349,22 +365,27 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\n");
 
-            sbyte[] transformed_features = new sbyte[FeatureTransformer.BufferSize];
-            var Accumulator = AccumulatorStack[CurrentAccumulator];
+            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             int correctBucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
+            int networkSize = LayerStack[0].NetworkSize;
+
+            sbyte[] transformed_features = new sbyte[FeatureTransformer.BufferSize];
+            Span<byte> buffer = stackalloc byte[networkSize];
 
             Log("Bucket\t\tPSQT\t\tPositional\tTotal");
             for (int bucket = 0; bucket < LayerStacks; bucket++)
             {
 
                 int psqt = Transformer.TransformFeatures(pos, transformed_features, ref Accumulator, bucket);
-                var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features);
+                var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features, buffer);
 
                 psqt /= 16;
                 output[0] /= 16;
 
                 Log(bucket + "\t\t" + psqt + "\t\t" + output[0] + "\t\t" + (psqt + output[0]) +
                     (bucket == correctBucket ? "\t<-- this bucket is used" : string.Empty));
+
+                buffer.Clear();
             }
 
         }
@@ -386,6 +407,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public static void ResetNN()
         {
             ResetAccumulator();
+
+            return;
+            for (int i = 0; i < AccumulatorStack.Length; i++)
+            {
+                AccumulatorStack[i].NeedsRefresh = true;
+            }
         }
 
         /// <summary>
@@ -394,7 +421,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public static void RefreshNN(Position pos)
         {
-            var Accumulator = AccumulatorStack[CurrentAccumulator];
+            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             Transformer.RefreshAccumulator(pos, ref Accumulator);
         }
 
@@ -412,15 +439,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
             Bitboard bb = pos.bb;
 
             PushAccumulator();
-            var Accumulator = AccumulatorStack[CurrentAccumulator];
+            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
 
             int ourPiece = bb.GetPieceAtIndex(m.From);
 
             if (ourPiece == Piece.King)
             {
-                //  We will need to completely refresh this side's accumulator since every feature in HalfKP
-                //  is dependent upon where their king is/was.
-
                 Accumulator.NeedsRefresh = true;
                 return false;
             }
@@ -439,41 +463,44 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 //int theirKing = Orient(them == Color.White, bb.KingIndex(them));
                 int theirKing = bb.KingIndex(them);
 
-                short[] ourAccumulation = ((us == Color.White) ? Accumulator.White : Accumulator.Black);
-                short[] theirAccumulation = ((us == Color.Black) ? Accumulator.White : Accumulator.Black);
+                short[] ourAccumulation = Accumulator[us];
+                short[] theirAccumulation = Accumulator[them];
 
-                int ourPieceOldIndex_US =   HalfKAIndex(us, Orient(us, m.From, ourKing), FishPiece(ourPiece, us), ourKing);
-                int ourPieceOldIndex_THEM = HalfKAIndex(them, Orient(them, m.From, theirKing), FishPiece(ourPiece, us), theirKing);
+                int[] ourPsq = Accumulator.PSQ(us);
+                int[] theirPsq = Accumulator.PSQ(them);
 
-                RemoveFeature(ref ourAccumulation, ourPieceOldIndex_US);
-                RemoveFeature(ref theirAccumulation, ourPieceOldIndex_THEM);
+                int ourPieceOldIndex_US =   HalfKAIndex(us, m.From, FishPiece(ourPiece, us), ourKing);
+                int ourPieceOldIndex_THEM = HalfKAIndex(them, m.From, FishPiece(ourPiece, us), theirKing);
+
+                RemoveFeature(ref ourAccumulation, ref ourPsq, ourPieceOldIndex_US);
+                RemoveFeature(ref theirAccumulation, ref theirPsq, ourPieceOldIndex_THEM);
 
                 if (!m.Promotion)
                 {
-                    int ourPieceNewIndex_US =   HalfKAIndex(us, Orient(us, m.To, ourKing), FishPiece(ourPiece, us), ourKing);
-                    int ourPieceNewIndex_THEM = HalfKAIndex(them, Orient(them, m.To, theirKing), FishPiece(ourPiece, us), theirKing);
+                    int ourPieceNewIndex_US =   HalfKAIndex(us, m.To, FishPiece(ourPiece, us), ourKing);
+                    int ourPieceNewIndex_THEM = HalfKAIndex(them, m.To, FishPiece(ourPiece, us), theirKing);
 
-                    AddFeature(ref ourAccumulation, ourPieceNewIndex_US);
-                    AddFeature(ref theirAccumulation, ourPieceNewIndex_THEM);
+                    AddFeature(ref ourAccumulation, ref ourPsq, ourPieceNewIndex_US);
+                    AddFeature(ref theirAccumulation, ref theirPsq, ourPieceNewIndex_THEM);
                 }
                 else
                 {
                     //  Add the promotion piece instead.
-                    int ourPieceNewIndex_US =   HalfKAIndex(us, Orient(us, m.To, ourKing), FishPiece(m.PromotionTo, us), ourKing);
-                    int ourPieceNewIndex_THEM = HalfKAIndex(them, Orient(them, m.To, theirKing), FishPiece(m.PromotionTo, us), theirKing);
+                    int ourPieceNewIndex_US =   HalfKAIndex(us, m.To, FishPiece(m.PromotionTo, us), ourKing);
+                    int ourPieceNewIndex_THEM = HalfKAIndex(them, m.To, FishPiece(m.PromotionTo, us), theirKing);
 
-                    AddFeature(ref ourAccumulation, ourPieceNewIndex_US);
-                    AddFeature(ref theirAccumulation, ourPieceNewIndex_THEM);
+                    AddFeature(ref ourAccumulation, ref ourPsq, ourPieceNewIndex_US);
+                    AddFeature(ref theirAccumulation, ref theirPsq, ourPieceNewIndex_THEM);
                 }
 
                 if (m.Capture)
                 {
                     //  A captured piece needs to be removed from both perspectives as well.
-                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, Orient(us, m.To, ourKing), FishPiece(theirPiece, Not(us)), ourKing);
-                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, Orient(them, m.To, theirKing), FishPiece(theirPiece, Not(us)), theirKing);
+                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, m.To, FishPiece(theirPiece, Not(us)), ourKing);
+                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, m.To, FishPiece(theirPiece, Not(us)), theirKing);
 
-                    RemoveFeature(ref ourAccumulation, theirCapturedPieceIndex_US);
-                    RemoveFeature(ref theirAccumulation, theirCapturedPieceIndex_THEM);
+                    RemoveFeature(ref ourAccumulation, ref ourPsq, theirCapturedPieceIndex_US);
+                    RemoveFeature(ref theirAccumulation, ref theirPsq, theirCapturedPieceIndex_THEM);
 
                 }
 
@@ -481,11 +508,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 {
                     int idxPawn = (bb.Pieces[Piece.Pawn] & SquareBB[pos.EnPassantTarget - 8]) != 0 ? pos.EnPassantTarget - 8 : pos.EnPassantTarget + 8;
 
-                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, Orient(us, idxPawn, ourKing), FishPiece(Piece.Pawn, Not(us)), ourKing);
-                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, Orient(them, idxPawn, theirKing), FishPiece(Piece.Pawn, Not(us)), theirKing);
+                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing);
+                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing);
 
-                    RemoveFeature(ref ourAccumulation, theirCapturedPieceIndex_US);
-                    RemoveFeature(ref theirAccumulation, theirCapturedPieceIndex_THEM);
+                    RemoveFeature(ref ourAccumulation, ref ourPsq, theirCapturedPieceIndex_US);
+                    RemoveFeature(ref theirAccumulation, ref theirPsq, theirCapturedPieceIndex_THEM);
                 }
 
                 if (m.Castle)
@@ -507,18 +534,23 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         G8 => F8,
                     };
 
-                    int ourRookOldIndex_US =    HalfKAIndex(us, Orient(us, rookFrom, ourKing), FishPiece(Piece.Rook, us), ourKing);
-                    int ourRookOldIndex_THEM =  HalfKAIndex(them, Orient(them, rookFrom, theirKing), FishPiece(Piece.Rook, us), theirKing);
+                    int ourRookOldIndex_US =    HalfKAIndex(us, rookFrom, FishPiece(Piece.Rook, us), ourKing);
+                    int ourRookOldIndex_THEM =  HalfKAIndex(them, rookFrom, FishPiece(Piece.Rook, us), theirKing);
 
-                    RemoveFeature(ref ourAccumulation, ourRookOldIndex_US);
-                    RemoveFeature(ref theirAccumulation, ourRookOldIndex_THEM);
+                    RemoveFeature(ref ourAccumulation, ref ourPsq, ourRookOldIndex_US);
+                    RemoveFeature(ref theirAccumulation, ref theirPsq, ourRookOldIndex_THEM);
 
-                    int ourRookNewIndex_US =    HalfKAIndex(us, Orient(us, rookTo, ourKing), FishPiece(Piece.Rook, us), ourKing);
-                    int ourRookNewIndex_THEM =  HalfKAIndex(them, Orient(them, rookTo, theirKing), FishPiece(Piece.Rook, us), theirKing);
+                    int ourRookNewIndex_US =    HalfKAIndex(us, rookTo, FishPiece(Piece.Rook, us), ourKing);
+                    int ourRookNewIndex_THEM =  HalfKAIndex(them, rookTo, FishPiece(Piece.Rook, us), theirKing);
 
-                    AddFeature(ref ourAccumulation, ourRookNewIndex_US);
-                    AddFeature(ref theirAccumulation, ourRookNewIndex_THEM);
+                    AddFeature(ref ourAccumulation, ref ourPsq, ourRookNewIndex_US);
+                    AddFeature(ref theirAccumulation, ref theirPsq, ourRookNewIndex_THEM);
                 }
+
+                //const int bucket = 7;
+                //int[] perspectives = { pos.ToMove, Not(pos.ToMove) };
+                //var psqt = (Accumulator.PSQ(perspectives[0])[bucket] - Accumulator.PSQ(perspectives[1])[bucket]) / 2;
+                //Log("\n\tpsqt[" + CurrentAccumulator + "][7] = " + Accumulator.PSQ(perspectives[0])[bucket] + " - " + Accumulator.PSQ(perspectives[1])[bucket] + " = " + (psqt * 2) + " \n");
             }
 
             return true;
@@ -533,7 +565,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void RemoveFeature(ref short[] accumulation, int index)
+        public static void RemoveFeature(ref short[] accumulation, ref int[] psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
             uint offset = (uint)(HalfDimensions * index);
@@ -550,6 +582,17 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 Store256(ref inV, accumulation, vectIndex);
             }
+
+
+
+            Vector256<int> psq = Load256(psqtAccumulation, 0);
+            for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+            {
+                int columnOffset = (PSQTBuckets * index + j * PsqtTileHeight);
+                Vector256<int> column = Load256(Transformer.PSQTWeights, columnOffset);
+                psq = Sub256(psq, column);
+                Store256(ref psq, psqtAccumulation, (j * PsqtTileHeight));
+            }
         }
 
         /// <summary>
@@ -558,7 +601,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void AddFeature(ref short[] accumulation, int index)
+        public static void AddFeature(ref short[] accumulation, ref int[] psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
             uint offset = (uint)(HalfDimensions * index);
@@ -575,6 +618,18 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 Store256(ref inV, accumulation, vectIndex);
             }
+
+
+
+            Vector256<int> psq = Load256(psqtAccumulation, 0);
+            for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+            {
+                int columnOffset = (PSQTBuckets * index + j * PsqtTileHeight);
+                Vector256<int> column = Load256(Transformer.PSQTWeights, columnOffset);
+                psq = Add256(psq, column);
+                Store256(ref psq, psqtAccumulation, (j * PsqtTileHeight));
+            }
+
         }
 
 
