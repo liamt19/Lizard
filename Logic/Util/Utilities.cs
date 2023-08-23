@@ -75,11 +75,6 @@ namespace LTChess.Logic.Util
         /// </summary>
         public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
 
-        /// <summary>
-        /// This is set to true when the program receives the "uci" command, 
-        /// and causes calls to the Log method to write to a file rather than stdout.
-        /// </summary>
-        public static bool UCIMode = false;
 
         public static bool JITHasntSeenSearch = false;
 
@@ -98,7 +93,7 @@ namespace LTChess.Logic.Util
                 return;
             }
 
-            if (!UCIMode)
+            if (!UCI.Active)
             {
                 Console.WriteLine(s);
             }

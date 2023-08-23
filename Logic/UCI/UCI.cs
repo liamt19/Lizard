@@ -25,6 +25,8 @@ namespace LTChess.Logic.Core
 
         private static object LogFileLock = new object();
 
+        public static bool Active = false;
+
         public UCI()
         {
             ProcessUCIOptions();
@@ -105,7 +107,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public void Run()
         {
-            UCIMode = true;
+            Active = true;
 
             SendString("id name LTChess " + EngineBuildVersion);
             SendString("id author Liam McGuire");
