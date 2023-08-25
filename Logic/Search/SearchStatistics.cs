@@ -23,26 +23,19 @@ namespace LTChess.Logic.Search
         public static ulong ReverseFutilityPrunedNodes = 0;
 
 
-        public static ulong FutilityPrunedCaptures = 0;
         public static ulong FutilityPrunedNoncaptures = 0;
         public static ulong FutilityPrunedMoves = 0;
         public static ulong LMRReductions = 0;
         public static ulong LMRReductionTotal = 0;
-        public static ulong LMRReductionResearches = 0;
-        public static ulong LMRReductionResearchesPV = 0;
 
         public static ulong AspirationWindowFails = 0;
         public static ulong AspirationWindowTotalDepthFails = 0;
 
         public static ulong NullMovePrunedNodes = 0;
 
-        public static ulong NegamaxTTExactHits = 0;
-        public static ulong NegamaxTTExactHitsIgnored = 0;
         public static ulong BetaCutoffs = 0;
 
-        public static ulong QuiescenceNodesTTHits = 0;
         public static ulong QuiescenceNodes = 0;
-
         public static ulong QuiescenceSEECuts = 0;
         public static ulong QuiescenceSEETotalCuts = 0;
         public static ulong QuiescenceFutilityPrunes = 0;
@@ -57,11 +50,17 @@ namespace LTChess.Logic.Search
         public static ulong TTExactHits = 0;
         public static ulong TTBetaHits = 0;
         public static ulong TTAlphaHits = 0;
-        public static ulong TTReplacements = 0;
-        public static ulong TTReplacementsE_to_B = 0;
-        public static ulong TTReplacementsB_to_E = 0;
-        public static ulong TTDepthIncreased = 0;
-        public static ulong TTReplacementOther = 0;
+        public static ulong TTHitBetaCuts = 0;
+        public static ulong TTHitDeeperCuts = 0;
+
+        public static ulong TTWrongKeys = 0;
+        public static ulong TTRightKeys = 0;
+
+
+        public static ulong ETHits = 0;
+        public static ulong ETSaves = 0;
+        public static ulong ETReplacements = 0;
+        public static ulong ETWrongHashKey = 0;
 
         public static ulong ReductionsNonPV = 0;
         public static ulong ReductionsNotImproving = 0;
@@ -77,19 +76,6 @@ namespace LTChess.Logic.Search
         public static ulong Scores_MvvLva = 0;
         public static ulong Scores_Killer_1 = 0;
         public static ulong Scores_Killer_2 = 0;
-        public static ulong Scores_WinningCapture = 0;
-        public static ulong Scores_Check = 0;
-        public static ulong Scores_DoubleCheck = 0;
-        public static ulong Scores_Castle = 0;
-        public static ulong Scores_PassedPawnPush = 0;
-        public static ulong Scores_Normal = 0;
-        public static ulong Scores_EqualCapture = 0;
-        public static ulong Scores_LosingCapture = 0;
-
-        public static ulong ETHits = 0;
-        public static ulong ETSaves = 0;
-        public static ulong ETReplacements = 0;
-        public static ulong ETWrongHashKey = 0;
 
         public static ulong Checkups = 0;
 
