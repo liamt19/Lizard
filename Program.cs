@@ -72,6 +72,11 @@ namespace LTChess
 
             WarmUpJIT();
 
+            if (!System.Diagnostics.Debugger.IsAttached) 
+            {
+                AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            }
+
 
             if (UseSimple768)
             {
@@ -465,7 +470,18 @@ namespace LTChess
             }).Wait();
         }
 
-    
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Log("An UnhandledException occurred: " + e);
+            using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                using StreamWriter sw = new StreamWriter(fs);
+
+                sw.WriteLine("An UnhandledException occurred: " + e);
+
+                sw.Flush();
+            }
+        }
     }
 
 }
