@@ -78,6 +78,10 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public double GetSearchTime() => TotalSearchTime.Elapsed.TotalMilliseconds;
 
+        /// <summary>
+        /// Checks if the player <paramref name="ToMove"/> has searched for their allotted time,
+        /// returning true if they should stop searching as soon as possible.
+        /// </summary>
         [MethodImpl(Inline)]
         public bool CheckUp(int ToMove)
         {
@@ -128,6 +132,12 @@ namespace LTChess.Logic.Search
             return ",\tcurrent time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
         }
 
+        /// <summary>
+        /// Sets the maximum search time for the player <paramref name="ToMove"/>, given the number of moves <paramref name="moveCount"/> made so far.
+        /// <para></para>
+        /// This currently prioritizes early game moves since each search is given a percentage of the player's remaining time,
+        /// which works well since there are more pieces and therefore more moves that need to be considered in the early/midgame.
+        /// </summary>
         [MethodImpl(Inline)]
         public void MakeMoveTime(int ToMove, int moveCount)
         {
