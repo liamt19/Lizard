@@ -248,15 +248,26 @@ namespace LTChess.Logic.Search
             //  Start fresh, since a PV at depth 3 could write to PV[0-2] and the time we call GetPV
             //  it could fail at PV[1] and leave the wrong move in PV[2].
             Array.Clear(this.PV);
-            SimpleSearch.GetPV(this.PV);
+            int pvLen = SimpleSearch.GetPV(this.PV);
 
             Position temp = new Position(this.Position.GetFEN());
-            for (int i = 0; i < this.MaxDepth; i++)
+            int maxPvDepth = Math.Min(this.MaxDepth, pvLen);
+            for (int i = 0; i < maxPvDepth; i++)
             {
                 if (this.PV[i].IsNull())
                 {
-                    //  TODO: this happens at PV[5] for mate in 4, PV[3] for mate in 2
-                    Log("WARN GetPVString's PV[" + i + "] was null!");
+                    if (!(temp.CheckInfo.InCheck || temp.CheckInfo.InDoubleCheck))
+                    {
+                        Log("WARN GetPVString's PV[" + i + "] was null!");
+                    }
+                    else if (!EngineFormat)
+                    {
+                        //  This should only happen for checkmates, which means that the last move in the human-readable
+                        //  PV string is only considered as causing check (+) rather than checkmate (#).
+                        //  If this isn't being sent to a UCI, change the last move's "+" to a "#".
+                        pv.Remove(pv.Length - 2, 2);
+                        pv.Append("# ");
+                    }
                     break;
                 }
 

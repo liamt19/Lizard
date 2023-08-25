@@ -377,7 +377,7 @@ namespace LTChess.Logic.Search
                 }
             }
 
-        MoveLoop:
+            MoveLoop:
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllLegalMovesTogether(list);
@@ -575,14 +575,6 @@ namespace LTChess.Logic.Search
                     if (isPV)
                     {
                         PvMoves.Insert(ply, list[i]);
-                        int nextPly = ply + 1;
-                        while (PvMoves.PlyInitialized(ply, nextPly))
-                        {
-                            PvMoves.Copy(ply, nextPly);
-                            nextPly++;
-                        }
-
-                        PvMoves.UpdateLength(ply);
                     }
                 }
 
@@ -608,15 +600,7 @@ namespace LTChess.Logic.Search
 
                     if (isPV)
                     {
-                        PvMoves.Insert(ply, list[i]);
-                        int nextPly = ply + 1;
-                        while (PvMoves.PlyInitialized(ply, nextPly))
-                        {
-                            PvMoves.Copy(ply, nextPly);
-                            nextPly++;
-                        }
-
-                        PvMoves.UpdateLength(ply);
+                        //PvMoves.Insert(ply, list[i]);
                     }
 
                     nodeTypeToSave = TTNodeType.Beta;
@@ -771,12 +755,30 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public static int GetPV(in Move[] moves)
         {
+            int max = PvMoves.Count();
+
+            if (max == 0)
+            {
+                Log("WARN PvMoves.Count was 0, trying to get line[0] anyways");
+                int i = 0;
+                while (i < PrincipalVariationTable.TableSize)
+                {
+                    moves[i] = PvMoves.Get(i);
+                    if (moves[i].IsNull())
+                    {
+                        break;
+                    }
+                    i++;
+                }
+                max = i;
+            }
+
             for (int i = 0; i < PvMoves.Count(); i++)
             {
                 moves[i] = PvMoves.Get(i);
             }
 
-            return PvMoves.Count();
+            return max;
         }
 
     }

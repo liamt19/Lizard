@@ -8,14 +8,22 @@
     /// </summary>
     public class PrincipalVariationTable
     {
-        private const int TableSize = NormalListCapacity;
+        public const int TableSize = NormalListCapacity;
 
-        private readonly Move[] Table;
+        private readonly Move[][] Table;
         private readonly int[] LineLengths;
 
         public PrincipalVariationTable()
         {
-            Table = new Move[TableSize * TableSize];
+            Table = new Move[TableSize][];
+            for (int i = 0; i < TableSize; i++)
+            {
+                Table[i] = new Move[TableSize];
+                for (int j = 0; j < TableSize; j++)
+                {
+                    Table[i][j] = Move.Null;
+                }
+            }
             LineLengths = new int[TableSize];
         }
 
@@ -30,14 +38,23 @@
         [MethodImpl(Inline)]
         public void Insert(int ply, Move move)
         {
-            Table[ply * TableSize + ply] = move;
+            Table[ply][ply] = move;
+
+            int nextPly = ply + 1;
+            while (PlyInitialized(ply, nextPly))
+            {
+                Copy(ply, nextPly);
+                nextPly++;
+            }
+
+            UpdateLength(ply);
         }
 
 
         [MethodImpl(Inline)]
         public void Copy(int currentPly, int nextPly)
         {
-            Table[currentPly * TableSize + nextPly] = Table[(currentPly + 1) * TableSize + nextPly];
+            Table[currentPly][nextPly] = Table[(currentPly + 1)][nextPly];
         }
 
 
@@ -65,13 +82,16 @@
         [MethodImpl(Inline)]
         public Move Get(int plyIndex)
         {
-            return Table[plyIndex];
+            return Table[0][plyIndex];
         }
 
         [MethodImpl(Inline)]
         public void Clear()
         {
-            Array.Clear(Table);
+            for (int i = 0; i < TableSize; i++)
+            {
+                Array.Clear(Table[i]);
+            }
             Array.Clear(LineLengths);
         }
     }
