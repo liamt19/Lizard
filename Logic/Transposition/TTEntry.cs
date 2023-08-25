@@ -11,7 +11,7 @@ namespace LTChess.Logic.Transposition
     {
         public static readonly TTEntry Null = new TTEntry(0, 0, TTNodeType.Invalid, 0, Move.Null);
 
-        public const int KeyShift = 64 - sizeof(uint);
+        public const int KeyShift = 64 - (sizeof(uint) * 8);
 
         public uint Key;        //  4 bytes
         private int _data;      //  4 bytes
