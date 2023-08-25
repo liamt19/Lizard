@@ -421,13 +421,6 @@ namespace LTChess.Logic.Core
             if (!hasMoveTime && (info.TimeManager.MaxSearchTime == SearchConstants.DefaultSearchTime) && hasWhiteTime && hasBlackTime)
             {
                 info.TimeManager.MakeMoveTime(info.Position.ToMove, info.Position.Moves.Count);
-
-                //int inc = this.info.Position.ToMove == Color.White ? whiteInc : blackInc;
-                //int playerTime = this.info.Position.ToMove == 0 ? whiteTime : blackTime;
-                //int newSearchTime = inc + (playerTime / Math.Max(20, 20 - this.info.Position.Moves.Count));
-
-                //info.TimeManager.MaxSearchTime = newSearchTime;
-                //LogString("[INFO]: setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
             }
 
             bool gotBookMove = false;

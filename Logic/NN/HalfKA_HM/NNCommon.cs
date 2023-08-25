@@ -72,7 +72,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         {
             buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-            int cp = Math.Abs(100 * v / EvaluationConstants.ValuePawn);
+            int cp = Math.Abs(100 * v / 208);
 
             if (cp >= 10000)
             {
@@ -96,22 +96,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 buffer[4] = (char) ('0' + cp / 1);
             }
         }
-
-
-        private enum PieceType
-        {
-            NO_PIECE_TYPE, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING,
-            ALL_PIECES = 0,
-            PIECE_TYPE_NB = 8
-        };
-
-        private enum Piece
-        {
-            NO_PIECE,
-            W_PAWN = PieceType.PAWN, W_KNIGHT, W_BISHOP, W_ROOK, W_QUEEN, W_KING,
-            B_PAWN = PieceType.PAWN + 8, B_KNIGHT, B_BISHOP, B_ROOK, B_QUEEN, B_KING,
-            PIECE_NB = 16
-        };
     }
 
     public struct ExtPieceSquare
