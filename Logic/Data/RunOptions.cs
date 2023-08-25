@@ -24,6 +24,10 @@ namespace LTChess.Logic.Data
         public const MethodImplOptions Optimize = MethodImplOptions.PreserveSig;
 #endif
 
-
+#if (PEXT)
+        public const bool HasPext = true;
+#else
+        public const bool HasPext = false;
+#endif
     }
 }

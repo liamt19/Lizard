@@ -1,8 +1,9 @@
 ﻿using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace LTChess.Logic.Magic
 {
-    public static class MagicBitboards
+    public static unsafe class MagicBitboards
     {
         /// <summary>
         /// Contains bitboards whose bits are set where blockers for a rook on a given square could be
@@ -27,11 +28,16 @@ namespace LTChess.Logic.Magic
         private static ulong[][] BishopBlockerBoards = new ulong[64][];
         private static ulong[][] BishopAttackBoards = new ulong[64][];
 
+        public static FancyMagicSquare[] FancyRookMagics;
+        public static FancyMagicSquare[] FancyBishopMagics;
+        private static ulong[] RookTable = new ulong[0x19000];
+        private static ulong[] BishopTable = new ulong[0x19000];
+
         public static MagicSquare[] RookMagics;
         public static MagicSquare[] BishopMagics;
+
         private static Random rand;
 
-        public static bool UseBetterMagics = true;
         public static bool UseKnownMagics = true;
 
         private static bool Initialized = false;
@@ -46,21 +52,24 @@ namespace LTChess.Logic.Magic
 
         public static void Initialize()
         {
-            rand = new Random();
-            DoBlockerMasks();
-            GenAllBlockerBoards();
-            RookMagics = InitializeMagics(Piece.Rook);
-            BishopMagics = InitializeMagics(Piece.Bishop);
+            if (HasPext)
+            {
+                FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
+                FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
+            }
+            else
+            {
+                rand = new Random();
+                DoBlockerMasks();
+                GenAllBlockerBoards();
+                RookMagics = InitializeMagics(Piece.Rook);
+                BishopMagics = InitializeMagics(Piece.Bishop);
+            }
+
+
             Initialized = true;
         }
 
-        public static void Recalculate()
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            Initialize();
-            sw.Stop();
-            Log("MagicBitboards done in " + sw.Elapsed.TotalSeconds + " s");
-        }
 
 
         private static void DoBlockerMasks()
@@ -139,8 +148,16 @@ namespace LTChess.Logic.Magic
         [MethodImpl(Inline)]
         public static ulong GetRookMoves(ulong boardAll, int idx)
         {
-            MagicSquare m = RookMagics[idx];
-            return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+            if (HasPext)
+            {
+                FancyMagicSquare m = FancyRookMagics[idx];
+                return m.attacks[pext(boardAll, m.mask)];
+            }
+            else
+            {
+                MagicSquare m = RookMagics[idx];
+                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+            }
         }
 
         /// <summary>
@@ -153,28 +170,79 @@ namespace LTChess.Logic.Magic
         [MethodImpl(Inline)]
         public static ulong GetBishopMoves(ulong boardAll, int idx)
         {
-            MagicSquare m = BishopMagics[idx];
-            return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+            if (HasPext)
+            {
+                FancyMagicSquare m = FancyBishopMagics[idx];
+                return m.attacks[pext(boardAll, m.mask)];
+            }
+            else
+            {
+                MagicSquare m = BishopMagics[idx];
+                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+            }
+        }
+
+        /// <summary>
+        /// Sets up the "fancy" magic squares for the given piece type <paramref name="pt"/>.
+        /// <br></br>
+        /// If your CPU supports Bmi2, then it is able to use ParallelBitExtract to calculate attack indices
+        /// rather than having to mask the board occupancy, multiply that by the magic number, and bit shift.
+        /// 
+        /// <para></para>
+        /// 
+        /// Using Pext with move generation is about 5% faster in my testing, which adds up over time.
+        /// </summary>
+        private static FancyMagicSquare[] InitializeFancyMagics(int pt, ulong[] table)
+        {
+            FancyMagicSquare[] magicArray = new FancyMagicSquare[64];
+
+            ulong b;
+            int size = 0;
+            ulong[] occupancy = new ulong[4096];
+            ulong[] reference = new ulong[4096];
+
+            for (int sq = A1; sq <= H8; sq++)
+            {
+                FancyMagicSquare m = new FancyMagicSquare();
+                m.mask = GetBlockerMask(pt, sq);
+                m.shift = (int)(64 - popcount(m.mask));
+                if (sq == A1)
+                {
+                    m.attacks = (ulong*) Marshal.UnsafeAddrOfPinnedArrayElement(table, 0);
+                }
+                else
+                {
+                    m.attacks = magicArray[sq - 1].attacks + size;
+                }
+
+                b = 0;
+                size = 0;
+                do
+                {
+                    occupancy[size] = b;
+                    reference[size] = SlidingAttacks(pt, sq, b);
+
+                    m.attacks[pext(b, m.mask)] = reference[size];
+
+                    size++;
+                    b = (b - m.mask) & m.mask;
+                }
+                while (b != 0);
+
+                magicArray[sq] = m;
+            }
+
+            return magicArray;
         }
 
         private static MagicSquare[] InitializeMagics(int pt)
         {
-            ulong[] blockerMasks = RookBlockerMask;
-            ulong[][] blockerBoards = RookBlockerBoards;
-            ulong[][] attackBoards = RookAttackBoards;
-            int[] bits = RookBits;
-            ulong[] BetterMagics = BetterRookMagics;
-            ulong[] KnownMagics = KnownRookMagics;
-
-            if (pt == Piece.Bishop)
-            {
-                blockerMasks = BishopBlockerMask;
-                blockerBoards = BishopBlockerBoards;
-                attackBoards = BishopAttackBoards;
-                bits = BishopBits;
-                BetterMagics = BetterBishopMagics;
-                KnownMagics = KnownBishopMagics;
-            }
+            ulong[] blockerMasks    = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
+            ulong[][] blockerBoards = (pt == Piece.Bishop) ? BishopBlockerBoards : RookBlockerBoards;
+            ulong[][] attackBoards  = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
+            int[] bits              = (pt == Piece.Bishop) ? BishopBits : RookBits;
+            ulong[] BetterMagics    = (pt == Piece.Bishop) ? BetterBishopMagics : BetterRookMagics;
+            ulong[] KnownMagics     = (pt == Piece.Bishop) ? KnownBishopMagics : KnownRookMagics;
 
             MagicSquare[] magicArray = new MagicSquare[64];
 
