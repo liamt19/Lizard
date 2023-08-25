@@ -63,10 +63,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
             const uint NumChunks = HalfDimensions / SimdWidth;
             const int Control = 0b11011000;
 
-            int[] perspectives = { pos.ToMove, Not(pos.ToMove) };
+            Span<int> perspectives = stackalloc int[2] { pos.ToMove, Not(pos.ToMove) };
 
-            var psqt = (accumulator.PSQ(perspectives[0])[bucket] -
-                        accumulator.PSQ(perspectives[1])[bucket]) / 2;
+            var psqt = (accumulator.PSQ(perspectives[0])[0][bucket] -
+                        accumulator.PSQ(perspectives[1])[0][bucket]) / 2;
 
             for (int p = 0; p < 2; p++)
             {
@@ -78,8 +78,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 {
                     int vectIndex = (int)(offset + (j * VSize.SByte));
 
-                    Vector256<short> sum0 = Load256(accumulation, (j * 2 + 0) * VSize.Short);
-                    Vector256<short> sum1 = Load256(accumulation, (j * 2 + 1) * VSize.Short);
+                    //Vector256<short> sum0 = Load256(accumulation, (j * 2 + 0) * VSize.Short);
+                    //Vector256<short> sum1 = Load256(accumulation, (j * 2 + 1) * VSize.Short);
+
+                    Vector256<short> sum0 = accumulation[j * 2 + 0];
+                    Vector256<short> sum1 = accumulation[j * 2 + 1];
 
                     Vector256<sbyte> saturated = Avx2.PackSignedSaturate(sum0, sum1);
                     Vector256<sbyte> maxVec = Avx2.Max(saturated, Zero);
@@ -138,7 +141,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        Store256(ref acc[k], accumulation, (j * TileHeight) + (k * VectorSize));
+                        accumulation[(j * NumRegs) + k] = acc[k];
+
                     }
 
                 }
@@ -174,7 +178,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumPsqtRegs; k++)
                     {
-                        Store256(ref psq[k], PSQTaccumulation, (j * PsqtTileHeight) + (k * VSize.Int));
+                        //Store256(ref psq[k], PSQTaccumulation, (j * PsqtTileHeight) + (k * VSize.Int));
+                        PSQTaccumulation[k] = psq[k];
                     }
 
                 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,12 +19,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         //  as an error when this uses a primary constructor with "size" as a parameter.
         //  https://github.com/dotnet/roslyn/issues/69663
 
-        public const int size = HalfKA_HM.TransformedFeatureDimensions;
-        public short[] White = new short[size];
-        public short[] Black = new short[size];
+        public const int ByteSize = HalfKA_HM.TransformedFeatureDimensions;
+        public Vector256<short>[] White = new Vector256<short>[ByteSize / VSize.Short];
+        public Vector256<short>[] Black = new Vector256<short>[ByteSize / VSize.Short];
 
-        public int[] PSQTWhite = new int[PSQTBuckets];
-        public int[] PSQTBlack = new int[PSQTBuckets];
+        public Vector256<int>[] PSQTWhite = new Vector256<int>[PSQTBuckets / VSize.Int];
+        public Vector256<int>[] PSQTBlack = new Vector256<int>[PSQTBuckets / VSize.Int];
 
         /// <summary>
         /// Set to true when a king move is made, in which case every feature in that side's accumulator
@@ -33,17 +34,18 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public AccumulatorPSQT() { }
 
-        public short[] this[int perspective]
+
+        public Vector256<short>[] this[int perspective]
         {
             get
             {
                 return (perspective == Color.White) ? White : Black;
             }
         }
-    
+
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int[] PSQ(int perspective)
+        public Vector256<int>[] PSQ(int perspective)
         {
             return (perspective == Color.White) ? PSQTWhite : PSQTBlack;
         }
@@ -51,52 +53,43 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public void CopyTo(ref AccumulatorPSQT target)
         {
-            ref short a = ref MemoryMarshal.GetArrayDataReference(White);
-            ref short b = ref MemoryMarshal.GetArrayDataReference(Black);
-            ref short targetA = ref MemoryMarshal.GetArrayDataReference(target.White);
-            ref short targetB = ref MemoryMarshal.GetArrayDataReference(target.Black);
+            ref var a = ref MemoryMarshal.GetArrayDataReference(White);
+            ref var b = ref MemoryMarshal.GetArrayDataReference(Black);
+            ref var targetA = ref MemoryMarshal.GetArrayDataReference(target.White);
+            ref var targetB = ref MemoryMarshal.GetArrayDataReference(target.Black);
 
-            int size = White.Length * Unsafe.SizeOf<short>();
+            int size = ByteSize * Unsafe.SizeOf<short>();
 
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref targetA),
-                ref Unsafe.As<short, byte>(ref a),
+                ref Unsafe.As<Vector256<short>, byte>(ref targetA),
+                ref Unsafe.As<Vector256<short>, byte>(ref a),
                 (uint)size
             );
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref targetB),
-                ref Unsafe.As<short, byte>(ref b),
+                ref Unsafe.As<Vector256<short>, byte>(ref targetB),
+                ref Unsafe.As<Vector256<short>, byte>(ref b),
                 (uint)size
             );
 
-            ref int c = ref MemoryMarshal.GetArrayDataReference(PSQTWhite);
-            ref int d = ref MemoryMarshal.GetArrayDataReference(PSQTBlack);
-            ref int targetC = ref MemoryMarshal.GetArrayDataReference(target.PSQTWhite);
-            ref int targetD = ref MemoryMarshal.GetArrayDataReference(target.PSQTBlack);
+            ref var c = ref MemoryMarshal.GetArrayDataReference(PSQTWhite);
+            ref var d = ref MemoryMarshal.GetArrayDataReference(PSQTBlack);
+            ref var targetC = ref MemoryMarshal.GetArrayDataReference(target.PSQTWhite);
+            ref var targetD = ref MemoryMarshal.GetArrayDataReference(target.PSQTBlack);
 
-            size = PSQTWhite.Length * Unsafe.SizeOf<int>();
+            size = PSQTBuckets * sizeof(int);
 
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<int, byte>(ref targetC),
-                ref Unsafe.As<int, byte>(ref c),
+                ref Unsafe.As<Vector256<int>, byte>(ref targetC),
+                ref Unsafe.As<Vector256<int>, byte>(ref c),
                 (uint)size
             );
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<int, byte>(ref targetD),
-                ref Unsafe.As<int, byte>(ref d),
+                ref Unsafe.As<Vector256<int>, byte>(ref targetD),
+                ref Unsafe.As<Vector256<int>, byte>(ref d),
                 (uint)size
             );
         }
 
-
-        [MethodImpl(Inline)]
-        public void Zero()
-        {
-            Array.Clear(White);
-            Array.Clear(Black);
-            Array.Clear(PSQTWhite);
-            Array.Clear(PSQTBlack);
-        }
 
         public void DebugPrint()
         {

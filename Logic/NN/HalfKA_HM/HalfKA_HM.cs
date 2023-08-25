@@ -41,6 +41,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public const string Stockfish14FirstNet = @"nn-e8321e467bf6.nnue";
 
+        public const string BestNet = @"nn-735bba95dec0.nnue";
 
         public const string Name = "HalfKAv2_hm(Friend)";
 
@@ -110,27 +111,15 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             string networkToLoad = @"nn.nnue";
 
-            string cwd = System.IO.Directory.GetCurrentDirectory();
-            if (cwd.Contains(@"\bin"))
-            {
-                cwd = cwd.Remove(cwd.IndexOf(@"\bin"));
-            }
-            string resourceFolder = cwd + @"\Resources\";
-
             if (File.Exists(networkToLoad))
             {
-                buff = File.ReadAllBytes(networkToLoad);
-            }
-            else if (File.Exists(resourceFolder + Stockfish14FirstNet))
-            {
-                networkToLoad = resourceFolder + Stockfish14FirstNet;
                 buff = File.ReadAllBytes(networkToLoad);
                 Log("Using NNUE with HalfKA_v2_hm network " + networkToLoad);
             }
             else
             {
                 //  Just load the default network
-                networkToLoad = Stockfish14FirstNet;
+                networkToLoad = BestNet;
                 Log("Using embedded NNUE with HalfKA_v2_hm network " + networkToLoad);
 
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
@@ -245,7 +234,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int networkSize = LayerStack[0].NetworkSize;
 
             Span<sbyte> transformed_features = stackalloc sbyte[FeatureTransformer.BufferSize];
-            Span<byte> buffer = new byte[networkSize];
+            Span<byte> buffer = stackalloc byte[networkSize];
 
             int psqt = Transformer.TransformFeatures(pos, transformed_features, ref Accumulator, bucket);
             var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features, buffer);
@@ -345,6 +334,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         bb.Colors[pc] ^= SquareBB[idx];
                         bb.PieceTypes[idx] = None;
 
+                        AccumulatorStack[CurrentAccumulator].NeedsRefresh = true;
                         int eval = GetEvaluation(pos, false);
                         v = baseEval - eval;
 
@@ -369,7 +359,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int correctBucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
             int networkSize = LayerStack[0].NetworkSize;
 
-            sbyte[] transformed_features = new sbyte[FeatureTransformer.BufferSize];
+            Span<sbyte> transformed_features = stackalloc sbyte[FeatureTransformer.BufferSize];
             Span<byte> buffer = stackalloc byte[networkSize];
 
             Log("Bucket\t\tPSQT\t\tPositional\tTotal");
@@ -457,17 +447,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 int them = Not(us);
                 int theirPiece = bb.GetPieceAtIndex(m.To);
 
-                //int ourKing = Orient(us == Color.White, bb.KingIndex(us));
                 int ourKing = bb.KingIndex(us);
-
-                //int theirKing = Orient(them == Color.White, bb.KingIndex(them));
                 int theirKing = bb.KingIndex(them);
 
-                short[] ourAccumulation = Accumulator[us];
-                short[] theirAccumulation = Accumulator[them];
+                Vector256<short>[] ourAccumulation = Accumulator[us];
+                Vector256<short>[] theirAccumulation = Accumulator[them];
 
-                int[] ourPsq = Accumulator.PSQ(us);
-                int[] theirPsq = Accumulator.PSQ(them);
+                Vector256<int>[] ourPsq = Accumulator.PSQ(us);
+                Vector256<int>[] theirPsq = Accumulator.PSQ(them);
 
                 int ourPieceOldIndex_US =   HalfKAIndex(us, m.From, FishPiece(ourPiece, us), ourKing);
                 int ourPieceOldIndex_THEM = HalfKAIndex(them, m.From, FishPiece(ourPiece, us), theirKing);
@@ -547,10 +534,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     AddFeature(ref theirAccumulation, ref theirPsq, ourRookNewIndex_THEM);
                 }
 
-                //const int bucket = 7;
-                //int[] perspectives = { pos.ToMove, Not(pos.ToMove) };
-                //var psqt = (Accumulator.PSQ(perspectives[0])[bucket] - Accumulator.PSQ(perspectives[1])[bucket]) / 2;
-                //Log("\n\tpsqt[" + CurrentAccumulator + "][7] = " + Accumulator.PSQ(perspectives[0])[bucket] + " - " + Accumulator.PSQ(perspectives[1])[bucket] + " = " + (psqt * 2) + " \n");
             }
 
             return true;
@@ -565,35 +548,29 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void RemoveFeature(ref short[] accumulation, ref int[] psqtAccumulation, int index)
+        public static void RemoveFeature(ref Vector256<short>[] accumulation, ref Vector256<int>[] psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
             uint offset = (uint)(HalfDimensions * index);
 
             for (int j = 0; j < NumChunks; j++)
             {
-                int vectIndex = j * FeatureTransformer.VectorSize;
-                Vector256<short> inV = Load256(accumulation, vectIndex);
-
                 int columnIndex = (int)(offset + (j * VectorSize));
                 Vector256<short> column = Load256(Transformer.Weights, columnIndex);
 
-                inV = Avx2.Subtract(inV, column);
-
-                Store256(ref inV, accumulation, vectIndex);
+                accumulation[j] = Avx2.Subtract(accumulation[j], column);
             }
 
 
 
-            Vector256<int> psq = Load256(psqtAccumulation, 0);
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
                 int columnOffset = (PSQTBuckets * index + j * PsqtTileHeight);
                 Vector256<int> column = Load256(Transformer.PSQTWeights, columnOffset);
-                psq = Sub256(psq, column);
-                Store256(ref psq, psqtAccumulation, (j * PsqtTileHeight));
+                psqtAccumulation[j] = Sub256(psqtAccumulation[j], column);
             }
         }
+
 
         /// <summary>
         /// Adds the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
@@ -601,33 +578,24 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void AddFeature(ref short[] accumulation, ref int[] psqtAccumulation, int index)
+        public static void AddFeature(ref Vector256<short>[] accumulation, ref Vector256<int>[] psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
             uint offset = (uint)(HalfDimensions * index);
 
             for (int j = 0; j < NumChunks; j++)
             {
-                int vectIndex = j * FeatureTransformer.VectorSize;
-                Vector256<short> inV = Load256(accumulation, vectIndex);
-
                 int columnIndex = (int)(offset + (j * VectorSize));
                 Vector256<short> column = Load256(Transformer.Weights, columnIndex);
 
-                inV = Avx2.Add(inV, column);
-
-                Store256(ref inV, accumulation, vectIndex);
+                accumulation[j] = Avx2.Add(accumulation[j], column);
             }
 
-
-
-            Vector256<int> psq = Load256(psqtAccumulation, 0);
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
                 int columnOffset = (PSQTBuckets * index + j * PsqtTileHeight);
                 Vector256<int> column = Load256(Transformer.PSQTWeights, columnOffset);
-                psq = Add256(psq, column);
-                Store256(ref psq, psqtAccumulation, (j * PsqtTileHeight));
+                psqtAccumulation[j] = Add256(psqtAccumulation[j], column);
             }
 
         }
