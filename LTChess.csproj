@@ -52,8 +52,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Logic\NN\HalfKP\**" />
     <Compile Remove="Logic\Tablebase\**" />
+    <EmbeddedResource Remove="Logic\NN\HalfKP\**" />
     <EmbeddedResource Remove="Logic\Tablebase\**" />
+    <None Remove="Logic\NN\HalfKP\**" />
     <None Remove="Logic\Tablebase\**" />
   </ItemGroup>
 
@@ -63,6 +66,7 @@
     <Compile Remove="Logic\Search\Mate.cs" />
     <Compile Remove="Logic\Search\NegaMax.cs" />
     <Compile Remove="Logic\Search\Quiescence.cs" />
+    <Compile Remove="Logic\Transposition\EvaluationTable.cs" />
     <Compile Remove="Logic\Util\CommonFENs.cs" />
     <Compile Remove="Logic\Util\Stockfish.cs" />
   </ItemGroup>
@@ -80,6 +84,11 @@
 
   <ItemGroup>
     <Folder Include="obj\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.0" />
+    <PackageReference Include="ObjectLayoutInspector" Version="0.1.4" />
   </ItemGroup>
 
   <ItemGroup>

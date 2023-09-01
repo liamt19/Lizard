@@ -13,7 +13,8 @@
         {
             if (!Initialized)
             {
-                Initialize();
+                //  This is no longer used
+                //Initialize();
             }
         }
 
@@ -33,13 +34,6 @@
         [MethodImpl(Inline)]
         public static void Save(ulong hash, short score)
         {
-#if DEBUG
-            SearchStatistics.ETSaves++;
-            if (Table[hash % Size].Key != 0 && Table[hash % Size].Score != 0)
-            {
-                SearchStatistics.ETReplacements++;
-            }
-#endif
             Table[hash % Size] = new ETEntry(hash, score);
         }
 
