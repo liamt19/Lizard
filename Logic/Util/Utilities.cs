@@ -24,6 +24,9 @@ namespace LTChess.Logic.Util
         public const int LSBEmpty = 64;
         public const int MaxDepth = 64;
 
+        public const int MaxPly = 256;
+        public const int MaxSearchStackPly = 256 - 10;
+
         public const ulong Border = 0xFF818181818181FF;
         public const ulong PawnPromotionSquares = 0xFF000000000000FF;
         public const ulong Corners = 0x8100000000000081;
@@ -481,10 +484,12 @@ namespace LTChess.Logic.Util
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// This would return something similar to "g1f3, e2e4, d2d4".
         /// </summary>
-        public static string Stringify(this Span<Move> list)
+        public static string Stringify(this Span<Move> list, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < list.Length; i++)
+
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
             {
                 if (list[i].Equals(Move.Null))
                 {
@@ -503,10 +508,11 @@ namespace LTChess.Logic.Util
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// So instead of seeing "g1f3, e2e4, d2d4" it would show "Nf3, e4, d4".
         /// </summary>
-        public static string Stringify(this Span<Move> list, Position position)
+        public static string Stringify(this Span<Move> list, Position position, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < list.Length; i++)
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
             {
                 if (list[i].Equals(Move.Null))
                 {
