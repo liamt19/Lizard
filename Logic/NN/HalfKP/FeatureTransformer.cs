@@ -55,7 +55,7 @@ namespace LTChess.Logic.NN.HalfKP
             }
 
 
-            uint NumChunks = HalfDimensions / SimdWidth;
+            const uint NumChunks = HalfDimensions / SimdWidth;
             const int Control = 0b11011000;
             Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
 

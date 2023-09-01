@@ -31,7 +31,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         //  That is functionally the same as just loading the vector from the same index, but I have to multiply their index by 
         //  VSize.Int (which is 8 for me) since Vector256<int>[0] should contain the first VSize.Int items (0-7),
         //  Vector256<int>[1] should have the next 8 (8-15), etc.
-        public static int VectorSize = VSize.Int;
+        public const int VectorSize = VSize.Int;
 
         public ClippedReLU(AffineTransform? prev)
         {
