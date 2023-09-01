@@ -11,6 +11,7 @@ using System.Drawing;
 using System.Net;
 using System.Reflection;
 using System.Reflection.Metadata;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace LTChess.Logic.NN
 {
@@ -30,7 +31,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.MultiplyAddAdjacent(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector256<int> MultiplyAddAdjacent256(Vector256<short> left, Vector256<short> right)
+        public static Vector256<int> MultiplyAddAdjacent256(in Vector256<short> left, in Vector256<short> right)
         {
             if (Avx2.IsSupported)
             {
@@ -62,7 +63,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Subtract(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector256<short> Sub256(Vector256<short> left, Vector256<short> right)
+        public static Vector256<short> Sub256(in Vector256<short> left, in Vector256<short> right)
         {
             if (Avx2.IsSupported)
             {
@@ -74,7 +75,7 @@ namespace LTChess.Logic.NN
 
         /// <inheritdoc cref="Sub256"/>
         [MethodImpl(Inline)]
-        public static Vector256<int> Sub256(Vector256<int> left, Vector256<int> right)
+        public static Vector256<int> Sub256(in Vector256<int> left, in Vector256<int> right)
         {
             if (Avx2.IsSupported)
             {
@@ -91,7 +92,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Add(Vector256{short}, Vector256{short})"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector256<short> Add256(Vector256<short> left, Vector256<short> right)
+        public static Vector256<short> Add256(in Vector256<short> left, in Vector256<short> right)
         {
             if (Avx2.IsSupported)
             {
@@ -108,7 +109,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx2.Add(Vector256{int}, Vector256{int})"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector256<int> Add256(Vector256<int> left, Vector256<int> right)
+        public static Vector256<int> Add256(in Vector256<int> left, in Vector256<int> right)
         {
             if (Avx2.IsSupported)
             {
@@ -195,6 +196,19 @@ namespace LTChess.Logic.NN
         }
 
 
+
+
+        public static Vector256<int> LoadPointer256(void* arrayPointer, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                return Avx.LoadDquVector256((int*)arrayPointer + index * sizeof(int));
+            }
+
+            return Unsafe.ReadUnaligned<Vector256<int>>((int*)arrayPointer + index * sizeof(int));
+        }
+
+
         /// <summary>
         /// Clamps the values in <paramref name="vector"/> between the values in <paramref name="min"/> and <paramref name="max"/>
         /// <br></br>
@@ -218,7 +232,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.Store"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static void StoreSpan256(ref Vector256<int> vector, Span<int> span, int index)
+        public static void StoreSpan256(ref Vector256<int> vector, in Span<int> span, int index)
         {
             if (Avx2.IsSupported)
             {
@@ -232,11 +246,25 @@ namespace LTChess.Logic.NN
 
         /// <inheritdoc cref="StoreSpan256"/>
         [MethodImpl(Inline)]
-        public static void StoreSpan256(ref Vector256<int> vector, Span<sbyte> span, int index)
+        public static void StoreSpan256(ref Vector256<int> vector, in Span<sbyte> span, int index)
         {
             if (Avx2.IsSupported)
             {
                 Avx.Store((int*) Unsafe.AsPointer(ref span[index]), vector);
+            }
+            else
+            {
+                Unsafe.WriteUnaligned(ref Unsafe.As<sbyte, byte>(ref span[index]), vector);
+            }
+        }
+
+        /// <inheritdoc cref="StoreSpan256"/>
+        [MethodImpl(Inline)]
+        public static void StoreSpan256(ref Vector256<sbyte> vector, in Span<sbyte> span, int index)
+        {
+            if (Avx2.IsSupported)
+            {
+                Avx.Store((sbyte*)Unsafe.AsPointer(ref span[index]), vector);
             }
             else
             {
@@ -252,7 +280,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.LoadDquVector256"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector256<int> LoadSpan256(Span<int> span, int index)
+        public static Vector256<int> LoadSpan256(in Span<int> span, int index)
         {
             if (Avx2.IsSupported)
             {
@@ -264,7 +292,7 @@ namespace LTChess.Logic.NN
         
         /// <inheritdoc cref="LoadSpan256"/>
         [MethodImpl(Inline)]
-        public static Vector256<byte> LoadSpan256(Span<sbyte> span, int index)
+        public static Vector256<byte> LoadSpan256(in Span<sbyte> span, int index)
         {
             if (Avx2.IsSupported)
             {
@@ -280,7 +308,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Sse2"/> if the CPU supports it: <inheritdoc cref="Sse2.LoadVector128"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static Vector128<int> LoadSpan128(Span<int> span, int index)
+        public static Vector128<int> LoadSpan128(in Span<int> span, int index)
         {
             if (Sse2.IsSupported)
             {
@@ -296,7 +324,7 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Sse2"/> if the CPU supports it: <inheritdoc cref="Sse2.Store"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static void StoreSpan128(ref Vector128<sbyte> vector, Span<sbyte> span, int index)
+        public static void StoreSpan128(ref Vector128<sbyte> vector, in Span<sbyte> span, int index)
         {
             if (Sse2.IsSupported)
             {
@@ -314,7 +342,7 @@ namespace LTChess.Logic.NN
         /// Same as <see cref="Marshal.UnsafeAddrOfPinnedArrayElement{T}(T[], int)"/> but doesn't check if <paramref name="arr"/> is null
         /// </summary>
         [MethodImpl(Inline)]
-        public static IntPtr UnsafeAddrOfPinnedArrayElementUnchecked<T>(T[] arr, int index)
+        public static IntPtr UnsafeAddrOfPinnedArrayElementUnchecked<T>(in T[] arr, int index)
         {
             void* pRawData = Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(arr));
 #pragma warning disable 8500 // sizeof of managed types
