@@ -14,6 +14,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public static int[][] LogarithmicReductionTable = new int[MaxDepth][];
 
+        public static int[][] LMPTable = new int[2][];
 
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
@@ -624,14 +625,24 @@ namespace LTChess.Logic.Data
                 LogarithmicReductionTable[depth] = new int[NormalListCapacity];
                 for (int moveIndex = 0; moveIndex < NormalListCapacity; moveIndex++)
                 {
-                    LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
-                    //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth * moveIndex * moveIndex));
+                    //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
+                    LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2.25 + 0.25);
 
                     if (LogarithmicReductionTable[depth][moveIndex] < 1)
                     {
                         LogarithmicReductionTable[depth][moveIndex] = 0;
                     }
                 }
+            }
+
+            const int improving = 1;
+            const int not_improving = 0;
+            LMPTable[not_improving] = new int[MaxDepth];
+            LMPTable[improving] = new int[MaxDepth];
+            for (int depth = 0; depth < MaxDepth; depth++)
+            {
+                LMPTable[not_improving][depth] = (3 + depth * depth) / 2;
+                LMPTable[improving][depth] = (3 + depth * depth);
             }
         }
 
