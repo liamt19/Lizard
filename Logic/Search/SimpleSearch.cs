@@ -1,20 +1,22 @@
 ﻿
-//#define SHOW_STATS
+#define SHOW_STATS
 
+
+using System.Runtime.InteropServices;
 
 using LTChess.Logic.Core;
 using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Search.Ordering;
 
 using static LTChess.Logic.Search.Ordering.MoveOrdering;
+using static LTChess.Logic.Search.SimpleQuiescence;
 
 namespace LTChess.Logic.Search
 {
-    public static class SimpleSearch
+    public static unsafe class SimpleSearch
     {
         /// <summary>
         /// The best move found in the previous call to Deepen.
@@ -26,13 +28,23 @@ namespace LTChess.Logic.Search
         /// </summary>
         private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
 
-        private static SearchStack SearchStack = new SearchStack();
-
-        public static KillerMoveTable KillerMoves = new KillerMoveTable();
-
         public static HistoryMoveTable HistoryMoves = new HistoryMoveTable();
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
+
+        private static nint _block;
+
+        static SimpleSearch()
+        {
+            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(SearchStackEntry) * MaxPly), 32);
+            _block = (nint)block;
+            SearchStackEntry* ptr = (SearchStackEntry*)block;
+
+            for (int i = 0; i < MaxPly; i++)
+            {
+                *(ptr + i) = new SearchStackEntry();
+            }
+        }
 
         /// <summary>
         /// Begin a new search with the parameters in <paramref name="info"/>.
@@ -44,16 +56,19 @@ namespace LTChess.Logic.Search
         [MethodImpl(Optimize)]
         public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
-            TranspositionTable.Clear();
-            SearchStack.Clear();
+            TranspositionTable.TTUpdate();
+
+            SearchStackEntry* ss = ((SearchStackEntry*)_block) + 10;
+            for (int i = -10; i < MaxSearchStackPly; i++)
+            {
+                (ss + i)->Clear();
+                (ss + i)->Ply = i;
+            }
+
             PvMoves.Clear();
+
             LastBestMove = Move.Null;
             LastBestScore = ThreadedEvaluation.ScoreDraw;
-
-            if (UseKillerHeuristic)
-            {
-                KillerMoves.Clear();
-            }
 
             info.TimeManager.RestartTimer();
 
@@ -62,7 +77,6 @@ namespace LTChess.Logic.Search
             int maxDepthStart = info.MaxDepth;
             double maxTime = info.TimeManager.MaxSearchTime;
 
-            info.OneLegalMove = false;
             info.RootPositionMoveCount = info.Position.Moves.Count;
             info.NodeCount = 0;
             info.SearchActive = true;
@@ -85,15 +99,10 @@ namespace LTChess.Logic.Search
 #endif
                 }
 
-                if (UseHistoryHeuristic)
-                {
-                    HistoryMoves.Reduce();
-                }
-
                 aspirationFailed = false;
                 ulong prevNodes = info.NodeCount;
 
-                int score = SimpleSearch.FindBest<RootNode>(ref info, alpha, beta, info.MaxDepth, 0);
+                int score = SimpleSearch.FindBest<RootNode>(ref info, ss, alpha, beta, info.MaxDepth, false);
                 info.BestScore = score;
 
                 ulong afterNodes = info.NodeCount;
@@ -141,15 +150,6 @@ namespace LTChess.Logic.Search
 
                 info.OnDepthFinish?.Invoke(info);
 
-                if (info.OneLegalMove && UCI.Active)
-                {
-                    //  If the "go" command was given by a UCI, we will stop searching if there is only 1 legal move
-                    //  The transposition table is cleared after every search, and the evaluations of deeper positions
-                    //  will be calculated on our next move anyway, so it's pointless to look deeper if we only have 1 choice.
-
-                    Log(info.BestMove.ToString(info.Position) + " is the only legal move, aborting at depth " + depth + " after " + info.TimeManager.GetSearchTime() + "ms");
-                    break;
-                }
 
                 if (continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
                 {
@@ -167,7 +167,7 @@ namespace LTChess.Logic.Search
                     //Log("Extended search depth to " + (maxDepthStart - 1));
                 }
 
-                continueDeepening = (depth <= maxDepthStart && info.TimeManager.GetSearchTime() <= maxTime);
+                continueDeepening = (depth <= maxDepthStart && depth < MaxDepth && info.TimeManager.GetSearchTime() <= maxTime);
             }
 
             info.OnSearchFinish?.Invoke(info);
@@ -176,11 +176,6 @@ namespace LTChess.Logic.Search
             if (UseSimple768)
             {
                 NNUEEvaluation.ResetNN();
-            }
-
-            if (UseHalfKP)
-            {
-                HalfKP.ResetNN();
             }
 
             if (UseHalfKA)
@@ -214,10 +209,25 @@ namespace LTChess.Logic.Search
         /// </param>
         /// <returns>The evaluation of the best move.</returns>
         [MethodImpl(Inline)]
-        public static int FindBest<NodeType>(ref SearchInformation info, int alpha, int beta, int depth, int ply) where NodeType : SearchNodeType
+        public static int FindBest<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
         {
             bool isRoot = (typeof(NodeType) == typeof(RootNode));
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
+
+#if DEBUG || SHOW_STATS
+            if (isRoot)
+            {
+                SearchStatistics.NM_Roots++;
+            }
+            if (isPV)
+            {
+                SearchStatistics.NM_PVs++;
+            }
+            if (typeof(NodeType) == typeof(NonPVNode))
+            {
+                SearchStatistics.NM_NonPVs++;
+            }
+#endif
 
             //  Check every few thousand nodes if we need to stop the search.
             if ((info.NodeCount & SearchCheckInCount) == 0)
@@ -243,10 +253,10 @@ namespace LTChess.Logic.Search
 
             if (isPV)
             {
-                PvMoves.InitializeLength(ply);
-                if (ply > info.SelectiveDepth)
+                PvMoves.InitializeLength(ss->Ply);
+                if (ss->Ply > info.SelectiveDepth)
                 {
-                    info.SelectiveDepth = ply;
+                    info.SelectiveDepth = ss->Ply;
                 }
             }
 
@@ -254,90 +264,125 @@ namespace LTChess.Logic.Search
             //  by checking all of the available captures after the last move (in depth 1).
             if (depth <= 0)
             {
-                return SimpleQuiescence.QSearch<NodeType>(ref info, alpha, beta, depth, ply);
+                return SimpleQuiescence.QSearch<NodeType>(ref info, (ss), alpha, beta, depth);
             }
 
-#if DEBUG || SHOW_STATS
-            SearchStatistics.NMCalls_NOTQ++;
-#endif
 
             Position pos = info.Position;
             Bitboard bb = pos.bb;
             ulong posHash = pos.Hash;
-            Move BestMove = Move.Null;
-            int startingAlpha = alpha;
-            TTEntry ttEntry = TranspositionTable.Probe(posHash);
-            if (ttEntry.NodeType != TTNodeType.Invalid && ttEntry.ValidateKey(posHash))
+            Move bestMove = Move.Null;
+
+            ss->InCheck = pos.Checked;
+            ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
+            short ttScore = (ss->TTHit ? tte->Score : ScoreNone);
+            CondensedMove ttMove = (ss->TTHit ? tte->BestMove : Move.Null);
+
+            if (!isPV && tte->Depth >= depth && ttScore != ScoreNone)
             {
-                if (!isPV && ttEntry.Depth >= depth)
+                if (!isPV && tte->Depth >= depth)
                 {
                     //  We have already seen this position before at a higher depth,
                     //  so we can take the information from that depth and use it here.
-                    if (ttEntry.NodeType == TTNodeType.Exact)
+                    if (tte->NodeType == TTNodeType.Exact)
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.TTExactHits++;
 #endif
-                        return ttEntry.Eval;
+                        return tte->Score;
                     }
-                    else if (ttEntry.NodeType == TTNodeType.Beta)
+                    else if (tte->NodeType == TTNodeType.Beta)
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.TTBetaHits++;
 #endif
-                        alpha = Math.Max(alpha, ttEntry.Eval);
+                        alpha = Math.Max(alpha, tte->Score);
                     }
-                    else if (ttEntry.NodeType == TTNodeType.Beta)
+                    else if (tte->NodeType == TTNodeType.Alpha)
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.TTAlphaHits++;
 #endif
-                        beta = Math.Min(beta, ttEntry.Eval);
+                        beta = Math.Min(beta, tte->Score);
                     }
                 }
             }
 
             bool improving = false;
 
-            int staticEval = ETEntry.InvalidScore;
+            int score = -ScoreMate - MaxPly;
+            int bestScore = -ScoreMate - MaxPly;
 
-            TTNodeType nodeTypeToSave = TTNodeType.Invalid;
+            short eval;
 
-            bool isFutilityPrunable = false;
-            bool isLateMovePrunable = false;
-            bool isRazoringPrunable = false;
-            bool isNullMovePrunable = false;
-
-            bool isInCheck = (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck);
-
-            if (isInCheck)
+            if (ss->InCheck)
             {
-                SearchStack[ply].StaticEval = ETEntry.InvalidScore;
+#if DEBUG || SHOW_STATS
+                SearchStatistics.TT_InCheck_NM++;
+#endif
+                ss->StaticEval = eval = ScoreNone;
+                improving = false;
 
-                //  Don't bother getting the static evaluation or checking if we can prune nodes.
                 goto MoveLoop;
             }
-
-            staticEval = EvaluationTable.ProbeOrEval(ref info);
-            SearchStack[ply].StaticEval = staticEval;
-
-            if (UseReverseFutilityPruning && CanReverseFutilityPrune(isInCheck, isPV, beta, depth))
+            else if (ss->TTHit)
             {
-                var lastScore = SearchStack[ply - 2].StaticEval;
-                if (lastScore == ETEntry.InvalidScore)
+#if DEBUG || SHOW_STATS
+                SearchStatistics.TTHits_NM++;
+#endif
+                ss->StaticEval = eval = tte->StatEval;
+                if (eval == ScoreNone)
                 {
-                    lastScore = SearchStack[ply - 4].StaticEval;
+#if DEBUG || SHOW_STATS
+                    SearchStatistics.TTHitNoScore_NM++;
+#endif
+                    ss->StaticEval = eval = info.GetEvaluation(pos);
                 }
-                if (lastScore == ETEntry.InvalidScore)
+                else
+                {
+#if DEBUG || SHOW_STATS
+                    SearchStatistics.TTHitGoodScore_NM++;
+#endif
+                }
+
+                if (ttScore != ScoreNone)
+                {
+                    if ((ttScore >  ss->StaticEval) && tte->NodeType == TTNodeType.Alpha ||
+                        (ttScore <= ss->StaticEval) && tte->NodeType == TTNodeType.Beta)
+                    {
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.TTScoreFit_NM++;
+#endif
+                        eval = ttScore;
+                    }
+                }
+            }
+            else
+            {
+#if DEBUG || SHOW_STATS
+                SearchStatistics.TTMisses_NM++;
+#endif
+                ss->StaticEval = eval = info.GetEvaluation(pos);
+                tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, Move.Null, eval);
+            }
+
+            if (UseReverseFutilityPruning && CanReverseFutilityPrune(ss->InCheck, isPV, beta, depth))
+            {
+                var lastScore = (ss - 2)->StaticEval;
+                if (lastScore == ScoreNone)
+                {
+                    lastScore = (ss - 4)->StaticEval;
+                }
+                if (lastScore == ScoreNone)
                 {
                     //  https://github.com/official-stockfish/Stockfish/blob/af110e02ec96cdb46cf84c68252a1da15a902395/src/search.cpp#L754
                     lastScore = 173;
                 }
 
-                var improvement = staticEval - lastScore;
-                improving = (ply >= 2 && improvement > 0);
+                var improvement = ss->StaticEval - lastScore;
+                improving = (ss->Ply >= 2 && improvement > 0);
 
-                if (staticEval - GetReverseFutilityMargin(depth, improving) >= beta && staticEval >= beta)
+                if (eval - GetReverseFutilityMargin(depth, improving) >= beta && eval >= beta)
                 {
 #if DEBUG || SHOW_STATS
                     SearchStatistics.ReverseFutilityPrunedNodes++;
@@ -346,25 +391,27 @@ namespace LTChess.Logic.Search
                 }
             }
 
-            isFutilityPrunable = CanFutilityPrune(isInCheck, isPV, alpha, beta, depth);
-            isLateMovePrunable = CanLateMovePrune(isInCheck, isPV, isRoot, depth);
-            isRazoringPrunable = CanRazoringPrune(isInCheck, isPV, staticEval, alpha, depth);
-            isNullMovePrunable = CanNullMovePrune(pos, isInCheck, isPV, staticEval, beta, depth);
-
-            if (UseRazoring && isRazoringPrunable)
+            if (UseRazoring && CanRazoringPrune(ss->InCheck, isPV, eval, alpha, depth))
             {
+                score = SimpleQuiescence.QSearch<NodeType>(ref info, (ss), alpha, beta, depth);
+                if (score <= alpha)
+                {
 #if DEBUG || SHOW_STATS
-                SearchStatistics.RazoredNodes++;
+                    SearchStatistics.RazoredNodes++;
 #endif
-                return SimpleQuiescence.QSearch<NodeType>(ref info, alpha, beta, depth, ply);
+                    return score;
+                }
             }
 
-            if (UseNullMovePruning && isNullMovePrunable)
+
+            //if (CanNullMovePrune(pos, ss->InCheck, isPV, eval, beta, depth))
+            if (depth >= 3 && !isPV && eval >= beta && ss->StaticEval >= beta && pos.MaterialCountNonPawn[pos.ToMove] > 0 && (ss - 1)->CurrentMove != Move.Null)
             {
                 int reduction = SearchConstants.NullMovePruningMinDepth + (depth / SearchConstants.NullMovePruningMinDepth);
 
+                ss->CurrentMove = Move.Null;
                 info.Position.MakeNullMove();
-                int nullMoveEval = -FindBest<NonPVNode>(ref info, -beta, -beta + 1, depth - reduction, ply + 1);
+                int nullMoveEval = -FindBest<NonPVNode>(ref info, (ss + 1), -beta, -beta + 1, depth - reduction, !cutNode);
                 info.Position.UnmakeNullMove();
 
                 if (nullMoveEval >= beta)
@@ -377,80 +424,94 @@ namespace LTChess.Logic.Search
                 }
             }
 
+
+            if (!isRoot && isPV && ttMove.IsNull())
+            {
+                depth -= 2 + 2 * (ss->TTHit && tte->Depth >= depth ? 1 : 0);
+                if (depth <= 0)
+                {
+                    return SimpleQuiescence.QSearch<NodeType>(ref info, (ss), alpha, beta, depth);
+                }
+            }
+
+
             MoveLoop:
 
             Span<Move> list = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllLegalMovesTogether(list);
-
-            //  No legal moves, is this checkmate or a draw?
-            if (size == 0)
-            {
-                if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
-                {
-                    return info.MakeMateScore();
-                }
-                else
-                {
-                    return -ThreadedEvaluation.ScoreDraw;
-                }
-            }
-            else if (isRoot && size == 1)
-            {
-                info.OneLegalMove = true;
-            }
+            int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
-            AssignNormalMoveScores(ref info, list, scores, size, ply, ttEntry.BestMove);
+            AssignNormalMoveScores(ref info, list, scores, ss, size, ss->Ply, tte->BestMove);
 
+            int playedMoves = 0;
+            int legalMoves = 0;
             int quietMoves = 0;
-            int lmpCutoff = SearchConstants.LMPDepth + (depth * depth);
+
+            int lmpCutoff = LMPTable[improving ? 1 : 0][depth];
 
             for (int i = 0; i < size; i++)
             {
                 OrderNextMove(list, scores, size, i);
-                if (!list[i].Capture)
+
+                Move m = list[i];
+
+                if (!pos.IsLegal(m))
+                {
+                    continue;
+                }
+
+                legalMoves++;
+
+                if (!m.Capture)
                 {
                     quietMoves++;
-                }
-
-                if (UseFutilityPruning && isFutilityPrunable && !list[i].Capture)
-                {
-                    if (staticEval + (SearchConstants.FutilityPruningMarginPerDepth * depth) < alpha)
+                    if (UseFutilityPruning && CanFutilityPrune(ss->InCheck, isPV, alpha, beta, depth))
                     {
-                        if (i == 0)
+                        if (eval + (SearchConstants.FutilityPruningMarginPerDepth * depth) < alpha)
                         {
-                            //  In the off chance that the move ordered first would fail futility pruning,
-                            //  we should at least check the next node to see if it will too.
-                            continue;
-                        }
-                        else
-                        {
+                            if (i == 0)
+                            {
+                                //  In the off chance that the move ordered first would fail futility pruning,
+                                //  we should at least check the next node to see if it will too.
+                                continue;
+                            }
+                            else
+                            {
 #if DEBUG || SHOW_STATS
-                            SearchStatistics.FutilityPrunedNoncaptures++;
-                            SearchStatistics.FutilityPrunedMoves += (ulong)(size - i);
+                                SearchStatistics.FutilityPrunedNoncaptures++;
+                                SearchStatistics.FutilityPrunedMoves += (ulong)(size - i);
 #endif
-                            break;
+                                break;
+                            }
                         }
                     }
-                }
 
-                //  Only prune if our alpha has changed, meaning we have found at least 1 good move.
-                //if (UseLateMovePruning && isLateMovePrunable && (bestScore > AlphaStart) && (quietMoves > lmpCutoff))
-                if (UseLateMovePruning && isLateMovePrunable && (alpha != AlphaStart) && (quietMoves > lmpCutoff))
-                {
+                    //  Only prune if our alpha has changed, meaning we have found at least 1 good move.
+                    //  if (UseLateMovePruning && isLateMovePrunable && (alpha != AlphaStart) && (quietMoves > lmpCutoff))
+                    if (UseLateMovePruning && CanLateMovePrune(ss->InCheck, isPV, isRoot, depth) && (alpha != AlphaStart) && (quietMoves >= lmpCutoff))
+                    {
 #if DEBUG || SHOW_STATS
-                    SearchStatistics.LateMovePrunings++;
-                    SearchStatistics.LateMovePrunedMoves += (ulong)(size - i);
+                        SearchStatistics.LateMovePrunings++;
+                        SearchStatistics.LateMovePrunedMoves += (ulong)(size - i);
 #endif
-                    break;
+                        break;
+                    }
+
                 }
 
-                bool kingCheckExtension = (bb.GetPieceAtIndex(list[i].From) == Piece.King && (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck));
+                playedMoves++;
 
-                pos.MakeMove(list[i]);
+                prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
+                ss->CurrentMove = m;
+
+                pos.MakeMove(m);
+
                 info.NodeCount++;
+#if DEBUG || SHOW_STATS
+                SearchStatistics.NMNodes++;
+#endif
 
-                int score;
+
                 if ((info.Position.IsThreefoldRepetition() || info.Position.IsInsufficientMaterial()))
                 {
                     //  Instead of looking further and probably breaking something,
@@ -461,30 +522,37 @@ namespace LTChess.Logic.Search
                 {
                     //  This is the move ordered first, so we treat this as our PV and search
                     //  without any reductions.
-                    score = -SimpleSearch.FindBest<PVNode>(ref info, -beta, -alpha, depth - 1, ply + 1);
+                    score = -SimpleSearch.FindBest<PVNode>(ref info, (ss + 1), -beta, -alpha, depth - 1, cutNode);
                 }
                 else
                 {
 
-                    int nextDepth = depth - 1;
+                    bool doFullSearch = false;
 
-                    if (UseSearchExtensions)
+                    if (depth >= 3 && legalMoves >= 2 && !(isPV && m.Capture))
                     {
-                        if (!isPV)
+
+                        int R = LogarithmicReductionTable[depth][i];
+#if DEBUG || SHOW_STATS
+                        SearchStatistics.LMRReductions++;
+                        SearchStatistics.LMRReductionTotal += (ulong)R;
+#endif
+
+                        if ((bb.GetPieceAtIndex(m.From) == Piece.King && ss->InCheck))
                         {
 #if DEBUG || SHOW_STATS
-                            SearchStatistics.ReductionsNonPV++;
+                            SearchStatistics.ExtensionsKingChecked++;
 #endif
-                            nextDepth -= 1;
+
+                            R--;
                         }
 
-                        if (kingCheckExtension)
+                        if (m.Checks && depth >= 8)
                         {
 #if DEBUG || SHOW_STATS
-                            SearchStatistics.ReductionsKingChecked++;
+                            SearchStatistics.ExtensionsCausesCheck++;
 #endif
-                            //  Their last move put us in check, and we need to respond precisely to that, so search an additional ply.
-                            nextDepth += 1;
+                            R--;
                         }
 
                         if (!improving)
@@ -492,140 +560,137 @@ namespace LTChess.Logic.Search
 #if DEBUG || SHOW_STATS
                             SearchStatistics.ReductionsNotImproving++;
 #endif
-                            //  Our position doesn't seem to be getting better after our last move,
-                            //  so our last move might've just been a bad one and we shouldn't search this node as closely.
-                            nextDepth -= 1;
+                            R++;
                         }
 
-#if DEBUG || SHOW_STATS
-                        if (nextDepth < 1)
+                        if (isPV)
                         {
-                            SearchStatistics.ReductionsUnder1++;
-                        }
-#endif
-
-                        nextDepth = Math.Max(nextDepth, 1);
-                    }
-
-                    if (UseLateMoveReduction && CanLateMoveReduce(ref info, list[i], depth))
-                    {
-
 #if DEBUG || SHOW_STATS
-                        SearchStatistics.LMRReductions++;
+                            SearchStatistics.ExtensionsPV++;
 #endif
-                        int reduction;
-                        if (UseLogReductionTable)
-                        {
-                            reduction = LogarithmicReductionTable[depth][i];
-                        }
-                        else
-                        {
-                            reduction = GetLateMoveReductionAmount(size, i, depth);
+                            R--;
                         }
 
+                        if (m == ttMove)
+                        {
 #if DEBUG || SHOW_STATS
-                        SearchStatistics.LMRReductionTotal += (ulong)reduction;
+                            SearchStatistics.ExtensionsTTMove++;
 #endif
-                        nextDepth -= reduction;
-
-#if DEBUG || SHOW_STATS
-                        if (nextDepth < 1)
-                        {
-                            SearchStatistics.ReductionsUnderLMR1++;
+                            R--;
                         }
-#endif
 
-                        nextDepth = Math.Max(nextDepth, 1);
-
-                        //  Try a search with LMR applied (depth - 1 - reduction).
-                        //  If this fails, we will need to repeat the search at full depth.
-                        score = -SimpleSearch.FindBest<NonPVNode>(ref info, -alpha - 1, -alpha, nextDepth, ply + 1);
+                        R = Math.Min(depth - 1, Math.Max(R, 1));
+                        score = -SimpleSearch.FindBest<NonPVNode>(ref info, (ss + 1), -alpha - 1, -alpha, depth - R, cutNode);
+                        doFullSearch = score > alpha && R > 1;
                     }
                     else
                     {
-                        score = alpha + 1;
+                        doFullSearch = !isPV || playedMoves > 1;
                     }
 
-                    if (score > alpha)
+                    if (doFullSearch)
                     {
-                        //  If the alpha from the previous search went above the -alpha - 1,
-                        //  We will have to redo the search
-
-                        score = -SimpleSearch.FindBest<NonPVNode>(ref info, -alpha - 1, -alpha, depth - 1, ply + 1);
-
-                        if (score > alpha && score < beta)
-                        {
-                            //  The previous search fell between the alpha and beta,
-                            //  So we treat this as if it were our PV and search again.
-                            score = -SimpleSearch.FindBest<PVNode>(ref info, -beta, -alpha, depth - 1, ply + 1);
-                        }
+                        score = -SimpleSearch.FindBest<NonPVNode>(ref info, (ss + 1), -alpha - 1, -alpha, depth - 1, cutNode);
                     }
+
+                    if (isPV && (playedMoves == 1 || (score > alpha && (isRoot || score < beta))))
+                    {
+                        score = -SimpleSearch.FindBest<PVNode>(ref info, (ss + 1), -beta, -alpha, depth - 1, cutNode);
+                    }
+
+                    
                 }
+
+
 
                 pos.UnmakeMove();
 
-                if (score > alpha)
+                if (score > bestScore)
                 {
-                    //  This is the best move so far
-                    alpha = score;
-                    BestMove = list[i];
+                    bestScore = score;
 
-                    nodeTypeToSave = TTNodeType.Exact;
-
-                    if (isPV)
+                    if (score > alpha)
                     {
-                        PvMoves.Insert(ply, list[i]);
-                    }
-                }
+                        //  This is the best move so far
+                        bestMove = m;
 
-                if (score >= beta)
-                {
+                        if (isPV)
+                        {
+                            PvMoves.Insert(ss->Ply, m);
+                        }
+
+                        if (score >= beta)
+                        {
+
 #if DEBUG || SHOW_STATS
-                    SearchStatistics.BetaCutoffs++;
+                            SearchStatistics.BetaCutoffs++;
 #endif
 
-                    if (!list[i].Capture)
-                    {
-                        if (UseKillerHeuristic && KillerMoves[ply, 0] != list[i])
-                        {
-                            KillerMoves.Replace(ply, list[i]);
-                        }
+                            if (!m.IsNull() && !m.Capture)
+                            {
+                                if (ss->Killer0 != m)
+                                {
+#if DEBUG || SHOW_STATS
+                                    SearchStatistics.KillerMovesAdded++;
+#endif
+                                    ss->Killer1 = ss->Killer0;
+                                    ss->Killer0 = m;
+                                }
+                            }
 
-                        if (UseHistoryHeuristic)
+                            break;
+
+                        }
+                        else
                         {
-                            int history = (depth * depth);
-                            HistoryMoves[pos.ToMove, bb.GetPieceAtIndex(list[i].From), list[i].To] += history;
+                            alpha = score;
                         }
                     }
-
-                    if (isPV)
-                    {
-                        //PvMoves.Insert(ply, list[i]);
-                    }
-
-                    nodeTypeToSave = TTNodeType.Beta;
-                    TranspositionTable.Save(posHash, (short)beta, nodeTypeToSave, depth, BestMove);
-
-                    return beta;
                 }
-
             }
 
-            //  We want to replace entries that we have searched to a higher depth since the new evaluation will be more accurate.
-            //  But this is only done if the TTEntry was null (move hadn't already been looked at)
-            //  or we are sure that this move changes the alpha Score after searching at a higher depth
-            if (nodeTypeToSave == TTNodeType.Exact || ttEntry.Depth <= depth || ttEntry.NodeType == TTNodeType.Invalid)
+            if (legalMoves == 0)
             {
-                TranspositionTable.Save(posHash, (short)alpha, nodeTypeToSave, depth, BestMove);
+                if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
+                {
+                    return info.MakeMateScore();
+                }
+                else
+                {
+                    return -ThreadedEvaluation.ScoreDraw;
+                }
             }
-            info.BestMove = BestMove;
-            info.BestScore = alpha;
+            
+
+            if (bestScore <= alpha)
+            {
+                ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
+            }
+
+
+            TTNodeType nodeTypeToSave;
+            if (bestScore >= beta)
+            {
+                nodeTypeToSave = TTNodeType.Alpha;
+            }
+            else if (isPV && !bestMove.IsNull())
+            {
+                nodeTypeToSave = TTNodeType.Exact;
+            }
+            else
+            {
+                nodeTypeToSave = TTNodeType.Beta;
+            }
+            
+            tte->Update(posHash, (short)bestScore, nodeTypeToSave, depth, bestMove, ss->StaticEval);
+            info.BestMove = bestMove;
+            info.BestScore = bestScore;
 
 #if DEBUG || SHOW_STATS
             SearchStatistics.NMCompletes++;
 #endif
 
-            return alpha;
+            return bestScore;
         }
 
         
@@ -644,9 +709,9 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public static bool CanRazoringPrune(bool isInCheck, bool isPV, int staticEval, int alpha, int depth)
         {
-            if (!isInCheck && !isPV && depth == 1)
+            if (!isInCheck && !isPV && depth <= 4)
             {
-                if (staticEval + SearchConstants.RazoringMargin < alpha)
+                if (staticEval + (SearchConstants.RazoringMargin * depth) <= alpha)
                 {
                     return true;
                 }
