@@ -10,17 +10,14 @@ namespace LTChess.Logic.Search
     public static class SearchStatistics
     {
 
-        public static ulong AggressiveQPruningCuts = 0;
-        public static ulong AggressiveQPruningTotalCuts = 0;
-
-
-
         public static ulong RazoredNodes = 0;
 
         public static ulong LateMovePrunings = 0;
         public static ulong LateMovePrunedMoves = 0;
 
         public static ulong ReverseFutilityPrunedNodes = 0;
+
+        public static ulong KillerMovesAdded = 0;
 
 
         public static ulong FutilityPrunedNoncaptures = 0;
@@ -35,37 +32,54 @@ namespace LTChess.Logic.Search
 
         public static ulong BetaCutoffs = 0;
 
+        public static ulong QCalls = 0;
+        public static ulong QCompletes = 0;
         public static ulong QuiescenceNodes = 0;
         public static ulong QuiescenceSEECuts = 0;
         public static ulong QuiescenceSEETotalCuts = 0;
         public static ulong QuiescenceFutilityPrunes = 0;
         public static ulong QuiescenceFutilityPrunesTotal = 0;
+        public static ulong QCheckedBreaks = 0;
+        public static ulong QSwaps_1 = 0;
+        public static ulong QSwaps_0 = 0;
+        public static ulong QBetaCuts = 0;
 
         public static ulong NMCalls = 0;
         public static ulong NMCalls_NOTQ = 0;
         public static ulong NMCompletes = 0;
-        public static ulong QCalls = 0;
-        public static ulong QCompletes = 0;
+        public static ulong NMNodes = 0;
+        public static ulong NM_Roots = 0;
+        public static ulong NM_PVs = 0;
+        public static ulong NM_NonPVs = 0;
 
         public static ulong TTExactHits = 0;
         public static ulong TTBetaHits = 0;
         public static ulong TTAlphaHits = 0;
-        public static ulong TTHitBetaCuts = 0;
-        public static ulong TTHitDeeperCuts = 0;
-
-        public static ulong TTWrongKeys = 0;
-        public static ulong TTRightKeys = 0;
 
 
-        public static ulong ETHits = 0;
-        public static ulong ETSaves = 0;
-        public static ulong ETReplacements = 0;
-        public static ulong ETWrongHashKey = 0;
+        public static ulong TTHits_NM = 0;
+        public static ulong TTHitNoScore_NM = 0;
+        public static ulong TTHitGoodScore_NM = 0;
+        public static ulong TTMisses_NM = 0;
+        public static ulong TT_InCheck_NM = 0;
+        public static ulong TTScoreFit_NM = 0;
 
-        public static ulong ReductionsNonPV = 0;
+        public static ulong TTHits_QS = 0;
+        public static ulong TTHitNoScore_QS = 0;
+        public static ulong TTHitGoodScore_QS = 0;
+        public static ulong TTMisses_QS = 0;
+        public static ulong TT_InCheck_QS = 0;
+        public static ulong TTScoreFit_QS = 0;
+        
+
+        public static ulong EvalCalls = 0;
+
         public static ulong ReductionsNotImproving = 0;
-        public static ulong ReductionsKingChecked = 0;
-        public static ulong ReductionsPassedPawns = 0;
+        public static ulong ExtensionsPV = 0;
+        public static ulong ExtensionsTTMove = 0;
+        public static ulong ExtensionsKingChecked = 0;
+        public static ulong ExtensionsCausesCheck = 0;
+        public static ulong ExtensionsPassedPawns = 0;
         public static ulong ReductionsUnder1 = 0;
         public static ulong ReductionsUnderLMR1 = 0;
 
@@ -137,6 +151,7 @@ namespace LTChess.Logic.Search
         private static int _shots = 0;
         private static List<FieldInfo>? _snapshot_fields;
         private static Dictionary<string, List<ulong>> _snapshots = new Dictionary<string, List<ulong>>();
+        
         public static void TakeSnapshot(ulong nodeCount = 0, ulong time = 0)
         {
             foreach (var field in _snapshot_fields)
