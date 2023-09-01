@@ -51,10 +51,24 @@
     public enum TTNodeType
     {
         Invalid,
+        /// <summary>
+        /// Upper Bound
+        /// </summary>
         Beta,
+        /// <summary>
+        /// Lower bound
+        /// </summary>
         Alpha,
         Exact = Beta | Alpha
     };
+
+    public class Bound
+    {
+        public const int BoundNone = (int)TTNodeType.Invalid;
+        public const int BoundUpper = (int)TTNodeType.Beta;
+        public const int BoundLower = (int)TTNodeType.Alpha;
+        public const int BoundExact = (int)TTNodeType.Exact;
+    }
 
     public interface SearchNodeType { }
     public struct PVNode : SearchNodeType { }
