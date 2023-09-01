@@ -9,8 +9,12 @@ namespace LTChess.Logic.Search
     public unsafe class ThreadedEvaluation
     {
 
-        public const int ScoreNone = short.MaxValue - 7;
-        public const int ScoreMate = 32000;
+        public const short ScoreNone = 32760;
+        public const int ScoreMate = 30000;
+        public const int ScoreInfinite = 31200;
+
+        public const int ScoreTTWin = ScoreInfinite - (2 * MaxPly);
+        public const int ScoreTTLoss = -ScoreTTWin;
         public const int ScoreDraw = 0;
 
         public const ulong EndgamePieces = 8;
