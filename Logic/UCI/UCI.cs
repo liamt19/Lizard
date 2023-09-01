@@ -8,13 +8,18 @@ using System.Text.RegularExpressions;
 using LTChess.Logic.Book;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
 
 namespace LTChess.Logic.Core
 {
     public class UCI
     {
-        private SearchInformation info;
+
+        //private SearchInformation info;
+        /// <summary>
+        /// <see cref="Program.ThreadMonitor"/> needs this to be public so it can print it's ToString()
+        /// </summary>
+        public static SearchInformation info;
+
 
         public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
@@ -201,13 +206,6 @@ namespace LTChess.Logic.Core
 
                     }
 
-                    if (UseHalfKP)
-                    {
-                        //  TODO: is this necessary?
-                        HalfKP.RefreshNN(info.Position);
-                        HalfKP.ResetNN();
-                    }
-
                     if (UseHalfKA)
                     {
                         HalfKA_HM.RefreshNN(info.Position);
@@ -305,7 +303,7 @@ namespace LTChess.Logic.Core
 
             info.MaxDepth = DefaultSearchDepth;
             info.TimeManager.MaxSearchTime = DefaultSearchTime;
-            LogString("[INFO]: Got 'go' command");
+            LogString("[INFO]: Got 'go' command" + TimeManager.GetFormattedTime());
 
             bool hasMoveTime = false;
             bool hasWhiteTime = false;

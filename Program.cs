@@ -19,6 +19,7 @@ global using static LTChess.Logic.Data.RunOptions;
 global using static LTChess.Logic.Data.Squares;
 global using static LTChess.Logic.Data.Color;
 global using static LTChess.Logic.Data.Piece;
+global using static LTChess.Logic.Data.Bound;
 global using static LTChess.Logic.Magic.MagicBitboards;
 global using static LTChess.Logic.Search.SearchConstants;
 global using static LTChess.Logic.Search.ThreadedEvaluation;
@@ -29,8 +30,6 @@ global using static LTChess.Logic.NN.NNRunOptions;
 
 using LTChess.Logic.Book;
 using LTChess.Logic.NN.Simple768;
-using LTChess.Logic.NN.HalfKP;
-using LTChess.Logic.NN.HalfKP.Layers;
 using System.Runtime.Intrinsics;
 using System.Reflection;
 using LTChess.Logic.NN;
@@ -82,11 +81,6 @@ namespace LTChess
             {
                 NNUEEvaluation.ResetNN();
                 NNUEEvaluation.RefreshNN(p);
-            }
-
-            if (UseHalfKP)
-            {
-                HalfKP.ResetNN();
             }
 
             if (UseHalfKA)
@@ -281,10 +275,6 @@ namespace LTChess
                     {
                         Log("NNUE Eval: " + NNUEEvaluation.GetEvaluation(p));
                     }
-                    else if (UseHalfKP)
-                    {
-                        Log("HalfKP Eval: " + HalfKP.GetEvaluation(p));
-                    }
                     else if (UseHalfKA)
                     {
                         Log("HalfKA Eval: " + HalfKA_HM.GetEvaluation(p));
@@ -340,12 +330,6 @@ namespace LTChess
                         {
                             Log("Loaded fen");
 
-                            if (UseHalfKP)
-                            {
-                                HalfKP.RefreshNN(p);
-                                HalfKP.ResetNN();
-                            }
-
                             if (UseHalfKA)
                             {
                                 HalfKA_HM.RefreshNN(p);
@@ -377,8 +361,6 @@ namespace LTChess
             SimpleSearch.StartSearching(ref info);
 
             SearchStatistics.Zero();
-            EvaluationTable.Clear();
-
 
             JITHasntSeenSearch = false;
         }
@@ -451,9 +433,7 @@ namespace LTChess
         {
             Log(info.ToString());
             Log("\r\n");
-            TranspositionTable.PrintStatus();
-            Log("\r\n");
-            EvaluationTable.PrintStatus();
+            TranspositionTable.PrintClusterStatus();
             Log("\r\n");
             SearchStatistics.PrintStatistics();
         }
@@ -461,26 +441,55 @@ namespace LTChess
 
         public static void DotTraceProfile(int depth = 14)
         {
-
-            info = new SearchInformation(p, depth);
+            info.TimeManager.MaxSearchTime = 30000;
+            info.MaxDepth = depth;
             Task.Run(() =>
             {
                 SimpleSearch.StartSearching(ref info);
                 Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
             }).Wait();
+
+            Environment.Exit(123);
         }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            Log("An UnhandledException occurred: " + e);
+            Log("An UnhandledException occurred: " + e.ToString());
             using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
             {
                 using StreamWriter sw = new StreamWriter(fs);
 
-                sw.WriteLine("An UnhandledException occurred: " + e);
+                sw.WriteLine("An UnhandledException occurred: " + e.ToString());
 
                 sw.Flush();
             }
+        }
+
+        private static void ThreadMonitor()
+        {
+            while (true)
+            {
+                Thread.SpinWait(1000000);
+                string mvs = "";
+                if (UCI.info.Position != null && UCI.info.Position.Moves != null && UCI.info.Position.Moves.Count > 0)
+                {
+                    mvs = UCI.info.Position.Moves.ToString();
+                }
+                Log("NM:\t" + SearchStatistics.NMNodes + ",\tQ:\t" + SearchStatistics.QuiescenceNodes + "\tFails:\t" + SearchStatistics.AspirationWindowFails + "\tmoves:" + mvs + "\tinfo:\t" + UCI.info.ToString());
+            }
+        }
+
+        private static void PrintMoves()
+        {
+            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
+            int pseudoCnt = p.GenAllPseudoLegalMovesTogether(pseudo);
+
+            Log("Pseudo: [" + pseudo.Stringify(p, pseudoCnt) + "]");
+
+            Span<Move> legal = stackalloc Move[NormalListCapacity];
+            int legalCnt = p.GenAllLegalMovesTogether(legal);
+
+            Log("Legal: [" + legal.Stringify(p, legalCnt) + "]");
         }
     }
 
