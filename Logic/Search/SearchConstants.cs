@@ -2,8 +2,8 @@
 {
     public static class SearchConstants
     {
-        public const int AlphaStart = -100000;
-        public const int BetaStart = 100000;
+        public const int AlphaStart = -ScoreInfinite;
+        public const int BetaStart = ScoreInfinite;
 
         /// <summary>
         /// The halfmove clock needs to be at least 8 before a draw by threefold repetition can occur.
@@ -36,12 +36,12 @@
         /// <summary>
         /// The default depth to search to.
         /// </summary>
-        public static int DefaultSearchDepth = 7;
+        public const int DefaultSearchDepth = 7;
 
         /// <summary>
         /// Default amount of time in milliseconds that a search will run for before it is cancelled.
         /// </summary>
-        public static int DefaultSearchTime = 5 * 1000;
+        public const int DefaultSearchTime = 5 * 1000;
 
 
 
@@ -54,7 +54,7 @@
         /// The major issue with aspiration windows is that they require positional evaluation to be good/consistent,
         /// because an incorrect, large swing in evaluation will waste time.
         /// </summary>
-        public static bool UseAspirationWindows = true;
+        public const bool UseAspirationWindows = true;
 
         /// <summary>
         /// If the evaluation at the next depth is within this margin from the previous evaluation,
@@ -63,13 +63,13 @@
         /// Smaller margins will eliminate more nodes from the search (saves time), but if the margin is too small
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
-        public static int AspirationWindowMargin = 40;
+        public const int AspirationWindowMargin = 40;
 
         /// <summary>
         /// The margins for the aspiration windows will increase by this much per depth.
         /// This represents our uncertainty about which way the position is heading.
         /// </summary>
-        public static int AspirationMarginPerDepth = 20;
+        public const int AspirationMarginPerDepth = 20;
 
 
 
@@ -79,7 +79,7 @@
         /// If they can't improve it enough, then we stop looking at that node
         /// since we are reasonably sure that they are losing.
         /// </summary>
-        public static bool UseNullMovePruning = true;
+        public const bool UseNullMovePruning = true;
 
         /// <summary>
         /// Nodes need to be at this depth of higher to be considered for pruning.
@@ -87,7 +87,7 @@
         /// at, which is calculated by adding this flat amount to a node's depth divided by this amount.
         /// i.e. R = <see cref="NullMovePruningMinDepth"/> + (depth / <see cref="NullMovePruningMinDepth"/>)
         /// </summary>
-        public static int NullMovePruningMinDepth = 3;
+        public const int NullMovePruningMinDepth = 3;
 
 
 
@@ -96,7 +96,7 @@
         /// Delta pruning will ignore captures which wouldn't help the losing side improve their position during quiescence searches.
         /// For example, if we are down a queen, then testing a pawn capture is less important than testing the capture of a bishop/rook.
         /// </summary>
-        public static bool UseDeltaPruning = true;
+        public const bool UseDeltaPruning = true;
 
         /// <summary>
         /// This value is added to the value of the captured piece when we are considering if a capture
@@ -104,62 +104,62 @@
         /// This should generally be set equal to the value of a knight minus the value of a pawn,
         /// although setting it higher doesn't hurt performance too much.
         /// </summary>
-        public static int DeltaPruningMargin = EvaluationConstants.ValueKnight - EvaluationConstants.ValuePawn;
+        public const int DeltaPruningMargin = EvaluationConstants.ValueKnight - EvaluationConstants.ValuePawn;
 
 
 
 
         /// <summary>
-        /// Static Exchange Evaluation checks whether a series of captures on a square gains or loses material.
+        /// const Exchange Evaluation checks whether a series of captures on a square gains or loses material.
         /// This is meant to help speed up quiescence search since we can determine if a series of 8 captures
         /// in a row wins us material without having to make/unmake 8 moves.
         /// </summary>
-        public static bool UseQuiescenceSEE = true;
+        public const bool UseQuiescenceSEE = false;
 
-        public static bool UseAggressiveQPruning = false;
+        public const bool UseAggressiveQPruning = false;
 
 
         /// <summary>
         /// Futility pruning will cause moves at depth 1 that don't appear to raise alpha enough
         /// from going into a potentially lengthy quiescence search. 
         /// </summary>
-        public static bool UseFutilityPruning = true;
+        public const bool UseFutilityPruning = true;
 
         /// <summary>
         /// The depth must be less than or equal to this for futility pruning to be considered.
         /// </summary>
-        public static int FutilityPruningMaxDepth = 6;
+        public const int FutilityPruningMaxDepth = 6;
 
         /// <summary>
         /// This margin is added to the pruning check, per depth.
         /// </summary>
-        public static int FutilityPruningMarginPerDepth = 120;
+        public const int FutilityPruningMarginPerDepth = 120;
 
 
 
 
-        public static bool UseReverseFutilityPruning = true;
+        public const bool UseReverseFutilityPruning = true;
 
         /// <summary>
         /// The depth must be less than or equal to this for reverse futility pruning to be considered.
         /// </summary>
-        public static int ReverseFutilityPruningMaxDepth = 8;
+        public const int ReverseFutilityPruningMaxDepth = 8;
 
-        public static int ReverseFutilityPruningPerDepth = 70;
-        public static int ReverseFutilityPruningImproving = 75;
-
-
-
-        public static bool UseRazoring = true;
-
-        public static int RazoringMargin = 160;
+        public const int ReverseFutilityPruningPerDepth = 70;
+        public const int ReverseFutilityPruningImproving = 75;
 
 
 
-        public static bool UseHistoryHeuristic = false;
+        public const bool UseRazoring = true;
+
+        public const int RazoringMargin = 275;
 
 
-        public static bool UseKillerHeuristic = true;
+
+        public const bool UseHistoryHeuristic = false;
+
+
+        public const bool UseKillerHeuristic = true;
 
 
         /// <summary>
@@ -171,12 +171,12 @@
         /// the best quiet moves before that cutoff (and most if not all non-quiet moves before those), 
         /// so it is likely that the remaining quiet moves aren't good enough to be searched.
         /// </summary>
-        public static bool UseLateMovePruning = true;
+        public const bool UseLateMovePruning = true;
 
         /// <summary>
         /// The depth must be at or below this to be considered for move count based pruning.
         /// </summary>
-        public static int LMPDepth = 3;
+        public const int LMPDepth = 3;
 
 
 
@@ -185,19 +185,19 @@
         /// This is based on move ordering, which puts tries to sort moves based on how 
         /// likely they are to be "good" or important (like captures, checks, and castling moves).
         /// </summary>
-        public static bool UseLateMoveReduction = true;
+        public const bool UseLateMoveReduction = true;
 
         /// <summary>
         /// Number of plys to reduce.
         /// </summary>
-        public static int LMRReductionAmount = 1;
+        public const int LMRReductionAmount = 1;
 
         /// <summary>
         /// The depth must be at or above this amount to be reduced.
         /// </summary>
-        public static int LMRDepth = 3;
+        public const int LMRDepth = 3;
 
-        public static bool UseLogReductionTable = true;
+        public const bool UseLogReductionTable = true;
 
 
 
@@ -206,17 +206,17 @@
         /// This is usually applied when a move causes check since it might be important to spend more time
         /// looking at that line.
         /// </summary>
-        public static bool UseSearchExtensions = true;
+        public const bool UseSearchExtensions = true;
 
         /// <summary>
         /// The maximum number of depth increases allowed during a search. 
         /// </summary>
-        public static int MaxExtensions = 4;
+        public const int MaxExtensions = 4;
 
         /// <summary>
         /// A pawn must be at or closer than this distance to cause an extension.
         /// </summary>
-        public static int PassedPawnExtensionDistance = 3;
+        public const int PassedPawnExtensionDistance = 3;
 
 
 
@@ -225,20 +225,20 @@
         /// Most UCI's will handle this automatically, but using a book can add some variety to the 
         /// first couple moves that engines make.
         /// </summary>
-        public static bool UsePolyglot = false;
+        public const bool UsePolyglot = false;
 
         /// <summary>
         /// How many moves to try to play from the Polyglot file. 
         /// A ply of X means that from the starting position it will try probing for the first X moves that it makes.
         /// </summary>
-        public static int PolyglotMaxPly = 4;
+        public const int PolyglotMaxPly = 6;
 
         /// <summary>
         /// Whether to simulate the time it would ordinarily take to search when using an opening book.
         /// Probing a Polyglot file only takes 5-20 ms, so to make things more fair for engines that don't use books,
         /// this will pick the move it wants to make in ~10 ms and waste the remaining few seconds before responding with that move.
         /// </summary>
-        public static bool PolyglotSimulateTime = false;
+        public const bool PolyglotSimulateTime = false;
 
     }
 }
