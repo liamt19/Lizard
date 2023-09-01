@@ -13,7 +13,6 @@ using Microsoft.Win32.SafeHandles;
 
 namespace LTChess.Logic.Util
 {
-
     public static class Interop
     {
 
@@ -28,6 +27,19 @@ namespace LTChess.Logic.Util
             46, 26, 40, 15, 34, 20, 31, 10,
             25, 14, 19,  9, 13,  8,  7,  6
         };
+
+        /// <summary>
+        /// Hints the CPU that we are going to be using the data located at <paramref name="address"/> soon,
+        /// so it should fetch a cache line from that address and place it in a high locality cache.
+        /// <para></para>
+        /// This isn't a guarantee, and the time it takes for <see cref="Unsafe.AsPointer"/> to compute the address does hurt, 
+        /// but regardless this seems to help.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static unsafe void prefetch(void* address)
+        {
+            Sse.Prefetch0(address);
+        }
 
 
         /// <summary>
