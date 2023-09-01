@@ -4,8 +4,11 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.JavaScript;
+using System.Runtime.Intrinsics;
 using System.Text;
 using System.Threading.Tasks;
+
+using LTChess.Logic.NN.Simple768;
 
 namespace LTChess.Logic.NN
 {
@@ -15,8 +18,10 @@ namespace LTChess.Logic.NN
     /// </summary>
     public struct Accumulator
     {
-        public short[] White;
-        public short[] Black;
+        public const int ByteSize = NNUE768.HIDDEN;
+
+        public Vector256<short>[] White = new Vector256<short>[ByteSize / VSize.Short];
+        public Vector256<short>[] Black = new Vector256<short>[ByteSize / VSize.Short];
 
         /// <summary>
         /// Set to true when a king move is made, in which case every feature in that side's accumulator
@@ -24,59 +29,37 @@ namespace LTChess.Logic.NN
         /// </summary>
         public bool NeedsRefresh;
 
-        public Accumulator(int size = HalfKP.HalfKP.TransformedFeatureDimensions)
+        public Accumulator()
         {
-            White = new short[size];
-            Black = new short[size];
+
         }
 
-        public short[] this[int perspective]
+        public Vector256<short>[] this[int perspective]
         {
             get 
-            { 
+            {
                 return (perspective == Color.White) ? White : Black;
             }
         }
 
         [MethodImpl(Inline)]
-        public void CopyTo(Accumulator target)
+        public void CopyTo(in Accumulator target)
         {
-            ref short a = ref MemoryMarshal.GetArrayDataReference(White);
-            ref short b = ref MemoryMarshal.GetArrayDataReference(Black);
-            ref short targetA = ref MemoryMarshal.GetArrayDataReference(target.White);
-            ref short targetB = ref MemoryMarshal.GetArrayDataReference(target.Black);
+            ref var a = ref MemoryMarshal.GetArrayDataReference(White);
+            ref var b = ref MemoryMarshal.GetArrayDataReference(Black);
+            ref var targetA = ref MemoryMarshal.GetArrayDataReference(target.White);
+            ref var targetB = ref MemoryMarshal.GetArrayDataReference(target.Black);
 
-            int size = White.Length * Unsafe.SizeOf<short>();
+            int size = ByteSize * Unsafe.SizeOf<short>();
 
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref targetA),
-                ref Unsafe.As<short, byte>(ref a),
+                ref Unsafe.As<Vector256<short>, byte>(ref targetA),
+                ref Unsafe.As<Vector256<short>, byte>(ref a),
                 (uint)size
             );
             Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref targetB),
-                ref Unsafe.As<short, byte>(ref b),
-                (uint)size
-            );
-        }
-
-        [MethodImpl(Inline)]
-        public void PreLoadBias(short[] bias)
-        {
-            ref short white = ref MemoryMarshal.GetArrayDataReference(White);
-            ref short black = ref MemoryMarshal.GetArrayDataReference(Black);
-            ref short biasRef = ref MemoryMarshal.GetArrayDataReference(bias);
-
-            int size = White.Length * Unsafe.SizeOf<short>();
-
-            Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref white),
-                ref Unsafe.As<short, byte>(ref biasRef),
-                (uint)size
-            );
-            Unsafe.CopyBlockUnaligned(
-                ref Unsafe.As<short, byte>(ref black),
-                ref Unsafe.As<short, byte>(ref biasRef),
+                ref Unsafe.As<Vector256<short>, byte>(ref targetB),
+                ref Unsafe.As<Vector256<short>, byte>(ref b),
                 (uint)size
             );
         }

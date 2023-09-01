@@ -1,21 +1,21 @@
 ﻿
 
-#define INTRIN
 
-
+using System;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
 using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 
-
+using static System.Net.WebRequestMethods;
 using static LTChess.Logic.NN.SIMD;
 
 namespace LTChess.Logic.NN.Simple768
@@ -36,18 +36,18 @@ namespace LTChess.Logic.NN.Simple768
     /// while also changing the ~25 search options.
     /// 
     /// </summary>
-    public class NNUE768
+    public unsafe class NNUE768
     {
 
-        private const int VectorSize = 32 / sizeof(short);
+        public const int VectorSize = 32 / sizeof(short);
 
         //  2 * 6 * 64 = 768  
-        private const int INPUT = Color.ColorNB * Piece.PieceNB * SquareNB;
-        private const int HIDDEN = 256;
-        private const int OUTPUT = 1;
-        private const int CR_MIN = 0;
-        private const int CR_MAX = 1 * QA;
-        private const int SCALE = 400;
+        public const int INPUT = Color.ColorNB * Piece.PieceNB * SquareNB;
+        public const int HIDDEN = 256;
+        public const int OUTPUT = 1;
+        public const int CR_MIN = 0;
+        public const int CR_MAX = 1 * QA;
+        public const int SCALE = 400;
 
         private const int QA = 255;
         private const int QB = 64;
@@ -55,11 +55,20 @@ namespace LTChess.Logic.NN.Simple768
 
         private const int ACCUMULATOR_STACK_SIZE = 512;
 
-        private readonly short[] FeatureWeight = new short[INPUT * HIDDEN];
-        private readonly short[] FeatureBias = new short[HIDDEN];
-        private readonly short[] OutWeight = new short[HIDDEN * 2 * OUTPUT];
         private readonly short[] OutBias = new short[OUTPUT];
 
+        [FixedAddressValueType]
+        private static Vector256<short>[] FeatureWeight = new Vector256<short>[(INPUT * HIDDEN) / VSize.Short];
+
+        [FixedAddressValueType]
+        private static Vector256<short>[] FeatureBias = new Vector256<short>[(HIDDEN) / VSize.Short];
+
+        [FixedAddressValueType]
+        private static Vector256<short>[] OutWeight = new Vector256<short>[(HIDDEN * 2 * OUTPUT) / VSize.Short];
+
+        private static nint ftBiasPtr;
+
+        [FixedAddressValueType]
         private Accumulator[] Accumulators;
 
         private readonly int[] Output = new int[OUTPUT];
@@ -72,7 +81,7 @@ namespace LTChess.Logic.NN.Simple768
 
             for (int i = 0; i < Accumulators.Length; i++)
             {
-                Accumulators[i] = new Accumulator(HIDDEN);
+                Accumulators[i] = new Accumulator();
             }
 
         }
@@ -93,26 +102,24 @@ namespace LTChess.Logic.NN.Simple768
         [MethodImpl(Inline)]
         public void RefreshAccumulator(Position pos)
         {
+            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
+            Buffer.MemoryCopy((void*)ftBiasPtr, (void*)Marshal.UnsafeAddrOfPinnedArrayElement(accumulator.White, 0), HIDDEN * 2, HIDDEN * 2);
+            Buffer.MemoryCopy((void*)ftBiasPtr, (void*)Marshal.UnsafeAddrOfPinnedArrayElement(accumulator.Black, 0), HIDDEN * 2, HIDDEN * 2);
 
-            Accumulator accumulator = Accumulators[CurrentAccumulator];
-            //accumulator.Zero();
-            accumulator.PreLoadBias(FeatureBias);
-
-            for (int i = 0; i < 64; i++)
+            ulong occ = pos.bb.Occupancy;
+            while (occ != 0)
             {
-                int pt = pos.bb.PieceTypes[i];
-                if (pt == Piece.None)
-                {
-                    continue;
-                }
+                int i = lsb(occ);
 
+                int pt = pos.bb.GetPieceAtIndex(i);
                 int pc = pos.bb.GetColorAtIndex(i);
-
                 ActivateAccumulator(pt, pc, i, true);
+
+                occ = poplsb(occ);
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(Inline)]
         public void EfficientlyUpdateAccumulator(int pt, int pc, int iFrom, int iTo)
         {
             const int colorStride = 64 * Piece.PieceNB;
@@ -125,13 +132,12 @@ namespace LTChess.Logic.NN.Simple768
             int whiteIndexTo = pc * colorStride + opPieceStride + iTo;
             int blackIndexTo = Not(pc) * colorStride + opPieceStride + (iTo ^ 56);
 
-            Accumulator accumulator = Accumulators[CurrentAccumulator];
-
-            SubtractAndAddToAll(accumulator.White, FeatureWeight, whiteIndexFrom * HIDDEN, whiteIndexTo * HIDDEN);
-            SubtractAndAddToAll(accumulator.Black, FeatureWeight, blackIndexFrom * HIDDEN, blackIndexTo * HIDDEN);
+            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
+            SubtractAndAddToAll(accumulator.White, FeatureWeight, whiteIndexFrom * VectorSize, whiteIndexTo * VectorSize);
+            SubtractAndAddToAll(accumulator.Black, FeatureWeight, blackIndexFrom * VectorSize, blackIndexTo * VectorSize);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(Inline)]
         public void ActivateAccumulator(int pt, int pc, int i, bool Activate)
         {
             const int colorStride = 64 * Piece.PieceNB;
@@ -142,15 +148,15 @@ namespace LTChess.Logic.NN.Simple768
             int whiteIndex = pc * colorStride + opPieceStride + i;
             int blackIndex = Not(pc) * colorStride + opPieceStride + (i ^ 56);
 
-            Accumulator accumulator = Accumulators[CurrentAccumulator];
+            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
 
             if (Activate)
             {
-                AddToAll(accumulator.White, accumulator.Black, FeatureWeight, whiteIndex * HIDDEN, blackIndex * HIDDEN);
+                AddToAll(accumulator.White, accumulator.Black, FeatureWeight, whiteIndex * VectorSize, blackIndex * VectorSize);
             }
             else
             {
-                SubtractFromAll(accumulator.White, accumulator.Black, FeatureWeight, whiteIndex * HIDDEN, blackIndex * HIDDEN);
+                SubtractFromAll(accumulator.White, accumulator.Black, FeatureWeight, whiteIndex * VectorSize, blackIndex * VectorSize);
             }
         }
 
@@ -158,7 +164,7 @@ namespace LTChess.Logic.NN.Simple768
         [MethodImpl(Inline)]
         public int Evaluate(int ToMove)
         {
-            Accumulator accumulator = Accumulators[CurrentAccumulator];
+            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
 
             if (ToMove == Color.White)
             {
@@ -175,11 +181,11 @@ namespace LTChess.Logic.NN.Simple768
 
 
 
-        [MethodImpl(Optimize)]
-        public void ClippedReLUFlattenAndForward(short[] inputA, short[] inputB, short[] weight, int[] output)
+        [MethodImpl(Inline)]
+        public void ClippedReLUFlattenAndForward(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] weights, in int[] output)
         {
-            const int step = HIDDEN / 4;
-            const int loopMax = HIDDEN;
+            const int loopMax = (HIDDEN) / 16;
+            const int step = (HIDDEN / 4) / 16;
 
             Vector256<short> minVec256 = Vector256.Create<short>(CR_MIN);
             Vector256<short> maxVec256 = Vector256.Create<short>(CR_MAX);
@@ -188,165 +194,87 @@ namespace LTChess.Logic.NN.Simple768
 
             for (int idxV = 0; idxV < loopMax; idxV += step)
             {
-                int idx1 = idxV + VectorSize * 1;
-                int idx2 = idxV + VectorSize * 2;
-                int idx3 = idxV + VectorSize * 3;
+                sum += MultiplyAddAdjacent256(inputA[(idxV    )].Clamp256(ref minVec256, ref maxVec256), weights[(idxV    )]);
+                sum += MultiplyAddAdjacent256(inputA[(idxV + 1)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 1)]);
+                sum += MultiplyAddAdjacent256(inputA[(idxV + 2)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 2)]);
+                sum += MultiplyAddAdjacent256(inputA[(idxV + 3)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 3)]);
 
-                sum += MultiplyAddAdjacent256(Load256(inputA, idxV).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idxV));
-                sum += MultiplyAddAdjacent256(Load256(inputA, idx1).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx1));
-                sum += MultiplyAddAdjacent256(Load256(inputA, idx2).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx2));
-                sum += MultiplyAddAdjacent256(Load256(inputA, idx3).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx3));
-
-                sum += MultiplyAddAdjacent256(Load256(inputB, idxV).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idxV + loopMax));
-                sum += MultiplyAddAdjacent256(Load256(inputB, idx1).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx1 + loopMax));
-                sum += MultiplyAddAdjacent256(Load256(inputB, idx2).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx2 + loopMax));
-                sum += MultiplyAddAdjacent256(Load256(inputB, idx3).Clamp256(ref minVec256, ref maxVec256), Load256(weight, idx3 + loopMax));
+                sum += MultiplyAddAdjacent256(inputB[(idxV    )].Clamp256(ref minVec256, ref maxVec256), weights[(idxV    ) + 16]);
+                sum += MultiplyAddAdjacent256(inputB[(idxV + 1)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 1) + 16]);
+                sum += MultiplyAddAdjacent256(inputB[(idxV + 2)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 2) + 16]);
+                sum += MultiplyAddAdjacent256(inputB[(idxV + 3)].Clamp256(ref minVec256, ref maxVec256), weights[(idxV + 3) + 16]);
             }
 
             output[0] = Vector256.Sum(sum);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        public static void AddToAll(short[] inputA, short[] inputB, short[] delta, int offA, int offB)
+        [MethodImpl(Inline)]
+        public static void AddToAll(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] delta, int offA, int offB)
         {
-            const int step = HIDDEN / 4;
-            const int loopMax = HIDDEN;
+            const int loopMax = (HIDDEN) / 16;
+            const int step = (HIDDEN / 4) / 16;
 
             for (int idxV = 0; idxV < loopMax; idxV += step)
             {
-                int idx1 = idxV + VectorSize * 1;
-                int idx2 = idxV + VectorSize * 2;
-                int idx3 = idxV + VectorSize * 3;
+                inputA[(idxV    )] = Add256(inputA[(idxV    )], delta[(idxV    ) + offA]);
+                inputA[(idxV + 1)] = Add256(inputA[(idxV + 1)], delta[(idxV + 1) + offA]);
+                inputA[(idxV + 2)] = Add256(inputA[(idxV + 2)], delta[(idxV + 2) + offA]);
+                inputA[(idxV + 3)] = Add256(inputA[(idxV + 3)], delta[(idxV + 3) + offA]);
 
-                Vector256<short> rAVec1 = Add256(Load256(inputA, idxV), Load256(delta, idxV + offA));
-                Store256(ref rAVec1, inputA, idxV);
-
-                Vector256<short> rAVec2 = Add256(Load256(inputA, idx1), Load256(delta, idx1 + offA));
-                Store256(ref rAVec2, inputA, idx1);
-
-                Vector256<short> rAVec3 = Add256(Load256(inputA, idx2), Load256(delta, idx2 + offA));
-                Store256(ref rAVec3, inputA, idx2);
-
-                Vector256<short> rAVec4 = Add256(Load256(inputA, idx3), Load256(delta, idx3 + offA));
-                Store256(ref rAVec4, inputA, idx3);
-
-
-
-                Vector256<short> rBVec1 = Add256(Load256(inputB, idxV), Load256(delta, idxV + offB));
-                Store256(ref rBVec1, inputB, idxV);
-
-                Vector256<short> rBVec2 = Add256(Load256(inputB, idx1), Load256(delta, idx1 + offB));
-                Store256(ref rBVec2, inputB, idx1);
-
-                Vector256<short> rBVec3 = Add256(Load256(inputB, idx2), Load256(delta, idx2 + offB));
-                Store256(ref rBVec3, inputB, idx2);
-
-                Vector256<short> rBVec4 = Add256(Load256(inputB, idx3), Load256(delta, idx3 + offB));
-                Store256(ref rBVec4, inputB, idx3);
-
+                inputB[(idxV    )] = Add256(inputB[(idxV    )], delta[(idxV    ) + offB]);
+                inputB[(idxV + 1)] = Add256(inputB[(idxV + 1)], delta[(idxV + 1) + offB]);
+                inputB[(idxV + 2)] = Add256(inputB[(idxV + 2)], delta[(idxV + 2) + offB]);
+                inputB[(idxV + 3)] = Add256(inputB[(idxV + 3)], delta[(idxV + 3) + offB]);
             }
         }
 
 
-        [MethodImpl(Optimize)]
-        public static void SubtractFromAll(short[] inputA, short[] inputB, short[] delta, int offA, int offB)
+        [MethodImpl(Inline)]
+        public static void SubtractFromAll(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] delta, int offA, int offB)
         {
-            const int step = HIDDEN / 4;
-            const int loopMax = HIDDEN;
+            const int loopMax = (HIDDEN) / 16;
+            const int step = (HIDDEN / 4) / 16;
 
             for (int idxV = 0; idxV < loopMax; idxV += step)
             {
-                int idx1 = idxV + VectorSize * 1;
-                int idx2 = idxV + VectorSize * 2;
-                int idx3 = idxV + VectorSize * 3;
+                inputA[(idxV    )] = Sub256(inputA[(idxV    )], delta[(idxV    ) + offA]);
+                inputA[(idxV + 1)] = Sub256(inputA[(idxV + 1)], delta[(idxV + 1) + offA]);
+                inputA[(idxV + 2)] = Sub256(inputA[(idxV + 2)], delta[(idxV + 2) + offA]);
+                inputA[(idxV + 3)] = Sub256(inputA[(idxV + 3)], delta[(idxV + 3) + offA]);
 
-                Vector256<short> rAVec1 = Sub256(Load256(inputA, idxV), Load256(delta, idxV + offA));
-                Store256(ref rAVec1, inputA, idxV);
-
-                Vector256<short> rAVec2 = Sub256(Load256(inputA, idx1), Load256(delta, idx1 + offA));
-                Store256(ref rAVec2, inputA, idx1);
-
-                Vector256<short> rAVec3 = Sub256(Load256(inputA, idx2), Load256(delta, idx2 + offA));
-                Store256(ref rAVec3, inputA, idx2);
-
-                Vector256<short> rAVec4 = Sub256(Load256(inputA, idx3), Load256(delta, idx3 + offA));
-                Store256(ref rAVec4, inputA, idx3);
-
-
-
-                Vector256<short> rBVec1 = Sub256(Load256(inputB, idxV), Load256(delta, idxV + offB));
-                Store256(ref rBVec1, inputB, idxV);
-
-                Vector256<short> rBVec2 = Sub256(Load256(inputB, idx1), Load256(delta, idx1 + offB));
-                Store256(ref rBVec2, inputB, idx1);
-
-                Vector256<short> rBVec3 = Sub256(Load256(inputB, idx2), Load256(delta, idx2 + offB));
-                Store256(ref rBVec3, inputB, idx2);
-
-                Vector256<short> rBVec4 = Sub256(Load256(inputB, idx3), Load256(delta, idx3 + offB));
-                Store256(ref rBVec4, inputB, idx3);
+                inputB[(idxV    )] = Sub256(inputB[(idxV    )], delta[(idxV    ) + offB]);
+                inputB[(idxV + 1)] = Sub256(inputB[(idxV + 1)], delta[(idxV + 1) + offB]);
+                inputB[(idxV + 2)] = Sub256(inputB[(idxV + 2)], delta[(idxV + 2) + offB]);
+                inputB[(idxV + 3)] = Sub256(inputB[(idxV + 3)], delta[(idxV + 3) + offB]);
             }
         }
 
 
-
-        [MethodImpl(Optimize)]
-        public static unsafe void SubtractAndAddToAll(short[] input, short[] delta, int offA, int offB)
+        [MethodImpl(Inline)]
+        public static void SubtractAndAddToAll(in Vector256<short>[] input, in Vector256<short>[] delta, int offA, int offB)
         {
-            const int loopMax = HIDDEN;
-            const int step = HIDDEN / 4;
+            const int loopMax = (HIDDEN) / 16;
+            const int step = (HIDDEN / 4) / 16;
 
             for (int idxV = 0; idxV < loopMax; idxV += step)
             {
-                int idx1 = idxV + VectorSize * 1;
-                int idx2 = idxV + VectorSize * 2;
-                int idx3 = idxV + VectorSize * 3;
-
-
-                Vector256<short> rVec1 = Add256(Load256(delta, idxV + offB), Sub256(Load256(input, idxV), Load256(delta, idxV + offA)));
-                Store256(ref rVec1, input, idxV);
-
-                Vector256<short> rVec2 = Add256(Load256(delta, idx1 + offB), Sub256(Load256(input, idx1), Load256(delta, idx1 + offA)));
-                Store256(ref rVec2, input, idx1);
-
-                Vector256<short> rVec3 = Add256(Load256(delta, idx2 + offB), Sub256(Load256(input, idx2), Load256(delta, idx2 + offA)));
-                Store256(ref rVec3, input, idx2);
-
-                Vector256<short> rVec4 = Add256(Load256(delta, idx3 + offB), Sub256(Load256(input, idx3), Load256(delta, idx3 + offA)));
-                Store256(ref rVec4, input, idx3);
-
+                input[(idxV    )] = Add256(delta[(idxV    ) + offB], Sub256(input[(idxV    )], delta[(idxV    ) + offA]));
+                input[(idxV + 1)] = Add256(delta[(idxV + 1) + offB], Sub256(input[(idxV + 1)], delta[(idxV + 1) + offA]));
+                input[(idxV + 2)] = Add256(delta[(idxV + 2) + offB], Sub256(input[(idxV + 2)], delta[(idxV + 2) + offA]));
+                input[(idxV + 3)] = Add256(delta[(idxV + 3) + offB], Sub256(input[(idxV + 3)], delta[(idxV + 3) + offA]));
             }
         }
 
-
-
-        public void Randomize()
-        {
-            //int seed = 1234;
-            Random r = new Random();
-
-            for (int i = 0; i < FeatureWeight.Length; i++)
-            {
-                FeatureWeight[i] = (short)(r.Next(1000) - 500);
-            }
-
-            for (int i = 0; i < FeatureBias.Length; i++)
-            {
-                FeatureBias[i] = (short)(r.Next(1000) - 500);
-            }
-
-            for (int i = 0; i < OutWeight.Length; i++)
-            {
-                OutWeight[i] = (short)(r.Next(400) - 200);
-            }
-
-            OutBias[0] = 1225;
-
-        }
 
 
         public void FromTXT(Stream stream)
         {
+
+            short[] _FeatureWeight = new short[INPUT * HIDDEN];
+            short[] _FeatureBias = new short[HIDDEN];
+            short[] _OutWeight = new short[HIDDEN * 2 * OUTPUT];
+            short[] OutBias = new short[OUTPUT];
+
             using StreamReader sr = new StreamReader(stream);
 
             string line;
@@ -354,27 +282,46 @@ namespace LTChess.Logic.NN.Simple768
 
             line = sr.ReadLine().TrimEnd(']').Substring(new string("FeatureWeight:[").Length);
             splits = line.Split(',');
-            for (int i = 0; i < FeatureWeight.Length; i++)
+            for (int i = 0; i < (INPUT * HIDDEN); i++)
             {
-                FeatureWeight[i] = short.Parse(splits[i]);
+                _FeatureWeight[i] = short.Parse(splits[i]);
             }
 
             line = sr.ReadLine().TrimEnd(']').Substring(new string("FeatureBias:[").Length);
             splits = line.Split(',');
-            for (int i = 0; i < FeatureBias.Length; i++)
+            for (int i = 0; i < (HIDDEN); i++)
             {
-                FeatureBias[i] = short.Parse(splits[i]);
+                _FeatureBias[i] = short.Parse(splits[i]);
             }
 
             line = sr.ReadLine().TrimEnd(']').Substring(new string("OutWeight:[").Length);
             splits = line.Split(',');
-            for (int i = 0; i < OutWeight.Length; i++)
+            for (int i = 0; i < (HIDDEN * 2 * OUTPUT); i++)
             {
-                OutWeight[i] = short.Parse(splits[i]);
+                _OutWeight[i] = short.Parse(splits[i]);
             }
 
             OutBias[0] = short.Parse(sr.ReadLine().TrimEnd(']').Substring(new string("OutBias:[").Length));
             OutBias[0] = 1230;
+
+
+
+            for (int i = 0; i < _FeatureWeight.Length; i += VSize.Short)
+            {
+                FeatureWeight[i / VSize.Short] = Load256(_FeatureWeight, i);
+            }
+
+            for (int i = 0; i < _FeatureBias.Length; i += VSize.Short)
+            {
+                FeatureBias[i / VSize.Short] = Load256(_FeatureBias, i);
+            }
+
+            for (int i = 0; i < _OutWeight.Length; i += VSize.Short)
+            {
+                OutWeight[i / VSize.Short] = Load256(_OutWeight, i);
+            }
+
+            ftBiasPtr = Marshal.UnsafeAddrOfPinnedArrayElement(FeatureBias, 0);
         }
     }
 }

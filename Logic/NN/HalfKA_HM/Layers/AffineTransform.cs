@@ -34,10 +34,11 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         public int BufferSize;
 
         public readonly int PaddedInputDimensions;
-        public int[] Biases;
-        public sbyte[] Weights;
 
-        public static int VectorSize = VSize.SByte;
+        public Vector256<int>[] Biases;
+        public Vector256<sbyte>[] Weights;
+
+        public const int VectorSize = VSize.SByte;
 
         public const int OutputSimdWidth = SimdWidth / 4;
         public const int InputSimdWidth = SimdWidth;
@@ -61,8 +62,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Biases = new int[OutputDimensions];
-            Weights = new sbyte[OutputDimensions * PaddedInputDimensions];
+            Weights = new Vector256<sbyte>[(OutputDimensions * PaddedInputDimensions) / VSize.SByte];
+            Biases = new Vector256<int>[Math.Max(1, (OutputDimensions) / VSize.Int)];
         }
 
         /// <summary>
@@ -84,8 +85,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Biases = new int[OutputDimensions];
-            Weights = new sbyte[OutputDimensions * PaddedInputDimensions];
+            Weights = new Vector256<sbyte>[(OutputDimensions * PaddedInputDimensions) / VSize.SByte];
+            Biases = new Vector256<int>[Math.Max(1, (OutputDimensions) / VSize.Int)];
         }
 
         [MethodImpl(Inline)]
@@ -110,8 +111,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 {
                     Vector256<int> outVec = LoadSpan256(output, j * vectorStride);
 
-                    Vector256<sbyte> col0 = Load256(Weights, (j * VSize.SByte));
-                    Vector256<sbyte> col1 = Load256(Weights, (j * VSize.SByte) + (OutputDimensions * 4));
+                    Vector256<sbyte> col0 = Weights[j];
+                    Vector256<sbyte> col1 = Weights[j + 4];
 
                     m256_add_dpbusd_epi32x2(ref outVec, in0.AsByte(), in1.AsByte(), col0, col1);
 
@@ -127,7 +128,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
                 for (int k = 0; k < NumRegs; k++)
                 {
-                    Vector256<int> biasVec = Load256(Biases, (k * VectorSize));
+                   Vector256<int> biasVec = Biases[k];
                     outs[k] = biasVec;
                 }
 
@@ -142,10 +143,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        Vector256<sbyte> col0 = Load256(Weights, ((i + 0) * OutputDimensions * 4) + (k * VSize.SByte));
-                        Vector256<sbyte> col1 = Load256(Weights, ((i + 1) * OutputDimensions * 4) + (k * VSize.SByte));
-                        Vector256<sbyte> col2 = Load256(Weights, ((i + 2) * OutputDimensions * 4) + (k * VSize.SByte));
-                        Vector256<sbyte> col3 = Load256(Weights, ((i + 3) * OutputDimensions * 4) + (k * VSize.SByte));
+                        Vector256<sbyte> col0 = Weights[((i + 0)) + k];
+                        Vector256<sbyte> col1 = Weights[((i + 1)) + k];
+                        Vector256<sbyte> col2 = Weights[((i + 2)) + k];
+                        Vector256<sbyte> col3 = Weights[((i + 3)) + k];
 
                         m256_add_dpbusd_epi32x4(ref outs[k], in0.AsByte(), in1.AsByte(), in2.AsByte(), in3.AsByte(), col0, col1, col2, col3);
                     }
@@ -165,11 +166,11 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 for (int j = 0; j < NumChunks; j++)
                 {
                     Vector256<byte> inp = LoadSpan256(input, j * vectorStride);
-                    Vector256<sbyte> weightVec = Load256(Weights, j * vectorStride);
+                    Vector256<sbyte> weightVec = Weights[j];
                     m256_add_dpbusd_epi32(ref sum0, inp, weightVec);
                 }
 
-                output[0] = m256_hadd(sum0, Biases[0]);
+                output[0] = m256_hadd(sum0, Biases[0][0]);
 
             }
             else
@@ -190,6 +191,9 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 return false;
             }
 
+            int[] _Biases = new int[OutputDimensions];
+            sbyte[] _Weights = new sbyte[OutputDimensions * PaddedInputDimensions];
+
             try
             {
 
@@ -197,11 +201,11 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 {
                     if (IsLEB128)
                     {
-                        Biases[i] = (int)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
+                        _Biases[i] = (int)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
                     }
                     else
                     {
-                        Biases[i] = br.ReadInt32();
+                        _Biases[i] = br.ReadInt32();
                     }
                 }
 
@@ -209,14 +213,31 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 {
                     if (IsLEB128)
                     {
-                        Weights[i] = (sbyte)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
+                        _Weights[i] = (sbyte)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
                     }
                     else
                     {
                         int cursedIndex = (i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 + i / PaddedInputDimensions * 4 + i % 4;
-                        Weights[cursedIndex] = br.ReadSByte();
+                        _Weights[cursedIndex] = br.ReadSByte();
                     }
 
+                }
+
+                for (int i = 0; i < OutputDimensions; i += VSize.Int)
+                {
+                    if (OutputDimensions == 1)
+                    {
+                        Biases[i / VSize.Int] = Vector256.Create(_Biases[i], 0, 0, 0, 0, 0, 0, 0);
+                    }
+                    else
+                    {
+                        Biases[i / VSize.Int] = Load256(_Biases, i);
+                    }
+                }
+
+                for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i += VSize.SByte)
+                {
+                    Weights[i / VSize.SByte] = Load256(_Weights, i);
                 }
             }
             catch (Exception e)

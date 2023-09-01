@@ -34,9 +34,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public static uint GetHashValue() => HalfKA_HM.HashValue ^ OutputDimensions;
 
-        public short[] Biases = new short[HalfDimensions];
-        public short[] Weights = new short[HalfDimensions * InputDimensions];
-        public int[] PSQTWeights = new int[InputDimensions * PSQTBuckets];
+        public Vector256<short>[] Biases   = new Vector256<short>[(HalfDimensions) / VSize.Short];
+        public Vector256<short>[] Weights  = new Vector256<short>[(HalfDimensions * InputDimensions) / VSize.Short];
+        public Vector256<int>[] PSQTWeights = new Vector256<int>[(InputDimensions * PSQTBuckets) / VSize.Int];
 
         private static readonly Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
 
@@ -89,8 +89,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<long> permuted = Avx2.Permute4x64(maxVec.AsInt64(), Control);
 
                     Vector256<sbyte> toStore = permuted.AsSByte();
-
-                    Avx2.Store((sbyte*) Unsafe.AsPointer(ref output[vectIndex]), toStore);
+                    StoreSpan256(ref toStore, output, vectIndex);
                 }
             }
 
@@ -104,7 +103,16 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public void RefreshAccumulator(Position pos, ref AccumulatorPSQT accumulator)
         {
+            const int RelativeWeightIndex = (int)HalfDimensions / 16;
+            const int RelativeTileHeight = TileHeight / 16;
+
             Span<int> active = stackalloc int[MaxActiveDimensions * 2];
+            
+            if (SkipInitEnabled)
+            {
+                active.Clear();
+            }
+
             HalfKA_HM.AppendActiveIndices(pos, active);
 
             for (int perspective = 0; perspective < ColorNB; perspective++)
@@ -119,8 +127,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        Vector256<short> biasTile = Load256(Biases, ((j * TileHeight) + (k * VectorSize)));
-                        acc[k] = biasTile;
+                        //Vector256<short> biasTile = Load256(Biases, ((j * TileHeight) + (k * VectorSize)));
+                        acc[k] = Biases[((j * RelativeTileHeight) + k)];
                     }
 
                     int i = 0;
@@ -134,7 +142,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                         for (int k = 0; k < NumRegs; k++)
                         {
-                            Vector256<short> column = Load256(Weights, (int)(HalfDimensions * index + j * TileHeight) + (k * VectorSize));
+                            //Vector256<short> column = Load256(Weights, (int)(HalfDimensions * index + j * TileHeight) + (k * VectorSize));
+                            int temp = ((RelativeWeightIndex * index + j * RelativeTileHeight) + k);
+                            Vector256<short> column = Weights[temp];
                             acc[k] = Add256(acc[k], column);
                         }
                     }
@@ -144,13 +154,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         accumulation[(j * NumRegs) + k] = acc[k];
 
                     }
-
                 }
 
-
-
                 Span<Vector256<int>> psq = stackalloc Vector256<int>[NumPsqtRegs];
-
                 for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
                 {
                     for (int k = 0; k < NumPsqtRegs; k++)
@@ -169,19 +175,17 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                         for (int k = 0; k < NumPsqtRegs; k++)
                         {
-                            int columnOffset = (PSQTBuckets * index + j * PsqtTileHeight);
-                            Vector256<int> column = Load256(PSQTWeights, columnOffset + (k * VSize.Int));
-                            
+                            int columnOffset = (index + j * PsqtTileHeight);
+                            Vector256<int> column = PSQTWeights[columnOffset];
+
                             psq[k] = Add256(psq[k], column);
                         }
                     }
 
                     for (int k = 0; k < NumPsqtRegs; k++)
                     {
-                        //Store256(ref psq[k], PSQTaccumulation, (j * PsqtTileHeight) + (k * VSize.Int));
                         PSQTaccumulation[k] = psq[k];
                     }
-
                 }
             }
 
@@ -196,6 +200,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public bool ReadParameters(BinaryReader br)
         {
 
+            short[] _Biases = new short[HalfDimensions];
+            short[] _Weights = new short[HalfDimensions * InputDimensions];
+            int[] _PSQTWeights = new int[InputDimensions * PSQTBuckets];
+
             uint header = br.ReadUInt32();
             Debug.WriteLine("FeatureTransformer header: " + header.ToString("X"));
 
@@ -204,11 +212,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 if (IsLEB128)
                 {
                     //  TODO: this obviously won't work
-                    Biases[i] = (short)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
+                    _Biases[i] = (short)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
                 }
                 else
                 {
-                    Biases[i] = br.ReadInt16();
+                    _Biases[i] = br.ReadInt16();
                 }
             }
 
@@ -216,11 +224,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
             {
                 if (IsLEB128)
                 {
-                    Weights[i] = (short)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
+                    _Weights[i] = (short)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
                 }
                 else
                 {
-                    Weights[i] = br.ReadInt16();
+                    _Weights[i] = br.ReadInt16();
                 }
             }
 
@@ -228,12 +236,28 @@ namespace LTChess.Logic.NN.HalfKA_HM
             {
                 if (IsLEB128)
                 {
-                    PSQTWeights[i] = (int)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
+                    _PSQTWeights[i] = (int)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
                 }
                 else
                 {
-                    PSQTWeights[i] = br.ReadInt32();
+                    _PSQTWeights[i] = br.ReadInt32();
                 }
+            }
+
+
+            for (int i = 0; i < HalfDimensions; i += VSize.Short)
+            {
+                Biases[i / VSize.Short] = Load256(_Biases, i);
+            }
+
+            for (int i = 0; i < HalfDimensions * InputDimensions; i += VSize.Short)
+            {
+                Weights[i / VSize.Short] = Load256(_Weights, i);
+            }
+
+            for (int i = 0; i < PSQTBuckets * InputDimensions; i += VSize.Int)
+            {
+                PSQTWeights[i / VSize.Int] = Load256(_PSQTWeights, i);
             }
 
             return true;
