@@ -2,9 +2,9 @@
 using System.Diagnostics;
 using System.Text;
 
+using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 
 namespace LTChess.Logic.Core
@@ -84,6 +84,10 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int[] MaterialCount;
 
+        public int[] MaterialCountNonPawn;
+
+        public bool Checked => (CheckInfo.InCheck || CheckInfo.InDoubleCheck);
+
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
@@ -98,6 +102,7 @@ namespace LTChess.Logic.Core
             HalfmoveClocks = new FasterStack<int>(MaxListCapacity);
             EnPassantTargets = new FasterStack<int>(MaxListCapacity);
             MaterialCount = new int[2];
+            MaterialCountNonPawn = new int[2];
 
             this.bb = new Bitboard();
 
@@ -110,12 +115,6 @@ namespace LTChess.Logic.Core
             {
                 NNUEEvaluation.RefreshNN(this);
                 NNUEEvaluation.ResetNN();
-            }
-
-            if (UseHalfKP)
-            {
-                HalfKP.RefreshNN(this);
-                HalfKP.ResetNN();
             }
 
             if (UseHalfKA)
@@ -198,29 +197,28 @@ namespace LTChess.Logic.Core
             {
                 NNUEEvaluation.MakeMoveNN(this, move);
             }
-            else if (UseHalfKP && MakeMoveNN)
-            {
-                HalfKP.MakeMove(this, move);
-            }
             else if (UseHalfKA && MakeMoveNN)
             {
                 HalfKA_HM.MakeMove(this, move);
             }
 
-            int ourPiece = bb.GetPieceAtIndex(move.From);
-            int ourColor = bb.GetColorAtIndex(move.From);
+            int moveFrom = move.From;
+            int moveTo = move.To;
 
-            int theirPiece = bb.GetPieceAtIndex(move.To);
+            int ourPiece = bb.GetPieceAtIndex(moveFrom);
+            int ourColor = bb.GetColorAtIndex(moveFrom);
+
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
             int theirColor = Not(ourColor);
 
 #if DEBUG
-            if (theirPiece != Piece.None && ourColor == bb.GetColorAtIndex(move.To))
+            if (theirPiece != Piece.None && ourColor == bb.GetColorAtIndex(moveTo))
             {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(move.To));
+                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
             }
             if (theirPiece == Piece.King)
             {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(move.To)) + "'s king on " + IndexToString(move.To));
+                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(moveTo)) + "'s king on " + IndexToString(moveTo));
             }
 #endif
 
@@ -251,24 +249,24 @@ namespace LTChess.Logic.Core
             if (move.EnPassant)
             {
                 int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
-                bb.EnPassant(move.From, move.To, ourColor, idxPawn);
-                Hash = Hash.ZobristMove(move.From, move.To, ToMove, Piece.Pawn);
+                bb.EnPassant(moveFrom, moveTo, ourColor, idxPawn);
+                Hash = Hash.ZobristMove(moveFrom, moveTo, ToMove, Piece.Pawn);
                 Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
 
                 MaterialCount[theirColor] -= GetPieceValue(Piece.Pawn);
             }
-            else if (ourPiece == Piece.Pawn && (move.To ^ move.From) == 16)
+            else if (ourPiece == Piece.Pawn && (moveTo ^ moveFrom) == 16)
             {
-                bb.MoveSimple(move.From, move.To, ourColor, ourPiece);
-                Hash = Hash.ZobristMove(move.From, move.To, ToMove, Piece.Pawn);
+                bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+                Hash = Hash.ZobristMove(moveFrom, moveTo, ToMove, Piece.Pawn);
 
-                if (ourColor == Color.White && (WhitePawnAttackMasks[move.To - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
+                if (ourColor == Color.White && (WhitePawnAttackMasks[moveTo - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
                 {
-                    EnPassantTarget = move.To - 8;
+                    EnPassantTarget = moveTo - 8;
                 }
-                else if (ourColor == Color.Black && (BlackPawnAttackMasks[move.To + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
+                else if (ourColor == Color.Black && (BlackPawnAttackMasks[moveTo + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
                 {
-                    EnPassantTarget = move.To + 8;
+                    EnPassantTarget = moveTo + 8;
                 }
 
                 //  Update the En Passant file because we just changed EnPassantTarget
@@ -280,10 +278,15 @@ namespace LTChess.Logic.Core
 
                 MaterialCount[theirColor] -= GetPieceValue(theirPiece);
 
+                if (theirPiece != Pawn)
+                {
+                    MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
+                }
+
                 if (theirPiece == Piece.Rook)
                 {
                     //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
-                    switch (move.To)
+                    switch (moveTo)
                     {
                         case A1:
                             Hash = Hash.ZobristCastle(Castling, CastlingStatus.WQ);
@@ -307,30 +310,31 @@ namespace LTChess.Logic.Core
                 if (move.Promotion)
                 {
                     //  Pawn capturing and promoting
-                    bb.Promote(move.From, move.To, ourColor, theirPiece, move.PromotionTo);
-                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, move.To);
-                    Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, move.From);
-                    Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, move.To);
+                    bb.Promote(moveFrom, moveTo, ourColor, theirPiece, move.PromotionTo);
+                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
+                    Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveFrom);
+                    Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
                     MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
                     MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
+                    MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
                 }
                 else
                 {
                     //  Normal capture
-                    bb.Move(move.From, move.To, ourColor, ourPiece, theirPiece);
-                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, move.To);
-                    Hash = Hash.ZobristMove(move.From, move.To, ourColor, ourPiece);
+                    bb.Move(moveFrom, moveTo, ourColor, ourPiece, theirPiece);
+                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
+                    Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
                 }
             }
             else if (move.Castle)
             {
                 //  Move the king
-                bb.MoveSimple(move.From, move.To, ourColor, ourPiece);
-                Hash = Hash.ZobristMove(move.From, move.To, ourColor, ourPiece);
+                bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+                Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
 
                 //  Then move the rook
-                switch (move.To)
+                switch (moveTo)
                 {
                     case C1:
                         bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
@@ -363,18 +367,19 @@ namespace LTChess.Logic.Core
             }
             else if (move.Promotion)
             {
-                bb.Promote(move.From, move.To, move.PromotionTo);
-                Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, move.From);
-                Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, move.To);
+                bb.Promote(moveFrom, moveTo, move.PromotionTo);
+                Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveFrom);
+                Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
                 MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
                 MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
+                MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
             else
             {
                 //  A simple move that isn't a capture/castle/promotion/en passant
-                bb.Move(move.From, move.To, ourColor, ourPiece, theirPiece);
-                Hash = Hash.ZobristMove(move.From, move.To, ourColor, ourPiece);
+                bb.Move(moveFrom, moveTo, ourColor, ourPiece, theirPiece);
+                Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
             }
 
             if (ourPiece == Piece.King && !move.Castle)
@@ -394,7 +399,7 @@ namespace LTChess.Logic.Core
             else if (ourPiece == Piece.Rook && Castling != CastlingStatus.None)
             {
                 //  If we just moved a rook, update Castling
-                switch (move.From)
+                switch (moveFrom)
                 {
                     case A1:
                         Hash = Hash.ZobristCastle(Castling, CastlingStatus.WQ);
@@ -441,11 +446,7 @@ namespace LTChess.Logic.Core
             Moves.Push(move);
             Hash = Hash.ZobristChangeToMove();
 
-            if (UseHalfKP && MakeMoveNN && kingMove)
-            {
-                HalfKP.RefreshNN(this);
-            }
-            else if (UseHalfKA && MakeMoveNN && kingMove)
+            if (UseHalfKA && MakeMoveNN && kingMove)
             {
                 HalfKA_HM.RefreshNN(this);
             }
@@ -476,6 +477,7 @@ namespace LTChess.Logic.Core
 
             ToMove = Not(ToMove);
             Hash = Hash.ZobristChangeToMove();
+            prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(Hash)));
         }
 
         /// <summary>
@@ -510,8 +512,11 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         private void UnmakeMove(in Move move, bool UnmakeMoveNN = true)
         {
+            int moveFrom = move.From;
+            int moveTo = move.To;
+
             //  Assume that "we" just made the last move, and "they" are undoing it.
-            int ourPiece = bb.GetPieceAtIndex(move.To);
+            int ourPiece = bb.GetPieceAtIndex(moveTo);
             int ourColor = Not(ToMove);
             int theirColor = ToMove;
 
@@ -520,37 +525,42 @@ namespace LTChess.Logic.Core
             this.Hash = Hashes.Pop();
             this.HalfMoves = HalfmoveClocks.Pop();
             this.EnPassantTarget = EnPassantTargets.Pop();
-            
-            ulong mask = (SquareBB[move.From] | SquareBB[move.To]);
+
+            ulong mask = (SquareBB[moveFrom] | SquareBB[moveTo]);
 
             if (move.Capture)
             {
                 int capturedPiece = Captures.Pop();
                 MaterialCount[theirColor] += GetPieceValue(capturedPiece);
+                if (capturedPiece != Pawn)
+                {
+                    MaterialCountNonPawn[theirColor] += GetPieceValue(capturedPiece);
+                }
 
                 if (move.Promotion)
                 {
                     bb.Colors[ourColor] ^= mask;
-                    bb.Colors[theirColor] ^= SquareBB[move.To];
+                    bb.Colors[theirColor] ^= SquareBB[moveTo];
 
-                    bb.Pieces[move.PromotionTo] ^= SquareBB[move.To];
-                    bb.Pieces[Piece.Pawn] ^= SquareBB[move.From];
-                    bb.Pieces[capturedPiece] ^= SquareBB[move.To];
+                    bb.Pieces[move.PromotionTo] ^= SquareBB[moveTo];
+                    bb.Pieces[Piece.Pawn] ^= SquareBB[moveFrom];
+                    bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
 
-                    bb.PieceTypes[move.To] = capturedPiece;
-                    bb.PieceTypes[move.From] = Piece.Pawn;
+                    bb.PieceTypes[moveTo] = capturedPiece;
+                    bb.PieceTypes[moveFrom] = Piece.Pawn;
 
                     MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
                     MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
+                    MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
                 }
                 else
                 {
-                    bb.MoveSimple(move.To, move.From, ourColor, ourPiece);
+                    bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
 
-                    bb.Colors[theirColor] ^= SquareBB[move.To];
-                    bb.Pieces[capturedPiece] ^= SquareBB[move.To];
+                    bb.Colors[theirColor] ^= SquareBB[moveTo];
+                    bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
 
-                    bb.PieceTypes[move.To] = capturedPiece;
+                    bb.PieceTypes[moveTo] = capturedPiece;
                 }
             }
             else if (move.EnPassant)
@@ -561,48 +571,50 @@ namespace LTChess.Logic.Core
                 bb.Colors[ourColor] ^= mask;
                 bb.Pieces[Piece.Pawn] ^= (mask | epMask);
 
-                bb.PieceTypes[move.From] = Piece.Pawn;
+                bb.PieceTypes[moveFrom] = Piece.Pawn;
                 bb.PieceTypes[idxPawn] = Piece.Pawn;
-                bb.PieceTypes[move.To] = Piece.None;
+                bb.PieceTypes[moveTo] = Piece.None;
 
                 MaterialCount[theirColor] += GetPieceValue(Piece.Pawn);
             }
             else if (move.Castle)
             {
-                bb.MoveSimple(move.To, move.From, ourColor, ourPiece);
-                if (move.To == C1)
+                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+                if (moveTo == C1)
                 {
                     bb.MoveSimple(D1, A1, ourColor, Piece.Rook);
                 }
-                else if (move.To == G1)
+                else if (moveTo == G1)
                 {
                     bb.MoveSimple(F1, H1, ourColor, Piece.Rook);
                 }
-                else if (move.To == C8)
+                else if (moveTo == C8)
                 {
                     bb.MoveSimple(D8, A8, ourColor, Piece.Rook);
                 }
                 else
                 {
-                    //  move.to == G8
+                    //  moveTo == G8
                     bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
                 }
             }
             else if (move.Promotion)
             {
                 bb.Colors[ourColor] ^= mask;
-                bb.Pieces[move.PromotionTo] ^= SquareBB[move.To];
-                bb.Pieces[Piece.Pawn] ^= SquareBB[move.From];
+                bb.Pieces[move.PromotionTo] ^= SquareBB[moveTo];
+                bb.Pieces[Piece.Pawn] ^= SquareBB[moveFrom];
 
-                bb.PieceTypes[move.To] = Piece.None;
-                bb.PieceTypes[move.From] = Piece.Pawn;
+                bb.PieceTypes[moveTo] = Piece.None;
+                bb.PieceTypes[moveFrom] = Piece.Pawn;
 
                 MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
                 MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
+
+                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
             }
             else
             {
-                bb.MoveSimple(move.To, move.From, ourColor, ourPiece);
+                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
             }
 
             if (ourColor == Color.Black)
@@ -616,16 +628,30 @@ namespace LTChess.Logic.Core
             {
                 NNUEEvaluation.UnmakeMoveNN();
             }
-            
-            if (UseHalfKP && UnmakeMoveNN)
-            {
-                HalfKP.UnmakeMoveNN();
-            }
 
             if (UseHalfKA && UnmakeMoveNN)
             {
                 HalfKA_HM.UnmakeMoveNN();
             }
+        }
+
+
+        [MethodImpl(Inline)]
+        public ulong HashAfter(Move m)
+        {
+            ulong hash = Hash.ZobristChangeToMove();
+            int from = m.From;
+            int to = m.To;
+            int us = bb.GetColorAtIndex(from);
+            int ourPiece = bb.GetPieceAtIndex(from);
+
+            if (m.Capture)
+            {
+                hash = hash.ZobristToggleSquare(Not(us), bb.GetPieceAtIndex(to), to);
+            }
+            hash = hash.ZobristMove(from, to, us, ourPiece);
+
+            return hash;
         }
 
 
@@ -642,13 +668,9 @@ namespace LTChess.Logic.Core
             int size = 0;
 
             ulong pinned = bb.PinnedPieces(ToMove);
-            ulong us = bb.Colors[ToMove] ^ (bb.Pieces[Piece.Pawn] & bb.Colors[ToMove]);
             ulong usCopy = bb.Colors[ToMove];
-            ulong ourKingMask = bb.KingMask(ToMove);
 
             ulong them = bb.Colors[Not(ToMove)];
-            ulong theirKingMask = bb.KingMask(Not(ToMove));
-
             Move move;
             int thisMovesCount = 0;
 
@@ -677,17 +699,39 @@ namespace LTChess.Logic.Core
 
 
         /// <summary>
+        /// Generates all legal moves in the provided <paramref name="position"/>.
+        /// </summary>
+        /// <param name="position">The position to generate for</param>
+        /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
+        /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
+        [MethodImpl(Inline)]
+        public int GenAllPseudoLegalMovesTogether(in Span<Move> pseudo, bool onlyCaptures = false)
+        {
+            ulong usCopy = bb.Colors[ToMove];
+            ulong them = bb.Colors[Not(ToMove)];
+
+            Move move;
+            int thisMovesCount = 0;
+            if (!CheckInfo.InDoubleCheck)
+            {
+                thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            }
+
+            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            return thisMovesCount;
+        }
+
+
+        /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)]
         public bool IsLegal(in Move move) => IsLegal(this, this.bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), bb.PinnedPieces(ToMove));
 
-        /// <summary>
-        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static bool IsLegal(in Position position, in Bitboard bb, Move move, int ourKing, int theirKing) =>
-            IsLegal(position, bb, move, ourKing, theirKing, bb.PinnedPieces(bb.GetColorAtIndex(ourKing)));
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
@@ -695,17 +739,20 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public static bool IsLegal(in Position position, in Bitboard bb, Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
-            int pt = bb.GetPieceAtIndex(move.From);
+            int moveFrom = move.From;
+            int moveTo = move.To;
+
+            int pt = bb.GetPieceAtIndex(moveFrom);
             if (position.CheckInfo.InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
                 return false;
             }
 
-            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(move.To) != Piece.None),
+            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(moveTo) != Piece.None),
                 "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(position) + ") is trying to capture a piece on an empty square!");
 
-            int ourColor = bb.GetColorAtIndex(move.From);
+            int ourColor = bb.GetColorAtIndex(moveFrom);
             int theirColor = Not(ourColor);
 
             if (position.CheckInfo.InCheck)
@@ -715,10 +762,10 @@ namespace LTChess.Logic.Core
                 if (pt == Piece.King)
                 {
                     //  Either move out or capture the piece
-                    ulong moveMask = (SquareBB[move.From] | SquareBB[move.To]);
+                    ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
-                    if ((bb.AttackersTo(move.To, ourColor) | (NeighborsMask[move.To] & SquareBB[theirKing])) != 0)
+                    if ((bb.AttackersTo(moveTo, ourColor) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
                     {
                         bb.Pieces[Piece.King] ^= moveMask;
                         bb.Colors[ourColor] ^= moveMask;
@@ -731,14 +778,14 @@ namespace LTChess.Logic.Core
                 }
 
                 int checker = position.CheckInfo.idxChecker;
-                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[move.To]) != 0;
+                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[moveTo]) != 0;
 
-                if (blocksOrCaptures || (move.EnPassant && GetIndexFile(move.To) == GetIndexFile(position.CheckInfo.idxChecker)))
+                if (blocksOrCaptures || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(position.CheckInfo.idxChecker)))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
 
-                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[move.From]) == 0);
+                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[moveFrom]) == 0);
                 }
 
                 //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -752,7 +799,7 @@ namespace LTChess.Logic.Core
                 //  AttackersToMask gives a bitboard of the squares that they attack,
                 //  but it doesn't consider their king as an attacker in that sense.
                 //  so also OR the squares surrounding their king as "attacked"
-                if ((bb.AttackersToMask(move.To, ourColor, SquareBB[ourKing]) | (NeighborsMask[move.To] & SquareBB[theirKing])) != 0)
+                if ((bb.AttackersToMask(moveTo, ourColor, SquareBB[ourKing]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
                 {
                     return false;
                 }
@@ -762,9 +809,9 @@ namespace LTChess.Logic.Core
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
 
-                int idxPawn = move.To - ShiftUpDir(ourColor);
+                int idxPawn = moveTo - ShiftUpDir(ourColor);
 
-                ulong moveMask = (SquareBB[move.From] | SquareBB[move.To]);
+                ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
                 bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
@@ -781,10 +828,10 @@ namespace LTChess.Logic.Core
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
             }
-            else if (IsPinned(bb, move.From, ourColor, ourKing, out int pinner))
+            else if (IsPinned(bb, moveFrom, ourColor, ourKing, out int pinner))
             {
                 //	If we are pinned, make sure we are only moving in directions that keep us pinned
-                return ((LineBB[ourKing][pinner] & SquareBB[move.To]) != 0);
+                return ((LineBB[ourKing][pinner] & SquareBB[moveTo]) != 0);
             }
 
             return true;
@@ -1140,13 +1187,15 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         private static void MakeCheck(in Bitboard bb, int pt, int ourColor, int theirKing, ref Move m)
         {
+            int moveTo = m.To;
+
             int theirColor = Not(ourColor);
-            ulong moveMask = (SquareBB[m.From] | SquareBB[m.To]);
-            int capturedPiece = bb.GetPieceAtIndex(m.To);
+            ulong moveMask = (SquareBB[m.From] | SquareBB[moveTo]);
+            int capturedPiece = bb.GetPieceAtIndex(moveTo);
             if (capturedPiece != Piece.None)
             {
-                bb.Pieces[capturedPiece] ^= SquareBB[m.To];
-                bb.Colors[theirColor] ^= SquareBB[m.To];
+                bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
+                bb.Colors[theirColor] ^= SquareBB[moveTo];
                 m.Capture = true;
             }
 
@@ -1172,8 +1221,8 @@ namespace LTChess.Logic.Core
 
             if (capturedPiece != Piece.None)
             {
-                bb.Pieces[capturedPiece] ^= SquareBB[m.To];
-                bb.Colors[theirColor] ^= SquareBB[m.To];
+                bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
+                bb.Colors[theirColor] ^= SquareBB[moveTo];
             }
 
             bb.Pieces[pt] ^= moveMask;
@@ -1525,11 +1574,6 @@ namespace LTChess.Logic.Core
                 NNUEEvaluation.ResetNN();
             }
 
-            if (UseHalfKP)
-            {
-                HalfKP.ResetNN();
-            }
-
             if (UseHalfKA)
             {
                 HalfKA_HM.ResetNN();
@@ -1539,6 +1583,9 @@ namespace LTChess.Logic.Core
             Hash = Zobrist.GetHash(this);
             MaterialCount[Color.White] = bb.MaterialCount(Color.White);
             MaterialCount[Color.Black] = bb.MaterialCount(Color.Black);
+
+            MaterialCountNonPawn[White] = MaterialCount[White] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[White] & bb.Pieces[Pawn]));
+            MaterialCountNonPawn[Black] = MaterialCount[Black] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[Black] & bb.Pieces[Pawn]));
 
             return true;
         }
