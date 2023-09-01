@@ -32,7 +32,7 @@ namespace LTChess.Logic.Search.Ordering
         /// <param name="ply">The current ply of the search, used to determine what the killer moves are for that ply</param>
         /// <param name="pvOrTTMove">This is set to the TTEntry.BestMove from the previous depth, or possibly Move.Null</param>
         [MethodImpl(Inline)]
-        public static void AssignNormalMoveScores(ref SearchInformation info, in Span<Move> list, in Span<int> scores, int size, int ply, Move pvOrTTMove)
+        public static unsafe void AssignNormalMoveScores(ref SearchInformation info, in Span<Move> list, in Span<int> scores, SearchStackEntry* ss, int size, int ply, CondensedMove pvOrTTMove)
         {
             int theirKing = info.Position.bb.KingIndex(Not(info.Position.ToMove));
             int pt;
@@ -62,31 +62,35 @@ namespace LTChess.Logic.Search.Ordering
                     SearchStatistics.Scores_MvvLva++;
 #endif
                 }
-                else if (UseKillerHeuristic && list[i].Equals(SimpleSearch.KillerMoves[ply, 0]))
+                else if (list[i].Equals(ss->Killer0))
                 {
                     scores[i] = 100000;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_Killer_1++;
 #endif          
                 }
-                else if (UseKillerHeuristic && list[i].Equals(SimpleSearch.KillerMoves[ply, 1]))
+                else if (list[i].Equals(ss->Killer1))
                 {
                     scores[i] = 90000;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_Killer_2++;
 #endif
                 }
-
-                int pc = info.Position.ToMove;
-                pt = info.Position.bb.GetPieceAtIndex(list[i].From);
-
-                if (UseHistoryHeuristic)
+                else if (UseHistoryHeuristic)
                 {
+
+                    int pc = info.Position.ToMove;
+                    pt = info.Position.bb.GetPieceAtIndex(list[i].From);
+
                     int history = SimpleSearch.HistoryMoves[pc, pt, list[i].To];
                     scores[i] = history;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_HistoryHeuristic++;
 #endif
+                }
+                else
+                {
+                    scores[i] = 0;
                 }
             }
 
