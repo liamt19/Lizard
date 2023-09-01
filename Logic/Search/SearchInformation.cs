@@ -1,7 +1,6 @@
 ﻿using System.Text;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 
 namespace LTChess.Logic.Search
@@ -49,7 +48,6 @@ namespace LTChess.Logic.Search
         /// </summary>
         public bool SearchActive = false;
 
-        public bool OneLegalMove = false;
 
         /// <summary>
         /// Set to the last "info depth ..." string that was sent.
@@ -100,24 +98,20 @@ namespace LTChess.Logic.Search
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GetEvaluation(in Position position, bool Trace = false)
+        public short GetEvaluation(in Position position, bool Trace = false)
         {
             if (UseSimple768)
             {
-                return NNUEEvaluation.GetEvaluation(position);
-            }
-            
-            if (UseHalfKP)
-            {
-                return HalfKP.GetEvaluation(position);
+                return (short) NNUEEvaluation.GetEvaluation(position);
             }
 
             if (UseHalfKA)
             {
-                return HalfKA_HM.GetEvaluation(position);
+                SearchStatistics.EvalCalls++;
+                return (short) HalfKA_HM.GetEvaluation(position);
             }
 
-            return this.tdEval.Evaluate(position, position.ToMove, Trace);
+            return (short) this.tdEval.Evaluate(position, position.ToMove, Trace);
         }
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
@@ -307,7 +301,7 @@ namespace LTChess.Logic.Search
         public override string ToString()
         {
             return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + TimeManager.GetSearchTime() + ", "
+                + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime()) + ", "
                 + "NodeCount: " + NodeCount + ", " + "StopSearching: " + StopSearching;
         }
     }

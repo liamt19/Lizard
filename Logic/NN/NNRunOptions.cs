@@ -11,18 +11,11 @@ namespace LTChess.Logic.NN
         /// <summary>
         /// If true, the Simple768 network will take the place of the classical evaluation function.
         /// <para></para>
-        /// The included network (Thanks https://github.com/TheBlackPlague) runs extremely quickly (around 1,750,000 nps)
+        /// The included network (Thanks https://github.com/TheBlackPlague) runs extremely quickly (around 1,750,000 to 2,750,000 nps)
         /// <para></para>
         /// but isn't quite as strong as the larger and slower HalfKA.
         /// </summary>
         public const bool UseSimple768 = false;
-
-        /// <summary>
-        /// If true, the HalfKP network will take the place of the classical evaluation function.
-        /// <para></para>
-        /// This architecture is marginally weaker than the 768, and a good deal slower than it too (around 700,000 nps).
-        /// </summary>
-        public const bool UseHalfKP = false;
 
         /// <summary>
         /// If true, the HalfKA network will take the place of the classical evaluation function.
