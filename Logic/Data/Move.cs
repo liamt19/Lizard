@@ -8,16 +8,102 @@ namespace LTChess.Logic.Data
     {
         public static readonly Move Null = new Move();
 
-        //  7 bits for: idxChecker and idxDoubleChecker since they can be 64.
-        //  6 bits for: From, To, and PromotionTo
+        //  6 bits for: From, To, SqChecker, and SqDoubleChecker
+        //  
+        //  2 bits for PromotionTo, which defaults to a knight (1), so the "Promotion" flag MUST be looked at before "PromotionTo" is.
+        //  (Otherwise every move would show up as a promotion to a knight, woohoo for horses!).
+        //  
+        //  6 bits for the 6 move flags.
+        //  
         //  Total of 32.
         private int _data;
 
-        //  1 bit for each of the 6 flags.
-        //  Total of 6.
-        //  This could be a byte instead since we only need 6 bits
-        //  but it will be padded to a size of 4 bytes anyways.
-        private int _flags;
+        private const int FlagCapture =     0b000001 << 26;
+        private const int FlagEnPassant =   0b000010 << 26;
+        private const int FlagCastle =      0b000100 << 26;
+        private const int FlagCheck =       0b001000 << 26;
+        private const int FlagDoubleCheck = 0b010000 << 26;
+        private const int FlagPromotion =   0b100000 << 26;
+
+        private const int Mask_Check = 0b011000 << 26;
+        private const int Mask_ToFrom = 0xFFFF;
+
+        /// <summary>
+        /// Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
+        /// </summary>
+        public int To
+        {
+            get => (_data & 0x3F);
+            set => _data = ((_data & ~0x3F) | value);
+        }
+
+        /// <summary>
+        /// Reminder to future self: This is a property, and calling move.get_From() 124,310,980 times at depth 15 is a no-no.
+        /// </summary>
+        public int From
+        {
+            get => ((_data >> 6) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
+        }
+
+        public int SqChecker
+        {
+            get => ((_data >> 12) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 12)) | (value << 12));
+        }
+
+        public int SqDoubleChecker
+        {
+            get => ((_data >> 18) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 18)) | (value << 18));
+        }
+
+        public int PromotionTo
+        {
+            get => ((_data >> 24) & 0x3) + 1;
+            set => _data = ((_data & ~(0x3 << 24)) | ((value - 1) << 24));
+        }
+
+        public bool Capture
+        {
+            get => ((_data & FlagCapture) != 0);
+            set => _data |= FlagCapture;
+        }
+
+        public bool EnPassant
+        {
+            get => ((_data & FlagEnPassant) != 0);
+            set => _data |= FlagEnPassant;
+        }
+
+        public bool Castle
+        {
+            get => ((_data & FlagCastle) != 0);
+            set => _data |= FlagCastle;
+        }
+
+        public bool CausesCheck
+        {
+            get => ((_data & FlagCheck) != 0);
+            set => _data |= FlagCheck;
+        }
+
+        public bool CausesDoubleCheck
+        {
+            get => ((_data & FlagDoubleCheck) != 0);
+            set => _data |= FlagDoubleCheck;
+        }
+
+        public bool Promotion
+        {
+            get => ((_data & FlagPromotion) != 0);
+            set => _data |= FlagPromotion;
+        }
+
+        public bool Checks => ((_data & Mask_Check) != 0);
+
+#if OLD
+
 
         private const int FlagCapture =     0b000001;
         private const int FlagEnPassant =   0b000010;
@@ -25,18 +111,6 @@ namespace LTChess.Logic.Data
         private const int FlagCheck =       0b001000;
         private const int FlagDoubleCheck = 0b010000;
         private const int FlagPromotion =   0b100000;
-
-        public int To
-        {
-            get => (_data & 0x3F);
-            set => _data = ((_data & ~0x3F) | value);
-        }
-
-        public int From
-        {
-            get => ((_data >> 6) & 0x3F);
-            set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
-        }
 
         public int PromotionTo
         {
@@ -91,6 +165,7 @@ namespace LTChess.Logic.Data
             get => ((_flags & FlagPromotion) != 0);
             set => _flags |= FlagPromotion;
         }
+#endif
 
 
         public Move(int from, int to)
@@ -103,44 +178,8 @@ namespace LTChess.Logic.Data
         {
             _data |= (to);
             _data |= (from << 6);
-            _data |= (promotionTo << 12);
+            this.PromotionTo = promotionTo;
             Promotion = true;
-        }
-
-        public Move(Move m)
-        {
-            _data |= (m.To);
-            _data |= (m.From << 6);
-            _data |= (m.PromotionTo << 12);
-            _data |= (m.SqChecker << 18);
-            _data |= (m.SqDoubleChecker << 25);
-
-
-            if (m.Capture)
-            {
-                _flags |= FlagCapture;
-            }
-            if (m.EnPassant)
-            {
-                _flags |= FlagEnPassant;
-            }
-            if (m.Castle)
-            {
-                _flags |= FlagCastle;
-            }
-            if (m.CausesCheck)
-            {
-                _flags |= FlagCheck;
-            }
-            if (m.CausesDoubleCheck)
-            {
-                _flags |= FlagDoubleCheck;
-            }
-            if (m.Promotion)
-            {
-                _flags |= FlagPromotion;
-            }
-
         }
 
 
@@ -255,8 +294,17 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public override bool Equals(object? obj)
         {
-            Move other = (Move)obj;
-            return (other.From == this.From && other.To == this.To && other.SqChecker == this.SqChecker);
+            if (obj is Move move)
+            {
+                return (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo);
+            }
+
+            if (obj is CondensedMove other)
+            {
+                return (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo);
+            }
+
+            return false;
         }
 
         [MethodImpl(Inline)]
