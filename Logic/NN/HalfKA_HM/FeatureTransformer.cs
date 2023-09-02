@@ -1,7 +1,4 @@
-﻿
-#define HM
-
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
 using System.Runtime.Intrinsics.X86;
@@ -34,19 +31,24 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public static uint GetHashValue() => HalfKA_HM.HashValue ^ OutputDimensions;
 
-        public Vector256<short>[] Biases   = new Vector256<short>[(HalfDimensions) / VSize.Short];
-        public Vector256<short>[] Weights  = new Vector256<short>[(HalfDimensions * InputDimensions) / VSize.Short];
-        public Vector256<int>[] PSQTWeights = new Vector256<int>[(InputDimensions * PSQTBuckets) / VSize.Int];
+        public static Vector256<short>* Biases;
+        public static Vector256<short>* Weights;
+        public static Vector256<int>* PSQTWeights;
 
         private static readonly Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
 
         public const int NumRegs = 16;
         public const int NumPsqtRegs = 1;
-        public const int LazyThreshold = 1400;
 
-        public const int VectorSize = 16;
         public const int TileHeight = NumRegs * VSize.Byte / 2;
         public const int PsqtTileHeight = NumPsqtRegs * VSize.Byte / 4;
+
+        static FeatureTransformer()
+        {
+            Biases = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)((HalfDimensions) / VSize.Short * 32), 32);
+            Weights = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)((HalfDimensions * InputDimensions) / VSize.Short * 32), 32);
+            PSQTWeights = (Vector256<int>*) NativeMemory.AlignedAlloc((nuint)((InputDimensions * PSQTBuckets) / VSize.Int * 32), 32);
+        }
 
         /// <summary>
         /// Takes the input from the <paramref name="accumulator"/> and places them into <paramref name="output"/>,
@@ -70,16 +72,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int p = 0; p < 2; p++)
             {
-                uint offset = (uint)(HalfDimensions * p);
-
                 var accumulation = accumulator[perspectives[p]];
 
                 for (int j = 0; j < NumChunks; ++j)
                 {
-                    int vectIndex = (int)(offset + (j * VSize.SByte));
-
-                    //Vector256<short> sum0 = Load256(accumulation, (j * 2 + 0) * VSize.Short);
-                    //Vector256<short> sum1 = Load256(accumulation, (j * 2 + 1) * VSize.Short);
 
                     Vector256<short> sum0 = accumulation[j * 2 + 0];
                     Vector256<short> sum1 = accumulation[j * 2 + 1];
@@ -89,7 +85,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<long> permuted = Avx2.Permute4x64(maxVec.AsInt64(), Control);
 
                     Vector256<sbyte> toStore = permuted.AsSByte();
-                    StoreSpan256(ref toStore, output, vectIndex);
+                    StoreSpan256(ref toStore, output, (int)((uint)(HalfDimensions * p) + (j * VSize.SByte)));
                 }
             }
 
@@ -124,10 +120,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 for (int j = 0; j < HalfDimensions / TileHeight; j++)
                 {
-
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        //Vector256<short> biasTile = Load256(Biases, ((j * TileHeight) + (k * VectorSize)));
                         acc[k] = Biases[((j * RelativeTileHeight) + k)];
                     }
 
@@ -142,9 +136,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                         for (int k = 0; k < NumRegs; k++)
                         {
-                            //Vector256<short> column = Load256(Weights, (int)(HalfDimensions * index + j * TileHeight) + (k * VectorSize));
-                            int temp = ((RelativeWeightIndex * index + j * RelativeTileHeight) + k);
-                            Vector256<short> column = Weights[temp];
+                            Vector256<short> column = Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)];
                             acc[k] = Add256(acc[k], column);
                         }
                     }
@@ -175,8 +167,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                         for (int k = 0; k < NumPsqtRegs; k++)
                         {
-                            int columnOffset = (index + j * PsqtTileHeight);
-                            Vector256<int> column = PSQTWeights[columnOffset];
+                            Vector256<int> column = PSQTWeights[(index + j * PsqtTileHeight)];
 
                             psq[k] = Add256(psq[k], column);
                         }

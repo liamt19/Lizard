@@ -1,7 +1,4 @@
-﻿
-
-
-using static LTChess.Logic.NN.HalfKA_HM.FeatureTransformer;
+﻿using static LTChess.Logic.NN.HalfKA_HM.FeatureTransformer;
 using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
@@ -16,6 +13,7 @@ using LTChess.Properties;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
 using LTChess.Logic.Core;
 using System.Text;
+using System.Runtime.InteropServices;
 
 namespace LTChess.Logic.NN.HalfKA_HM
 {
@@ -25,7 +23,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// 
     /// 
     /// </summary>
-    public static class HalfKA_HM
+    public static unsafe class HalfKA_HM
     {
         /// <summary>
         /// NNUE-PyTorch (https://github.com/glinscott/nnue-pytorch/tree/master) compresses networks using LEB128,
@@ -76,6 +74,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             Initialized = true;
+
 
             AccumulatorStack = new AccumulatorPSQT[MaxListCapacity];
             for (int i = 0; i < MaxListCapacity; i++)
@@ -439,11 +438,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 int ourKing = bb.KingIndex(us);
                 int theirKing = bb.KingIndex(them);
 
-                Vector256<short>[] ourAccumulation = Accumulator[us];
-                Vector256<short>[] theirAccumulation = Accumulator[them];
+                var ourAccumulation = Accumulator[us];
+                var theirAccumulation = Accumulator[them];
 
-                Vector256<int>[] ourPsq = Accumulator.PSQ(us);
-                Vector256<int>[] theirPsq = Accumulator.PSQ(them);
+                var ourPsq = Accumulator.PSQ(us);
+                var theirPsq = Accumulator.PSQ(them);
 
                 int ourPieceOldIndex_US =   HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing);
                 int ourPieceOldIndex_THEM = HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing);
@@ -537,18 +536,16 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void RemoveFeature(in Vector256<short>[] accumulation, in Vector256<int>[] psqtAccumulation, int index)
+        public static void RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
 
             const int RelativeDimensions = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
 
-            uint offset = (uint)(HalfDimensions * index);
-
             for (int j = 0; j < NumChunks; j++)
             {
-                Vector256<short> column = Transformer.Weights[(RelativeDimensions * index) + j];
+                Vector256<short> column = FeatureTransformer.Weights[(RelativeDimensions * index) + j];
 
                 accumulation[j] = Avx2.Subtract(accumulation[j], column);
             }
@@ -557,7 +554,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
-                Vector256<int> column = Transformer.PSQTWeights[index + j * RelativeTileHeight];
+                Vector256<int> column = FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight];
 
                 psqtAccumulation[j] = Sub256(psqtAccumulation[j], column);
             }
@@ -570,7 +567,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         [MethodImpl(Inline)]
-        public static void AddFeature(in Vector256<short>[] accumulation, in Vector256<int>[] psqtAccumulation, int index)
+        public static void AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
 
@@ -579,22 +576,19 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < NumChunks; j++)
             {
-                Vector256<short> column = Transformer.Weights[(RelativeDimensions * index) + j];
+                Vector256<short> column = FeatureTransformer.Weights[(RelativeDimensions * index) + j];
 
                 accumulation[j] = Avx2.Add(accumulation[j], column);
             }
 
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
-                Vector256<int> column = Transformer.PSQTWeights[index + j * RelativeTileHeight];
+                Vector256<int> column = FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight];
 
                 psqtAccumulation[j] = Add256(psqtAccumulation[j], column);
             }
 
         }
-
-
-
 
 
         /// <summary>

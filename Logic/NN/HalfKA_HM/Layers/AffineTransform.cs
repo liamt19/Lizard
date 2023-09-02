@@ -1,6 +1,4 @@
-﻿
-
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
 using System.Runtime.Intrinsics.X86;
@@ -35,8 +33,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public readonly int PaddedInputDimensions;
 
-        public Vector256<int>[] Biases;
-        public Vector256<sbyte>[] Weights;
+        public Vector256<int>* Biases;
+        public Vector256<sbyte>* Weights;
 
         public const int VectorSize = VSize.SByte;
 
@@ -62,8 +60,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Weights = new Vector256<sbyte>[(OutputDimensions * PaddedInputDimensions) / VSize.SByte];
-            Biases = new Vector256<int>[Math.Max(1, (OutputDimensions) / VSize.Int)];
+            Weights = (Vector256<sbyte>*)NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), 32);
+            Biases = (Vector256<int>*)NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32), 32);
         }
 
         /// <summary>
@@ -85,20 +83,20 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Weights = new Vector256<sbyte>[(OutputDimensions * PaddedInputDimensions) / VSize.SByte];
-            Biases = new Vector256<int>[Math.Max(1, (OutputDimensions) / VSize.Int)];
+            Weights = (Vector256<sbyte>*)NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), 32);
+            Biases = (Vector256<int>*)NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32), 32);
         }
 
         [MethodImpl(Inline)]
         public Span<int> Propagate(Span<sbyte> transformedFeatures, Span<byte> buffer) {
-            
-            Span<sbyte> input = IsInputSliceLayer ? InputLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize)) : PreviousLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize));
+
+            Span<sbyte> input = IsInputSliceLayer ? transformedFeatures : PreviousLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize));
             Span<int> output = MemoryMarshal.Cast<byte, int>(buffer);
             
 
             if (OutputDimensions % OutputSimdWidth == 0 && InputDimensions == 8)
             {
-                Buffer.MemoryCopy((void*)Marshal.UnsafeAddrOfPinnedArrayElement(Biases, 0), Unsafe.AsPointer(ref output[0]), OutputDimensions * OutputTypeSize, OutputDimensions * OutputTypeSize);
+                Buffer.MemoryCopy(Biases, Unsafe.AsPointer(ref output[0]), OutputDimensions * OutputTypeSize, OutputDimensions * OutputTypeSize);
 
                 var input32 = MemoryMarshal.Cast<sbyte, int>(input);
 
@@ -128,8 +126,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
                 for (int k = 0; k < NumRegs; k++)
                 {
-                   Vector256<int> biasVec = Biases[k];
-                    outs[k] = biasVec;
+                    outs[k] = Biases[k];
                 }
 
                 const int vectorStride = VSize.Int;

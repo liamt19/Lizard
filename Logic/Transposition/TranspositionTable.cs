@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿using System.Runtime.InteropServices;
 
 namespace LTChess.Logic.Transposition
 {
@@ -12,8 +12,7 @@ namespace LTChess.Logic.Transposition
         public const int TT_AGE_CYCLE  = (255 + TT_AGE_INC);
 
         public const int EntriesPerCluster = 3;
-        [FixedAddressValueType]
-        private static TTCluster[] Clusters;
+        private static TTCluster* Clusters;
         private static ulong ClusterCount;
         public static ushort Age = 0;
 
@@ -34,7 +33,7 @@ namespace LTChess.Logic.Transposition
         {
 
             ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
-            Clusters = new TTCluster[ClusterCount];
+            Clusters = (TTCluster*)NativeMemory.AlignedAlloc((nuint)(sizeof(TTCluster) * (int)ClusterCount), 32);
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();
