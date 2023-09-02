@@ -60,8 +60,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Weights = (Vector256<sbyte>*)NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), 32);
-            Biases = (Vector256<int>*)NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32), 32);
+            Weights = (Vector256<sbyte>*)  NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
+            Biases  = (Vector256<int>*)    NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
         }
 
         /// <summary>
@@ -83,8 +83,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Weights = (Vector256<sbyte>*)NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), 32);
-            Biases = (Vector256<int>*)NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32), 32);
+            Weights = (Vector256<sbyte>*)  NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
+            Biases  = (Vector256<int>*)    NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
         }
 
         [MethodImpl(Inline)]

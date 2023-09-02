@@ -33,7 +33,7 @@ namespace LTChess.Logic.Transposition
         {
 
             ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*)NativeMemory.AlignedAlloc((nuint)(sizeof(TTCluster) * (int)ClusterCount), 32);
+            Clusters = (TTCluster*) NativeMemory.AlignedAlloc((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();

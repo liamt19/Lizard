@@ -30,10 +30,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public AccumulatorPSQT() 
         {
-            White       = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), 32);
-            Black       = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), 32);
-            PSQTWhite   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), 32);
-            PSQTBlack   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), 32);
+            White       = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), AllocAlignment);
+            Black       = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), AllocAlignment);
+            PSQTWhite   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
+            PSQTBlack   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
         }
 
         public Vector256<short>* this[int perspective]

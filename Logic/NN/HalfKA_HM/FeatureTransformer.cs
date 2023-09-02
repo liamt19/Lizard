@@ -45,9 +45,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         static FeatureTransformer()
         {
-            Biases = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)((HalfDimensions) / VSize.Short * 32), 32);
-            Weights = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)((HalfDimensions * InputDimensions) / VSize.Short * 32), 32);
-            PSQTWeights = (Vector256<int>*) NativeMemory.AlignedAlloc((nuint)((InputDimensions * PSQTBuckets) / VSize.Int * 32), 32);
+            Biases      = (Vector256<short>*) NativeMemory.AlignedAlloc(((HalfDimensions) / VSize.Short * 32),                   AllocAlignment);
+            Weights     = (Vector256<short>*) NativeMemory.AlignedAlloc(((HalfDimensions * InputDimensions) / VSize.Short * 32), AllocAlignment);
+            PSQTWeights = (Vector256<int>*)   NativeMemory.AlignedAlloc(((InputDimensions * PSQTBuckets) / VSize.Int * 32),      AllocAlignment);
         }
 
         /// <summary>

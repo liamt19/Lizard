@@ -27,6 +27,8 @@ namespace LTChess.Logic.Util
         public const int MaxPly = 256;
         public const int MaxSearchStackPly = 256 - 10;
 
+        public const nuint AllocAlignment = 32;
+
         public const ulong Border = 0xFF818181818181FF;
         public const ulong PawnPromotionSquares = 0xFF000000000000FF;
         public const ulong Corners = 0x8100000000000081;

@@ -32,12 +32,12 @@ namespace LTChess.Logic.Search
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
 
-        private static nint _block;
+        private static nint _SearchStackBlock;
 
         static SimpleSearch()
         {
-            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(SearchStackEntry) * MaxPly), 32);
-            _block = (nint)block;
+            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(SearchStackEntry) * MaxPly), AllocAlignment);
+            _SearchStackBlock = (nint)block;
             SearchStackEntry* ptr = (SearchStackEntry*)block;
 
             for (int i = 0; i < MaxPly; i++)
@@ -58,7 +58,7 @@ namespace LTChess.Logic.Search
         {
             TranspositionTable.TTUpdate();
 
-            SearchStackEntry* ss = ((SearchStackEntry*)_block) + 10;
+            SearchStackEntry* ss = ((SearchStackEntry*)_SearchStackBlock) + 10;
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
                 (ss + i)->Clear();
