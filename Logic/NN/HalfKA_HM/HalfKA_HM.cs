@@ -45,16 +45,23 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <summary>
         /// King squares * Piece squares * Piece types * Colors == 40960
         /// </summary>
-        public const int FeatureCount = SquareNB * SquareNB * PieceNB * ColorNB;
+        private const int FeatureCount = SquareNB * SquareNB * PieceNB * ColorNB;
 
-        public const int OutputDimensions = 512 * 2;
+        private const int OutputDimensions = 512 * 2;
 
-        public static AccumulatorPSQT[] AccumulatorStack;
-        public static int CurrentAccumulator;
+        private static AccumulatorPSQT[] AccumulatorStack;
+        private static int CurrentAccumulator;
 
-        public static Network[] LayerStack;
+        private static Network[] LayerStack;
 
-        public static FeatureTransformer Transformer;
+        private static FeatureTransformer Transformer;
+
+
+        private static nint _FeatureBuffer;
+        private const int _TransformedFeaturesBufferLength = FeatureTransformer.BufferSize;
+
+        private static nint _LayerBuffer;
+        private const int _LayerBufferLength = 384;
 
         private static bool Initialized = false;
 
@@ -95,6 +102,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
             //  Set up the feature transformer
             Transformer = new FeatureTransformer();
 
+
+            _FeatureBuffer = (nint) NativeMemory.AlignedAlloc((sizeof(sbyte) * _TransformedFeaturesBufferLength), AllocAlignment);
+            _LayerBuffer   = (nint) NativeMemory.AlignedAlloc((sizeof(byte ) * _LayerBufferLength),               AllocAlignment);
 
 
             Stream kpFile;
@@ -222,13 +232,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
             ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             int bucket = (int) (popcount(pos.bb.Occupancy) - 1) / 4;
 
-            int networkSize = LayerStack[0].NetworkSize;
+            Span<sbyte> features = new Span<sbyte>((void*) _FeatureBuffer, _TransformedFeaturesBufferLength);
+            Span<byte> layerBuff = new Span< byte>((void*) _LayerBuffer,               _LayerBufferLength);
 
-            Span<sbyte> transformed_features = stackalloc sbyte[FeatureTransformer.BufferSize];
-            Span<byte> buffer = stackalloc byte[networkSize];
-
-            int psqt = Transformer.TransformFeatures(pos, transformed_features, ref Accumulator, bucket);
-            var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features, buffer);
+            int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
+            var output = LayerStack[bucket].OutputLayer.Propagate(features, layerBuff);
 
             /**
             
