@@ -26,7 +26,7 @@ namespace LTChess.Logic.Data
         private const int FlagPromotion =   0b100000 << 26;
 
         private const int Mask_Check = 0b011000 << 26;
-        private const int Mask_ToFrom = 0xFFFF;
+        private const int Mask_ToFrom = 0xFFF;
 
         /// <summary>
         /// Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
@@ -44,6 +44,11 @@ namespace LTChess.Logic.Data
         {
             get => ((_data >> 6) & 0x3F);
             set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
+        }
+
+        public int MoveMask
+        {
+            get => (_data & Mask_ToFrom);
         }
 
         public int SqChecker
@@ -85,13 +90,13 @@ namespace LTChess.Logic.Data
         public bool CausesCheck
         {
             get => ((_data & FlagCheck) != 0);
-            set => _data |= FlagCheck;
+            set => _data ^= FlagCheck;
         }
 
         public bool CausesDoubleCheck
         {
             get => ((_data & FlagDoubleCheck) != 0);
-            set => _data |= FlagDoubleCheck;
+            set => _data ^= FlagDoubleCheck;
         }
 
         public bool Promotion
@@ -251,7 +256,7 @@ namespace LTChess.Logic.Data
                 return false;
             }
 
-            if (other.SqChecker != this.SqChecker || other.SqDoubleChecker != this.SqDoubleChecker)
+            if (other.SqChecker != this.SqChecker)
             {
                 return false;
             }

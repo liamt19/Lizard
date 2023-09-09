@@ -8,7 +8,6 @@
         public const int NoCheckers = 64;
 
         public int idxChecker = NoCheckers;
-        public int idxDoubleChecker = NoCheckers;
 
         /// <summary>
         /// Set to true if the side to move's king is in check from a single piece.
@@ -33,7 +32,7 @@
             }
             else if (InDoubleCheck)
             {
-                return "Double check from " + IndexToString(idxChecker) + " and " + IndexToString(idxDoubleChecker);
+                return "Double check from " + IndexToString(idxChecker);
             }
             else
             {
