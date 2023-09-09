@@ -57,11 +57,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Optimize)]
         public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
-            if (accumulator.NeedsRefresh)
+            if (accumulator.RefreshPerspective[pos.ToMove])
             {
-                RefreshAccumulator(pos, ref accumulator);
+                RefreshAccumulatorPerspective(pos, ref accumulator, pos.ToMove);
             }
-            
+
             const uint NumChunks = HalfDimensions / SimdWidth;
             const int Control = 0b11011000;
 
@@ -99,88 +99,97 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public void RefreshAccumulator(Position pos, ref AccumulatorPSQT accumulator)
         {
+            RefreshAccumulatorPerspective(pos, ref accumulator, White);
+            RefreshAccumulatorPerspective(pos, ref accumulator, Black);
+        }
+
+
+        /// <summary>
+        /// Finds the active features (existing pieces on the board) and updates the Accumulator to include those pieces.
+        /// This is comparatively very slow, so it should only be done when absolutely necessary, like when our king moves.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void RefreshAccumulatorPerspective(Position pos, ref AccumulatorPSQT accumulator, int perspective)
+        {
             const int RelativeWeightIndex = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
 
-            Span<int> active = stackalloc int[MaxActiveDimensions * 2];
-            
+            Span<int> active = stackalloc int[MaxActiveDimensions];
+
             if (SkipInitEnabled)
             {
                 active.Clear();
             }
 
-            HalfKA_HM.AppendActiveIndices(pos, active);
+            HalfKA_HM.AppendActiveIndices(pos, active, perspective);
 
-            for (int perspective = 0; perspective < ColorNB; perspective++)
+            var accumulation = accumulator[perspective];
+            var PSQTaccumulation = accumulator.PSQ(perspective);
+
+            Span<Vector256<short>> acc = stackalloc Vector256<short>[NumRegs];
+
+            for (int j = 0; j < HalfDimensions / TileHeight; j++)
             {
-                var accumulation = accumulator[perspective];
-                var PSQTaccumulation = accumulator.PSQ(perspective);
-
-                Span<Vector256<short>> acc = stackalloc Vector256<short>[NumRegs];
-
-                for (int j = 0; j < HalfDimensions / TileHeight; j++)
+                for (int k = 0; k < NumRegs; k++)
                 {
-                    for (int k = 0; k < NumRegs; k++)
-                    {
-                        acc[k] = Biases[((j * RelativeTileHeight) + k)];
-                    }
+                    acc[k] = Biases[((j * RelativeTileHeight) + k)];
+                }
 
-                    int i = 0;
-                    while (i < MaxActiveDimensions)
+                int i = 0;
+                while (i < MaxActiveDimensions)
+                {
+                    int index = active[i++];
+                    if (index <= 0)
                     {
-                        int index = active[(i++) + (perspective * MaxActiveDimensions)];
-                        if (index <= 0)
-                        {
-                            break;
-                        }
-
-                        for (int k = 0; k < NumRegs; k++)
-                        {
-                            Vector256<short> column = Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)];
-                            acc[k] = Add256(acc[k], column);
-                        }
+                        break;
                     }
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        accumulation[(j * NumRegs) + k] = acc[k];
-
+                        Vector256<short> column = Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)];
+                        acc[k] = Add256(acc[k], column);
                     }
                 }
 
-                Span<Vector256<int>> psq = stackalloc Vector256<int>[NumPsqtRegs];
-                for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+                for (int k = 0; k < NumRegs; k++)
                 {
-                    for (int k = 0; k < NumPsqtRegs; k++)
-                    {
-                        psq[k] = Vector256<int>.Zero;
-                    }
+                    accumulation[(j * NumRegs) + k] = acc[k];
 
-                    int i = 0;
-                    while (i < MaxActiveDimensions)
-                    {
-                        int index = active[(i++) + (perspective * MaxActiveDimensions)];
-                        if (index <= 0)
-                        {
-                            break;
-                        }
-
-                        for (int k = 0; k < NumPsqtRegs; k++)
-                        {
-                            Vector256<int> column = PSQTWeights[(index + j * PsqtTileHeight)];
-
-                            psq[k] = Add256(psq[k], column);
-                        }
-                    }
-
-                    for (int k = 0; k < NumPsqtRegs; k++)
-                    {
-                        PSQTaccumulation[k] = psq[k];
-                    }
                 }
             }
 
-            accumulator.NeedsRefresh = false;
+            Span<Vector256<int>> psq = stackalloc Vector256<int>[NumPsqtRegs];
+            for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+            {
+                for (int k = 0; k < NumPsqtRegs; k++)
+                {
+                    psq[k] = Vector256<int>.Zero;
+                }
+
+                int i = 0;
+                while (i < MaxActiveDimensions)
+                {
+                    int index = active[i++];
+                    if (index <= 0)
+                    {
+                        break;
+                    }
+
+                    for (int k = 0; k < NumPsqtRegs; k++)
+                    {
+                        Vector256<int> column = PSQTWeights[(index + j * PsqtTileHeight)];
+
+                        psq[k] = Add256(psq[k], column);
+                    }
+                }
+
+                for (int k = 0; k < NumPsqtRegs; k++)
+                {
+                    PSQTaccumulation[k] = psq[k];
+                }
+            }
+
+            accumulator.RefreshPerspective[perspective] = false;
         }
 
 

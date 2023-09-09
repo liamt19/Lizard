@@ -23,10 +23,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public Vector256<int>* PSQTBlack;
 
         /// <summary>
-        /// Set to true when a king move is made, in which case every feature in that side's accumulator
-        /// needs to be recalculated.
+        /// Set to true when a king move is made by each perspective, in which case every feature 
+        /// in that side's accumulator needs to be recalculated.
         /// </summary>
-        public bool NeedsRefresh = true;
+        public fixed bool RefreshPerspective[2];
 
         public AccumulatorPSQT() 
         {

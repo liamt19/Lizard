@@ -333,7 +333,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         bb.Colors[pc] ^= SquareBB[idx];
                         bb.PieceTypes[idx] = None;
 
-                        AccumulatorStack[CurrentAccumulator].NeedsRefresh = true;
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = false;
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = false;
                         int eval = GetEvaluation(pos, false);
                         v = baseEval - eval;
 
@@ -404,6 +405,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public static void RefreshNN(Position pos)
         {
+            if (CurrentAccumulator < 0)
+            {
+                Log("WARN RefreshNN called when CurrentAccumulator == " + CurrentAccumulator + ", setting to 0");
+                CurrentAccumulator = 0;
+            }
+
             ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             Transformer.RefreshAccumulator(pos, ref Accumulator);
         }
@@ -431,7 +438,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             if (ourPiece == Piece.King)
             {
-                Accumulator.NeedsRefresh = true;
+                Accumulator.RefreshPerspective[pos.ToMove] = true;
                 return false;
             }
             else
@@ -644,6 +651,48 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 spanIndex = MaxActiveDimensions;
             }
 
+        }
+
+
+        /// <summary>
+        /// Returns a list of active indices for each side. 
+        /// Every piece on the board has a unique index based on their king's square, their color, and the
+        /// perspective of the player looking at them.
+        /// </summary>
+        [MethodImpl(Optimize)]
+        public static void AppendActiveIndices(Position pos, Span<int> active, int perspective)
+        {
+            int spanIndex = 0;
+
+            Bitboard bb = pos.bb;
+
+            ulong us = bb.Colors[perspective];
+            ulong them = bb.Colors[Not(perspective)];
+            int ourKing = bb.KingIndex(perspective);
+
+            while (us != 0)
+            {
+                int idx = lsb(us);
+
+                int pt = bb.GetPieceAtIndex(idx);
+                int fishPT = FishPiece(pt, perspective);
+                int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
+                active[spanIndex++] = kpIdx;
+
+                us = poplsb(us);
+            }
+
+            while (them != 0)
+            {
+                int idx = lsb(them);
+
+                int pt = bb.GetPieceAtIndex(idx);
+                int fishPT = FishPiece(pt, Not(perspective));
+                int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
+                active[spanIndex++] = kpIdx;
+
+                them = poplsb(them);
+            }
         }
 
 
