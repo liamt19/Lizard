@@ -15,7 +15,7 @@ using LTChess.Properties;
 
 namespace LTChess.Logic.NN.Simple768
 {
-    public static class NNUEEvaluation
+    public static unsafe class NNUEEvaluation
     {
         public static NNUE768 Network768;
         private static bool Initialized = false;

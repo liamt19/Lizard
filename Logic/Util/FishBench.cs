@@ -107,7 +107,7 @@ namespace LTChess.Logic.Util
                 Console.Title = "Progress: " + i.ToString();
                 i++;
 
-                p = new Position(fen);
+                p = new Position(fen, false);
                 ulong ourNodes = p.Perft(Depth);
                 if (ourNodes != correctNodes)
                 {

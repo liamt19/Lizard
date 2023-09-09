@@ -14,7 +14,7 @@ namespace LTChess.Logic.Book
     /// <summary>
     /// Reads Polyglot opening book files
     /// </summary>
-    public class Polyglot
+    public unsafe class Polyglot
     {
         private static Dictionary<ulong, List<PolyglotEntry>> BookEntries;
         private static Random rand = new Random();
@@ -180,25 +180,25 @@ namespace LTChess.Logic.Book
             }
 
             ulong castleHash = 0;
-            if (pos.Castling.HasFlag(CastlingStatus.WK))
+            if (pos.State->CastleStatus.HasFlag(CastlingStatus.WK))
             {
                 castleHash ^= RandomCastle[0];
             }
-            if (pos.Castling.HasFlag(CastlingStatus.WQ))
+            if (pos.State->CastleStatus.HasFlag(CastlingStatus.WQ))
             {
                 castleHash ^= RandomCastle[1];
             }
-            if (pos.Castling.HasFlag(CastlingStatus.BK))
+            if (pos.State->CastleStatus.HasFlag(CastlingStatus.BK))
             {
                 castleHash ^= RandomCastle[2];
             }
-            if (pos.Castling.HasFlag(CastlingStatus.BQ))
+            if (pos.State->CastleStatus.HasFlag(CastlingStatus.BQ))
             {
                 castleHash ^= RandomCastle[3];
             }
 
             ulong enPassantHash = 0;
-            if (pos.EnPassantTarget != 0)
+            if (pos.EnPassantTarget != SquareNB)
             {
                 int up = ShiftUpDir(pos.ToMove);
                 int epPawnSquare = pos.EnPassantTarget - up;

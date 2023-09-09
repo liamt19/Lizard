@@ -85,24 +85,24 @@
                 black = poplsb(black);
             }
 
-            if ((position.Castling & CastlingStatus.WK) != 0)
+            if ((position.State->CastleStatus & CastlingStatus.WK) != 0)
             {
                 hash ^= CastlingRightsHashes[0];
             }
-            if ((position.Castling & CastlingStatus.WQ) != 0)
+            if ((position.State->CastleStatus & CastlingStatus.WQ) != 0)
             {
                 hash ^= CastlingRightsHashes[1];
             }
-            if ((position.Castling & CastlingStatus.BK) != 0)
+            if ((position.State->CastleStatus & CastlingStatus.BK) != 0)
             {
                 hash ^= CastlingRightsHashes[2];
             }
-            if ((position.Castling & CastlingStatus.BQ) != 0)
+            if ((position.State->CastleStatus & CastlingStatus.BQ) != 0)
             {
                 hash ^= CastlingRightsHashes[3];
             }
 
-            if (position.EnPassantTarget != 0)
+            if (position.EnPassantTarget != SquareNB)
             {
                 hash ^= EnPassantFileHashes[GetIndexFile(position.EnPassantTarget)];
             }
