@@ -3,30 +3,26 @@
     /// <summary>
     /// Manages the bitboards for the position
     /// </summary>
-    public struct Bitboard
+    public unsafe struct Bitboard
     {
         /// <summary>
         /// Bitboard array for Pieces, from Piece.Pawn to Piece.King
         /// </summary>
-        public ulong[] Pieces;
+        public fixed ulong Pieces[6];
 
         /// <summary>
         /// Bitboard array for Colors, from Color.White to Color.Black
         /// </summary>
-        public ulong[] Colors;
+        public fixed ulong Colors[2];
 
         /// <summary>
         /// Piece array indexed by square
         /// </summary>
-        public int[] PieceTypes;
+        public fixed int PieceTypes[64];
 
         public Bitboard()
         {
-            Pieces = new ulong[6];
-            Colors = new ulong[2];
-
-            PieceTypes = new int[64];
-            Array.Fill(PieceTypes, Piece.None);
+            Reset();
         }
 
         public ulong Occupancy => Colors[Color.White] | Colors[Color.Black];
@@ -43,15 +39,20 @@
         /// </summary>
         public void Reset()
         {
-            for (int i = 0; i < Pieces.Length; i++)
+            for (int i = 0; i < PieceNB; i++)
             {
                 Pieces[i] = 0UL;
             }
 
-            Colors[Color.White] = 0UL;
-            Colors[Color.Black] = 0UL;
+            for (int i = 0; i < ColorNB; i++)
+            {
+                Colors[i] = 0UL;
+            }
 
-            Array.Fill(PieceTypes, Piece.None);
+            for (int i = 0; i < SquareNB; i++)
+            {
+                PieceTypes[i] = Piece.None;
+            }
         }
 
         /// <summary>
@@ -61,6 +62,36 @@
         public bool Occupied(int idx)
         {
             return PieceTypes[idx] != Piece.None;
+        }
+
+        /// <summary>
+        /// Adds a piece of type <paramref name="pt"/> and color <paramref name="pc"/> on the square <paramref name="idx"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void AddPiece(int idx, int pc, int pt)
+        {
+            PieceTypes[idx] = pt;
+
+            Debug.Assert((Colors[pc] & SquareBB[idx]) == 0);
+            Debug.Assert((Pieces[pt] & SquareBB[idx]) == 0);
+
+            Colors[pc] ^= SquareBB[idx];
+            Pieces[pt] ^= SquareBB[idx];
+        }
+
+        /// <summary>
+        /// Removes the piece of type <paramref name="pt"/> and color <paramref name="pc"/> on the square <paramref name="idx"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void RemovePiece(int idx, int pc, int pt)
+        {
+            PieceTypes[idx] = Piece.None;
+
+            Debug.Assert((Colors[pc] & SquareBB[idx]) != 0);
+            Debug.Assert((Pieces[pt] & SquareBB[idx]) != 0);
+
+            Colors[pc] ^= SquareBB[idx];
+            Pieces[pt] ^= SquareBB[idx];
         }
 
 
@@ -105,27 +136,7 @@
             PieceTypes[to] = promotionPiece;
         }
 
-        /// <summary>
-        /// Move the pawn that promoted by moving from <paramref name="originalSq"/> to it's promotion square on <paramref name="promotionSq"/> back to <paramref name="originalSq"/>
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void UnPromote(int originalSq, int promotionSq, int promotionPiece)
-        {
-            int pc = GetColorAtIndex(promotionSq);
 
-            //  Put the pawn back on originalSq
-            Pieces[Piece.Pawn] ^= SquareBB[originalSq];
-
-            //  Remove the piece that it promoted to
-            Pieces[promotionPiece] ^= SquareBB[promotionSq];
-
-            //  Reset it's color
-            Colors[pc] ^= (SquareBB[originalSq] | SquareBB[promotionSq]);
-
-            //  And reset the type indices
-            PieceTypes[promotionSq] = Piece.None;
-            PieceTypes[originalSq] = Piece.Pawn;
-        }
 
         /// <summary>
         /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPieceType"/>.
@@ -156,30 +167,7 @@
             PieceTypes[to] = pieceType;
         }
 
-        /// <summary>
-        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPieceType"/>.
-        /// </summary>
-        /// <param name="from">The square the piece originally came from</param>
-        /// <param name="to">The square the piece is currently on</param>
-        /// <param name="pieceColor">The color of the piece that moved</param>
-        /// <param name="pieceType">The type of the piece that moved</param>
-        /// <param name="capturedPieceType">The type of the piece that was captured</param>
-        [MethodImpl(Inline)]
-        public void UnmakeCapture(int from, int to, int pieceColor, int pieceType, int capturedPieceType)
-        {
-            if (capturedPieceType != Piece.None)
-            {
-                Pieces[capturedPieceType] ^= SquareBB[to];
-                Colors[Not(pieceColor)] ^= SquareBB[to];
-            }
 
-            ulong moveMask = (SquareBB[from] | SquareBB[to]);
-            Pieces[pieceType] ^= moveMask;
-            Colors[pieceColor] ^= moveMask;
-
-            PieceTypes[from] = pieceType;
-            PieceTypes[to] = capturedPieceType;
-        }
 
         /// <summary>
         /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, where <paramref name="to"/> is an empty square.
@@ -200,22 +188,6 @@
 
             PieceTypes[from] = Piece.None;
             PieceTypes[to] = pieceType;
-        }
-
-        /// <summary>
-        /// Removes the piece at <paramref name="idx"/> by clearing that index in Pieces, Colors, and PieceTypes.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void Clear(int idx)
-        {
-            int pt = PieceTypes[idx];
-            if (pt != Piece.None)
-            {
-                Pieces[pt] ^= SquareBB[idx];
-                Colors[Color.White] ^= SquareBB[idx];
-                Colors[Color.Black] ^= SquareBB[idx];
-                PieceTypes[idx] = Piece.None;
-            }
         }
 
         /// <summary>
@@ -370,6 +342,62 @@
             return pinned;
         }
 
+
+        /// <summary>
+        /// Returns a mask of the pieces
+        /// <para></para>
+        /// <paramref name="pinners"/> is a mask of the other side's pieces that would be 
+        /// putting <paramref name="pc"/>'s king in check if a blocker of color <paramref name="pc"/> wasn't in the way
+        /// <br></br>
+        /// <paramref name="xrayers"/> is a mask for blockers that are the opposite color of <paramref name="pc"/>.
+        /// These are pieces that would cause a discovery if they move off of the ray.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong BlockingPieces(int pc, ulong* pinners, ulong* xrayers)
+        {
+            ulong blockers = 0UL;
+            *pinners = 0;
+            *xrayers = 0;
+
+            ulong temp;
+            ulong us = Colors[pc];
+            ulong them = Colors[Not(pc)];
+
+            int ourKing = KingIndex(pc);
+
+            //  Candidates are their pieces that are on the same rank/file/diagonal as our king.
+            ulong candidates = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) |
+                                (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
+
+            ulong occ = (us | them);
+
+            while (candidates != 0)
+            {
+                int idx = poplsb(&candidates);
+
+                temp = BetweenBB[ourKing][idx] & occ;
+
+                if (temp != 0 && !MoreThanOne(temp))
+                {
+                    //  If there is one and only one piece between the candidate and our king, that piece is a blocker
+                    blockers |= temp;
+
+                    if ((temp & us) != 0)
+                    {
+                        //  If the blocker is ours, then the candidate on the square "idx" is a pinner
+                        *pinners |= SquareBB[idx];
+                    }
+                    else
+                    {
+                        //  If the blocker isn't ours, then it will cause a discovered check if it moves
+                        *xrayers |= SquareBB[idx];
+                    }
+                }
+            }
+
+            return blockers;
+        }
+
         /// <summary>
         /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
         /// So for a bishop on A1, AttackersTo H8 returns a ulong with a bit set at A1.
@@ -385,6 +413,9 @@
             return AttackersToFast(idx, us | them) & them;
         }
 
+        /// <summary>
+        /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
+        /// </summary>
         [MethodImpl(Inline)]
         public ulong AttackersToFast(int idx, ulong occupied)
         {
@@ -396,30 +427,7 @@
 
         }
 
-        /// <summary>
-        /// Same as AttackersTo, but the bishop and rook moves are calculated after AND NOT'ing the mask from the Color bitboards.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public ulong AttackersToMask(int idx, int defendingColor, ulong mask)
-        {
-            /// TODO: this.
-            ulong us = Colors[defendingColor];
-            ulong them = Colors[Not(defendingColor)];
 
-            //  pawnBB is set to our color's pawn attacks.
-            //  We see if the piece at idx could capture another piece as if it were a pawn
-            ulong pawnBB = (defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx];
-
-            ulong occupied = (us | them) & ~mask;
-
-            ulong diagonals = (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]));
-            ulong straights = (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]));
-
-            ulong knights = (Pieces[Piece.Knight] & KnightMasks[idx]);
-            ulong pawns = (Pieces[Piece.Pawn] & pawnBB);
-
-            return (diagonals | straights | knights | pawns) & them;
-        }
 
         /// <summary>
         /// Returns the index of the square of the attacker of lowest value,
@@ -470,7 +478,7 @@
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is pseudo-legal.
-        /// Only determines if there is a piece at move.from and the piece at move.to isn't the same color.
+        /// Only determines if there is a piece at move.From and the piece at move.To isn't the same color.
         /// </summary>
         [MethodImpl(Inline)]
         public bool IsPseudoLegal(in Move move)
@@ -505,7 +513,7 @@
         {
             int ourKing = KingIndex(ourColor);
 
-            ulong att = AttackersTo(ourKing, ourColor);
+            ulong att = AttackersToFast(ourKing, Occupancy) & Colors[Not(ourColor)];
             switch (popcount(att))
             {
                 case 0:
@@ -517,7 +525,6 @@
                 case 2:
                     info.InDoubleCheck = true;
                     info.idxChecker = lsb(att);
-                    info.idxDoubleChecker = msb(att);
                     break;
             }
         }
