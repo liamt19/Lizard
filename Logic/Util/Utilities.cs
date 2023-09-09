@@ -113,7 +113,8 @@ namespace LTChess.Logic.Util
         public static void Log(int i) => Log(i.ToString());
 
         /// <summary>
-        /// If there are multiple instances of this engine running, we won't write to the ucilog file
+        /// If there are multiple instances of this engine running, we won't write to the ucilog file.
+        /// <br></br>
         /// This uses a FileStream to access it and a mutex to make writes atomic, so having multiple
         /// processes all doing that at the same time is needlessly risky.
         /// </summary>

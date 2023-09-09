@@ -1,7 +1,5 @@
 ﻿using System.Linq.Expressions;
 
-using static System.Formats.Asn1.AsnWriter;
-using static LTChess.Logic.Search.Endgame;
 using static LTChess.Logic.Search.EvaluationConstants;
 
 namespace LTChess.Logic.Search
@@ -74,12 +72,6 @@ namespace LTChess.Logic.Search
             bool IsTBEndgame = (whitePieces + blackPieces) <= TBEndgamePieces;
 
             int gamePhase = ((IsEndgame || IsTBEndgame) ? GamePhaseEndgame : GamePhaseNormal);
-
-            if (IsEndgame || IsTBEndgame)
-            {
-                gamePhase = GamePhaseEndgame;
-                endgameScore = EvalEndgame(p, pc);
-            }
 
             for (int i = 0; i < 2; i++)
             {
