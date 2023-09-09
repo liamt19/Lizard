@@ -95,18 +95,30 @@ namespace LTChess.Logic.Data
         public static ulong[] SquareBB = new ulong[64];
 
         /// <summary>
-        /// Bitboards with bits set at every index the exists in a line between two indices.
-        /// Index using LineBB[piece1][piece2] where piece1 might be someone's king, and piece2 is another piece.
-        /// The bit at index piece2 will always be set, no matter what.
+        /// Bitboards with bits set at every index that exists in a line between two indices.
+        /// Index using LineBB[s1][s2] where s1 might be a king square, and s2 is another piece's square.
+        /// <br></br>
+        /// The bit for s2 will always be set, no matter what.
+        /// <para></para>
         /// So LineBB[A1][H1] gives 254, or 01111111
         /// </summary>
         public static ulong[][] LineBB = new ulong[64][];
 
         /// <summary>
-        /// Index using BetweenBB[piece1][piece2], this is the same as LineBB, but the index at piece2 is never set.
+        /// Index using BetweenBB[s1][s2], this is the same as LineBB, but the index at s2 is never set.
+        /// <para></para>
         /// So BetweenBB[A1][H1] gives 126, or 01111110
         /// </summary>
         public static ulong[][] BetweenBB = new ulong[64][];
+
+        /// <summary>
+        /// Bitboards with bits set at every index that exists along the entire ray that two squares have in common.
+        /// <br></br>
+        /// If two squares are on the same rank/file, then RayBB on those squares would be the entire rank/file 
+        /// and likewise for diagonals. Otherwise, those squares' RayBB is 0.
+        /// <br></br>
+        /// </summary>
+        public static ulong[][] RayBB = new ulong[64][];
 
         public static int[][] FileDistances = new int[64][];
         public static int[][] RankDistances = new int[64][];
@@ -279,6 +291,27 @@ namespace LTChess.Logic.Data
 
                 ulong bishopMask = (DiagonalMasksA1H8[sq] | DiagonalMasksA8H1[sq]) & ~(1UL << sq);
                 BishopRays[sq] = bishopMask;
+            }
+
+            for (int s1 = 0; s1 < 64; s1++)
+            {
+                RayBB[s1] = new ulong[64];
+
+                for (int s2 = 0; s2 < 64; s2++)
+                {
+                    if ((RookRays[s1] & SquareBB[s2]) != 0)
+                    {
+                        RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
+                    }
+                    else if ((BishopRays[s1] & SquareBB[s2]) != 0)
+                    {
+                        RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
+                    }
+                    else
+                    {
+                        RayBB[s1][s2] = 0;
+                    }
+                }
             }
         }
 
