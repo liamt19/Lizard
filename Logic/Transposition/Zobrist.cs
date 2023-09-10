@@ -58,7 +58,7 @@
         [MethodImpl(Inline)]
         public static ulong GetHash(Position position)
         {
-            Bitboard bb = position.bb;
+            ref Bitboard bb = ref position.bb;
 
             ulong hash = 0;
 

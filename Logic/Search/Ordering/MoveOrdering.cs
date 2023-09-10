@@ -146,7 +146,7 @@ namespace LTChess.Logic.Search.Ordering
         [MethodImpl(Inline)]
         public static void AssignQuiescenceMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, int size)
         {
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             for (int i = 0; i < size; i++)
             {

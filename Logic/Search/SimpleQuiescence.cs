@@ -305,7 +305,7 @@ namespace LTChess.Logic.Search
                 return true;
             }
 
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             int from = m.From;
             int to = m.To;
