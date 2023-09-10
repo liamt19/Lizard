@@ -277,7 +277,7 @@ namespace LTChess.Logic.Search
 
 
             Position pos = info.Position;
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
             ulong posHash = pos.Hash;
             Move bestMove = Move.Null;
 
@@ -419,8 +419,7 @@ namespace LTChess.Logic.Search
 
                 ss->CurrentMove = Move.Null;
 
-                StateInfo nullSt;
-                info.Position.MakeNullMove(&nullSt);
+                info.Position.MakeNullMove();
                 int nullMoveEval = -FindBest<NonPVNode>(ref info, (ss + 1), -beta, -beta + 1, depth - reduction, !cutNode);
                 info.Position.UnmakeNullMove();
 
@@ -588,7 +587,7 @@ namespace LTChess.Logic.Search
                             R--;
                         }
 
-                        if (m == ttMove)
+                        if (m.Equals(ttMove))
                         {
 #if DEBUG || SHOW_STATS
                             SearchStatistics.ExtensionsTTMove++;
