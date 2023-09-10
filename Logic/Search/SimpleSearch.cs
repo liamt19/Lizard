@@ -28,22 +28,24 @@ namespace LTChess.Logic.Search
         /// </summary>
         private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
 
-        public static HistoryMoveTable HistoryMoves = new HistoryMoveTable();
+
+        public static HistoryTable History;
+        private static short* MainHistory;
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
 
-        private static nint _SearchStackBlock;
+        private static SearchStackEntry* _SearchStackBlock;
 
         static SimpleSearch()
         {
-            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(SearchStackEntry) * MaxPly), AllocAlignment);
-            _SearchStackBlock = (nint)block;
-            SearchStackEntry* ptr = (SearchStackEntry*)block;
+            _SearchStackBlock = (SearchStackEntry*) NativeMemory.AlignedAlloc((nuint)(sizeof(SearchStackEntry) * MaxPly), AllocAlignment);
 
             for (int i = 0; i < MaxPly; i++)
             {
-                *(ptr + i) = new SearchStackEntry();
+                *(_SearchStackBlock + i) = new SearchStackEntry();
             }
+
+            History = new HistoryTable();
         }
 
         /// <summary>
@@ -58,7 +60,7 @@ namespace LTChess.Logic.Search
         {
             TranspositionTable.TTUpdate();
 
-            SearchStackEntry* ss = ((SearchStackEntry*)_SearchStackBlock) + 10;
+            SearchStackEntry* ss = (_SearchStackBlock) + 10;
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
                 (ss + i)->Clear();
@@ -66,6 +68,8 @@ namespace LTChess.Logic.Search
             }
 
             PvMoves.Clear();
+            NativeMemory.Clear(History.MainHistory, sizeof(short) * HistoryTable.MainHistoryElements);
+            NativeMemory.Clear(History.CaptureHistory, sizeof(short) * HistoryTable.CaptureHistoryElements);
 
             LastBestMove = Move.Null;
             LastBestScore = ThreadedEvaluation.ScoreDraw;
@@ -77,7 +81,6 @@ namespace LTChess.Logic.Search
             int maxDepthStart = info.MaxDepth;
             double maxTime = info.TimeManager.MaxSearchTime;
 
-            info.RootPositionMoveCount = info.Position.Moves.Count;
             info.NodeCount = 0;
             info.SearchActive = true;
 
@@ -95,7 +98,7 @@ namespace LTChess.Logic.Search
                     alpha = LastBestScore - (AspirationWindowMargin + (depth * AspirationMarginPerDepth));
                     beta = LastBestScore + (AspirationWindowMargin + (depth * AspirationMarginPerDepth));
 #if DEBUG
-                    Log("Depth " + depth + " aspiration bounds are [A: " + alpha + ", eval: " + LastBestScore + ", B: " + beta + "]");
+                    //Log("Depth " + depth + " aspiration bounds are [A: " + alpha + ", eval: " + LastBestScore + ", B: " + beta + "]");
 #endif
                 }
 
@@ -143,7 +146,12 @@ namespace LTChess.Logic.Search
 #endif
 
 #if DEBUG
-                    Log("Depth " + depth + " failed aspiration bounds, got " + info.BestScore);
+                    //Log("Depth " + depth + " failed aspiration bounds, got " + info.BestScore);
+                    if (SearchStatistics.AspirationWindowFails > 1000)
+                    {
+                        Log("Depth " + depth + " failed aspiration bounds " + SearchStatistics.AspirationWindowFails + " times, quitting");
+                        return;
+                    }
 #endif
                     continue;
                 }
@@ -410,7 +418,9 @@ namespace LTChess.Logic.Search
                 int reduction = SearchConstants.NullMovePruningMinDepth + (depth / SearchConstants.NullMovePruningMinDepth);
 
                 ss->CurrentMove = Move.Null;
-                info.Position.MakeNullMove();
+
+                StateInfo nullSt;
+                info.Position.MakeNullMove(&nullSt);
                 int nullMoveEval = -FindBest<NonPVNode>(ref info, (ss + 1), -beta, -beta + 1, depth - reduction, !cutNode);
                 info.Position.UnmakeNullMove();
 
@@ -437,15 +447,22 @@ namespace LTChess.Logic.Search
 
             MoveLoop:
 
+            Span<Move> captureMoves = stackalloc Move[32];
+            Span<Move> quietMoves = stackalloc Move[64];
+
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
-            AssignNormalMoveScores(ref info, list, scores, ss, size, ss->Ply, tte->BestMove);
+            AssignNormalMoveScores(pos, History, list, scores, ss, size, ss->Ply, tte->BestMove);
 
             int playedMoves = 0;
             int legalMoves = 0;
-            int quietMoves = 0;
+
+            int lmpMoves = 0;
+
+            int quietCount = 0;
+            int captureCount = 0;
 
             int lmpCutoff = LMPTable[improving ? 1 : 0][depth];
 
@@ -464,7 +481,8 @@ namespace LTChess.Logic.Search
 
                 if (!m.Capture)
                 {
-                    quietMoves++;
+                    lmpMoves++;
+                    
                     if (UseFutilityPruning && CanFutilityPrune(ss->InCheck, isPV, alpha, beta, depth))
                     {
                         if (eval + (SearchConstants.FutilityPruningMarginPerDepth * depth) < alpha)
@@ -487,8 +505,7 @@ namespace LTChess.Logic.Search
                     }
 
                     //  Only prune if our alpha has changed, meaning we have found at least 1 good move.
-                    //  if (UseLateMovePruning && isLateMovePrunable && (alpha != AlphaStart) && (quietMoves > lmpCutoff))
-                    if (UseLateMovePruning && CanLateMovePrune(ss->InCheck, isPV, isRoot, depth) && (alpha != AlphaStart) && (quietMoves >= lmpCutoff))
+                    if (UseLateMovePruning && CanLateMovePrune(ss->InCheck, isPV, isRoot, depth) && (alpha != AlphaStart) && (lmpMoves >= lmpCutoff))
                     {
 #if DEBUG || SHOW_STATS
                         SearchStatistics.LateMovePrunings++;
@@ -602,8 +619,7 @@ namespace LTChess.Logic.Search
                 }
 
 
-
-                pos.UnmakeMove();
+                pos.UnmakeMove(m);
 
                 if (score > bestScore)
                 {
@@ -647,21 +663,38 @@ namespace LTChess.Logic.Search
                         }
                     }
                 }
+            
+                if (m != bestMove)
+                {
+                    if (m.Capture && captureCount < 32)
+                    {
+                        captureMoves[captureCount++] = m;
+                    }
+                    else if (!m.Capture && quietCount < 64)
+                    {
+                        quietMoves[quietCount++] = m;
+                    }
+                }
             }
 
             if (legalMoves == 0)
             {
                 if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
                 {
-                    return info.MakeMateScore();
+                    //return info.MakeMateScore();
+                    return -ScoreMate + ss->Ply;
                 }
                 else
                 {
                     return -ThreadedEvaluation.ScoreDraw;
                 }
             }
-            
 
+            if (bestMove != Move.Null)
+            {
+                UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
+            }
+            
             if (bestScore <= alpha)
             {
                 ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
@@ -693,7 +726,61 @@ namespace LTChess.Logic.Search
             return bestScore;
         }
 
-        
+
+
+        private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
+                                        Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
+        {
+
+            int thisPiece = pos.bb.GetPieceAtIndex(bestMove.From);
+            int capturedPiece = pos.bb.GetPieceAtIndex(bestMove.To);
+
+            int quietMoveBonus = StatBonus(depth + 1);
+
+            if (bestMove.Capture)
+            {
+                //int idx = ((thisPiece + (PieceNB * pos.ToMove)) + (PieceNB * ColorNB) * (capturedPiece + (SquareNB * bestMove.To)));
+                int idx = HistoryTable.CapIndex(thisPiece, pos.ToMove, bestMove.To, capturedPiece);
+                History.ApplyBonus(History.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
+            }
+            else
+            {
+
+                int captureBonus = (bestScore > beta + 150) ? quietMoveBonus : StatBonus(depth);
+
+                if (ss->Killer0 != bestMove)
+                {
+#if DEBUG || SHOW_STATS
+                    SearchStatistics.KillerMovesAdded++;
+#endif
+                    ss->Killer1 = ss->Killer0;
+                    ss->Killer0 = bestMove;
+                }
+
+                History.ApplyBonus(History.MainHistory, ((pos.ToMove * HistoryTable.MainHistoryPCStride) + bestMove.MoveMask), captureBonus, HistoryTable.MainHistoryClamp);
+                
+                for (int i = 0; i < quietCount; i++)
+                {
+                    History.ApplyBonus(History.MainHistory, ((pos.ToMove * HistoryTable.MainHistoryPCStride) + quietMoves[i].MoveMask), -captureBonus, HistoryTable.MainHistoryClamp);
+                }
+            }
+
+            for (int i = 0; i < captureCount; i++)
+            {
+                //int idx = ((pos.bb.GetPieceAtIndex(captureMoves[i].From) + (PieceNB * pos.ToMove)) + (PieceNB * ColorNB) * (pos.bb.GetPieceAtIndex(captureMoves[i].To) +  (SquareNB * captureMoves[i].To)));
+                int idx = HistoryTable.CapIndex(pos.bb.GetPieceAtIndex(captureMoves[i].From), pos.ToMove, captureMoves[i].To, pos.bb.GetPieceAtIndex(captureMoves[i].To));
+                History.ApplyBonus(History.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
+            }
+        }
+
+
+        [MethodImpl(Inline)]
+        private static int StatBonus(int depth)
+        {
+            return Math.Min(350 * (depth + 1) - 550, 1550);
+        }
+
+
         [MethodImpl(Inline)]
         public static bool CanLateMovePrune(bool isInCheck, bool isPV, bool isRoot, int depth)
         {
