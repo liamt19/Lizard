@@ -105,6 +105,14 @@ namespace LTChess.Logic.Util
             }
         }
 
+        [MethodImpl(Inline)]
+        public static unsafe int poplsb(ulong* value)
+        {
+            int sq = (int)Bmi1.X64.TrailingZeroCount(*value);
+            *value = Bmi1.X64.ResetLowestSetBit(*value);
+            return sq;
+        }
+
         /// <summary>
         /// Returns the index of the most significant bit (highest, toward the square H8) 
         /// set in the mask <paramref name="value"/> using <c>Lzcnt.X64.LeadingZeroCount</c>
