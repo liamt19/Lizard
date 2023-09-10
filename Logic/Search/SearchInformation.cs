@@ -76,12 +76,6 @@ namespace LTChess.Logic.Search
         public int RootPlayerToMove = Color.White;
 
         /// <summary>
-        /// The number of moves made so far in the root position.
-        /// This is used to calculate mate scores since that is a bit more complicated than just looking at the depth.
-        /// </summary>
-        public int RootPositionMoveCount = 0;
-
-        /// <summary>
         /// Set to true if this SearchInformation instance is being used in a threaded search.
         /// </summary>
         public bool IsMultiThreaded = false;
@@ -129,8 +123,6 @@ namespace LTChess.Logic.Search
 
             this.TimeManager = new TimeManager();
             this.TimeManager.MaxSearchTime = searchTime;
-
-            this.RootPositionMoveCount = this.Position.Moves.Count;
 
             PV = new Move[Utilities.MaxDepth];
 
@@ -217,17 +209,6 @@ namespace LTChess.Logic.Search
         }
 
         /// <summary>
-        /// Returns the number of plys from the root position, which is the "3" in "+M3" if white has mate in 3.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public int MakeMateScore()
-        {
-            int movesMade = (this.Position.Moves.Count - this.RootPositionMoveCount);
-            int mateScore = -ThreadedEvaluation.ScoreMate - ((movesMade / 2) + 1);
-            return mateScore;
-        }
-
-        /// <summary>
         /// Returns a string with the PV line from this search, 
         /// which begins with the best move, followed by a series of moves that we think will be played in response.
         /// <br></br>
@@ -244,7 +225,8 @@ namespace LTChess.Logic.Search
             Array.Clear(this.PV);
             int pvLen = SimpleSearch.GetPV(this.PV);
 
-            Position temp = new Position(this.Position.GetFEN());
+            Position temp = new Position(this.Position.GetFEN(), false);
+
             int maxPvDepth = Math.Min(this.MaxDepth, pvLen);
             for (int i = 0; i < maxPvDepth; i++)
             {

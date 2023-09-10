@@ -62,7 +62,6 @@ namespace LTChess.Logic.Search
             }
 
             Position pos = info.Position;
-            Bitboard bb = pos.bb;
             ulong posHash = pos.Hash;
             Move bestMove = Move.Null;
 
@@ -169,7 +168,8 @@ namespace LTChess.Logic.Search
             int size = pos.GenAllPseudoLegalMovesTogether(list);
             
             Span<int> scores = stackalloc int[size];
-            AssignQuiescenceMoveScores(ref bb, list, scores, size);
+            //AssignQuiescenceMoveScores(bb, list, scores, size);
+            AssignQuiescenceMoveScores(pos, SimpleSearch.History, list, scores, size);
 
             int legalMoves = 0;
             int captures = 0;
@@ -185,7 +185,9 @@ namespace LTChess.Logic.Search
 
                 legalMoves++;
 
-                if (!(m.Capture || ss->InCheck || m.Checks))
+                //  Captures and moves made while in check are always OK.
+                //  Moves that give check are only OK if the depth is above the threshold.
+                if (!(m.Capture || ss->InCheck || (m.Checks && depth > DEPTH_QS_NO_CHECKS)))
                 {
                     continue;
                 }
@@ -230,11 +232,11 @@ namespace LTChess.Logic.Search
                 prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
                 ss->CurrentMove = m;
 
-                info.Position.MakeMove(m);
+                pos.MakeMove(m);
 
                 //  Keep making moves until we hit a beta cut.
                 score = -QSearch<NodeType>(ref info, (ss + 1), -beta, -alpha, depth - 1);
-                info.Position.UnmakeMove();
+                pos.UnmakeMove(m);
 
                 if (score > bestScore)
                 {
@@ -261,7 +263,8 @@ namespace LTChess.Logic.Search
 
             if (legalMoves == 0 && ss->InCheck)
             {
-                return info.MakeMateScore();
+                //return info.MakeMateScore();
+                return -ScoreMate + ss->Ply;
             }
 
             TTNodeType nodeType = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
@@ -275,65 +278,6 @@ namespace LTChess.Logic.Search
             return bestScore;
         }
 
-
-        [MethodImpl(Inline)]
-        public static int StaticExchange(ref Bitboard bb, int square, int ToMove)
-        {
-#if DEBUG || SHOW_STATS
-            SearchStatistics.Scores_SEE_calls++;
-#endif
-            //  https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
-
-            int depth = 0;
-            int[] gain = new int[32];
-            gain[0] = GetPieceValue(bb.GetPieceAtIndex(square));
-
-            ulong debug_wtemp = bb.Colors[Color.White];
-            ulong debug_btemp = bb.Colors[Color.Black];
-            int[] debug_pt = new int[64];
-            Array.Copy(bb.PieceTypes, debug_pt, 64);
-
-            while (true)
-            {
-                int ourPieceIndex = bb.LowestValueAttacker(square, Not(ToMove));
-                if (ourPieceIndex == LSBEmpty)
-                {
-                    //Log("Depth " + depth + ", " + "ourPieceIndex == LSBEmpty breaking");
-                    break;
-                }
-
-                depth++;
-                int ourPieceType = bb.GetPieceAtIndex(ourPieceIndex);
-                gain[depth] = (GetPieceValue(ourPieceType) - gain[depth - 1]);
-
-                if (Math.Max(-gain[depth - 1], gain[depth]) < 0)
-                {
-                    //Log("Math.Max(-gain[depth - 1], gain[depth] was " + (Math.Max(-gain[depth - 1], gain[depth])) + " breaking");
-                    break;
-                }
-
-                //Log("Depth " + depth + ", " + bb.SquareToString(ourPieceIndex) + " will capture " + bb.SquareToString(square));
-
-                bb.Colors[ToMove] ^= (SquareBB[square] | SquareBB[ourPieceIndex]);
-                bb.Colors[Not(ToMove)] ^= (SquareBB[square]);
-
-                bb.PieceTypes[ourPieceIndex] = Piece.None;
-                bb.PieceTypes[square] = ourPieceType;
-
-                ToMove = Not(ToMove);
-            }
-
-            bb.Colors[Color.White] = debug_wtemp;
-            bb.Colors[Color.Black] = debug_btemp;
-            Array.Copy(debug_pt, bb.PieceTypes, 64);
-
-            while (--depth > 0)
-            {
-                gain[depth - 1] = -Math.Max(-gain[depth - 1], gain[depth]);
-            }
-
-            return gain[0];
-        }
 
         [MethodImpl(Inline)]
         public static int SEE(ref Bitboard bb, ref Move move)
