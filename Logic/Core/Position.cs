@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 using LTChess.Logic.Data;
@@ -11,16 +13,24 @@ namespace LTChess.Logic.Core
 {
     public unsafe class Position
     {
+        /// <summary>
+        /// This Position's <see cref="Bitboard"/>, which contains masks for each type of piece and player color.
+        /// </summary>
         public Bitboard bb;
 
         /// <summary>
-        /// The first number in the FEN, which starts at 1 and resets to 1 every time a pawn moves or a piece is captured.
+        /// The address of <see cref="bb"/>'s memory block, since C# doesn't like taking the address of structs.
+        /// </summary>
+        private readonly nint _bbBlock;
+
+        /// <summary>
+        /// The first number in the FEN, which starts at 0 and resets to 0 every time a pawn moves or a piece is captured.
         /// If this reaches 100, the game is a draw by the 50-move rule.
         /// </summary>
         public int HalfMoves = 0;
 
         /// <summary>
-        /// The second number in the FEN, which starts at 0 and increases every time black moves.
+        /// The second number in the FEN, which starts at 1 and increases every time black moves.
         /// </summary>
         public int FullMoves = 1;
 
@@ -32,10 +42,10 @@ namespace LTChess.Logic.Core
         /// Set equal to the index of the square that is one "behind" the pawn that just moved forward two squares.
         /// For example, if a white pawn is on d5, then moving the black c7 pawn to c5 sets this to the index of the square c6.
         /// </summary>
-        public int EnPassantTarget = 0;
+        public int EnPassantTarget = SquareNB;
 
         /// <summary>
-        /// Returns the color of the player whose turn it is to move.
+        /// Set to the color of the player whose turn it is to move.
         /// </summary>
         public int ToMove;
 
@@ -45,83 +55,99 @@ namespace LTChess.Logic.Core
         public ulong Hash;
 
         /// <summary>
-        /// A stack containing the moves that have been made since a position has been loaded from a FEN.
-        /// </summary>
-        public FasterStack<Move> Moves;
-
-        /// <summary>
-        /// A stack containing the ID's of the pieces that have been captured since the position was loaded.
-        /// </summary>
-        public FasterStack<int> Captures;
-
-        /// <summary>
-        /// A stack containing CastlingStatus enums since the position was loaded.
-        /// </summary>
-        public FasterStack<CastlingStatus> Castles;
-
-        /// <summary>
-        /// A stack containing CheckInfo structs since the position was loaded.
-        /// </summary>
-        public FasterStack<CheckInfo> Checks;
-
-        /// <summary>
-        /// A stack containing the Zobrist hashes since the position was loaded.
-        /// </summary>
-        public FasterStack<ulong> Hashes;
-
-        /// <summary>
-        /// A stack containing the the Halfmove clock counts since the position was loaded.
-        /// </summary>
-        public FasterStack<int> HalfmoveClocks;
-
-        /// <summary>
-        /// A stack containing the En Passant targets since the position was loaded.
-        /// </summary>
-        public FasterStack<int> EnPassantTargets;
-
-        /// <summary>
-        /// The sum of the material in the position, indexed by piece color.
+        /// The sum of all material in the position, indexed by piece color.
         /// </summary>
         public int[] MaterialCount;
 
+        /// <summary>
+        /// The sum of the non-pawn material in the position, indexed by piece color.
+        /// </summary>
         public int[] MaterialCountNonPawn;
 
         public bool Checked => (CheckInfo.InCheck || CheckInfo.InDoubleCheck);
+
+        /// <summary>
+        /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
+        /// If you find yourself in a game exceeding 2047 moves, go outside.
+        /// </summary>
+        private const int StateStackSize = 2048;
+        private StateInfo* StateStack;
+        private nint _stateBlock;
+
+
+        /// <summary>
+        /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
+        /// </summary>
+        private readonly StateInfo* _SentinelStart;
+
+        /// <summary>
+        /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
+        /// </summary>
+        public StateInfo* State;
+
+        /// <summary>
+        /// The number of moves that have been made so far since this Position was created.
+        /// <br></br>
+        /// Only used to easily keep track of how far along the StateStack we currently are.
+        /// </summary>
+        private int GamePly = 0;
+
+        private static int _debugPositionObjects = 0;
+        private int _debugPosInst = 0;
+        private static int _debugAllocs = 0;
+        private static int _debugFrees = 0;
 
 
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
         /// </summary>
-        public Position(string fen = InitialFEN)
+        public Position(string fen = InitialFEN, bool ResetNN = true)
         {
-            Moves = new FasterStack<Move>(MaxListCapacity);
-            Captures = new FasterStack<int>(NormalListCapacity);
-            Castles = new FasterStack<CastlingStatus>(MaxListCapacity);
-            Checks = new FasterStack<CheckInfo>(MaxListCapacity);
-            Hashes = new FasterStack<ulong>(MaxListCapacity);
-            HalfmoveClocks = new FasterStack<int>(MaxListCapacity);
-            EnPassantTargets = new FasterStack<int>(MaxListCapacity);
             MaterialCount = new int[2];
             MaterialCountNonPawn = new int[2];
 
-            this.bb = new Bitboard();
+
+            _bbBlock = (nint)NativeMemory.AlignedAlloc((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
+            this.bb = *(Bitboard*)_bbBlock;
+
+            _stateBlock = (nint)NativeMemory.AlignedAlloc((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
+            NativeMemory.Clear((void*)_stateBlock, (nuint)(sizeof(StateInfo) * StateStackSize));
+            StateStack = (StateInfo*)_stateBlock;
+
+            _SentinelStart = &StateStack[0];
+            State = &StateStack[0];
+
+#if DEBUG
+            this._debugPosInst = (++_debugPositionObjects);
+            Log("\r\nInstance " + _debugPosInst + "\tconstructor, Allocs/Frees: " + (++_debugAllocs) + " / " + _debugFrees + "\t" + "_bbBlock: " + ((nint)_bbBlock).ToString("X12") + ",\t" + "StateStack: " + ((nint)StateStack).ToString("X12"));
+#endif
 
             LoadFromFEN(fen);
 
-            this.bb.DetermineCheck(ToMove, ref CheckInfo);
-            Hash = Zobrist.GetHash(this);
-
-            if (UseSimple768)
+            if (UseSimple768 && ResetNN)
             {
                 NNUEEvaluation.RefreshNN(this);
                 NNUEEvaluation.ResetNN();
             }
 
-            if (UseHalfKA)
+            if (UseHalfKA && ResetNN)
             {
                 HalfKA_HM.RefreshNN(this);
                 HalfKA_HM.ResetNN();
             }
+        }
+
+
+        /// <summary>
+        /// Free the memory block that we allocated for this Position's <see cref="Bitboard"/>
+        /// </summary>
+        ~Position()
+        {
+#if DEBUG
+            Log("Instance " + _debugPosInst + "\tdestructor, Allocs/Frees: " + _debugAllocs + " / " + (++_debugFrees) + "\t" + "_bbBlock: " + ((nint)_bbBlock).ToString("X12") + ",\t" + "StateStack: " + ((nint)StateStack).ToString("X12") + "\r\n");
+#endif
+            NativeMemory.AlignedFree((void*)_bbBlock);
+            NativeMemory.AlignedFree((void*)_stateBlock);
         }
 
         /// <summary>
@@ -138,7 +164,7 @@ namespace LTChess.Logic.Core
                 Move m = list[i];
                 if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
                 {
-                    MakeMove(m);
+                    MakeMove(m, false);
                     return true;
                 }
                 if (i == size - 1)
@@ -179,19 +205,22 @@ namespace LTChess.Logic.Core
         }
 
         /// <summary>
-        /// Pushes the current state, then performs the move <paramref name="move"/> and updates the state of the board.
+        /// Copies the current state into the <paramref name="newState"/>, then performs the move <paramref name="move"/>.
         /// </summary>
-        /// <param name="move">The move to make, which needs to be generated from MoveGenerator.GenAllLegalMoves or strange things might happen.</param>
+        /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
+        /// <param name="newState">A pointer to a <see cref="StateInfo"/> object which will be used as this Position's new state.</param>
+        /// <param name="MakeMoveNN">If true, updates the NNUE networks.</param>
         [MethodImpl(Inline)]
-        public void MakeMove(in Move move, bool MakeMoveNN = true)
+        public void MakeMove(Move move, bool MakeMoveNN = true)
         {
-            Castles.Push(Castling);
-            Checks.Push(CheckInfo);
-            Hashes.Push(Hash);
-            HalfmoveClocks.Push(HalfMoves);
-            EnPassantTargets.Push(EnPassantTarget);
+            //  Copy the current state into the next one
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)sizeof(StateInfo));
 
-            bool kingMove = bb.GetPieceAtIndex(move.From) == Piece.King;
+            //  Move onto the next state
+            State++;
+
+            State->HalfmoveClock++;
+            GamePly++;
 
             if (UseSimple768 && MakeMoveNN)
             {
@@ -200,6 +229,12 @@ namespace LTChess.Logic.Core
             else if (UseHalfKA && MakeMoveNN)
             {
                 HalfKA_HM.MakeMove(this, move);
+            }
+
+
+            if (ToMove == Color.Black)
+            {
+                FullMoves++;
             }
 
             int moveFrom = move.From;
@@ -211,7 +246,14 @@ namespace LTChess.Logic.Core
             int theirPiece = bb.GetPieceAtIndex(moveTo);
             int theirColor = Not(ourColor);
 
+            bool kingMove = (ourPiece == Piece.King);
+
+
 #if DEBUG
+            if (ourPiece == Piece.None)
+            {
+                Debug.Assert(false, "Move " + move.ToString() + " doesn't have a piece on the From square!");
+            }
             if (theirPiece != Piece.None && ourColor == bb.GetColorAtIndex(moveTo))
             {
                 Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
@@ -222,59 +264,99 @@ namespace LTChess.Logic.Core
             }
 #endif
 
-            if (ourPiece == Piece.Pawn || theirPiece != Piece.None)
-            {
-                HalfMoves = 0;
-            }
-            else
-            {
-                HalfMoves++;
-            }
 
-            if (ToMove == Color.Black)
+            if (ourPiece == Piece.King)
             {
-                FullMoves++;
-            }
 
-            int tempEPSquare = EnPassantTarget;
-
-            if (EnPassantTarget != 0)
-            {
-                //  Set EnPassantTarget to 0 now.
-                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset to 0 every move.
-                Hash = Hash.ZobristEnPassant(GetIndexFile(EnPassantTarget));
-                EnPassantTarget = 0;
-            }
-
-            if (move.EnPassant)
-            {
-                int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
-                bb.EnPassant(moveFrom, moveTo, ourColor, idxPawn);
-                Hash = Hash.ZobristMove(moveFrom, moveTo, ToMove, Piece.Pawn);
-                Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
-
-                MaterialCount[theirColor] -= GetPieceValue(Piece.Pawn);
-            }
-            else if (ourPiece == Piece.Pawn && (moveTo ^ moveFrom) == 16)
-            {
-                bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
-                Hash = Hash.ZobristMove(moveFrom, moveTo, ToMove, Piece.Pawn);
-
-                if (ourColor == Color.White && (WhitePawnAttackMasks[moveTo - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
+                if (move.Castle)
                 {
-                    EnPassantTarget = moveTo - 8;
-                }
-                else if (ourColor == Color.Black && (BlackPawnAttackMasks[moveTo + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
-                {
-                    EnPassantTarget = moveTo + 8;
+                    //  Move our rook and update the hash
+                    switch (moveTo)
+                    {
+                        case C1:
+                            bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
+                            Hash = Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
+                            break;
+                        case G1:
+                            bb.MoveSimple(H1, F1, ourColor, Piece.Rook);
+                            Hash = Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
+                            break;
+                        case C8:
+                            bb.MoveSimple(A8, D8, ourColor, Piece.Rook);
+                            Hash = Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
+                            break;
+                        default:
+                            bb.MoveSimple(H8, F8, ourColor, Piece.Rook);
+                            Hash = Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
+                            break;
+                    }
                 }
 
-                //  Update the En Passant file because we just changed EnPassantTarget
-                Hash = Hash.ZobristEnPassant(GetIndexFile(EnPassantTarget));
+                //  Remove all of our castling rights
+                if (ourColor == Color.White)
+                {
+                    Hash = Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.WK | CastlingStatus.WQ));
+                    State->CastleStatus &= ~(CastlingStatus.WK | CastlingStatus.WQ);
+                }
+                else
+                {
+                    Hash = Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.BK | CastlingStatus.BQ));
+                    State->CastleStatus &= ~(CastlingStatus.BK | CastlingStatus.BQ);
+                }
             }
-            else if (move.Capture)
+            else if (ourPiece == Piece.Rook && State->CastleStatus != CastlingStatus.None)
             {
-                Captures.Push(theirPiece);
+                //  If we just moved a rook, update st->CastleStatus
+                switch (moveFrom)
+                {
+                    case A1:
+                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                        State->CastleStatus &= ~CastlingStatus.WQ;
+                        break;
+                    case H1:
+                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                        State->CastleStatus &= ~CastlingStatus.WK;
+                        break;
+                    case A8:
+                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                        State->CastleStatus &= ~CastlingStatus.BQ;
+                        break;
+                    case H8:
+                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                        State->CastleStatus &= ~CastlingStatus.BK;
+                        break;
+                }
+            }
+
+            if (move.Capture)
+            {
+                //  Remove their piece, and update the hash
+                bb.RemovePiece(moveTo, theirColor, theirPiece);
+                Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
+
+                if (theirPiece == Piece.Rook)
+                {
+                    //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
+                    switch (moveTo)
+                    {
+                        case A1:
+                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                            State->CastleStatus &= ~CastlingStatus.WQ;
+                            break;
+                        case H1:
+                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                            State->CastleStatus &= ~CastlingStatus.WK;
+                            break;
+                        case A8:
+                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                            State->CastleStatus &= ~CastlingStatus.BQ;
+                            break;
+                        case H8:
+                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                            State->CastleStatus &= ~CastlingStatus.BK;
+                            break;
+                    }
+                }
 
                 MaterialCount[theirColor] -= GetPieceValue(theirPiece);
 
@@ -283,91 +365,74 @@ namespace LTChess.Logic.Core
                     MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
                 }
 
-                if (theirPiece == Piece.Rook)
+                State->CapturedPiece = theirPiece;
+
+                //  Reset the halfmove clock
+                State->HalfmoveClock = 0;
+            }
+            else
+            {
+                State->CapturedPiece = None;
+            }
+
+
+            int tempEPSquare = State->EPSquare;
+
+            if (State->EPSquare != SquareNB)
+            {
+                //  Set st->EPSquare to 64 now.
+                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
+                Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                State->EPSquare = SquareNB;
+            }
+
+            if (ourPiece == Piece.Pawn)
+            {
+                if (move.EnPassant)
                 {
-                    //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
-                    switch (moveTo)
+                    Debug.Assert(tempEPSquare != 0);
+                    int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
+                    bb.RemovePiece(idxPawn, theirColor, Piece.Pawn);
+                    Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
+
+                    //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
+                    State->CapturedPiece = Piece.Pawn;
+
+                    MaterialCount[theirColor] -= GetPieceValue(Piece.Pawn);
+                }
+                else if ((moveTo ^ moveFrom) == 16)
+                {
+                    //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
+                    if (ourColor == Color.White && (WhitePawnAttackMasks[moveTo - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
                     {
-                        case A1:
-                            Hash = Hash.ZobristCastle(Castling, CastlingStatus.WQ);
-                            Castling &= ~CastlingStatus.WQ;
-                            break;
-                        case H1:
-                            Hash = Hash.ZobristCastle(Castling, CastlingStatus.WK);
-                            Castling &= ~CastlingStatus.WK;
-                            break;
-                        case A8:
-                            Hash = Hash.ZobristCastle(Castling, CastlingStatus.BQ);
-                            Castling &= ~CastlingStatus.BQ;
-                            break;
-                        case H8:
-                            Hash = Hash.ZobristCastle(Castling, CastlingStatus.BK);
-                            Castling &= ~CastlingStatus.BK;
-                            break;
+                        State->EPSquare = moveTo - 8;
                     }
+                    else if (ourColor == Color.Black && (BlackPawnAttackMasks[moveTo + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
+                    {
+                        State->EPSquare = moveTo + 8;
+                    }
+
+                    //  Update the En Passant file because we just changed st->EPSquare
+                    Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
                 }
 
-                if (move.Promotion)
-                {
-                    //  Pawn capturing and promoting
-                    bb.Promote(moveFrom, moveTo, ourColor, theirPiece, move.PromotionTo);
-                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
-                    Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveFrom);
-                    Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
-
-                    MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
-                    MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
-                    MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
-                }
-                else
-                {
-                    //  Normal capture
-                    bb.Move(moveFrom, moveTo, ourColor, ourPiece, theirPiece);
-                    Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
-                    Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
-                }
+                //  Reset the halfmove clock
+                State->HalfmoveClock = 0;
             }
-            else if (move.Castle)
-            {
-                //  Move the king
-                bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
-                Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
 
-                //  Then move the rook
-                switch (moveTo)
-                {
-                    case C1:
-                        bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
-                        Hash = Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
-                        break;
-                    case G1:
-                        bb.MoveSimple(H1, F1, ourColor, Piece.Rook);
-                        Hash = Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
-                        break;
-                    case C8:
-                        bb.MoveSimple(A8, D8, ourColor, Piece.Rook);
-                        Hash = Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
-                        break;
-                    default:
-                        bb.MoveSimple(H8, F8, ourColor, Piece.Rook);
-                        Hash = Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
-                        break;
-                }
 
-                if (ourColor == Color.White)
-                {
-                    Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
-                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                }
-                else
-                {
-                    Hash = Hash.ZobristCastle(Castling, (CastlingStatus.BK | CastlingStatus.BQ));
-                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                }
-            }
-            else if (move.Promotion)
+            bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+            Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
+
+
+            if (move.Promotion)
             {
-                bb.Promote(moveFrom, moveTo, move.PromotionTo);
+                //  Get rid of the pawn we just put there
+                bb.RemovePiece(moveTo, ourColor, ourPiece);
+
+                //  And replace it with the promotion piece
+                bb.AddPiece(moveTo, ourColor, move.PromotionTo);
+
                 Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveFrom);
                 Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
@@ -375,50 +440,7 @@ namespace LTChess.Logic.Core
                 MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
                 MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
-            else
-            {
-                //  A simple move that isn't a capture/castle/promotion/en passant
-                bb.Move(moveFrom, moveTo, ourColor, ourPiece, theirPiece);
-                Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
-            }
 
-            if (ourPiece == Piece.King && !move.Castle)
-            {
-                //  If we made a king move, we can't castle anymore. If we just castled, don't bother
-                if (ourColor == Color.White)
-                {
-                    Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
-                    Castling &= ~(CastlingStatus.WK | CastlingStatus.WQ);
-                }
-                else
-                {
-                    Hash = Hash.ZobristCastle(Castling, (CastlingStatus.WK | CastlingStatus.WQ));
-                    Castling &= ~(CastlingStatus.BK | CastlingStatus.BQ);
-                }
-            }
-            else if (ourPiece == Piece.Rook && Castling != CastlingStatus.None)
-            {
-                //  If we just moved a rook, update Castling
-                switch (moveFrom)
-                {
-                    case A1:
-                        Hash = Hash.ZobristCastle(Castling, CastlingStatus.WQ);
-                        Castling &= ~CastlingStatus.WQ;
-                        break;
-                    case H1:
-                        Hash = Hash.ZobristCastle(Castling, CastlingStatus.WK);
-                        Castling &= ~CastlingStatus.WK;
-                        break;
-                    case A8:
-                        Hash = Hash.ZobristCastle(Castling, CastlingStatus.BQ);
-                        Castling &= ~CastlingStatus.BQ;
-                        break;
-                    case H8:
-                        Hash = Hash.ZobristCastle(Castling, CastlingStatus.BK);
-                        Castling &= ~CastlingStatus.BK;
-                        break;
-                }
-            }
 
             if (move.CausesCheck)
             {
@@ -431,7 +453,6 @@ namespace LTChess.Logic.Core
                 CheckInfo.InCheck = false;
                 CheckInfo.idxChecker = move.SqChecker;
                 CheckInfo.InDoubleCheck = true;
-                CheckInfo.idxDoubleChecker = move.SqDoubleChecker;
             }
             else
             {
@@ -439,78 +460,39 @@ namespace LTChess.Logic.Core
                 CheckInfo.InCheck = false;
                 CheckInfo.idxChecker = LSBEmpty;
                 CheckInfo.InDoubleCheck = false;
-                CheckInfo.idxDoubleChecker = LSBEmpty;
             }
 
-            ToMove = Not(ToMove);
-            Moves.Push(move);
             Hash = Hash.ZobristChangeToMove();
+            ToMove = Not(ToMove);
+
+            State->Hash = Hash;
+            if (move.Checks)
+            {
+                State->Checkers = bb.AttackersToFast(bb.KingIndex(theirColor), bb.Occupancy) & bb.Colors[ourColor];
+            }
+            else
+            {
+                State->Checkers = 0;
+            }
+
+            SetCheckInfo();
 
             if (UseHalfKA && MakeMoveNN && kingMove)
             {
+                //  If we are using HalfKA, and are properly making moves (so MakeMoveNN == true),
+                //  we need to reset the active features because they are dependent on our king square, and our king just moved.
                 HalfKA_HM.RefreshNN(this);
             }
-        }
 
-        /// <summary>
-        /// Performs a null move, which only updates the EnPassantTarget (since it is always reset to 0 when a move is made) 
-        /// and position hash accordingly.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void MakeNullMove()
-        {
-            Hashes.Push(Hash);
-            EnPassantTargets.Push(EnPassantTarget);
-
-            if (ToMove == Color.Black)
+            if (IsThreefoldRepetition())
             {
-                FullMoves++;
+                Log("Move " + move.ToString() + " caused a draw by threefold!");
             }
-
-            if (EnPassantTarget != 0)
-            {
-                //  Set EnPassantTarget to 0 now.
-                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset to 0 every move.
-                Hash = Hash.ZobristEnPassant(GetIndexFile(EnPassantTarget));
-                EnPassantTarget = 0;
-            }
-
-            ToMove = Not(ToMove);
-            Hash = Hash.ZobristChangeToMove();
-            prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(Hash)));
-        }
-
-        /// <summary>
-        /// Undoes a null move, which returns EnPassantTarget and the hash to their previous values.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void UnmakeNullMove()
-        {
-
-            if (ToMove == Color.White)
-            {
-                FullMoves--;
-            }
-
-            ToMove = Not(ToMove);
-
-            this.Hash = Hashes.Pop();
-            this.EnPassantTarget = EnPassantTargets.Pop();
         }
 
 
-        /// <summary>
-        /// Undoes the last move that was made by popping from the Position's stacks.
-        /// </summary>
         [MethodImpl(Inline)]
-        public void UnmakeMove(bool UnmakeMoveNN = true) => UnmakeMove(Moves.Pop(), UnmakeMoveNN);
-
-        /// <summary>
-        /// Undoes the provided <paramref name="move"/> by popping from the stacks.
-        /// </summary>
-        /// <param name="move">This should only ever be from Moves.Pop() for now.</param>
-        [MethodImpl(Inline)]
-        private void UnmakeMove(in Move move, bool UnmakeMoveNN = true)
+        public void UnmakeMove(Move move, bool UnmakeMoveNN = true)
         {
             int moveFrom = move.From;
             int moveTo = move.To;
@@ -520,66 +502,25 @@ namespace LTChess.Logic.Core
             int ourColor = Not(ToMove);
             int theirColor = ToMove;
 
-            this.Castling = Castles.Pop();
-            this.CheckInfo = Checks.Pop();
-            this.Hash = Hashes.Pop();
-            this.HalfMoves = HalfmoveClocks.Pop();
-            this.EnPassantTarget = EnPassantTargets.Pop();
+            GamePly--;
 
-            ulong mask = (SquareBB[moveFrom] | SquareBB[moveTo]);
-
-            if (move.Capture)
+            if (move.Promotion)
             {
-                int capturedPiece = Captures.Pop();
-                MaterialCount[theirColor] += GetPieceValue(capturedPiece);
-                if (capturedPiece != Pawn)
-                {
-                    MaterialCountNonPawn[theirColor] += GetPieceValue(capturedPiece);
-                }
+                //  Remove the promotion piece and replace it with a pawn
+                bb.RemovePiece(moveTo, ourColor, ourPiece);
 
-                if (move.Promotion)
-                {
-                    bb.Colors[ourColor] ^= mask;
-                    bb.Colors[theirColor] ^= SquareBB[moveTo];
+                ourPiece = Piece.Pawn;
 
-                    bb.Pieces[move.PromotionTo] ^= SquareBB[moveTo];
-                    bb.Pieces[Piece.Pawn] ^= SquareBB[moveFrom];
-                    bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
+                bb.AddPiece(moveTo, ourColor, ourPiece);
 
-                    bb.PieceTypes[moveTo] = capturedPiece;
-                    bb.PieceTypes[moveFrom] = Piece.Pawn;
+                MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
+                MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
 
-                    MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
-                    MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
-                    MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
-                }
-                else
-                {
-                    bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
-
-                    bb.Colors[theirColor] ^= SquareBB[moveTo];
-                    bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
-
-                    bb.PieceTypes[moveTo] = capturedPiece;
-                }
-            }
-            else if (move.EnPassant)
-            {
-                int idxPawn = EnPassantTarget + ShiftUpDir(ToMove);
-                ulong epMask = SquareBB[idxPawn];
-                bb.Colors[theirColor] ^= epMask;
-                bb.Colors[ourColor] ^= mask;
-                bb.Pieces[Piece.Pawn] ^= (mask | epMask);
-
-                bb.PieceTypes[moveFrom] = Piece.Pawn;
-                bb.PieceTypes[idxPawn] = Piece.Pawn;
-                bb.PieceTypes[moveTo] = Piece.None;
-
-                MaterialCount[theirColor] += GetPieceValue(Piece.Pawn);
+                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
             }
             else if (move.Castle)
             {
-                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+                //  Put the rook back
                 if (moveTo == C1)
                 {
                     bb.MoveSimple(D1, A1, ourColor, Piece.Rook);
@@ -597,30 +538,65 @@ namespace LTChess.Logic.Core
                     //  moveTo == G8
                     bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
                 }
+
             }
-            else if (move.Promotion)
+
+            //  Put our piece back to the square it came from.
+            bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+
+            if (State->CapturedPiece != Piece.None)
             {
-                bb.Colors[ourColor] ^= mask;
-                bb.Pieces[move.PromotionTo] ^= SquareBB[moveTo];
-                bb.Pieces[Piece.Pawn] ^= SquareBB[moveFrom];
+                //  CapturedPiece is set for captures and en passant, so check which it was
+                if (move.EnPassant)
+                {
+                    //  If the move was an en passant, put the captured pawn back
 
-                bb.PieceTypes[moveTo] = Piece.None;
-                bb.PieceTypes[moveFrom] = Piece.Pawn;
+                    int idxPawn = moveTo + ShiftUpDir(ToMove);
+                    bb.AddPiece(idxPawn, theirColor, Piece.Pawn);
 
-                MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
-                MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
+                    MaterialCount[theirColor] += GetPieceValue(Piece.Pawn);
+                }
+                else
+                {
+                    //  Otherwise it was a capture, so put the captured piece back
+                    bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
 
-                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
-            }
-            else
-            {
-                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+                    MaterialCount[theirColor] += GetPieceValue(State->CapturedPiece);
+                    if (State->CapturedPiece != Pawn)
+                    {
+                        MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
+                    }
+                }
             }
 
             if (ourColor == Color.Black)
             {
+                //  If ourColor == Color.Black (and ToMove == White), then we incremented FullMoves when this move was made.
                 FullMoves--;
             }
+
+            State--;
+            this.Hash = State->Hash;
+
+            switch (popcount(State->Checkers))
+            {
+                case 0:
+                    CheckInfo.InCheck = false;
+                    CheckInfo.InDoubleCheck = false;
+                    CheckInfo.idxChecker = LSBEmpty;
+                    break;
+                case 1:
+                    CheckInfo.InCheck = true;
+                    CheckInfo.InDoubleCheck = false;
+                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    break;
+                case 2:
+                    CheckInfo.InCheck = false;
+                    CheckInfo.InDoubleCheck = true;
+                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    break;
+            }
+
 
             ToMove = Not(ToMove);
 
@@ -636,6 +612,101 @@ namespace LTChess.Logic.Core
         }
 
 
+        /// <summary>
+        /// Performs a null move, which only updates the EnPassantTarget (since it is always reset to 64 when a move is made) 
+        /// and position hash accordingly.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void MakeNullMove(StateInfo* newState)
+        {
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)sizeof(StateInfo));
+            State++;
+
+
+            if (ToMove == Color.Black)
+            {
+                FullMoves++;
+            }
+
+            if (State->EPSquare != SquareNB)
+            {
+                //  Set EnPassantTarget to 64 now.
+                //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
+                Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                State->EPSquare = SquareNB;
+            }
+
+            Hash = Hash.ZobristChangeToMove();
+            ToMove = Not(ToMove);
+            State->Hash = Hash;
+            State->HalfmoveClock++;
+
+            SetCheckInfo();
+
+            prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(Hash)));
+
+        }
+
+        /// <summary>
+        /// Undoes a null move, which returns EnPassantTarget and the hash to their previous values.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public void UnmakeNullMove()
+        {
+            State--;
+
+            Hash = State->Hash;
+            ToMove = Not(ToMove);
+
+            if (ToMove == Color.White)
+            {
+                FullMoves--;
+            }
+        }
+
+
+
+
+
+
+
+
+        [MethodImpl(Inline)]
+        public void SetState()
+        {
+            State->Checkers = bb.AttackersToFast(bb.KingIndex(ToMove), bb.Occupancy) & bb.Colors[Not(ToMove)];
+
+            SetCheckInfo();
+
+            State->Hash = Zobrist.GetHash(this);
+        }
+
+
+        [MethodImpl(Inline)]
+        public void SetCheckInfo()
+        {
+            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black], &State->Xrays[Black]);
+            State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White], &State->Xrays[White]);
+
+            int kingSq = bb.KingIndex(Not(ToMove));
+
+            State->CheckSquares[Pawn]   = PawnAttackMasks[Not(ToMove)][kingSq];
+            State->CheckSquares[Knight] = KnightMasks[kingSq];
+            State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
+            State->CheckSquares[Rook]   = GetRookMoves(bb.Occupancy, kingSq);
+            State->CheckSquares[Queen]  = (State->CheckSquares[Bishop] | State->CheckSquares[Rook]);
+            State->CheckSquares[King]   = 0;
+        }
+
+
+
+        /// <summary>
+        /// Returns the Zobrist hash of the position after the move <paramref name="m"/> is made.
+        /// <para></para>
+        /// This is only for simple moves and captures: en passant and castling is not considered. 
+        /// This is only used for prefetching the <see cref="TTCluster"/>, and if the move actually 
+        /// is an en passant or castle then the prefetch won't end up helping anyways.
+        /// </summary>
         [MethodImpl(Inline)]
         public ulong HashAfter(Move m)
         {
@@ -656,9 +727,8 @@ namespace LTChess.Logic.Core
 
 
         /// <summary>
-        /// Generates all legal moves in the provided <paramref name="position"/>.
+        /// Generates all legal moves in the current position.
         /// </summary>
-        /// <param name="position">The position to generate for</param>
         /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
         /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
         [MethodImpl(Inline)]
@@ -667,7 +737,8 @@ namespace LTChess.Logic.Core
             Span<Move> pseudo = stackalloc Move[NormalListCapacity];
             int size = 0;
 
-            ulong pinned = bb.PinnedPieces(ToMove);
+            //ulong pinned = bb.PinnedPieces(ToMove);
+            ulong pinned = State->BlockingPieces[ToMove];
             ulong usCopy = bb.Colors[ToMove];
 
             ulong them = bb.Colors[Not(ToMove)];
@@ -676,19 +747,19 @@ namespace LTChess.Logic.Core
 
             if (!CheckInfo.InDoubleCheck)
             {
-                thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllPawnMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllKnightMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllBishopMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllRookMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllQueenMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
             }
 
-            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllKingMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
 
             for (int i = 0; i < thisMovesCount; i++)
             {
                 move = pseudo[i];
-                if (IsLegal(this, bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
+                if (IsLegal(move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
                 {
                     legal[size++] = move;
                 }
@@ -699,29 +770,27 @@ namespace LTChess.Logic.Core
 
 
         /// <summary>
-        /// Generates all legal moves in the provided <paramref name="position"/>.
+        /// Generates all pseudo-legal moves in the current position.
         /// </summary>
-        /// <param name="position">The position to generate for</param>
-        /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
-        /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
+        /// <param name="pseudo">A Span of Move with sufficient size for the number of pseudo-legal moves.</param>
+        /// <returns>The number of pseudo-legal moves generated and inserted into <paramref name="pseudo"/></returns>
         [MethodImpl(Inline)]
         public int GenAllPseudoLegalMovesTogether(in Span<Move> pseudo, bool onlyCaptures = false)
         {
             ulong usCopy = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
 
-            Move move;
             int thisMovesCount = 0;
             if (!CheckInfo.InDoubleCheck)
             {
-                thisMovesCount = GenAllPawnMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllKnightMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllBishopMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllRookMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
-                thisMovesCount = GenAllQueenMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllPawnMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllKnightMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllBishopMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllRookMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+                thisMovesCount = GenAllQueenMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
             }
 
-            thisMovesCount = GenAllKingMoves(bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
+            thisMovesCount = GenAllKingMoves(ref bb, usCopy, them, pseudo, thisMovesCount, onlyCaptures);
             return thisMovesCount;
         }
 
@@ -730,32 +799,32 @@ namespace LTChess.Logic.Core
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsLegal(in Move move) => IsLegal(this, this.bb, move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), bb.PinnedPieces(ToMove));
+        public bool IsLegal(in Move move) => IsLegal(move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), State->BlockingPieces[ToMove]);
 
 
         /// <summary>
-        /// Returns true if the move <paramref name="move"/> is legal given the position <paramref name="position"/>.
+        /// Returns true if the move <paramref name="move"/> is legal given the current position.
         /// </summary>
         [MethodImpl(Inline)]
-        public static bool IsLegal(in Position position, in Bitboard bb, Move move, int ourKing, int theirKing, ulong pinnedPieces)
+        public bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
             int moveFrom = move.From;
             int moveTo = move.To;
 
             int pt = bb.GetPieceAtIndex(moveFrom);
-            if (position.CheckInfo.InDoubleCheck && pt != Piece.King)
+            if (CheckInfo.InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
                 return false;
             }
 
             Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(moveTo) != Piece.None),
-                "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(position) + ") is trying to capture a piece on an empty square!");
+                "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(this) + ") is trying to capture a piece on an empty square!");
 
             int ourColor = bb.GetColorAtIndex(moveFrom);
             int theirColor = Not(ourColor);
 
-            if (position.CheckInfo.InCheck)
+            if (CheckInfo.InCheck)
             {
                 //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
@@ -765,7 +834,7 @@ namespace LTChess.Logic.Core
                     ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
-                    if ((bb.AttackersTo(moveTo, ourColor) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
+                    if (((bb.AttackersToFast(moveTo, bb.Occupancy) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
                     {
                         bb.Pieces[Piece.King] ^= moveMask;
                         bb.Colors[ourColor] ^= moveMask;
@@ -777,10 +846,10 @@ namespace LTChess.Logic.Core
                     return true;
                 }
 
-                int checker = position.CheckInfo.idxChecker;
+                int checker = CheckInfo.idxChecker;
                 bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[moveTo]) != 0;
 
-                if (blocksOrCaptures || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(position.CheckInfo.idxChecker)))
+                if (blocksOrCaptures || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(CheckInfo.idxChecker)))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
@@ -796,13 +865,10 @@ namespace LTChess.Logic.Core
             {
                 //  We can move anywhere as long as it isn't attacked by them.
 
-                //  AttackersToMask gives a bitboard of the squares that they attack,
-                //  but it doesn't consider their king as an attacker in that sense.
-                //  so also OR the squares surrounding their king as "attacked"
-                if ((bb.AttackersToMask(moveTo, ourColor, SquareBB[ourKing]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
-                {
-                    return false;
-                }
+                //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
+                //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
+                return ((bb.AttackersToFast(moveTo, (bb.Occupancy ^ SquareBB[ourKing])) & bb.Colors[theirColor]) 
+                       | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
             }
             else if (move.EnPassant)
             {
@@ -816,7 +882,7 @@ namespace LTChess.Logic.Core
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
 
-                if (bb.AttackersTo(ourKing, ourColor) != 0)
+                if ((bb.AttackersToFast(ourKing, bb.Occupancy) & bb.Colors[Not(ourColor)]) != 0)
                 {
                     bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
                     bb.Colors[ourColor] ^= moveMask;
@@ -828,20 +894,20 @@ namespace LTChess.Logic.Core
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
             }
-            else if (IsPinned(bb, moveFrom, ourColor, ourKing, out int pinner))
-            {
-                //	If we are pinned, make sure we are only moving in directions that keep us pinned
-                return ((LineBB[ourKing][pinner] & SquareBB[moveTo]) != 0);
-            }
 
-            return true;
+            //  Otherwise, this move is legal if:
+            //  The piece we are moving isn't a blocker for our king
+            //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
+            //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
+            return ((State->BlockingPieces[ourColor] & SquareBB[moveFrom]) == 0) ||
+                   ((RayBB[moveFrom][moveTo] & SquareBB[ourKing]) != 0);
         }
 
         /// <summary>
         /// Generates all pseudo-legal pawn moves available to the side to move in the position, including en passant moves.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllPawnMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllPawnMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong rank7 = (ToMove == Color.White) ? Rank7BB : Rank2BB;
             ulong rank3 = (ToMove == Color.White) ? Rank3BB : Rank6BB;
@@ -876,7 +942,7 @@ namespace LTChess.Logic.Core
                     moves = poplsb(moves);
 
                     Move m = new Move(to - up, to);
-                    MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                    MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
 
@@ -886,7 +952,7 @@ namespace LTChess.Logic.Core
                     twoMoves = poplsb(twoMoves);
 
                     Move m = new Move(to - up - up, to);
-                    MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                    MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
 
@@ -895,7 +961,7 @@ namespace LTChess.Logic.Core
                     int to = lsb(promotions);
                     promotions = poplsb(promotions);
 
-                    size = MakePromotionChecks(bb, to - up, to, ToMove, theirKing, ml, size);
+                    size = MakePromotionChecks(ref bb, to - up, to, ToMove, theirKing, ml, size);
                 }
 
             }
@@ -906,7 +972,9 @@ namespace LTChess.Logic.Core
                 capturesL = poplsb(capturesL);
 
                 Move m = new Move(to - up - Direction.WEST, to);
-                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                m.Capture = true;
+
+                MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
                 ml[size++] = m;
             }
 
@@ -916,7 +984,9 @@ namespace LTChess.Logic.Core
                 capturesR = poplsb(capturesR);
 
                 Move m = new Move(to - up - Direction.EAST, to);
-                MakeCheck(bb, Piece.Pawn, ToMove, theirKing, ref m);
+                m.Capture = true;
+
+                MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
                 ml[size++] = m;
             }
 
@@ -925,7 +995,7 @@ namespace LTChess.Logic.Core
                 int to = lsb(promotionCapturesL);
                 promotionCapturesL = poplsb(promotionCapturesL);
 
-                size = MakePromotionChecks(bb, to - up - Direction.WEST, to, ToMove, theirKing, ml, size);
+                size = MakePromotionChecks(ref bb, to - up - Direction.WEST, to, ToMove, theirKing, ml, size);
             }
 
             while (promotionCapturesR != 0)
@@ -933,29 +1003,29 @@ namespace LTChess.Logic.Core
                 int to = lsb(promotionCapturesR);
                 promotionCapturesR = poplsb(promotionCapturesR);
 
-                size = MakePromotionChecks(bb, to - up - Direction.EAST, to, ToMove, theirKing, ml, size);
+                size = MakePromotionChecks(ref bb, to - up - Direction.EAST, to, ToMove, theirKing, ml, size);
             }
 
-            if (EnPassantTarget != 0)
+            if (State->EPSquare != SquareNB)
             {
                 ulong[] pawnAttacks = (ToMove == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
-                ulong mask = notPromotingPawns & pawnAttacks[EnPassantTarget];
+                ulong mask = notPromotingPawns & pawnAttacks[State->EPSquare];
 
                 while (mask != 0)
                 {
                     int from = lsb(mask);
                     mask = poplsb(mask);
 
-                    Move m = new Move(from, EnPassantTarget);
+                    Move m = new Move(from, State->EPSquare);
                     m.EnPassant = true;
 
                     //  TODO: this is slow
                     ulong moveMask = SquareBB[m.From] | SquareBB[m.To];
-                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassantTarget - up]);
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
                     bb.Colors[ToMove] ^= moveMask;
-                    bb.Colors[theirColor] ^= (SquareBB[EnPassantTarget - up]);
+                    bb.Colors[theirColor] ^= (SquareBB[State->EPSquare - up]);
 
-                    ulong attacks = bb.AttackersTo(theirKing, theirColor);
+                    ulong attacks = bb.AttackersToFast(theirKing, bb.Occupancy) & bb.Colors[ToMove];
 
                     switch (popcount(attacks))
                     {
@@ -972,9 +1042,9 @@ namespace LTChess.Logic.Core
                             break;
                     }
 
-                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[EnPassantTarget - up]);
+                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
                     bb.Colors[ToMove] ^= moveMask;
-                    bb.Colors[theirColor] ^= (SquareBB[EnPassantTarget - up]);
+                    bb.Colors[theirColor] ^= (SquareBB[State->EPSquare - up]);
 
                     ml[size++] = m;
                 }
@@ -987,7 +1057,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal knight moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllKnightMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllKnightMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Knight] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1008,7 +1078,12 @@ namespace LTChess.Logic.Core
                     moves = poplsb(moves);
 
                     Move m = new Move(idx, to);
-                    MakeCheck(bb, Piece.Knight, ToMove, theirKing, ref m);
+                    if ((them & SquareBB[to]) != 0)
+                    {
+                        m.Capture = true;
+                    }
+
+                    MakeCheck(Piece.Knight, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
             }
@@ -1020,7 +1095,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal bishop moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllBishopMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllBishopMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Bishop] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1041,7 +1116,12 @@ namespace LTChess.Logic.Core
                     moves = poplsb(moves);
 
                     Move m = new Move(idx, to);
-                    MakeCheck(bb, Piece.Bishop, ToMove, theirKing, ref m);
+                    if ((them & SquareBB[to]) != 0)
+                    {
+                        m.Capture = true;
+                    }
+
+                    MakeCheck(Piece.Bishop, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
             }
@@ -1053,7 +1133,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal rook moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllRookMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllRookMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Rook] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1074,7 +1154,12 @@ namespace LTChess.Logic.Core
                     moves = poplsb(moves);
 
                     Move m = new Move(idx, to);
-                    MakeCheck(bb, Piece.Rook, ToMove, theirKing, ref m);
+                    if ((them & SquareBB[to]) != 0)
+                    {
+                        m.Capture = true;
+                    }
+
+                    MakeCheck(Piece.Rook, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
             }
@@ -1086,7 +1171,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal queen moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllQueenMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllQueenMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Queen] & bb.Colors[ToMove]);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1107,7 +1192,12 @@ namespace LTChess.Logic.Core
                     moves = poplsb(moves);
 
                     Move m = new Move(idx, to);
-                    MakeCheck(bb, Piece.Queen, ToMove, theirKing, ref m);
+                    if ((them & SquareBB[to]) != 0)
+                    {
+                        m.Capture = true;
+                    }
+
+                    MakeCheck(Piece.Queen, ToMove, theirKing, ref m);
                     ml[size++] = m;
                 }
             }
@@ -1119,7 +1209,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal king moves available to the side to move in the position, including castling moves.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllKingMoves(in Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllKingMoves(ref Bitboard bb, ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             int idx = bb.KingIndex(ToMove);
             int theirKing = bb.KingIndex(Not(ToMove));
@@ -1135,7 +1225,7 @@ namespace LTChess.Logic.Core
             {
                 ulong ourKingMask = bb.KingMask(ToMove);
                 Span<Move> CastleMoves = stackalloc Move[2];
-                int numCastleMoves = GenCastlingMoves(bb, idx, us, Castling, CastleMoves, 0);
+                int numCastleMoves = GenCastlingMoves(bb, idx, us, State->CastleStatus, CastleMoves, 0);
                 for (int i = 0; i < numCastleMoves; i++)
                 {
                     //  See if this will cause check.
@@ -1147,7 +1237,9 @@ namespace LTChess.Logic.Core
                         C8 => D8,
                         G8 => F8,
                     };
+
                     ulong between = BetweenBB[rookTo][theirKing];
+
                     if (between != 0 &&
                         ((between & ((us | them) ^ ourKingMask)) == 0) &&
                         (GetIndexFile(rookTo) == GetIndexFile(theirKing) || GetIndexRank(rookTo) == GetIndexRank(theirKing)))
@@ -1157,10 +1249,6 @@ namespace LTChess.Logic.Core
 
                         m.CausesCheck = true;
                         m.SqChecker = rookTo;
-                    }
-                    else
-                    {
-                        MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
                     }
 
                     ml[size++] = m;
@@ -1173,7 +1261,12 @@ namespace LTChess.Logic.Core
                 moves = poplsb(moves);
 
                 Move m = new Move(idx, to);
-                MakeCheck(bb, Piece.King, ToMove, theirKing, ref m);
+                if ((them & SquareBB[to]) != 0)
+                {
+                    m.Capture = true;
+                }
+
+                MakeCheck(Piece.King, ToMove, theirKing, ref m);
                 ml[size++] = m;
             }
 
@@ -1182,51 +1275,51 @@ namespace LTChess.Logic.Core
 
         /// <summary>
         /// Determines if the Move <paramref name="m"/> will put the enemy king in check or double check
-        /// and updates <paramref name="m"/><c>.CausesCheck</c> and friends accordingly.
+        /// and updates <paramref name="m"/>'s check information.
         /// </summary>
         [MethodImpl(Inline)]
-        private static void MakeCheck(in Bitboard bb, int pt, int ourColor, int theirKing, ref Move m)
+        private void MakeCheck(int pt, int ourColor, int theirKing, ref Move m)
         {
+            int moveFrom = m.From;
             int moveTo = m.To;
 
-            int theirColor = Not(ourColor);
-            ulong moveMask = (SquareBB[m.From] | SquareBB[moveTo]);
-            int capturedPiece = bb.GetPieceAtIndex(moveTo);
-            if (capturedPiece != Piece.None)
+            if ((State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
             {
-                bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
-                bb.Colors[theirColor] ^= SquareBB[moveTo];
-                m.Capture = true;
+                //  This piece is making a direct check
+                m.CausesCheck = true;
+                m.SqChecker = moveTo;
             }
 
-            bb.Pieces[pt] ^= moveMask;
-            bb.Colors[ourColor] ^= moveMask;
-
-            ulong att = bb.AttackersToFast(theirKing, bb.Colors[ourColor] | bb.Colors[theirColor]) & bb.Colors[ourColor];
-
-            switch (popcount(att))
+            if ((State->BlockingPieces[Not(ourColor)] & SquareBB[moveFrom]) != 0)
             {
-                case 0:
-                    break;
-                case 1:
-                    m.CausesCheck = true;
-                    m.SqChecker = lsb(att);
-                    break;
-                case 2:
-                    m.CausesDoubleCheck = true;
-                    m.SqChecker = lsb(att);
-                    m.SqDoubleChecker = msb(att);
-                    break;
+                //  This piece is blocking a check on their king
+                if (((RayBB[moveFrom][moveTo] & SquareBB[theirKing]) == 0) || m.Castle)
+                {
+                    //  If it moved off of the ray that it was blocking the check on,
+                    //  then it is causing a discovery
+
+                    if (m.CausesCheck)
+                    {
+                        //  If the piece that had been blocking also moved to one of the CheckSquares,
+                        //  then this is actually double check.
+
+                        m.CausesCheck = false;
+                        m.CausesDoubleCheck = true;
+                    }
+                    else
+                    {
+                        m.CausesCheck = true;
+                    }
+
+                    Debug.Assert((State->Xrays[ourColor] & RayBB[moveFrom][theirKing]) != 0);
+
+                    //  The piece causing the discovery is the xrayer of our color 
+                    //  that is on the same ray that the piece we were moving shared with the king.
+                    m.SqChecker = lsb(State->Xrays[ourColor] & RayBB[moveFrom][theirKing]);
+                }
             }
 
-            if (capturedPiece != Piece.None)
-            {
-                bb.Pieces[capturedPiece] ^= SquareBB[moveTo];
-                bb.Colors[theirColor] ^= SquareBB[moveTo];
-            }
-
-            bb.Pieces[pt] ^= moveMask;
-            bb.Colors[ourColor] ^= moveMask;
+            //  En passant, promotions, and castling checks are already handled
         }
 
         /// <summary>
@@ -1234,7 +1327,7 @@ namespace LTChess.Logic.Core
         /// if those promotions will put the enemy king in check or double check.
         /// </summary>
         [MethodImpl(Inline)]
-        private static int MakePromotionChecks(in Bitboard bb, int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
+        private static int MakePromotionChecks(ref Bitboard bb, int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
         {
             int theirColor = Not(ourColor);
 
@@ -1252,7 +1345,7 @@ namespace LTChess.Logic.Core
                 bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
                 bb.Colors[ourColor] ^= (SquareBB[from] | SquareBB[promotionSquare]);
 
-                ulong attacks = bb.AttackersTo(theirKing, theirColor);
+                ulong attacks = bb.AttackersToFast(theirKing, bb.Occupancy) & bb.Colors[ourColor];
                 switch (popcount(attacks))
                 {
                     case 0:
@@ -1317,28 +1410,63 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public bool IsThreefoldRepetition()
         {
-            if (HalfMoves < LowestRepetitionCount || Hashes.Count < LowestRepetitionCount)
+            //  At least 8 moves must be made before a draw can occur.
+            if (GamePly < LowestRepetitionCount)
             {
                 return false;
             }
 
             int count = 0;
-            for (int i = 0; i < HalfMoves; i++)
+            ulong currHash = State->Hash;
+
+#if DEBUG
+            StateInfo* dbg = State;
+            List<ulong> Hashes = new List<ulong>(State->HalfmoveClock);
+            for (int i = 0; i < GamePly; i++)
             {
-                if (i == Hashes.Count)
+                Hashes.Add(dbg->Hash);
+                if (dbg == _SentinelStart)
                 {
-                    //  TODO actually fix this...
                     break;
                 }
+                dbg = (dbg - 1);
+            }
+#endif
 
-                if (Hashes.Peek(i) == Hash)
+            //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
+            //  If we encounter the current hash 2 additional times, then this is a draw.
+            StateInfo* temp = State;
+            for (int i = 0; i < GamePly - 1; i += 2)
+            {
+                if (temp->Hash == currHash)
                 {
                     count++;
-                    if (count == 2)
+
+                    if (count == 3)
                     {
                         return true;
                     }
                 }
+
+                if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart) {
+                    break;
+                }
+
+#if DEBUG
+                if ((temp - 1) == null || !StateInfo.PointerValid((temp - 1)))
+                {
+                    Log(StateInfo.StringFormat((temp - 1)) + "'s Previous was freed while it was in use by " + StateInfo.StringFormat(State));
+                    break;
+                }
+
+                if ((temp - 2) == null || !StateInfo.PointerValid((temp - 2)))
+                {
+                    Log(StateInfo.StringFormat((temp - 1)) + "'s Previous->Previous was freed while it was in use by " + StateInfo.StringFormat(State));
+                    break;
+                }
+#endif
+
+                temp = (temp - 2);
             }
             return false;
         }
@@ -1346,7 +1474,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public bool IsFiftyMoveDraw()
         {
-            return HalfMoves >= 100;
+            return State->HalfmoveClock >= 100;
         }
 
 
@@ -1361,26 +1489,26 @@ namespace LTChess.Logic.Core
             Span<Move> list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(list);
 
-            if (depth == 0)
-            {
-                return 1UL;
-            }
-            else if (depth == 1)
+            if (depth == 1)
             {
                 return (ulong)size;
             }
-
-            ulong n = 0;
-
-            for (int i = 0; i < size; i++)
+            else if (depth == 0)
             {
-                MakeMove(list[i], false);
-                n += Perft(depth - 1);
-                UnmakeMove(false);
+                return 1;
             }
 
+            ulong n = 0;
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                MakeMove(m, false);
+                n += Perft(depth - 1);
+                UnmakeMove(m, false);
+            }
             return n;
         }
+
 
         /// <summary>
         /// Same as PerftDivide, but uses Parallel.For rather than a regular for loop.
@@ -1403,8 +1531,7 @@ namespace LTChess.Logic.Core
             Parallel.For(0, size, i =>
             {
                 PerftNode pn = new PerftNode();
-                Position threadPosition = new Position(rootFEN);
-
+                Position threadPosition = new Position(rootFEN, false);
                 pn.root = mlist[i].ToString();
                 threadPosition.MakeMove(mlist[i], false);
                 pn.number = threadPosition.Perft(depth - 1);
@@ -1415,48 +1542,12 @@ namespace LTChess.Logic.Core
             return list;
         }
 
-        public List<PerftNode> PerftDivide(int depth)
-        {
-            List<PerftNode> list = new List<PerftNode>();
-            if (depth <= 0)
-            {
-                return list;
-            }
-
-            Span<Move> mlist = stackalloc Move[NormalListCapacity];
-            int size = GenAllLegalMovesTogether(mlist);
-            for (int i = 0; i < size; i++)
-            {
-                PerftNode pn = new PerftNode();
-                pn.root = mlist[i].ToString();
-                MakeMove(mlist[i], false);
-                pn.number = Perft(depth - 1);
-                UnmakeMove(false);
-                list.Add(pn);
-
-                //Console.Title = "Progress: " + (i + 1) + " / " + size + " branches";
-            }
-
-            return list;
-        }
-
-
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
         /// </summary>
         /// <param name="fen">The FEN to set the position to</param>
         public bool LoadFromFEN(string fen)
         {
-            Position temp = (Position)this.MemberwiseClone();
-
-            temp.Moves = this.Moves.Clone();
-            temp.Captures = this.Captures.Clone();
-            temp.Castles = this.Castles.Clone();
-            temp.Checks = this.Checks.Clone();
-            temp.Hashes = this.Hashes.Clone();
-            temp.HalfmoveClocks = this.HalfmoveClocks.Clone();
-            temp.EnPassantTargets = this.EnPassantTargets.Clone();
-
             try
             {
                 string[] splits = fen.Split(new char[] { '/', ' ' });
@@ -1465,6 +1556,9 @@ namespace LTChess.Logic.Core
                 Castling = CastlingStatus.None;
                 HalfMoves = 0;
                 FullMoves = 1;
+
+                State->CastleStatus = CastlingStatus.None;
+                State->HalfmoveClock = 0;
 
                 for (int i = 0; i < splits.Length; i++)
                 {
@@ -1513,6 +1607,7 @@ namespace LTChess.Logic.Core
                         if (splits[i].Contains("-"))
                         {
                             Castling = 0;
+                            State->CastleStatus = CastlingStatus.None;
                         }
                         else
                         {
@@ -1520,6 +1615,11 @@ namespace LTChess.Logic.Core
                             Castling |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
                             Castling |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
                             Castling |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
+
+                            State->CastleStatus |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
+                            State->CastleStatus |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
+                            State->CastleStatus |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
+                            State->CastleStatus |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
                         }
                     }
                     //	en passant target or last double pawn move
@@ -1530,20 +1630,23 @@ namespace LTChess.Logic.Core
                             //	White moved a pawn last
                             if (splits[i][1].Equals('3'))
                             {
-                                //int id = CoordToIndex(GetFileInt(splits[i][0]), 4);
                                 EnPassantTarget = StringToIndex(splits[i]);
+                                State->EPSquare = StringToIndex(splits[i]);
                             }
                             else if (splits[i][1].Equals('6'))
                             {
-                                //int id = CoordToIndex(GetFileInt(splits[i][0]), 5);
                                 EnPassantTarget = StringToIndex(splits[i]);
+                                State->EPSquare = StringToIndex(splits[i]);
                             }
+
+                            
                         }
                     }
                     //	halfmove number
                     else if (i == 11)
                     {
                         HalfMoves = int.Parse(splits[i]);
+                        State->HalfmoveClock = int.Parse(splits[i]);
                     }
                     //	fullmove number
                     else if (i == 12)
@@ -1557,30 +1660,17 @@ namespace LTChess.Logic.Core
                 Log("Failed parsing '" + fen + "': ");
                 Log(ex.ToString());
 
-                this.Moves.CopyFromArray(temp.Moves);
-                this.Captures.CopyFromArray(temp.Captures);
-                this.Castles.CopyFromArray(temp.Castles);
-                this.Checks.CopyFromArray(temp.Checks);
-                this.Hashes.CopyFromArray(temp.Hashes);
-                this.HalfmoveClocks.CopyFromArray(temp.HalfmoveClocks);
-                this.EnPassantTargets.CopyFromArray(temp.EnPassantTargets);
-
                 return false;
             }
 
-            if (UseSimple768)
-            {
-                NNUEEvaluation.RefreshNN(this);
-                NNUEEvaluation.ResetNN();
-            }
-
-            if (UseHalfKA)
-            {
-                HalfKA_HM.ResetNN();
-            }
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
             Hash = Zobrist.GetHash(this);
+
+            SetState();
+
+            State->CapturedPiece = None;
+
             MaterialCount[Color.White] = bb.MaterialCount(Color.White);
             MaterialCount[Color.Black] = bb.MaterialCount(Color.Black);
 
@@ -1655,22 +1745,22 @@ namespace LTChess.Logic.Core
             fen.Append(ToMove == Color.White ? " w " : " b ");
 
             bool CanC = false;
-            if (Castling.HasFlag(CastlingStatus.WK))
+            if (State->CastleStatus.HasFlag(CastlingStatus.WK))
             {
                 fen.Append("K");
                 CanC = true;
             }
-            if (Castling.HasFlag(CastlingStatus.WQ))
+            if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
             {
                 fen.Append("Q");
                 CanC = true;
             }
-            if (Castling.HasFlag(CastlingStatus.BK))
+            if (State->CastleStatus.HasFlag(CastlingStatus.BK))
             {
                 fen.Append("k");
                 CanC = true;
             }
-            if (Castling.HasFlag(CastlingStatus.BQ))
+            if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
             {
                 fen.Append("q");
                 CanC = true;
@@ -1679,7 +1769,7 @@ namespace LTChess.Logic.Core
             {
                 fen.Append("-");
             }
-            if (EnPassantTarget != 0)
+            if (EnPassantTarget != SquareNB)
             {
                 fen.Append(" " + IndexToString(EnPassantTarget));
             }
