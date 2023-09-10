@@ -14,12 +14,7 @@ namespace LTChess.Logic.Core
     public class UCI
     {
 
-        //private SearchInformation info;
-        /// <summary>
-        /// <see cref="Program.ThreadMonitor"/> needs this to be public so it can print it's ToString()
-        /// </summary>
-        public static SearchInformation info;
-
+        private SearchInformation info;
 
         public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
@@ -154,12 +149,18 @@ namespace LTChess.Logic.Core
 
                     if (param[0] == "startpos")
                     {
+                        //  Some UCI's send commands that look like "position startpos moves e2e4 c7c5 g1f3"
+                        //  If the command does have a "moves" component, then set the fen normally,
+                        //  and try to make the moves that we were told to.
                         info.Position = new Position();
                         if (param.Length > 1 && param[1] == "moves")
                         {
                             for (int i = 2; i < param.Length; i++)
                             {
-                                info.Position.TryMakeMove(param[i]);
+                                if (!info.Position.TryMakeMove(param[i]))
+                                {
+                                    LogString("[ERROR]: Failed doing extra moves! '" + param[i] + "' didn't work with FEN " + info.Position.GetFEN());
+                                }
                             }
 
                             LogString("[INFO]: New FEN is " + info.Position.GetFEN());
@@ -418,39 +419,7 @@ namespace LTChess.Logic.Core
 
             if (!hasMoveTime && (info.TimeManager.MaxSearchTime == SearchConstants.DefaultSearchTime) && hasWhiteTime && hasBlackTime)
             {
-                info.TimeManager.MakeMoveTime(info.Position.ToMove, info.Position.Moves.Count);
-            }
-
-            bool gotBookMove = false;
-            if (SearchConstants.UsePolyglot && info.Position.Moves.Count < (SearchConstants.PolyglotMaxPly * 2))
-            {
-                if (Polyglot.Probe(info.Position, Polyglot.DefaultMethod, out Move bookMove, out int moveWeight))
-                {
-                    gotBookMove = true;
-                    info.BestMove = bookMove;
-                    info.BestScore = moveWeight;
-                    Log("Polyglot probe returned " + bookMove.ToString(info.Position) + " eval " + moveWeight);
-
-                    SendString("info depth 1 seldepth 1 time 1 score cp " + moveWeight + " nodes 1 nps 1 hashfull 0 pv " + bookMove.ToString());
-
-                    if (SearchConstants.PolyglotSimulateTime)
-                    {
-                        Log("PolyglotSimulateTime is true, sleeping for " + info.TimeManager.MaxSearchTime + " ms" + TimeManager.GetFormattedTime());
-                        Thread.Sleep(info.TimeManager.MaxSearchTime);
-                        Log("Woke up" + TimeManager.GetFormattedTime());
-                    }
-
-                    info.OnSearchFinish?.Invoke(info);
-                }
-                else
-                {
-                    Log("Polyglot probe failed");
-                }
-            }
-
-            if (gotBookMove)
-            {
-                return;
+                info.TimeManager.MakeMoveTime(info.Position.ToMove);
             }
 
             SimpleSearch.StartSearching(ref info, !hasDepthCommand);
