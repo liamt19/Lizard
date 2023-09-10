@@ -39,9 +39,9 @@ using LTChess.Logic.NN.HalfKA_HM;
 namespace LTChess
 {
 
-    public static class Program
+    public static unsafe class Program
     {
-        private static Position p = new Position();
+        private static Position p;
         private static SearchInformation info;
 
         public static void Main()
@@ -88,6 +88,8 @@ namespace LTChess
                 HalfKA_HM.ResetNN();
             }
 
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);
+            GC.WaitForPendingFinalizers();
 
 #if DEBUG
             Log("InitializeAll done in " + sw.Elapsed.TotalSeconds + " s");
@@ -114,7 +116,7 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("position fen "))
                 {
-                    p = new Position(input.Substring(13));
+                    p.LoadFromFEN(input.Substring(13));
                 }
                 else if (input.StartsWithIgnoreCase("go perft "))
                 {
@@ -124,7 +126,7 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("go perftp "))
                 {
                     int depth = int.Parse(input.Substring(10));
-                    Task.Run(() => DoPerftDivideParallel(depth, false));
+                    Task.Run(() => DoPerftDivideParallel(depth));
                 }
                 else if (input.StartsWithIgnoreCase("go depth"))
                 {
@@ -183,64 +185,9 @@ namespace LTChess
                         Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
-                else if (input.StartsWithIgnoreCase("best"))
+                else if (input.Equals("listmoves"))
                 {
-                    info = new SearchInformation(p, DefaultSearchDepth);
-                    if (input.Length > 5 && int.TryParse(input.Substring(5), out int selDepth))
-                    {
-                        info.MaxDepth = selDepth;
-                    }
-
-                    Task.Run(() =>
-                    {
-                        SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                    });
-                }
-                else if (input.StartsWithIgnoreCase("play"))
-                {
-                    info = new SearchInformation(p, DefaultSearchDepth);
-                    if (input.Length > 5 && int.TryParse(input.Substring(5), out int selDepth))
-                    {
-                        info.MaxDepth = selDepth;
-                    }
-
-                    Task.Run(() =>
-                    {
-                        SimpleSearch.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                        p.MakeMove(info.BestMove);
-                        Log(p.ToString());
-                    });
-                }
-                else if (input.StartsWithIgnoreCase("respond"))
-                {
-                    string move = input.ToLower().Substring(7).Trim();
-                    Span<Move> list = new Move[NormalListCapacity];
-                    int size = p.GenAllLegalMovesTogether(list);
-                    bool failed = true;
-                    for (int i = 0; i < size; i++)
-                    {
-                        Move m = list[i];
-                        if (m.ToString(p).ToLower().Equals(move) || m.ToString().ToLower().Equals(move))
-                        {
-                            p.MakeMove(m);
-                            info = new SearchInformation(p, DefaultSearchDepth);
-
-                            SimpleSearch.StartSearching(ref info);
-
-                            p.MakeMove(info.BestMove);
-                            Log(p.ToString());
-                            failed = false;
-                            break;
-                        }
-                    }
-                    if (failed)
-                    {
-                        Log("No move '" + move + "' found, try one of the following: ");
-                        Log(list.Stringify(p) + "\r\n" + list.Stringify());
-                    }
-
+                    PrintMoves();
                 }
                 else if (input.StartsWithIgnoreCase("puzzle"))
                 {
@@ -259,10 +206,6 @@ namespace LTChess
                     p.TryMakeMove(move);
 
                     Log(p.ToString());
-                }
-                else if (input.StartsWithIgnoreCase("undo"))
-                {
-                    p.UnmakeMove();
                 }
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
@@ -283,6 +226,10 @@ namespace LTChess
                     {
                         info.GetEvaluation(p, true);
                     }
+                }
+                else if (input.EqualsIgnoreCase("eval all"))
+                {
+                    DoEvalAllMoves();
                 }
                 else if (input.EqualsIgnoreCase("trace"))
                 {
@@ -307,15 +254,15 @@ namespace LTChess
                 {
                     EvaluationConstants.PrintConstants();
                 }
-                else if (input.ContainsIgnoreCase("time perft"))
-                {
-                    int toDepth = int.Parse(input.Substring(11));
-                    TimePerftToDepth(toDepth);
-                }
                 else if (input.StartsWithIgnoreCase("bench "))
                 {
                     int depth = int.Parse(input.Substring(6));
                     FishBench.Go(depth);
+                }
+                else if (input.EqualsIgnoreCase("gc"))
+                {
+                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);
+                    GC.WaitForPendingFinalizers();
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
@@ -353,9 +300,11 @@ namespace LTChess
         {
             JITHasntSeenSearch = true;
 
-            p.Perft(4);
+            Position temp = new Position();
 
-            info = new SearchInformation(p);
+            temp.Perft(4);
+
+            info = new SearchInformation(temp);
             info.MaxDepth = 4;
             info.SetMoveTime(250);
             SimpleSearch.StartSearching(ref info);
@@ -365,67 +314,51 @@ namespace LTChess
             JITHasntSeenSearch = false;
         }
 
-        public static void TimePerftToDepth(int depth)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            for (int i = 1; i <= depth; i++)
-            {
-                sw.Restart();
-                ulong res = p.Perft(i);
-                sw.Stop();
-                double r = Math.Round(sw.Elapsed.TotalSeconds, 4);
-                Log("Depth " + i + " - Time: " + Math.Round(sw.Elapsed.TotalSeconds, 4) + " s");
-            }
-        }
 
         public static void DoPerftDivide(int depth, bool sortAlphabetical = true)
         {
-            ulong res = 0;
+            ulong total = 0;
             Stopwatch sw = Stopwatch.StartNew();
-            List<PerftNode> nodes = p.PerftDivide(depth);
+
+            Span<Move> mlist = stackalloc Move[NormalListCapacity];
+            int size = p.GenAllLegalMovesTogether(mlist);
+            for (int i = 0; i < size; i++)
+            {
+                p.MakeMove(mlist[i], false);
+                ulong result = p.Perft(depth - 1);
+                p.UnmakeMove(mlist[i], false);
+                Log(mlist[i].ToString() + ": " + result);
+                total += result;
+            }
             sw.Stop();
 
-            foreach (PerftNode node in nodes)
-            {
-                if (!sortAlphabetical)
-                {
-                    Log(node.root + ": " + node.number);
-                }
-
-                res += node.number;
-            }
-
-            if (sortAlphabetical)
-            {
-                nodes.OrderBy(x => x.root).ToList().ForEach(node => Log(node.root + ": " + node.number));
-            }
-
-            Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
         }
 
-        public static void DoPerftDivideParallel(int depth, bool sortAlphabetical = true)
+        public static void DoPerftDivideParallel(int depth)
         {
-            ulong res = 0;
+            ulong total = 0;
             Stopwatch sw = Stopwatch.StartNew();
-            List<PerftNode> nodes = p.PerftDivideParallel(depth);
+
+            string rootFEN = p.GetFEN();
+
+            Move[] mlist = new Move[NormalListCapacity];
+            int size = p.GenAllLegalMovesTogether(mlist);
+
+            Parallel.For(0u, size, i =>
+            {
+                Position threadPosition = new Position(rootFEN, false);
+
+                threadPosition.MakeMove(mlist[i], false);
+                ulong result = threadPosition.Perft(depth - 1);
+                Log(mlist[i].ToString() + ": " + result);
+
+                total += result;
+            });
+
             sw.Stop();
 
-            foreach (PerftNode node in nodes)
-            {
-                if (!sortAlphabetical)
-                {
-                    Log(node.root + ": " + node.number);
-                }
-
-                res += node.number;
-            }
-
-            if (sortAlphabetical)
-            {
-                nodes.OrderBy(x => x.root).ToList().ForEach(node => Log(node.root + ": " + node.number));
-            }
-
-            Log("\r\nNodes searched:  " + res + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
         }
 
 
@@ -438,6 +371,61 @@ namespace LTChess
             SearchStatistics.PrintStatistics();
         }
 
+        /// <summary>
+        /// Prints out the current static evaluation of the position, and the static evaluations after 
+        /// each of the legal moves for that position are made.
+        /// </summary>
+        public static void DoEvalAllMoves()
+        {
+            if (UseSimple768)
+            {
+                Log("Static evaluation: " + NNUEEvaluation.GetEvaluation(p));
+            }
+            else if (UseHalfKA)
+            {
+                Log("Static evaluation (White's perspective): " + HalfKA_HM.GetEvaluation(p));
+            }
+            else
+            {
+                Log("Static evaluation: " + info.GetEvaluation(p, true));
+            }
+
+            Log("\r\nMove evaluations (White's perspective):");
+
+            Span<Move> list = stackalloc Move[NormalListCapacity];
+            int size = p.GenAllLegalMovesTogether(list);
+            List<(Move mv, int eval)> scoreList = new();
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                p.MakeMove(m, true);
+                int moveEval = 0;
+
+                if (UseSimple768)
+                {
+                    moveEval = NNUEEvaluation.GetEvaluation(p);
+                }
+                else if (UseHalfKA)
+                {
+                    moveEval = HalfKA_HM.GetEvaluation(p);
+                }
+                else
+                {
+                    moveEval = info.GetEvaluation(p, true);
+                }
+
+                p.UnmakeMove(m, true);
+                scoreList.Add((m, moveEval));
+            }
+
+            var sorted = scoreList.OrderBy(x => x.eval).ToList();
+            for (int i = 0; i < sorted.Count; i++)
+            {
+                Log(sorted[i].mv.ToString(p) + ": " + sorted[i].eval);
+            }
+        }
+
 
         public static void DotTraceProfile(int depth = 14)
         {
@@ -447,35 +435,27 @@ namespace LTChess
             {
                 SimpleSearch.StartSearching(ref info);
                 Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
+
+                info.MaxDepth -= 1;
+                SimpleSearch.StartSearching(ref info);
+                Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
             }).Wait();
 
             Environment.Exit(123);
         }
 
-        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
-            Log("An UnhandledException occurred: " + e.ToString());
+            Exception e = (Exception)args.ExceptionObject;
+
+            Log("An UnhandledException occurred!\r\n" + e.ToString());
             using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
             {
                 using StreamWriter sw = new StreamWriter(fs);
 
-                sw.WriteLine("An UnhandledException occurred: " + e.ToString());
+                sw.WriteLine("An UnhandledException occurred!\r\n" + e.ToString());
 
                 sw.Flush();
-            }
-        }
-
-        private static void ThreadMonitor()
-        {
-            while (true)
-            {
-                Thread.SpinWait(1000000);
-                string mvs = "";
-                if (UCI.info.Position != null && UCI.info.Position.Moves != null && UCI.info.Position.Moves.Count > 0)
-                {
-                    mvs = UCI.info.Position.Moves.ToString();
-                }
-                Log("NM:\t" + SearchStatistics.NMNodes + ",\tQ:\t" + SearchStatistics.QuiescenceNodes + "\tFails:\t" + SearchStatistics.AspirationWindowFails + "\tmoves:" + mvs + "\tinfo:\t" + UCI.info.ToString());
             }
         }
 
