@@ -3,7 +3,7 @@
 
 namespace LTChess.Logic.Search.Ordering
 {
-    public static class MoveOrdering
+    public static unsafe class MoveOrdering
     {
         /// <summary>
         /// A table containing move scores given to captures based on the value of the attacking piece in comparison to the piece being captured.
@@ -14,12 +14,12 @@ namespace LTChess.Logic.Search.Ordering
         public static readonly int[][] MvvLva =
         {
             //          pawn, knight, bishop, rook, queen, king
-            new int[] { 1005, 1004, 1003, 1002, 1001, 1000 },
-            new int[] { 2005, 2004, 2003, 2002, 2001, 2000 },
-            new int[] { 3005, 3004, 3003, 3002, 3001, 3000 },
-            new int[] { 4005, 4004, 4003, 4002, 4001, 4000 },
-            new int[] { 5005, 5004, 5003, 5002, 5001, 5000 },
-            new int[] { 6005, 6004, 6003, 6002, 6001, 6000 }
+            new int[] { 10005, 10004, 10003, 10002, 10001, 10000 },
+            new int[] { 20005, 20004, 20003, 20002, 20001, 20000 },
+            new int[] { 30005, 30004, 30003, 30002, 30001, 30000 },
+            new int[] { 40005, 40004, 40003, 40002, 40001, 40000 },
+            new int[] { 50005, 50004, 50003, 50002, 50001, 50000 },
+            new int[] { 60005, 60004, 60003, 60002, 60001, 60000 }
         };
 
 
@@ -32,65 +32,55 @@ namespace LTChess.Logic.Search.Ordering
         /// <param name="ply">The current ply of the search, used to determine what the killer moves are for that ply</param>
         /// <param name="pvOrTTMove">This is set to the TTEntry.BestMove from the previous depth, or possibly Move.Null</param>
         [MethodImpl(Inline)]
-        public static unsafe void AssignNormalMoveScores(ref SearchInformation info, in Span<Move> list, in Span<int> scores, SearchStackEntry* ss, int size, int ply, CondensedMove pvOrTTMove)
+        public static unsafe void AssignNormalMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, SearchStackEntry* ss, int size, int ply, CondensedMove pvOrTTMove)
         {
-            int theirKing = info.Position.bb.KingIndex(Not(info.Position.ToMove));
-            int pt;
-
             for (int i = 0; i < size; i++)
             {
-                if (list[i].Equals(pvOrTTMove))
+                Move m = list[i];
+                if (m.Equals(pvOrTTMove))
                 {
                     scores[i] = int.MaxValue - 10;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_PV_TT_Move++;
 #endif
                 }
-                else if (list[i].Promotion)
+                else if (m.Promotion)
                 {
-                    scores[i] = int.MaxValue - 100 + list[i].PromotionTo;
+                    scores[i] = int.MaxValue - 100 + m.PromotionTo;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_Promotion++;
 #endif
                 }
-                else if (list[i].Capture)
+                else if (m.Equals(ss->Killer0))
                 {
-                    int victim = info.Position.bb.GetPieceAtIndex(list[i].To);
-                    int aggressor = info.Position.bb.GetPieceAtIndex(list[i].To);
-                    scores[i] = MvvLva[victim][aggressor] * 10000;
-#if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_MvvLva++;
-#endif
-                }
-                else if (list[i].Equals(ss->Killer0))
-                {
-                    scores[i] = 100000;
+                    scores[i] = int.MaxValue - 200;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_Killer_1++;
 #endif          
                 }
-                else if (list[i].Equals(ss->Killer1))
+                else if (m.Equals(ss->Killer1))
                 {
-                    scores[i] = 90000;
+                    scores[i] = int.MaxValue - 300;
 #if DEBUG || SHOW_STATS
                     SearchStatistics.Scores_Killer_2++;
 #endif
                 }
-                else if (UseHistoryHeuristic)
+                else if (m.Capture)
                 {
+                    int victim = pos.bb.GetPieceAtIndex(m.To);
+                    int aggressor = pos.bb.GetPieceAtIndex(m.From);
+                    //scores[i] = MvvLva[victim][aggressor];
 
-                    int pc = info.Position.ToMove;
-                    pt = info.Position.bb.GetPieceAtIndex(list[i].From);
+                    scores[i] += history.CaptureHistory[HistoryTable.CapIndex(aggressor, pos.ToMove, m.To, victim)];
 
-                    int history = SimpleSearch.HistoryMoves[pc, pt, list[i].To];
-                    scores[i] = history;
 #if DEBUG || SHOW_STATS
-                    SearchStatistics.Scores_HistoryHeuristic++;
+                    SearchStatistics.Scores_MvvLva++;
 #endif
                 }
                 else
                 {
-                    scores[i] = 0;
+                    //scores[i] = 0;
+                    scores[i] = history.MainHistory[(pos.ToMove * HistoryTable.MainHistoryPCStride) + m.MoveMask];
                 }
             }
 
@@ -145,23 +135,36 @@ namespace LTChess.Logic.Search.Ordering
 
 
         [MethodImpl(Inline)]
-        public static void AssignQuiescenceMoveScores(ref Bitboard bb, in Span<Move> list, in Span<int> scores, int size)
+        public static void AssignQuiescenceMoveScores(in Bitboard bb, in Span<Move> list, in Span<int> scores, int size)
         {
             for (int i = 0; i < size; i++)
             {
-                //scores[i] = SimpleQuiescence.SEESimple(ref bb, ref list[i]);
-
-                //scores[i] = GetPieceValue(bb.PieceTypes[list[i].To]) - GetPieceValue(bb.PieceTypes[list[i].From]);
-                //if (list[i].EnPassant)
-                //{
-                //    scores[i] = EvaluationConstants.ValuePawn;
-                //}
-                //else if (list[i].Promotion)
-                //{
-                //    scores[i] += GetPieceValue(list[i].PromotionTo);
-                //}
-
                 scores[i] = GetPieceValue(bb.PieceTypes[list[i].To]);
+            }
+        }
+
+        [MethodImpl(Inline)]
+        public static void AssignQuiescenceMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, int size)
+        {
+            Bitboard bb = pos.bb;
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                int moveTo = m.To;
+                int moveFrom = m.From;
+
+                if (m.Capture)
+                {
+                    int capturedPiece = bb.GetPieceAtIndex(moveTo);
+                    int capIdx = HistoryTable.CapIndex(bb.GetPieceAtIndex(moveFrom), bb.GetColorAtIndex(moveFrom), moveTo, capturedPiece);
+                    scores[i] = (7 * GetPieceValue(capturedPiece)) + history.CaptureHistory[capIdx] / 16;
+                }
+                else
+                {
+                    scores[i] = history.MainHistory[((pos.ToMove * HistoryTable.MainHistoryPCStride) + m.MoveMask)];
+                }
+                
             }
         }
 
@@ -173,7 +176,7 @@ namespace LTChess.Logic.Search.Ordering
                 return;
             }
 
-            int max = AlphaStart;
+            int max = short.MinValue;
             int maxIndex = -1;
 
             for (int i = listIndex; i < size; i++)
