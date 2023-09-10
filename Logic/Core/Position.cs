@@ -484,10 +484,12 @@ namespace LTChess.Logic.Core
                 HalfKA_HM.RefreshNN(this);
             }
 
+#if DEBUG
             if (IsThreefoldRepetition())
             {
                 Log("Move " + move.ToString() + " caused a draw by threefold!");
             }
+#endif
         }
 
 
@@ -617,7 +619,7 @@ namespace LTChess.Logic.Core
         /// and position hash accordingly.
         /// </summary>
         [MethodImpl(Inline)]
-        public void MakeNullMove(StateInfo* newState)
+        public void MakeNullMove()
         {
             Unsafe.CopyBlockUnaligned((State + 1), State, (uint)sizeof(StateInfo));
             State++;
@@ -1225,7 +1227,7 @@ namespace LTChess.Logic.Core
             {
                 ulong ourKingMask = bb.KingMask(ToMove);
                 Span<Move> CastleMoves = stackalloc Move[2];
-                int numCastleMoves = GenCastlingMoves(bb, idx, us, State->CastleStatus, CastleMoves, 0);
+                int numCastleMoves = GenCastlingMoves(ref bb, idx, us, State->CastleStatus, CastleMoves, 0);
                 for (int i = 0; i < numCastleMoves; i++)
                 {
                     //  See if this will cause check.
@@ -1268,6 +1270,78 @@ namespace LTChess.Logic.Core
 
                 MakeCheck(Piece.King, ToMove, theirKing, ref m);
                 ml[size++] = m;
+            }
+
+            return size;
+        }
+
+        /// <summary>
+        /// Generates the castling moves for the king on E1 or E8 
+        /// by checking if the squares the king will pass through aren't under attack
+        /// and the squares between the king and its rooks are empty.
+        /// </summary>
+        /// <returns>The number of castling moves generated, at most 2.</returns>
+        [MethodImpl(Inline)]
+        public static int GenCastlingMoves(ref Bitboard bb, int idx, in ulong us, CastlingStatus Castling, in Span<Move> ml, int size)
+        {
+            if (idx == E1)
+            {
+                ulong all = (bb.Colors[Color.White] | bb.Colors[Color.Black]);
+
+                if (Castling.HasFlag(CastlingStatus.WK))
+                {
+                    if ((all & WhiteKingsideMask) == 0 && (bb.AttackersToFast(F1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersToFast(G1, all) & bb.Colors[Color.Black]) == 0)
+                    {
+                        if ((bb.Pieces[Piece.Rook] & SquareBB[H1] & us) != 0)
+                        {
+                            Move m = new Move(E1, G1);
+                            m.Castle = true;
+                            ml[size++] = m;
+                        }
+                    }
+                }
+                if (Castling.HasFlag(CastlingStatus.WQ))
+                {
+                    //  B1 empty, C1+D1 are empty and not attacked
+                    if ((all & WhiteQueensideMask) == 0 && (bb.AttackersToFast(C1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersToFast(D1, all) & bb.Colors[Color.Black]) == 0)
+                    {
+                        if ((bb.Pieces[Piece.Rook] & SquareBB[A1] & us) != 0)
+                        {
+                            Move m = new Move(E1, C1);
+                            m.Castle = true;
+                            ml[size++] = m;
+                        }
+                    }
+                }
+            }
+            else if (idx == E8)
+            {
+                ulong all = (bb.Colors[Color.White] | bb.Colors[Color.Black]);
+
+                if (Castling.HasFlag(CastlingStatus.BK))
+                {
+                    if ((all & BlackKingsideMask) == 0 && (bb.AttackersToFast(F8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersToFast(G8, all) & bb.Colors[Color.White]) == 0)
+                    {
+                        if ((bb.Pieces[Piece.Rook] & SquareBB[H8] & us) != 0)
+                        {
+                            Move m = new Move(E8, G8);
+                            m.Castle = true;
+                            ml[size++] = m;
+                        }
+                    }
+                }
+                if (Castling.HasFlag(CastlingStatus.BQ))
+                {
+                    if ((all & BlackQueensideMask) == 0 && (bb.AttackersToFast(C8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersToFast(D8, all) & bb.Colors[Color.White]) == 0)
+                    {
+                        if ((bb.Pieces[Piece.Rook] & SquareBB[A8] & us) != 0)
+                        {
+                            Move m = new Move(E8, C8);
+                            m.Castle = true;
+                            ml[size++] = m;
+                        }
+                    }
+                }
             }
 
             return size;
