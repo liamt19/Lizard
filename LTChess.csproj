@@ -62,6 +62,7 @@
 
   <ItemGroup>
     <Compile Remove="Logic\Core\HashPerft.cs" />
+    <Compile Remove="Logic\Evaluation\Endgame.cs" />
     <Compile Remove="Logic\Evaluation\Evaluation.cs" />
     <Compile Remove="Logic\Search\Mate.cs" />
     <Compile Remove="Logic\Search\NegaMax.cs" />
