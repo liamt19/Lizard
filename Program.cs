@@ -11,7 +11,6 @@ global using LTChess.Logic.Search;
 global using LTChess.Logic.Transposition;
 global using LTChess.Logic.Util;
 
-global using static LTChess.Logic.Core.MoveGenerator;
 global using static LTChess.Logic.Core.UCI;
 global using static LTChess.Logic.Data.CheckInfo;
 global using static LTChess.Logic.Data.PrecomputedData;
@@ -422,7 +421,7 @@ namespace LTChess
             var sorted = scoreList.OrderBy(x => x.eval).ToList();
             for (int i = 0; i < sorted.Count; i++)
             {
-                Log(sorted[i].mv.ToString(p) + ": " + sorted[i].eval);
+                Log(sorted[i].mv.ToString(p) + ": " + (sorted[i].eval * -1));
             }
         }
 
@@ -433,10 +432,6 @@ namespace LTChess
             info.MaxDepth = depth;
             Task.Run(() =>
             {
-                SimpleSearch.StartSearching(ref info);
-                Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-
-                info.MaxDepth -= 1;
                 SimpleSearch.StartSearching(ref info);
                 Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
             }).Wait();

@@ -259,6 +259,13 @@ namespace LTChess.Logic.NN.HalfKA_HM
             return (psqt + output[0]) / 16;
         }
 
+        /// <summary>
+        /// Prints out the board, and calculates the value that each piece has on the square it is on by
+        /// comparing the NNUE evaluation of the position when that piece is removed to the base evaluation.
+        /// This is entirely taken from:
+        /// <br></br>
+        /// https://github.com/official-stockfish/Stockfish/blob/b25d68f6ee2d016cc0c14b076e79e6c44fdaea2a/src/nnue/evaluate_nnue.cpp#L272C17-L272C17
+        /// </summary>
         public static void Trace(Position pos)
         {
             char[][] board = new char[3 * 8 + 1][];
@@ -316,7 +323,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\nNNUE evaluation: " +  baseEval + "\n");
 
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {
                 for (int r = 0; r <= 7; r++)
@@ -329,18 +336,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     if (pt != None && bb.GetPieceAtIndex(idx) != King)
                     {
-                        bb.Pieces[pt] ^= SquareBB[idx];
-                        bb.Colors[pc] ^= SquareBB[idx];
-                        bb.PieceTypes[idx] = None;
+                        bb.RemovePiece(idx, pc, pt);
 
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = false;
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = false;
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
                         int eval = GetEvaluation(pos, false);
                         v = baseEval - eval;
 
-                        bb.Pieces[pt] ^= SquareBB[idx];
-                        bb.Colors[pc] ^= SquareBB[idx];
-                        bb.PieceTypes[idx] = pt;
+                        bb.AddPiece(idx, pc, pt);
                     }
 
                     writeSquare(f, r, fishPc, v);
@@ -426,7 +429,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public static bool MakeMove(Position pos, Move m)
         {
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             int moveFrom = m.From;
             int moveTo = m.To;
@@ -616,7 +619,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         {
             int spanIndex = 0;
 
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             for (int perspective = 0; perspective < 2; perspective++)
             {
@@ -664,7 +667,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         {
             int spanIndex = 0;
 
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             ulong us = bb.Colors[perspective];
             ulong them = bb.Colors[Not(perspective)];
@@ -742,7 +745,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static void Debug_ShowActiveIndices(Position pos)
         {
-            Bitboard bb = pos.bb;
+            ref Bitboard bb = ref pos.bb;
 
             for (int perspective = 0; perspective < 2; perspective++)
             {
