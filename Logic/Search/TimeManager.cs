@@ -139,10 +139,10 @@ namespace LTChess.Logic.Search
         /// which works well since there are more pieces and therefore more moves that need to be considered in the early/midgame.
         /// </summary>
         [MethodImpl(Inline)]
-        public void MakeMoveTime(int ToMove, int moveCount)
+        public void MakeMoveTime(int ToMove)
         {
             int inc = PlayerIncrement[ToMove];
-            int newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / Math.Max(20, 20 - moveCount));
+            int newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / 20);
 
             if (MovesToGo != -1)
             {
