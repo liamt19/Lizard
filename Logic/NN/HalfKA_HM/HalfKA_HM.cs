@@ -31,7 +31,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public const bool IsLEB128 = false;
 
-        public const string BestNet = @"nn-735bba95dec0.nnue";
+        public const string NNV3 = @"nn-735bba95dec0.nnue";
+        public const string NNV4 = @"nn-6877cd24400e.nnue";
+        public const string NNV5 = @"nn-e1fb1ade4432.nnue";
 
         public const string Name = "HalfKAv2_hm(Friend)";
 
@@ -42,12 +44,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public const int MaxActiveDimensions = 32;
 
-        /// <summary>
-        /// King squares * Piece squares * Piece types * Colors == 40960
-        /// </summary>
-        private const int FeatureCount = SquareNB * SquareNB * PieceNB * ColorNB;
 
-        private const int OutputDimensions = 512 * 2;
 
         private static AccumulatorPSQT[] AccumulatorStack;
         private static int CurrentAccumulator;
@@ -59,9 +56,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         private static nint _FeatureBuffer;
         private const int _TransformedFeaturesBufferLength = FeatureTransformer.BufferSize;
-
-        private static nint _LayerBuffer;
-        private const int _LayerBufferLength = 384;
 
         private static bool Initialized = false;
 
@@ -95,7 +89,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             LayerStack = new Network[LayerStacks];
             for (int i = 0; i < LayerStacks; i++)
             {
-                LayerStack[i] = new Network(inputSize: Network.SliceSize_HM, layerSize1: Network.Layer1Size_HM);
+                LayerStack[i] = new Network();
             }
 
 
@@ -104,8 +98,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
 
             _FeatureBuffer = (nint) NativeMemory.AlignedAlloc((sizeof(sbyte) * _TransformedFeaturesBufferLength), AllocAlignment);
-            _LayerBuffer   = (nint) NativeMemory.AlignedAlloc((sizeof(byte ) * _LayerBufferLength),               AllocAlignment);
-
+            NativeMemory.Clear((void*)_FeatureBuffer,         (sizeof(sbyte) * _TransformedFeaturesBufferLength));
 
             Stream kpFile;
             byte[] buff;
@@ -120,7 +113,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             else
             {
                 //  Just load the default network
-                networkToLoad = BestNet;
+                networkToLoad = NNV5;
                 Log("Using embedded NNUE with HalfKA_v2_hm network " + networkToLoad);
 
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
@@ -141,8 +134,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             using BinaryReader br = new BinaryReader(kpFile);
             ReadHeader(br);
-            ReadTransformParameters(br);
-            ReadNetworkParameters(br);
+            Transformer.ReadParameters(br);
+            for (int i = 0; i < LayerStacks; i++)
+            {
+                uint header = br.ReadUInt32();
+                LayerStack[i].ReadParameters(br);
+            }
 
             kpFile.Dispose();
         }
@@ -178,7 +175,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             uint hashValue = br.ReadUInt32();
-            uint netHash = LayerStack[0].OutputLayer.GetHashValue();
+            uint netHash = LayerStack[0].GetHashValue();
             uint ftHash = FeatureTransformer.GetHashValue();
             uint finalHash = (netHash ^ ftHash);
 
@@ -197,192 +194,30 @@ namespace LTChess.Logic.NN.HalfKA_HM
             Debug.WriteLine(arch);
         }
 
-        /// <summary>
-        /// Reads the feature transformer weights and biases from the network.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static void ReadTransformParameters(BinaryReader br)
-        {
-            Transformer.ReadParameters(br);
-        }
-
-        /// <summary>
-        /// Reads the weights and biases for each of the layers in the network.
-        /// 
-        /// Layers closer to the input (first) layer get their weights first.
-        /// </summary>
-        /// <param name="br"></param>
-        public static void ReadNetworkParameters(BinaryReader br)
-        {
-            for (int i = 0; i < LayerStacks; i++)
-            {
-                uint header = br.ReadUInt32();
-                LayerStack[i].OutputLayer.ReadParameters(br);
-            }
-        }
-
-
 
         /// <summary>
         /// Transforms the features on the board into network input, and returns the network output as the evaluation of the position
         /// </summary>
         [MethodImpl(Inline)]
-        public static int GetEvaluation(Position pos, bool adjusted = true)
+        public static int GetEvaluation(Position pos, bool adjusted = false)
         {
+            const int delta = 24;
+
             ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
             int bucket = (int) (popcount(pos.bb.Occupancy) - 1) / 4;
 
-            Span<sbyte> features = new Span<sbyte>((void*) _FeatureBuffer, _TransformedFeaturesBufferLength);
-            Span<byte> layerBuff = new Span< byte>((void*) _LayerBuffer,               _LayerBufferLength);
-
+            Span<sbyte> features = new Span<sbyte>((void*)_FeatureBuffer, _TransformedFeaturesBufferLength);
             int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
-            var output = LayerStack[bucket].OutputLayer.Propagate(features, layerBuff);
 
-            /**
-            
+            var output = LayerStack[bucket].Propagate(features);
+
             if (adjusted)
             {
-                //  Not worrying about this for now.
-                int delta_npm = Math.Abs((pos.MaterialCount[White] - ((int)popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[White]) * GetPieceValue(Pawn)))
-                                         - (pos.MaterialCount[Black] - ((int)popcount(pos.bb.Pieces[Pawn] & pos.bb.Colors[Black]) * GetPieceValue(Pawn))));
-                int entertainment = (adjusted && delta_npm <= GetPieceValue(Bishop) - GetPieceValue(Knight) ? 7 : 0);
-
-                int A = 128 - entertainment;
-                int B = 128 + entertainment;
-
-                int sum = (A * psqt + B * output[0]) / 128;
-                return sum / NNCommon.OutputScale;
+                return (((1024 - delta) * psqt + (1024 + delta) * output) / (1024 * OutputScale));
             }
 
-             */
-
-            return (psqt + output[0]) / 16;
+            return (psqt + output) / OutputScale;
         }
-
-        /// <summary>
-        /// Prints out the board, and calculates the value that each piece has on the square it is on by
-        /// comparing the NNUE evaluation of the position when that piece is removed to the base evaluation.
-        /// This is entirely taken from:
-        /// <br></br>
-        /// https://github.com/official-stockfish/Stockfish/blob/b25d68f6ee2d016cc0c14b076e79e6c44fdaea2a/src/nnue/evaluate_nnue.cpp#L272C17-L272C17
-        /// </summary>
-        public static void Trace(Position pos)
-        {
-            char[][] board = new char[3 * 8 + 1][];
-            for (int i = 0; i < 3 * 8 + 1; i++)
-            {
-                board[i] = new char[8 * 8 + 2];
-                Array.Fill(board[i], ' ');
-            }
-
-            
-
-            for (int row = 0; row < 3 * 8 + 1; row++)
-            {
-                board[row][8 * 8 + 1] = '\0';
-            }
-
-            void writeSquare(int file, int rank, int pc, int value)
-            {
-                const string PieceToChar = " PNBRQK  pnbrqk";
-
-                int x = (file) * 8;
-                int y = (7 - rank) * 3;
-
-                for (int i = 1; i < 8; i++)
-                {
-                    board[y][x + i] = board[y + 3][x + i] = '-';
-                }
-
-                for (int i = 1; i < 3; i++)
-                {
-                    board[y + i][x] = board[y + i][x + 8] = '|';
-                }
-
-                board[y][x] = board[y][x + 8] = board[y + 3][x + 8] = board[y + 3][x] = '+';
-
-                if (pc != PS_NONE && !(pc == 15 && value == ScoreMate))
-                {
-                    board[y + 1][x + 4] = PieceToChar[pc];
-                }
-
-                if (value != ScoreMate)
-                {
-                    unsafe
-                    {
-                        fixed (char* ptr = &board[y + 2][x + 2])
-                        {
-                            format_cp_ptr(value, ptr);
-                        }
-                    }
-                }
-                    
-            }
-
-            int baseEval = GetEvaluation(pos, false);
-
-            Log("\nNNUE evaluation: " +  baseEval + "\n");
-
-            ref Bitboard bb = ref pos.bb;
-            for (int f = Files.A; f <= Files.H; f++)
-            {
-                for (int r = 0; r <= 7; r++)
-                {
-                    int idx = CoordToIndex(f, r);
-                    int pt = bb.GetPieceAtIndex(idx);
-                    int pc = bb.GetColorAtIndex(idx);
-                    int fishPc = FishPiece(pt, pc);
-                    int v = ScoreMate;
-
-                    if (pt != None && bb.GetPieceAtIndex(idx) != King)
-                    {
-                        bb.RemovePiece(idx, pc, pt);
-
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
-                        int eval = GetEvaluation(pos, false);
-                        v = baseEval - eval;
-
-                        bb.AddPiece(idx, pc, pt);
-                    }
-
-                    writeSquare(f, r, fishPc, v);
-                }
-            }
-
-            Log("NNUE derived piece values:\n");
-            for (int row = 0; row < 3 * 8 + 1; row++)
-            {
-                Log(new string(board[row]));
-            }
-
-            Log("\n");
-
-            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
-            int correctBucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
-            int networkSize = LayerStack[0].NetworkSize;
-
-            Span<sbyte> transformed_features = stackalloc sbyte[FeatureTransformer.BufferSize];
-            Span<byte> buffer = stackalloc byte[networkSize];
-
-            Log("Bucket\t\tPSQT\t\tPositional\tTotal");
-            for (int bucket = 0; bucket < LayerStacks; bucket++)
-            {
-
-                int psqt = Transformer.TransformFeatures(pos, transformed_features, ref Accumulator, bucket);
-                var output = LayerStack[bucket].OutputLayer.Propagate(transformed_features, buffer);
-
-                psqt /= 16;
-                output[0] /= 16;
-
-                Log(bucket + "\t\t" + psqt + "\t\t" + output[0] + "\t\t" + (psqt + output[0]) +
-                    (bucket == correctBucket ? "\t<-- this bucket is used" : string.Empty));
-
-                buffer.Clear();
-            }
-
-        }
-
 
         /// <summary>
         /// Undoes a move that was previously made by reverting to the previous accumulator.
@@ -782,6 +617,221 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
         }
 
+        /// <summary>
+        /// Prints out the board, and calculates the value that each piece has on the square it is on by
+        /// comparing the NNUE evaluation of the position when that piece is removed to the base evaluation.
+        /// This is entirely taken from:
+        /// <br></br>
+        /// https://github.com/official-stockfish/Stockfish/blob/b25d68f6ee2d016cc0c14b076e79e6c44fdaea2a/src/nnue/evaluate_nnue.cpp#L272C17-L272C17
+        /// </summary>
+        public static void Trace(Position pos)
+        {
+            char[][] board = new char[3 * 8 + 1][];
+            for (int i = 0; i < 3 * 8 + 1; i++)
+            {
+                board[i] = new char[8 * 8 + 2];
+                Array.Fill(board[i], ' ');
+            }
+
+
+
+            for (int row = 0; row < 3 * 8 + 1; row++)
+            {
+                board[row][8 * 8 + 1] = '\0';
+            }
+
+            void writeSquare(int file, int rank, int pc, int value)
+            {
+                const string PieceToChar = " PNBRQK  pnbrqk";
+
+                int x = (file) * 8;
+                int y = (7 - rank) * 3;
+
+                for (int i = 1; i < 8; i++)
+                {
+                    board[y][x + i] = board[y + 3][x + i] = '-';
+                }
+
+                for (int i = 1; i < 3; i++)
+                {
+                    board[y + i][x] = board[y + i][x + 8] = '|';
+                }
+
+                board[y][x] = board[y][x + 8] = board[y + 3][x + 8] = board[y + 3][x] = '+';
+
+                if (pc != PS_NONE && !(pc == 15 && value == ScoreMate))
+                {
+                    board[y + 1][x + 4] = PieceToChar[pc];
+                }
+
+                if (value != ScoreMate)
+                {
+                    unsafe
+                    {
+                        fixed (char* ptr = &board[y + 2][x + 2])
+                        {
+                            format_cp_ptr(value, ptr);
+                        }
+                    }
+                }
+
+            }
+
+            int baseEval = GetEvaluation(pos, false);
+
+            Log("\nNNUE evaluation: " + baseEval + "\n");
+
+            ref Bitboard bb = ref pos.bb;
+            for (int f = Files.A; f <= Files.H; f++)
+            {
+                for (int r = 0; r <= 7; r++)
+                {
+                    int idx = CoordToIndex(f, r);
+                    int pt = bb.GetPieceAtIndex(idx);
+                    int pc = bb.GetColorAtIndex(idx);
+                    int fishPc = FishPiece(pt, pc);
+                    int v = ScoreMate;
+
+                    if (pt != None && bb.GetPieceAtIndex(idx) != King)
+                    {
+                        bb.RemovePiece(idx, pc, pt);
+
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
+                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
+                        int eval = GetEvaluation(pos, false);
+                        v = baseEval - eval;
+
+                        bb.AddPiece(idx, pc, pt);
+                    }
+
+                    writeSquare(f, r, fishPc, v);
+                }
+            }
+
+            Log("NNUE derived piece values:\n");
+            for (int row = 0; row < 3 * 8 + 1; row++)
+            {
+                Log(new string(board[row]));
+            }
+
+            Log("\n");
+
+            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
+            int correctBucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
+
+            Span<sbyte> features = new Span<sbyte>((void*)_FeatureBuffer, _TransformedFeaturesBufferLength);
+
+
+            Log("Bucket\t\tPSQT\t\tPositional\tTotal");
+            for (int bucket = 0; bucket < LayerStacks; bucket++)
+            {
+                Accumulator.RefreshPerspective[White] = Accumulator.RefreshPerspective[Black] = true;
+                int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
+                var output = LayerStack[bucket].Propagate(features);
+
+                psqt /= 16;
+                output /= 16;
+
+                Log(bucket + "\t\t" + psqt + "\t\t" + output + "\t\t" + (psqt + output) +
+                    (bucket == correctBucket ? "\t<-- this bucket is used" : string.Empty));
+            }
+
+        }
+
+
+        /// <summary>
+        /// Prints out the board, and shows the value that the given piece has on each empty square on the board.
+        /// This is only meant for debugging, or just 
+        /// </summary>
+        public static void TracePieceValues(int pieceType, int pieceColor)
+        {
+            char[][] board = new char[3 * 8 + 1][];
+            for (int i = 0; i < 3 * 8 + 1; i++)
+            {
+                board[i] = new char[8 * 8 + 2];
+                Array.Fill(board[i], ' ');
+            }
+
+
+
+            for (int row = 0; row < 3 * 8 + 1; row++)
+            {
+                board[row][8 * 8 + 1] = '\0';
+            }
+
+            void writeSquare(int file, int rank, int pc, int value)
+            {
+                const string PieceToChar = " PNBRQK  pnbrqk";
+
+                int x = (file) * 8;
+                int y = (7 - rank) * 3;
+
+                for (int i = 1; i < 8; i++)
+                {
+                    board[y][x + i] = board[y + 3][x + i] = '-';
+                }
+
+                for (int i = 1; i < 3; i++)
+                {
+                    board[y + i][x] = board[y + i][x + 8] = '|';
+                }
+
+                board[y][x] = board[y][x + 8] = board[y + 3][x + 8] = board[y + 3][x] = '+';
+
+                if (pc != PS_NONE && !(pc == 15 && value == ScoreMate))
+                {
+                    board[y + 1][x + 4] = PieceToChar[pc];
+                }
+
+                if (value != ScoreMate)
+                {
+                    unsafe
+                    {
+                        fixed (char* ptr = &board[y + 2][x + 2])
+                        {
+                            format_cp_ptr(value, ptr);
+                        }
+                    }
+                }
+
+            }
+
+            //  White king on A1, black king on H8
+            Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1");
+            int baseEval = GetEvaluation(pos, false);
+
+            Log("\nNNUE evaluation: " + baseEval + "\n");
+
+            ref Bitboard bb = ref pos.bb;
+
+            for (int i = 0; i < SquareNB; i++)
+            {
+                if (bb.GetPieceAtIndex(i) != None)
+                {
+                    writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(bb.GetPieceAtIndex(i), bb.GetColorAtIndex(i)), ScoreMate);
+                    continue;
+                }
+
+                bb.AddPiece(i, pieceColor, pieceType);
+
+                AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
+                AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
+                int eval = GetEvaluation(pos, false);
+
+                bb.RemovePiece(i, pieceColor, pieceType);
+
+                writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(pieceType, pieceColor), eval);
+            }
+
+            Log("NNUE derived piece values:\n");
+            for (int row = 0; row < 3 * 8 + 1; row++)
+            {
+                Log(new string(board[row]));
+            }
+
+            Log("\n");
+        }
+
 
         public static int[] KingBuckets = {
             -1, -1, -1, -1, 31, 30, 29, 28,
@@ -805,13 +855,13 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
 
 
-/// <summary>
-/// A unique number for each piece type on any square.
-/// <br></br>
-/// For example, the ID's between 1 and 65 are reserved for white pawns on A1-H8,
-/// and 513 through 577 are for white queens on A1-H8.
-/// </summary>
-public static class UniquePiece
+        /// <summary>
+        /// A unique number for each piece type on any square.
+        /// <br></br>
+        /// For example, the ID's between 1 and 65 are reserved for white pawns on A1-H8,
+        /// and 513 through 577 are for white queens on A1-H8.
+        /// </summary>
+        public static class UniquePiece
         {
             public const uint PS_NONE       =  0;
             public const uint PS_W_PAWN     =  0;
@@ -826,27 +876,6 @@ public static class UniquePiece
             public const uint PS_B_QUEEN    =  9 * SquareNB;
             public const uint PS_KING       = 10 * SquareNB;
             public const uint PS_NB         = 11 * SquareNB;
-
-            public static readonly ExtPieceSquare[] kpp_board_index = {
-                 // convention: W - us, B - them
-                 // viewed from other side, W and B are reversed
-                new ExtPieceSquare( PS_NONE,     PS_NONE     ),
-                new ExtPieceSquare( PS_W_PAWN,   PS_B_PAWN   ),
-                new ExtPieceSquare( PS_W_KNIGHT, PS_B_KNIGHT ),
-                new ExtPieceSquare( PS_W_BISHOP, PS_B_BISHOP ),
-                new ExtPieceSquare( PS_W_ROOK,   PS_B_ROOK   ),
-                new ExtPieceSquare( PS_W_QUEEN,  PS_B_QUEEN  ),
-                new ExtPieceSquare( PS_KING,     PS_KING     ),
-                new ExtPieceSquare( PS_NONE,     PS_NONE     ),
-                new ExtPieceSquare( PS_NONE,     PS_NONE     ),
-                new ExtPieceSquare( PS_B_PAWN,   PS_W_PAWN   ),
-                new ExtPieceSquare( PS_B_KNIGHT, PS_W_KNIGHT ),
-                new ExtPieceSquare( PS_B_BISHOP, PS_W_BISHOP ),
-                new ExtPieceSquare( PS_B_ROOK,   PS_W_ROOK   ),
-                new ExtPieceSquare( PS_B_QUEEN,  PS_W_QUEEN  ),
-                new ExtPieceSquare( PS_KING,     PS_KING     ),
-                new ExtPieceSquare( PS_NONE,     PS_NONE     )
-            };
         }
     }
 }

@@ -124,8 +124,8 @@
   <data name="network" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\network.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
   </data>
-  <data name="nn-735bba95dec0" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\nn-735bba95dec0.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="nn-e1fb1ade4432" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\nn-e1fb1ade4432.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="sf14bench_perft4" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\resources\sf14bench_perft4.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>

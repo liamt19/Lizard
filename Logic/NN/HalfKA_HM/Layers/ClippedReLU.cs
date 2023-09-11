@@ -9,22 +9,18 @@ using System.Runtime.Intrinsics;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using System.Numerics;
 using System.Reflection;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
-    public unsafe class ClippedReLU
+    public class ClippedReLU
     {
-
-        public AffineTransform PreviousLayer;
-
         public int InputDimensions;
         public int OutputDimensions;
 
-        public int SelfBufferSize;
         public int BufferSize;
+        public int BufferSizeBytes;
 
         //  Stockfish uses reintepret_cast extensively, which can be recreated in C# but seemed kind of finicky in my testing
         //  They used it to create a Vector256<int>[] from the int[] input, and would then just index that Vector array when loading / storing.
@@ -33,15 +29,14 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         //  Vector256<int>[1] should have the next 8 (8-15), etc.
         public const int VectorSize = VSize.Int;
 
-        public ClippedReLU(AffineTransform? prev)
-        {
-            PreviousLayer = prev;
 
-            InputDimensions = prev.OutputDimensions;
+        public ClippedReLU(int inputDims)
+        {   
+            InputDimensions = inputDims;
             OutputDimensions = InputDimensions;
 
-            SelfBufferSize = CeilToMultiple((short) (OutputDimensions * sizeof(ushort)), CacheLineSize);
-            BufferSize = prev.BufferSize + SelfBufferSize;
+            BufferSize = CeilToMultiple((short)OutputDimensions, 32);
+            BufferSizeBytes = BufferSize * sizeof(sbyte);
         }
 
 
@@ -49,11 +44,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         /// Clamps the output from the previous <see cref="AffineTransform"/> layer between [0, 127]
         /// </summary>
         [MethodImpl(Inline)]
-        public Span<sbyte> Propagate(Span<sbyte> transformedFeatures, Span<byte> buffer)
+        public void Propagate(Span<int> input, Span<sbyte> output)
         {
-            Span<int> input = PreviousLayer.Propagate(transformedFeatures, buffer.Slice(SelfBufferSize));
-            Span<sbyte> output = MemoryMarshal.Cast<byte, sbyte>(buffer);
-
             if (InputDimensions % SimdWidth == 0)
             {
                 int NumChunks = InputDimensions / SimdWidth;
@@ -82,6 +74,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 int NumChunks = InputDimensions / (SimdWidth / 2);
                 Vector128<sbyte> Zero = Vector128<sbyte>.Zero;
 
+                //  Vector128<int> contains 4 integers
                 const int VectorSize = 4;
                 for (int i = 0; i < NumChunks; i++)
                 {
@@ -109,19 +102,19 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 output[i] = (sbyte) Math.Max(0, Math.Min(127, input[i] >> WeightScaleBits));
             }
 
-            return output;
+
         }
+
 
         public bool ReadParameters(BinaryReader br)
         {
-            return PreviousLayer.ReadParameters(br);
+            return true;
         }
 
-
-        public uint GetHashValue()
+        public uint GetHashValue(uint prevHash)
         {
             uint hashValue = 0x538D24C7u;
-            hashValue += PreviousLayer.GetHashValue();
+            hashValue += prevHash;
             return hashValue;
         }
 

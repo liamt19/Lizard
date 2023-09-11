@@ -1,57 +1,135 @@
 ﻿
-
-using static LTChess.Logic.NN.HalfKA_HM.FeatureTransformer;
 using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System;
-
-using LTChess.Logic.Data;
 using LTChess.Logic.NN.HalfKA_HM.Layers;
-using LTChess.Properties;
-
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
+using System.Runtime.InteropServices;
 
 namespace LTChess.Logic.NN.HalfKA_HM
 {
-    public class Network
+    /// <summary>
+    /// Represents the different feature layers for one bucket within the HalfKA architecture.
+    /// <para></para>
+    /// Based on https://github.com/official-stockfish/Stockfish/blob/c079acc26f93acc2eda08c7218c60559854f52f0/src/nnue/nnue_architecture.h
+    /// </summary>
+    public unsafe class Network
     {
-        public const int SliceSize_HM = 1024 * 2;
-        public const int Layer1Size_HM = 8;
 
-        public const int SliceSize = 512 * 2;
-        public const int Layer1Size = 16;
-        public const int Layer2Size = 32;
-        public const int OutputSize = 1;
-
-
-        public InputSlice InputLayer;
-        public AffineTransform TransformLayer1;
-        public ClippedReLU HiddenLayer1;
-
-        public AffineTransform TransformLayer2;
-        public ClippedReLU HiddenLayer2;
+        private const int FC_0_OUTPUTS = 15;
+        private const int FC_1_OUTPUTS = 32;
 
         /// <summary>
-        /// The final layer of the network, which outputs 1 integer representing the final evaluation
+        /// The input layer
         /// </summary>
-        public AffineTransform OutputLayer;
+        private AffineTransform fc_0;
+        private SqrClippedReLU ac_sqr_0;
+        private ClippedReLU ac_0;
 
-        public int NetworkSize => OutputLayer.BufferSize;
+        private AffineTransform fc_1;
+        private ClippedReLU ac_1;
 
-        public Network(int inputSize = SliceSize, int layerSize1 = Layer1Size, int layerSize2 = Layer2Size, int outputSize = OutputSize)
+        /// <summary>
+        /// The output layer
+        /// </summary>
+        private AffineTransform fc_2;
+
+        private readonly nuint fc_0_idx;
+        private readonly nuint ac_sqr_0_idx;
+        private readonly nuint ac_0_idx;
+        private readonly nuint fc_1_idx;
+        private readonly nuint ac_1_idx;
+        private readonly nuint fc_2_idx;
+
+        private readonly int _bytesToAlloc;
+        private readonly void* _buffer;
+
+        private const int ClippedReLU_Padding = 32;
+
+        public Network()
         {
-            InputLayer = new InputSlice(inputSize);
 
-            TransformLayer1 = new AffineTransform(InputLayer, layerSize1);
-            HiddenLayer1 = new ClippedReLU(TransformLayer1);
+            fc_0 = new AffineTransform(TransformedFeatureDimensions, FC_0_OUTPUTS + 1);
+            ac_sqr_0 = new SqrClippedReLU(FC_0_OUTPUTS + 1);
+            ac_0 = new ClippedReLU(FC_0_OUTPUTS);
 
-            TransformLayer2 = new AffineTransform(HiddenLayer1, layerSize2);
-            HiddenLayer2 = new ClippedReLU(TransformLayer2);
+            fc_1 = new AffineTransform(FC_0_OUTPUTS * 2, FC_1_OUTPUTS);
+            ac_1 = new ClippedReLU(FC_1_OUTPUTS);
 
-            OutputLayer = new AffineTransform(HiddenLayer2, outputSize);
+            fc_2 = new AffineTransform(FC_1_OUTPUTS, 1);
+
+
+            //  This allocates the buffers for each (AffineTransform/ClippedReLU) Layer in the network.
+            //  Each AffineTransform uses a buffer of 32 ints, which are 128 bytes in size.
+            //  The ClippedReLU layers use buffers of 32 sbytes, which are 32 bytes in size.
+            //  The ClippedReLU buffers are padded so that they are aligned on a 64 byte boundary.
+            fc_0_idx = (nuint) 0;
+            ac_sqr_0_idx = (nuint)(fc_0_idx + (nuint)fc_0.BufferSizeBytes);
+            ac_0_idx = (nuint)(ac_sqr_0_idx + (nuint)ac_sqr_0.BufferSizeBytes + ClippedReLU_Padding);
+            fc_1_idx = (nuint) (ac_0_idx + (nuint) ac_0.BufferSizeBytes + ClippedReLU_Padding);
+            ac_1_idx = (nuint) (fc_1_idx + (nuint) fc_1.BufferSizeBytes);
+            fc_2_idx = (nuint) (ac_1_idx + (nuint) ac_1.BufferSizeBytes + ClippedReLU_Padding);
+
+            _bytesToAlloc  = (fc_0.BufferSize + fc_1.BufferSize + fc_2.BufferSize) * sizeof(int);
+            _bytesToAlloc += ((ac_0.BufferSize + ClippedReLU_Padding) + (ac_1.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
+            _bytesToAlloc += ((ac_sqr_0.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
+
+            _buffer = NativeMemory.AlignedAlloc((nuint)_bytesToAlloc, AllocAlignment);
+        }
+
+        public uint GetHashValue()
+        {
+            uint hashValue = 0xEC42E90Du;
+
+            hashValue ^= TransformedFeatureDimensions * 2;
+
+            hashValue = fc_0.GetHashValue(hashValue);
+            hashValue = ac_0.GetHashValue(hashValue);
+            hashValue = fc_1.GetHashValue(hashValue);
+            hashValue = ac_1.GetHashValue(hashValue);
+            hashValue = fc_2.GetHashValue(hashValue);
+
+            return hashValue;
+        }
+
+        public bool ReadParameters(BinaryReader br)
+        {
+            if (!fc_0.ReadParameters(br)) return false;
+            if (!ac_0.ReadParameters(br)) return false;
+            if (!fc_1.ReadParameters(br)) return false;
+            if (!ac_1.ReadParameters(br)) return false;
+            if (!fc_2.ReadParameters(br)) return false;
+            return true;
+        }
+
+        public int Propagate(Span<sbyte> transformedFeatures)
+        {
+            NativeMemory.Clear(_buffer, (nuint)_bytesToAlloc);
+
+            Span<int>   fc_0_out     = new Span<int>   ((void*) ((nuint)_buffer + fc_0_idx    ), fc_0.BufferSize);
+            Span<sbyte> ac_sqr_0_out = new Span<sbyte> ((void*) ((nuint)_buffer + ac_sqr_0_idx), ac_sqr_0.BufferSize);
+            Span<sbyte> ac_0_out     = new Span<sbyte> ((void*) ((nuint)_buffer + ac_0_idx    ), ac_0.BufferSize);
+
+            Span<int>   fc_1_out     = new Span<int>   ((void*) ((nuint)_buffer + fc_1_idx    ), fc_1.BufferSize);
+            Span<sbyte> ac_1_out     = new Span<sbyte> ((void*) ((nuint)_buffer + ac_1_idx    ), ac_1.BufferSize);
+
+            Span<int>   fc_2_out     = new Span<int>   ((void*) ((nuint)_buffer + fc_2_idx    ), fc_2.BufferSize);
+
+            fc_0.Propagate(transformedFeatures, fc_0_out);
+            ac_sqr_0.Propagate(fc_0_out, ac_sqr_0_out);
+            ac_0.Propagate(fc_0_out, ac_0_out);
+
+            void* src = (void*)((nuint)_buffer + ac_0_idx);
+            void* dst = (void*)((nuint)_buffer + ac_sqr_0_idx + FC_0_OUTPUTS);
+            Buffer.MemoryCopy(src, dst, FC_0_OUTPUTS * sizeof(sbyte), FC_0_OUTPUTS * sizeof(sbyte));
+            
+            fc_1.Propagate(ac_sqr_0_out, fc_1_out);
+            ac_1.Propagate(fc_1_out, ac_1_out);
+
+            fc_2.Propagate(ac_1_out, fc_2_out);
+
+            int fwdOut = (int) (fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
+            int outputValue = fc_2_out[0] + fwdOut;
+
+            return outputValue;
         }
     }
 }

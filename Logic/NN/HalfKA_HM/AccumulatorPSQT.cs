@@ -15,6 +15,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
         //  https://github.com/dotnet/roslyn/issues/69663
 
         public const int ByteSize = HalfKA_HM.TransformedFeatureDimensions;
+        public const int VectorCount = (ByteSize / VSize.Short);
+        public const int PSQTVectorCount = (PSQTBuckets / VSize.Int);
 
         public Vector256<short>* White;
         public Vector256<short>* Black;
@@ -34,6 +36,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             Black       = (Vector256<short>*) NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), AllocAlignment);
             PSQTWhite   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
             PSQTBlack   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
+
+            RefreshPerspective[0] = RefreshPerspective[1] = true;
         }
 
         public Vector256<short>* this[int perspective]
