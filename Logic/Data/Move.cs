@@ -28,83 +28,124 @@ namespace LTChess.Logic.Data
         private const int Mask_Check = 0b011000 << 26;
         private const int Mask_ToFrom = 0xFFF;
 
+
         /// <summary>
-        /// Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
+        /// Gets or sets the square that this piece is moving to.
         /// </summary>
         public int To
         {
+            //  Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
             get => (_data & 0x3F);
             set => _data = ((_data & ~0x3F) | value);
         }
 
         /// <summary>
-        /// Reminder to future self: This is a property, and calling move.get_From() 124,310,980 times at depth 15 is a no-no.
+        /// Gets or sets the square that this piece is moving from.
         /// </summary>
         public int From
         {
+            //  Reminder to future self: This is a property, and calling move.get_From() 124,310,980 times at depth 15 is a no-no.
             get => ((_data >> 6) & 0x3F);
             set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
         }
 
+        /// <summary>
+        /// Gets a mask of this move's To and From, with the From data still remaining left shifted by 6.
+        /// Only for use in History/Capture heuristic tables.
+        /// </summary>
         public int MoveMask
         {
             get => (_data & Mask_ToFrom);
         }
 
+        /// <summary>
+        /// Gets or sets the square that this move causes check from.
+        /// </summary>
         public int SqChecker
         {
             get => ((_data >> 12) & 0x3F);
             set => _data = ((_data & ~(0x3F << 12)) | (value << 12));
         }
 
+        /// <summary>
+        /// Gets or sets the square that this move causes check from.
+        /// <para></para>
+        /// This is currently unused since SqChecker is only used to determine if a non-king move captures the piece giving check (or blocks it),
+        /// and double checks can't be resolved by a non-king move.
+        /// </summary>
         public int SqDoubleChecker
         {
             get => ((_data >> 18) & 0x3F);
             set => _data = ((_data & ~(0x3F << 18)) | (value << 18));
         }
 
+        /// <summary>
+        /// Gets or sets the piece type that this pawn is promoting to. This is stored as (piece type - 1) to save space,
+        /// so a PromotionTo == 0 (Piece.Pawn) is treated as 1 (Piece.Knight).
+        /// </summary>
         public int PromotionTo
         {
             get => ((_data >> 24) & 0x3) + 1;
             set => _data = ((_data & ~(0x3 << 24)) | ((value - 1) << 24));
         }
 
+        /// <summary>
+        /// Gets or sets whether this move is a capture or not.
+        /// </summary>
         public bool Capture
         {
             get => ((_data & FlagCapture) != 0);
-            set => _data |= FlagCapture;
+            set => _data ^= FlagCapture;
         }
 
+        /// <summary>
+        /// Gets or sets whether this pawn move is an en passant or not.
+        /// </summary>
         public bool EnPassant
         {
             get => ((_data & FlagEnPassant) != 0);
-            set => _data |= FlagEnPassant;
+            set => _data ^= FlagEnPassant;
         }
 
+        /// <summary>
+        /// Gets or sets whether this king move is a castling one or not.
+        /// </summary>
         public bool Castle
         {
             get => ((_data & FlagCastle) != 0);
-            set => _data |= FlagCastle;
+            set => _data ^= FlagCastle;
         }
 
+        /// <summary>
+        /// Gets or sets whether this move puts the other player's king in check.
+        /// </summary>
         public bool CausesCheck
         {
             get => ((_data & FlagCheck) != 0);
             set => _data ^= FlagCheck;
         }
 
+        /// <summary>
+        /// Gets or sets whether this move puts the other player's king in check from two pieces.
+        /// </summary>
         public bool CausesDoubleCheck
         {
             get => ((_data & FlagDoubleCheck) != 0);
             set => _data ^= FlagDoubleCheck;
         }
 
+        /// <summary>
+        /// Gets or sets whether this pawn move is a promotion.
+        /// </summary>
         public bool Promotion
         {
             get => ((_data & FlagPromotion) != 0);
-            set => _data |= FlagPromotion;
+            set => _data ^= FlagPromotion;
         }
 
+        /// <summary>
+        /// Returns true if this move causes check or double check.
+        /// </summary>
         public bool Checks => ((_data & Mask_Check) != 0);
 
 
@@ -135,6 +176,12 @@ namespace LTChess.Logic.Data
             return (SquareBB[From] | SquareBB[To]);
         }
 
+        /// <summary>
+        /// Returns the generic string representation of a move, which is just the move's From square, the To square,
+        /// and the piece that the move is promoting to if applicable.
+        /// <br></br>
+        /// For example, the opening moves "e4 e5, Nf3 Nc6, ..." would be "e2e4 e7e5, g1f3 b8c6, ..."
+        /// </summary>
         [MethodImpl(Inline)]
         public string SmithNotation()
         {
@@ -155,11 +202,16 @@ namespace LTChess.Logic.Data
         public string ToString(Position position)
         {
             StringBuilder sb = new StringBuilder();
-            int pt = position.bb.PieceTypes[From];
+            ref Bitboard bb = ref position.bb;
+
+            int moveTo = To;
+            int moveFrom = From;
+
+            int pt = bb.PieceTypes[moveFrom];
 
             if (Castle)
             {
-                if (To > From)
+                if (moveTo > moveFrom)
                 {
                     sb.Append("O-O");
                 }
@@ -170,18 +222,41 @@ namespace LTChess.Logic.Data
             }
             else
             {
-                bool cap = position.bb.Occupied(To);
+                bool cap = bb.Occupied(moveTo);
 
                 if (pt == Piece.Pawn)
                 {
                     if (cap || EnPassant)
                     {
-                        sb.Append(GetFileChar(GetIndexFile(From)));
+                        sb.Append(GetFileChar(GetIndexFile(moveFrom)));
                     }
                 }
                 else
                 {
                     sb.Append(PieceToFENChar(pt));
+                }
+
+                //  If multiple of the same piece type can move to the same square, then we have to
+                //  differentiate them by including either the file, rank, or both, that this piece is moving from.
+                ulong multPieces = bb.AttackersToFast(moveTo, bb.Occupancy) & bb.Colors[bb.GetColorAtIndex(moveFrom)] & bb.Pieces[pt];
+                if (popcount(multPieces) > 1)
+                {
+                    if ((multPieces & GetFileBB(moveFrom)) == SquareBB[moveFrom])
+                    {
+                        //  If this piece is alone on its file, we only specify the file.
+                        sb.Append(GetFileChar(GetIndexFile(moveFrom)));
+                    }
+                    else if ((multPieces & GetRankBB(moveFrom)) == SquareBB[moveFrom])
+                    {
+                        //  If this piece wasn't alone on its file, but is alone on its rank, then include the rank.
+                        sb.Append(GetIndexRank(moveFrom) + 1);
+                    }
+                    else
+                    {
+                        //  If neither the rank/file alone could differentiate this move, then we need both the file and rank
+                        sb.Append(GetFileChar(GetIndexFile(moveFrom)));
+                        sb.Append(GetIndexRank(moveFrom) + 1);
+                    }
                 }
 
                 if (cap || EnPassant)
@@ -190,7 +265,7 @@ namespace LTChess.Logic.Data
                 }
 
 
-                sb.Append(IndexToString(To));
+                sb.Append(IndexToString(moveTo));
 
                 if (Promotion)
                 {
@@ -211,26 +286,11 @@ namespace LTChess.Logic.Data
         public override string ToString()
         {
             return SmithNotation();
-
-
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append(Convert.ToString(_data, 2));
-            if (sb.Length != 32)
-            {
-                sb.Insert(0, "0", 32 - sb.Length);
-            }
-
-            sb.Insert(26, " ");
-            sb.Insert(20, " ");
-            sb.Insert(14, " ");
-            sb.Insert(7, " ");
-
-            //sb.Append(Convert.ToString(flags, 2));
-
-            return sb.ToString();
         }
 
+        /// <summary>
+        /// Returns true if <paramref name="obj"/> is a <see cref="Move"/> or <see cref="CondensedMove"/> with the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
+        /// </summary>
         [MethodImpl(Inline)]
         public override bool Equals(object? obj)
         {
@@ -247,44 +307,6 @@ namespace LTChess.Logic.Data
             return false;
         }
 
-        [MethodImpl(Inline)]
-        public bool ExactlyEqual(object? obj)
-        {
-            Move other = (Move)obj;
-            if (other.From != this.From || other.To != this.To)
-            {
-                return false;
-            }
-
-            if (other.SqChecker != this.SqChecker)
-            {
-                return false;
-            }
-
-            if (other.PromotionTo != this.PromotionTo)
-            {
-                return false;
-            }
-
-            if (other.CausesCheck != this.CausesCheck || other.CausesDoubleCheck != this.CausesDoubleCheck)
-            {
-                return false;
-            }
-
-            if (other.Castle != this.Castle || other.Capture != this.Capture)
-            {
-                return false;
-            }
-
-            if (other.EnPassant != this.EnPassant || other.Promotion != this.Promotion)
-            {
-                return false;
-            }
-
-
-            return true;
-        }
-
 
         [MethodImpl(Inline)]
         public static bool operator ==(Move left, Move right)
@@ -295,7 +317,7 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public static bool operator !=(Move left, Move right)
         {
-            return !(left == right);
+            return !left.Equals(right);
         }
     }
 }

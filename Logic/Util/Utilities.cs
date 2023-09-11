@@ -280,16 +280,25 @@ namespace LTChess.Logic.Util
             return BitConverter.ToUInt64(arr);
         }
 
+        /// <summary>
+        /// Returns the letter of the file numbered <paramref name="fileNumber"/>, so GetFileChar(0) returns 'a'.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static char GetFileChar(int i) => (char)(97 + i);
+        public static char GetFileChar(int fileNumber) => (char)(97 + fileNumber);
 
+        /// <summary>
+        /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static int GetFileInt(char c) => c - 97;
+        public static int GetFileInt(char fileLetter) => fileLetter - 97;
 
+        /// <summary>
+        /// Returns the first letter of the name of the piece of type <paramref name="pieceType"/>, so PieceToFENChar(0 [Piece.Pawn]) returns 'P'.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static char PieceToFENChar(int n)
+        public static char PieceToFENChar(int pieceType)
         {
-            switch (n)
+            switch (pieceType)
             {
                 case Piece.Pawn:
                     return 'P';
@@ -308,36 +317,39 @@ namespace LTChess.Logic.Util
             return ' ';
         }
 
+        /// <summary>
+        /// Returns the numerical piece type of the piece given its FEN character <paramref name="fenChar"/>.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static int FENToPiece(char c)
+        public static int FENToPiece(char fenChar)
         {
-            c = char.ToLower(c);
-            if (c == 'p')
+            fenChar = char.ToLower(fenChar);
+            if (fenChar == 'p')
             {
                 return Piece.Pawn;
             }
-            if (c == 'n')
+            if (fenChar == 'n')
             {
                 return Piece.Knight;
             }
-            if (c == 'b')
+            if (fenChar == 'b')
             {
                 return Piece.Bishop;
             }
-            if (c == 'r')
+            if (fenChar == 'r')
             {
                 return Piece.Rook;
             }
-            if (c == 'q')
+            if (fenChar == 'q')
             {
                 return Piece.Queen;
             }
-            if (c == 'k')
+            if (fenChar == 'k')
             {
                 return Piece.King;
             }
 
-            Log("ERROR Failed parsing FEN character '" + c + "'");
+            Log("ERROR Failed parsing FEN character '" + fenChar + "'");
             return Piece.None;
         }
 
@@ -355,6 +367,9 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static int GetIndexRank(int index) => index >> 3;
 
+        /// <summary>
+        /// Sets <paramref name="x"/> to the file of <paramref name="index"/>, and <paramref name="y"/> to its rank.
+        /// </summary>
         [MethodImpl(Inline)]
         public static void IndexToCoord(in int index, out int x, out int y)
         {
@@ -362,12 +377,18 @@ namespace LTChess.Logic.Util
             y = index / 8;
         }
 
+        /// <summary>
+        /// Returns the index of the square with the rank <paramref name="x"/> and file <paramref name="y"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static int CoordToIndex(int x, int y)
         {
             return (y * 8) + x;
         }
 
+        /// <summary>
+        /// Returns the rank and file of the square <paramref name="idx"/>, which looks like "a1" or "e4".
+        /// </summary>
         [MethodImpl(Inline)]
         public static string IndexToString(int idx)
         {
@@ -380,18 +401,27 @@ namespace LTChess.Logic.Util
             return "" + GetFileChar(x) + (y + 1);
         }
 
+        /// <summary>
+        /// Returns the index of the square <paramref name="s"/>, which should look like "a1" or "e4".
+        /// </summary>
         [MethodImpl(Inline)]
         public static int StringToIndex(string s)
         {
             return CoordToIndex(GetFileInt(s[0]), int.Parse(s[1].ToString()) - 1);
         }
 
+        /// <summary>
+        /// Returns true if <paramref name="x"/> and <paramref name="y"/> are both between 0 and 7.
+        /// </summary>
         [MethodImpl(Inline)]
         public static bool InBounds(int x, int y)
         {
             return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
         }
 
+        /// <summary>
+        /// Returns a string formatted as an 8x8 square with the bits set in <paramref name="bb"/> as 1's and everything else as 0's.
+        /// </summary>
         public static string FormatBB(ulong bb)
         {
             StringBuilder temp = new StringBuilder();

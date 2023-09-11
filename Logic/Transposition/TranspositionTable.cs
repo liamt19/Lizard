@@ -40,13 +40,36 @@ namespace LTChess.Logic.Transposition
             }
         }
 
+        /// <summary>
+        /// Reinitializes each <see cref="TTCluster"/> within the table.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static void Clear()
+        {
+            for (ulong i = 0; i < ClusterCount; i++)
+            {
+                Clusters[i] = new TTCluster();
+            }
+        }
 
+        /// <summary>
+        /// Returns a reference to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ref TTCluster GetCluster(ulong hash)
         {
             return ref Clusters[ClusterIndex(hash, ClusterCount)];
         }
 
+        /// <summary>
+        /// Sets <paramref name="tte"/> to the address of a <see cref="TTEntry"/>.
+        /// <para></para>
+        /// If the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to contains an entry, 
+        /// then <paramref name="tte"/> is the address of that entry and this method returns true, signifying that this was a TT Hit.
+        /// <br></br>
+        /// Otherwise, this method sets <paramref name="tte"/> to the address of the <see cref="TTEntry"/> within the cluster that should
+        /// be overwritten with new information, and this method returns false.
+        /// </summary>
         [MethodImpl(Inline)]
         public static bool Probe(ulong hash, out TTEntry* tte)
         {
@@ -90,7 +113,7 @@ namespace LTChess.Logic.Transposition
 
 
         [MethodImpl(Inline)]
-        public static ulong ClusterIndex(ulong a, ulong b)
+        private static ulong ClusterIndex(ulong a, ulong b)
         {
             ulong aL = (uint)a, aH = a >> 32;
             ulong bL = (uint)b, bH = b >> 32;
