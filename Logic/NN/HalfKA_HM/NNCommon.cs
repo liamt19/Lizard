@@ -39,40 +39,15 @@ namespace LTChess.Logic.NN.HalfKA_HM
             return __refvalue(destRef, TDest);
         }
 
-        public static void format_cp_compact(int v, StringBuilder buffer)
-        {
-
-            buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
-
-            int cp = Math.Abs(100 * v / EvaluationConstants.ValuePawn);
-            if (cp >= 10000)
-            {
-                buffer.Append((char) ('0' + cp / 10000)); cp %= 10000;
-                buffer.Append((char) ('0' + cp / 1000)); cp %= 1000;
-                buffer.Append((char) ('0' + cp / 100)); cp %= 100;
-                buffer.Append((char) (' '));
-            }
-            else if (cp >= 1000)
-            {
-                buffer.Append((char) ('0' + cp / 1000)); cp %= 1000;
-                buffer.Append((char) ('0' + cp / 100)); cp %= 100;
-                buffer.Append((char) ('.'));
-                buffer.Append((char) ('0' + cp / 10));
-            }
-            else
-            {
-                buffer.Append((char) ('0' + cp / 100)); cp %= 100;
-                buffer.Append((char) ('.'));
-                buffer.Append((char) ('0' + cp / 10)); cp %= 10;
-                buffer.Append((char) ('0' + cp / 1));
-            }
-        }
 
         public unsafe static void format_cp_ptr(int v, char* buffer)
         {
             buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
 
-            int cp = Math.Abs(100 * v / 208);
+            //  This reduces the displayed value of each piece so that it is more in line with
+            //  conventional piece values, i.e. pawn = ~100, bishop/knight = ~300, rook = ~500
+            const int Normalization = 200;
+            int cp = Math.Abs(100 * v / Normalization);
 
             if (cp >= 10000)
             {
