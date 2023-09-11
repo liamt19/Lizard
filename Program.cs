@@ -79,7 +79,6 @@ namespace LTChess
             if (UseSimple768)
             {
                 NNUEEvaluation.ResetNN();
-                NNUEEvaluation.RefreshNN(p);
             }
 
             if (UseHalfKA)
@@ -87,7 +86,11 @@ namespace LTChess
                 HalfKA_HM.ResetNN();
             }
 
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);
+
+            //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
+            //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
+            //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
             GC.WaitForPendingFinalizers();
 
 #if DEBUG
