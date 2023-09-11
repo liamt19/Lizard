@@ -102,7 +102,7 @@ namespace LTChess.Logic.Search
             if (UseHalfKA)
             {
                 SearchStatistics.EvalCalls++;
-                return (short) HalfKA_HM.GetEvaluation(position);
+                return (short) HalfKA_HM.GetEvaluation(position, FavorPositionalEval);
             }
 
             return (short) this.tdEval.Evaluate(position, position.ToMove, Trace);
