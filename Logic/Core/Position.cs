@@ -1751,6 +1751,11 @@ namespace LTChess.Logic.Core
             MaterialCountNonPawn[White] = MaterialCount[White] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[White] & bb.Pieces[Pawn]));
             MaterialCountNonPawn[Black] = MaterialCount[Black] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[Black] & bb.Pieces[Pawn]));
 
+            if (UseHalfKA && popcount(bb.Occupancy) > HalfKA_HM.MaxActiveDimensions)
+            {
+                throw new IndexOutOfRangeException("ERROR FEN '" + fen + "' has more than " + HalfKA_HM.MaxActiveDimensions + " pieces, which isn't allowed with the HalfKA architecture!");
+            }
+
             return true;
         }
 
