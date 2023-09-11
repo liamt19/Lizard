@@ -72,8 +72,8 @@
         {
             PieceTypes[idx] = pt;
 
-            Debug.Assert((Colors[pc] & SquareBB[idx]) == 0);
-            Debug.Assert((Pieces[pt] & SquareBB[idx]) == 0);
+            Debug.Assert((Colors[pc] & SquareBB[idx]) == 0, ColorToString(pc) + " already has a piece on the square " + IndexToString(idx));
+            Debug.Assert((Pieces[pt] & SquareBB[idx]) == 0, "A " + PieceToString(pt) + " already exists on the square " + IndexToString(idx));
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
@@ -87,8 +87,8 @@
         {
             PieceTypes[idx] = Piece.None;
 
-            Debug.Assert((Colors[pc] & SquareBB[idx]) != 0);
-            Debug.Assert((Pieces[pt] & SquareBB[idx]) != 0);
+            Debug.Assert((Colors[pc] & SquareBB[idx]) != 0, ColorToString(pc) + " doesn't have a piece to remove on the square " + IndexToString(idx));
+            Debug.Assert((Pieces[pt] & SquareBB[idx]) != 0, "The square " + IndexToString(idx) + " doesn't have a " + PieceToString(pt) + " to remove");
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
