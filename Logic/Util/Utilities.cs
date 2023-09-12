@@ -25,6 +25,13 @@ namespace LTChess.Logic.Util
         public const int MaxDepth = 64;
 
         public const int MaxPly = 256;
+
+        /// <summary>
+        /// The maximum ply that SimpleSearch's SearchStackEntry* array can be indexed at.
+        /// <br></br>
+        /// The array actually contains MaxPly == 256 entries, but the first 10 of them are off limits to
+        /// prevent accidentally indexing memory before the stack.
+        /// </summary>
         public const int MaxSearchStackPly = 256 - 10;
 
         public const nuint AllocAlignment = 32;
