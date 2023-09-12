@@ -11,6 +11,7 @@ namespace LTChess.Logic.Search
         public const int ScoreMate = 30000;
         public const int ScoreInfinite = 31200;
 
+        public const int ScoreWin = 10000;
         public const int ScoreTTWin = ScoreInfinite - (2 * MaxPly);
         public const int ScoreTTLoss = -ScoreTTWin;
         public const int ScoreDraw = 0;
@@ -712,6 +713,12 @@ namespace LTChess.Logic.Search
         private bool IsFileOpen(int idx)
         {
             return ((GetFileBB(idx) & bb.Pieces[Piece.Pawn]) == 0);
+        }
+
+        [MethodImpl(Inline)]
+        public static int MakeMateScore(int ply)
+        {
+            return -ScoreMate + ply;
         }
 
         [MethodImpl(Inline)]
