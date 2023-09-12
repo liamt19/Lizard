@@ -250,7 +250,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
-            Transformer.RefreshAccumulator(pos, ref Accumulator);
+
+            Accumulator.RefreshPerspective[White] = true;
+            Accumulator.RefreshPerspective[Black] = true;
         }
 
 
@@ -334,7 +336,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 if (m.EnPassant)
                 {
-                    int idxPawn = (bb.Pieces[Piece.Pawn] & SquareBB[pos.EnPassantTarget - 8]) != 0 ? pos.EnPassantTarget - 8 : pos.EnPassantTarget + 8;
+                    //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
+                    int idxPawn = moveTo + ShiftDownDir(us);
 
                     int theirCapturedPieceIndex_US =    HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing);
                     int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing);
