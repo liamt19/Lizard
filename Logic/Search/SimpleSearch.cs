@@ -30,7 +30,6 @@ namespace LTChess.Logic.Search
 
 
         public static HistoryTable History;
-        private static short* MainHistory;
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
 
@@ -124,7 +123,7 @@ namespace LTChess.Logic.Search
                     }
 
                     info.SetLastMove(LastBestMove, LastBestScore);
-                    info.OnSearchFinish?.Invoke(info);
+                    info.OnSearchFinish?.Invoke(ref info);
                     info.TimeManager.ResetTimer();
                     return;
                 }
@@ -156,7 +155,7 @@ namespace LTChess.Logic.Search
                     continue;
                 }
 
-                info.OnDepthFinish?.Invoke(info);
+                info.OnDepthFinish?.Invoke(ref info);
 
 
                 if (continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
@@ -178,7 +177,7 @@ namespace LTChess.Logic.Search
                 continueDeepening = (depth <= maxDepthStart && depth < MaxDepth && info.TimeManager.GetSearchTime() <= maxTime);
             }
 
-            info.OnSearchFinish?.Invoke(info);
+            info.OnSearchFinish?.Invoke(ref info);
             info.TimeManager.ResetTimer();
 
             if (UseSimple768)
@@ -678,10 +677,9 @@ namespace LTChess.Logic.Search
 
             if (legalMoves == 0)
             {
-                if (pos.CheckInfo.InCheck || pos.CheckInfo.InDoubleCheck)
+                if (ss->InCheck)
                 {
-                    //return info.MakeMateScore();
-                    return -ScoreMate + ss->Ply;
+                    return MakeMateScore(ss->Ply);
                 }
                 else
                 {
@@ -724,7 +722,6 @@ namespace LTChess.Logic.Search
 
             return bestScore;
         }
-
 
 
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
@@ -795,6 +792,7 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public static bool CanRazoringPrune(bool isInCheck, bool isPV, int staticEval, int alpha, int depth)
         {
+            //  depth == 1, and (staticEval + 160 < alpha)
             if (!isInCheck && !isPV && depth <= 4)
             {
                 if (staticEval + (SearchConstants.RazoringMargin * depth) <= alpha)

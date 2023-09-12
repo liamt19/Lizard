@@ -7,8 +7,13 @@ namespace LTChess.Logic.Search
 {
     public struct SearchInformation
     {
-        public Action<SearchInformation>? OnDepthFinish;
-        public Action<SearchInformation>? OnSearchFinish;
+        /// <summary>
+        /// The normal <see cref="Action"/> delegate doesn't allow passing by reference
+        /// </summary>
+        public delegate void ActionRef<T>(ref T info);
+
+        public ActionRef<SearchInformation>? OnDepthFinish;
+        public ActionRef<SearchInformation>? OnSearchFinish;
 
         public Position Position;
 
@@ -171,7 +176,7 @@ namespace LTChess.Logic.Search
         /// Prints out the "info depth (number) ..." string
         /// </summary>
         [MethodImpl(Inline)]
-        public void PrintSearchInfo(SearchInformation info)
+        public void PrintSearchInfo(ref SearchInformation info)
         {
             info.LastSearchInfo = FormatSearchInformation(ref info);
             if (IsMultiThreaded)

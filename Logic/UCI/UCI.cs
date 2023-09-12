@@ -139,7 +139,7 @@ namespace LTChess.Logic.Core
                 }
                 else if (cmd == "ucinewgame")
                 {
-                    info.Position = new Position();
+                    HandleNewGame();
                 }
                 else if (cmd == "position")
                 {
@@ -269,7 +269,7 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// Sends the "info depth (number) ..." string to the UCI
         /// </summary>
-        private void OnDepthDone(SearchInformation info)
+        private void OnDepthDone(ref SearchInformation info)
         {
 
             info.LastSearchInfo = FormatSearchInformation(ref info);
@@ -305,6 +305,12 @@ namespace LTChess.Logic.Core
             info.MaxDepth = DefaultSearchDepth;
             info.TimeManager.MaxSearchTime = DefaultSearchTime;
             LogString("[INFO]: Got 'go' command" + TimeManager.GetFormattedTime());
+
+            if (info.SearchFinishedCalled)
+            {
+                info.SearchFinishedCalled = false;
+                LogString("[INFO]: Reusing old SearchInfo object, info.SearchFinishedCalled was true");
+            }
 
             bool hasMoveTime = false;
             bool hasWhiteTime = false;
@@ -427,7 +433,7 @@ namespace LTChess.Logic.Core
         }
 
 
-        private void OnSearchDone(SearchInformation info)
+        private void OnSearchDone(ref SearchInformation info)
         {
             info.SearchActive = false;
 
@@ -455,6 +461,12 @@ namespace LTChess.Logic.Core
             {
                 LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
             }
+        }
+
+        public void HandleNewGame()
+        {
+            info.Position = new Position();
+            TranspositionTable.Clear();
         }
 
         private void HandleSetOption(string optName, string optValue)
