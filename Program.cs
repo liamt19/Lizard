@@ -120,6 +120,20 @@ namespace LTChess
                 {
                     p.LoadFromFEN(input.Substring(13));
                 }
+                else if (input.StartsWithIgnoreCase("position startpos moves "))
+                {
+                    p.LoadFromFEN(InitialFEN);
+                    var splits = input.Split(' ').ToList();
+                    for (int i = 3; i < splits.Count; i++)
+                    {
+                        if (!p.TryMakeMove(splits[i]))
+                        {
+                            Log("Failed doing extra moves! '" + splits[i] + "' isn't a legal move in the FEN " + p.GetFEN());
+                            break;
+                        }
+                    }
+                    Log("New FEN is " + p.GetFEN());
+                }
                 else if (input.StartsWithIgnoreCase("go perft "))
                 {
                     int depth = int.Parse(input.Substring(9));
