@@ -23,7 +23,7 @@ namespace LTChess.Logic.NN
         /// This architecture is the largest, slowest, but strongest out of the three.
         /// On my machine, this hits around 400,000 to 800,000 nps depending on how many king moves are made.
         /// <para></para>
-        /// It takes around 8 times as long to recalculate the entire board using <see cref="HalfKA_HM.FeatureTransformer.RefreshAccumulator"/>
+        /// It takes around 8 times as long to recalculate the entire board 
         /// than it does to update it incrementally with <see cref="HalfKA_HM.HalfKA_HM.MakeMove"/>
         /// </summary>
         public const bool UseHalfKA = true;

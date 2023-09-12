@@ -63,9 +63,13 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Optimize)]
         public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
-            if (accumulator.RefreshPerspective[pos.ToMove])
+            if (accumulator.RefreshPerspective[White])
             {
-                RefreshAccumulatorPerspective(pos, ref accumulator, pos.ToMove);
+                RefreshAccumulatorPerspective(pos, ref accumulator, White);
+            }
+            if (accumulator.RefreshPerspective[Black])
+            {
+                RefreshAccumulatorPerspective(pos, ref accumulator, Black);
             }
 
             const int Control = 0b11011000;
@@ -102,17 +106,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             return psqt;
-        }
-
-        /// <summary>
-        /// Finds the active features (existing pieces on the board) and updates the Accumulator to include those pieces.
-        /// This is comparatively very slow, so it should only be done when absolutely necessary, like when our king moves.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void RefreshAccumulator(Position pos, ref AccumulatorPSQT accumulator)
-        {
-            RefreshAccumulatorPerspective(pos, ref accumulator, White);
-            RefreshAccumulatorPerspective(pos, ref accumulator, Black);
         }
 
 
