@@ -399,25 +399,11 @@
         }
 
         /// <summary>
-        /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
-        /// So for a bishop on A1, AttackersTo H8 returns a ulong with a bit set at A1.
-        /// defendingColor is the color whose pieces are being attacked, and Not(defendingColor) is the color of the pieces that attack that square. 
-        /// So bb.AttackersTo(..., White) will reference any attacking Black pieces.
+        /// Returns a ulong with bits set at the positions of any piece that can attack the square <paramref name="idx"/>, 
+        /// given the board occupancy <paramref name="occupied"/>.
         /// </summary>
         [MethodImpl(Inline)]
-        public ulong AttackersTo(int idx, int defendingColor)
-        {
-            ulong us = Colors[defendingColor];
-            ulong them = Colors[Not(defendingColor)];
-
-            return AttackersToFast(idx, us | them) & them;
-        }
-
-        /// <summary>
-        /// Returns a ulong with bits set at the positions of pieces that can attack <paramref name="idx"/>. 
-        /// </summary>
-        [MethodImpl(Inline)]
-        public ulong AttackersToFast(int idx, ulong occupied)
+        public ulong AttackersTo(int idx, ulong occupied)
         {
             return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
                   | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
@@ -426,8 +412,6 @@
                   | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
 
         }
-
-
 
         /// <summary>
         /// Returns the index of the square of the attacker of lowest value,
@@ -513,7 +497,7 @@
         {
             int ourKing = KingIndex(ourColor);
 
-            ulong att = AttackersToFast(ourKing, Occupancy) & Colors[Not(ourColor)];
+            ulong att = AttackersTo(ourKing, Occupancy) & Colors[Not(ourColor)];
             switch (popcount(att))
             {
                 case 0:

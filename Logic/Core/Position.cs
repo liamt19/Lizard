@@ -468,7 +468,7 @@ namespace LTChess.Logic.Core
             State->Hash = Hash;
             if (move.Checks)
             {
-                State->Checkers = bb.AttackersToFast(bb.KingIndex(theirColor), bb.Occupancy) & bb.Colors[ourColor];
+                State->Checkers = bb.AttackersTo(bb.KingIndex(theirColor), bb.Occupancy) & bb.Colors[ourColor];
             }
             else
             {
@@ -676,7 +676,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public void SetState()
         {
-            State->Checkers = bb.AttackersToFast(bb.KingIndex(ToMove), bb.Occupancy) & bb.Colors[Not(ToMove)];
+            State->Checkers = bb.AttackersTo(bb.KingIndex(ToMove), bb.Occupancy) & bb.Colors[Not(ToMove)];
 
             SetCheckInfo();
 
@@ -836,7 +836,7 @@ namespace LTChess.Logic.Core
                     ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
                     bb.Pieces[Piece.King] ^= moveMask;
                     bb.Colors[ourColor] ^= moveMask;
-                    if (((bb.AttackersToFast(moveTo, bb.Occupancy) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
+                    if (((bb.AttackersTo(moveTo, bb.Occupancy) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
                     {
                         bb.Pieces[Piece.King] ^= moveMask;
                         bb.Colors[ourColor] ^= moveMask;
@@ -869,7 +869,7 @@ namespace LTChess.Logic.Core
 
                 //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
                 //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
-                return ((bb.AttackersToFast(moveTo, (bb.Occupancy ^ SquareBB[ourKing])) & bb.Colors[theirColor]) 
+                return ((bb.AttackersTo(moveTo, (bb.Occupancy ^ SquareBB[ourKing])) & bb.Colors[theirColor]) 
                        | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
             }
             else if (move.EnPassant)
@@ -884,7 +884,7 @@ namespace LTChess.Logic.Core
                 bb.Colors[ourColor] ^= moveMask;
                 bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
 
-                if ((bb.AttackersToFast(ourKing, bb.Occupancy) & bb.Colors[Not(ourColor)]) != 0)
+                if ((bb.AttackersTo(ourKing, bb.Occupancy) & bb.Colors[Not(ourColor)]) != 0)
                 {
                     bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
                     bb.Colors[ourColor] ^= moveMask;
@@ -1027,7 +1027,7 @@ namespace LTChess.Logic.Core
                     bb.Colors[ToMove] ^= moveMask;
                     bb.Colors[theirColor] ^= (SquareBB[State->EPSquare - up]);
 
-                    ulong attacks = bb.AttackersToFast(theirKing, bb.Occupancy) & bb.Colors[ToMove];
+                    ulong attacks = bb.AttackersTo(theirKing, bb.Occupancy) & bb.Colors[ToMove];
 
                     switch (popcount(attacks))
                     {
@@ -1040,7 +1040,7 @@ namespace LTChess.Logic.Core
                         case 2:
                             m.CausesDoubleCheck = true;
                             m.SqChecker = lsb(attacks);
-                            m.SqDoubleChecker = msb(attacks);
+                            //m.SqDoubleChecker = msb(attacks);
                             break;
                     }
 
@@ -1290,7 +1290,7 @@ namespace LTChess.Logic.Core
 
                 if (Castling.HasFlag(CastlingStatus.WK))
                 {
-                    if ((all & WhiteKingsideMask) == 0 && (bb.AttackersToFast(F1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersToFast(G1, all) & bb.Colors[Color.Black]) == 0)
+                    if ((all & WhiteKingsideMask) == 0 && (bb.AttackersTo(F1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersTo(G1, all) & bb.Colors[Color.Black]) == 0)
                     {
                         if ((bb.Pieces[Piece.Rook] & SquareBB[H1] & us) != 0)
                         {
@@ -1303,7 +1303,7 @@ namespace LTChess.Logic.Core
                 if (Castling.HasFlag(CastlingStatus.WQ))
                 {
                     //  B1 empty, C1+D1 are empty and not attacked
-                    if ((all & WhiteQueensideMask) == 0 && (bb.AttackersToFast(C1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersToFast(D1, all) & bb.Colors[Color.Black]) == 0)
+                    if ((all & WhiteQueensideMask) == 0 && (bb.AttackersTo(C1, all) & bb.Colors[Color.Black]) == 0 && (bb.AttackersTo(D1, all) & bb.Colors[Color.Black]) == 0)
                     {
                         if ((bb.Pieces[Piece.Rook] & SquareBB[A1] & us) != 0)
                         {
@@ -1320,7 +1320,7 @@ namespace LTChess.Logic.Core
 
                 if (Castling.HasFlag(CastlingStatus.BK))
                 {
-                    if ((all & BlackKingsideMask) == 0 && (bb.AttackersToFast(F8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersToFast(G8, all) & bb.Colors[Color.White]) == 0)
+                    if ((all & BlackKingsideMask) == 0 && (bb.AttackersTo(F8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersTo(G8, all) & bb.Colors[Color.White]) == 0)
                     {
                         if ((bb.Pieces[Piece.Rook] & SquareBB[H8] & us) != 0)
                         {
@@ -1332,7 +1332,7 @@ namespace LTChess.Logic.Core
                 }
                 if (Castling.HasFlag(CastlingStatus.BQ))
                 {
-                    if ((all & BlackQueensideMask) == 0 && (bb.AttackersToFast(C8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersToFast(D8, all) & bb.Colors[Color.White]) == 0)
+                    if ((all & BlackQueensideMask) == 0 && (bb.AttackersTo(C8, all) & bb.Colors[Color.White]) == 0 && (bb.AttackersTo(D8, all) & bb.Colors[Color.White]) == 0)
                     {
                         if ((bb.Pieces[Piece.Rook] & SquareBB[A8] & us) != 0)
                         {
@@ -1419,7 +1419,7 @@ namespace LTChess.Logic.Core
                 bb.Pieces[promotionPiece] ^= SquareBB[promotionSquare];
                 bb.Colors[ourColor] ^= (SquareBB[from] | SquareBB[promotionSquare]);
 
-                ulong attacks = bb.AttackersToFast(theirKing, bb.Occupancy) & bb.Colors[ourColor];
+                ulong attacks = bb.AttackersTo(theirKing, bb.Occupancy) & bb.Colors[ourColor];
                 switch (popcount(attacks))
                 {
                     case 0:
@@ -1431,7 +1431,7 @@ namespace LTChess.Logic.Core
                     case 2:
                         m.CausesDoubleCheck = true;
                         m.SqChecker = lsb(attacks);
-                        m.SqDoubleChecker = msb(attacks);
+                        //m.SqDoubleChecker = msb(attacks);
                         break;
                 }
 
