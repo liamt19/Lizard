@@ -37,6 +37,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
             PSQTWhite   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
             PSQTBlack   = (Vector256<int>*)   NativeMemory.AlignedAlloc((nuint)(sizeof(Vector256<int>)   * (PSQTBuckets / VSize.Int)), AllocAlignment);
 
+            //  Shouldn't be necessary, since FeatureTransformer.RefreshAccumulatorPerspective
+            //  writes to temporary Vectors and then copies them over.
+            //  This is just for assurance that no nonsense is happening with feature calculations.
+            NativeMemory.Clear((void*)White, (nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)));
+            NativeMemory.Clear((void*)Black, (nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)));
+            NativeMemory.Clear((void*)PSQTWhite, (nuint)(sizeof(Vector256<int>) * (PSQTBuckets / VSize.Int)));
+            NativeMemory.Clear((void*)PSQTBlack, (nuint)(sizeof(Vector256<int>) * (PSQTBuckets / VSize.Int)));
+
             RefreshPerspective[0] = RefreshPerspective[1] = true;
         }
 
