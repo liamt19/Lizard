@@ -44,11 +44,5 @@ namespace LTChess.Logic.Data
         public const bool HasPext = false;
 #endif
 
-#if (USE_SKIP_INIT)
-        public const bool SkipInitEnabled = true;
-#else
-        public const bool SkipInitEnabled = false;
-#endif
-
     }
 }
