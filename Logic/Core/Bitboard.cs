@@ -94,81 +94,6 @@
             Pieces[pt] ^= SquareBB[idx];
         }
 
-
-        /// <summary>
-        /// Removes the pawn at <paramref name="from"/>, and replaces it with the <paramref name="promotionPiece"/> at the index <paramref name="to"/>.
-        /// Also captures the piece on <paramref name="to"/> if there is one.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void Promote(int from, int to, int promotionPiece)
-        {
-            int pc = GetColorAtIndex(from);
-
-            int capturedPiece = PieceTypes[to];
-            if (capturedPiece != Piece.None)
-            {
-                //  Delete that piece now
-                Pieces[capturedPiece] ^= SquareBB[to];
-                Colors[Not(pc)] ^= SquareBB[to];
-            }
-
-            Pieces[Piece.Pawn] ^= SquareBB[from];
-            Pieces[promotionPiece] ^= SquareBB[to];
-
-            Colors[pc] ^= (SquareBB[from] | SquareBB[to]);
-
-            PieceTypes[from] = Piece.None;
-            PieceTypes[to] = promotionPiece;
-        }
-
-        [MethodImpl(Inline)]
-        public void Promote(int from, int to, int thisColor, int capturedPiece, int promotionPiece)
-        {
-            Pieces[capturedPiece] ^= SquareBB[to];
-            Colors[Not(thisColor)] ^= SquareBB[to];
-
-            Pieces[Piece.Pawn] ^= SquareBB[from];
-            Pieces[promotionPiece] ^= SquareBB[to];
-
-            Colors[thisColor] ^= (SquareBB[from] | SquareBB[to]);
-
-            PieceTypes[from] = Piece.None;
-            PieceTypes[to] = promotionPiece;
-        }
-
-
-
-        /// <summary>
-        /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, capturing the piece of type <paramref name="capturedPieceType"/>.
-        /// </summary>
-        /// <param name="from">The square the piece is moving from</param>
-        /// <param name="to">The square the piece is moving to</param>
-        /// <param name="pieceColor">The color of the piece that is moving</param>
-        /// <param name="pieceType">The type of the piece that is moving</param>
-        /// <param name="capturedPieceType">The type of the piece that is being captured</param>
-        [MethodImpl(Inline)]
-        public void Move(int from, int to, int pieceColor, int pieceType, int capturedPieceType)
-        {
-            if (capturedPieceType != Piece.None)
-            {
-#if DEBUG
-                Debug.Assert(capturedPieceType != Piece.King, "Moving from " + IndexToString(from) + " to " + IndexToString(to) + " captures " + ColorToString(pieceColor) + "'s king!"
-                    + "\r\nCalled by " + (new StackTrace()).GetFrame(1).GetMethod().Name);
-#endif
-                Pieces[capturedPieceType] ^= SquareBB[to];
-                Colors[Not(pieceColor)] ^= SquareBB[to];
-            }
-
-            ulong moveMask = (SquareBB[from] | SquareBB[to]);
-            Pieces[pieceType] ^= moveMask;
-            Colors[pieceColor] ^= moveMask;
-
-            PieceTypes[from] = Piece.None;
-            PieceTypes[to] = pieceType;
-        }
-
-
-
         /// <summary>
         /// Moves the piece at index <paramref name="from"/> to index <paramref name="to"/>, where <paramref name="to"/> is an empty square.
         /// </summary>
@@ -183,32 +108,8 @@
             Pieces[pieceType] ^= moveMask;
             Colors[pieceColor] ^= moveMask;
 
-            //Pieces[pieceType] ^= (SquareBB[from] | SquareBB[to]);
-            //Colors[pieceColor] ^= (SquareBB[from] | SquareBB[to]);
-
             PieceTypes[from] = Piece.None;
             PieceTypes[to] = pieceType;
-        }
-
-        /// <summary>
-        /// Moves the pawn at <paramref name="from"/> to <paramref name="to"/>, and clears the index at <paramref name="idxEnPassant"/>.
-        /// </summary>
-        /// <param name="from">The square the piece is moving from</param>
-        /// <param name="to">The square the piece is moving to</param>
-        /// <param name="pieceColor">The color of the piece that is moving</param>
-        /// <param name="idxEnPassant">The index of the pawn that is being taken, which should be 1 square left/right of <paramref name="from"/></param>
-        [MethodImpl(Inline)]
-        public void EnPassant(int from, int to, int pieceColor, int idxEnPassant)
-        {
-
-            ulong moveMask = (SquareBB[from] | SquareBB[to]);
-            Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxEnPassant]);
-            Colors[pieceColor] ^= (moveMask);
-
-            Colors[Not(pieceColor)] ^= SquareBB[idxEnPassant];
-            PieceTypes[from] = Piece.None;
-            PieceTypes[idxEnPassant] = Piece.None;
-            PieceTypes[to] = Piece.Pawn;
         }
 
         /// <summary>
@@ -311,37 +212,6 @@
             }
         }
 
-        /// <summary>
-        /// Returns a mask of pieces which are pinned to <paramref name="pc"/>'s king.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public ulong PinnedPieces(int pc)
-        {
-            ulong pinned = 0UL;
-            ulong temp;
-            ulong them = Colors[Not(pc)];
-
-            int ourKing = KingIndex(pc);
-            ulong pinners = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) |
-                           (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
-
-            while (pinners != 0)
-            {
-                int idx = lsb(pinners);
-
-                temp = BetweenBB[ourKing][idx] & (Colors[pc] | them);
-
-                if (temp != 0 && !MoreThanOne(temp))
-                {
-                    pinned |= temp;
-                }
-
-                pinners = poplsb(pinners);
-            }
-
-            return pinned;
-        }
-
 
         /// <summary>
         /// Returns a mask of the pieces
@@ -413,52 +283,6 @@
 
         }
 
-        /// <summary>
-        /// Returns the index of the square of the attacker of lowest value,
-        /// which is a pawn, knight, bishop, rook, queen, or king in that order.
-        /// </summary>
-        /// <param name="idx">The square to look at</param>
-        /// <param name="defendingColor">The color of the pieces BEING attacked.</param>
-        [MethodImpl(Inline)]
-        public int LowestValueAttacker(int idx, int defendingColor)
-        {
-            ulong us = Colors[defendingColor];
-            ulong them = Colors[Not(defendingColor)];
-
-            ulong pawns = ((defendingColor == Color.White) ? WhitePawnAttackMasks[idx] : BlackPawnAttackMasks[idx]) & Pieces[Piece.Pawn] & them;
-            if (pawns != 0)
-            {
-                return lsb(pawns);
-            }
-
-            ulong knights = (Pieces[Piece.Knight] & KnightMasks[idx] & them);
-            if (knights != 0)
-            {
-                return lsb(knights);
-            }
-
-            ulong occupied = (us | them);
-
-            ulong diagSliders = GetBishopMoves(occupied, idx);
-            if ((diagSliders & Pieces[Piece.Bishop] & them) != 0)
-            {
-                return lsb((diagSliders & Pieces[Piece.Bishop] & them));
-            }
-
-            ulong straightSliders = GetRookMoves(occupied, idx);
-            if ((straightSliders & Pieces[Piece.Rook] & them) != 0)
-            {
-                return lsb((straightSliders & Pieces[Piece.Rook] & them));
-            }
-
-            if (((diagSliders | straightSliders) & Pieces[Piece.Queen] & them) != 0)
-            {
-                return lsb((diagSliders | straightSliders) & Pieces[Piece.Queen] & them);
-            }
-
-            return LSBEmpty;
-        }
-
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is pseudo-legal.
@@ -501,6 +325,9 @@
             switch (popcount(att))
             {
                 case 0:
+                    info.InCheck = false;
+                    info.InDoubleCheck = false;
+                    info.idxChecker = LSBEmpty;
                     break;
                 case 1:
                     info.InCheck = true;
