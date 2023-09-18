@@ -83,6 +83,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 PSQTBlack,
                 (uint)size
             );
+
+            target.RefreshPerspective[0] = RefreshPerspective[0];
+            target.RefreshPerspective[1] = RefreshPerspective[1];
         }
     }
 }
