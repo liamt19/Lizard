@@ -38,11 +38,6 @@ namespace LTChess.Logic.Core
 
         public CheckInfo CheckInfo;
 
-        /// <summary>
-        /// Set equal to the index of the square that is one "behind" the pawn that just moved forward two squares.
-        /// For example, if a white pawn is on d5, then moving the black c7 pawn to c5 sets this to the index of the square c6.
-        /// </summary>
-        public int EnPassantTarget = SquareNB;
 
         /// <summary>
         /// Set to the color of the player whose turn it is to move.
@@ -92,12 +87,6 @@ namespace LTChess.Logic.Core
         /// </summary>
         private int GamePly = 0;
 
-        private static int _debugPositionObjects = 0;
-        private int _debugPosInst = 0;
-        private static int _debugAllocs = 0;
-        private static int _debugFrees = 0;
-
-
         /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
         /// </summary>
@@ -107,20 +96,14 @@ namespace LTChess.Logic.Core
             MaterialCountNonPawn = new int[2];
 
 
-            _bbBlock = (nint)NativeMemory.AlignedAlloc((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
+            _bbBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
             this.bb = *(Bitboard*)_bbBlock;
 
-            _stateBlock = (nint)NativeMemory.AlignedAlloc((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
-            NativeMemory.Clear((void*)_stateBlock, (nuint)(sizeof(StateInfo) * StateStackSize));
+            _stateBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
             StateStack = (StateInfo*)_stateBlock;
 
             _SentinelStart = &StateStack[0];
             State = &StateStack[0];
-
-#if DEBUG
-            this._debugPosInst = (++_debugPositionObjects);
-            Log("\r\nInstance " + _debugPosInst + "\tconstructor, Allocs/Frees: " + (++_debugAllocs) + " / " + _debugFrees + "\t" + "_bbBlock: " + ((nint)_bbBlock).ToString("X12") + ",\t" + "StateStack: " + ((nint)StateStack).ToString("X12"));
-#endif
 
             LoadFromFEN(fen);
 
@@ -132,7 +115,7 @@ namespace LTChess.Logic.Core
 
             if (UseHalfKA && ResetNN)
             {
-                HalfKA_HM.RefreshNN(this);
+                HalfKA_HM.RefreshNN();
                 HalfKA_HM.ResetNN();
             }
         }
@@ -143,9 +126,6 @@ namespace LTChess.Logic.Core
         /// </summary>
         ~Position()
         {
-#if DEBUG
-            Log("Instance " + _debugPosInst + "\tdestructor, Allocs/Frees: " + _debugAllocs + " / " + (++_debugFrees) + "\t" + "_bbBlock: " + ((nint)_bbBlock).ToString("X12") + ",\t" + "StateStack: " + ((nint)StateStack).ToString("X12") + "\r\n");
-#endif
             NativeMemory.AlignedFree((void*)_bbBlock);
             NativeMemory.AlignedFree((void*)_stateBlock);
         }
@@ -208,7 +188,6 @@ namespace LTChess.Logic.Core
         /// Copies the current state into the <paramref name="newState"/>, then performs the move <paramref name="move"/>.
         /// </summary>
         /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
-        /// <param name="newState">A pointer to a <see cref="StateInfo"/> object which will be used as this Position's new state.</param>
         /// <param name="MakeMoveNN">If true, updates the NNUE networks.</param>
         [MethodImpl(Inline)]
         public void MakeMove(Move move, bool MakeMoveNN = true)
@@ -390,7 +369,7 @@ namespace LTChess.Logic.Core
             {
                 if (move.EnPassant)
                 {
-                    Debug.Assert(tempEPSquare != 0);
+                    Debug.Assert(tempEPSquare != SquareNB);
                     int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Piece.Pawn);
                     Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
@@ -412,8 +391,11 @@ namespace LTChess.Logic.Core
                         State->EPSquare = moveTo + 8;
                     }
 
-                    //  Update the En Passant file because we just changed st->EPSquare
-                    Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                    if (State->EPSquare != SquareNB)
+                    {
+                        //  Update the En Passant file if we just changed st->EPSquare
+                        Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                    }
                 }
 
                 //  Reset the halfmove clock
@@ -476,20 +458,6 @@ namespace LTChess.Logic.Core
             }
 
             SetCheckInfo();
-
-            if (UseHalfKA && MakeMoveNN && kingMove)
-            {
-                //  If we are using HalfKA, and are properly making moves (so MakeMoveNN == true),
-                //  we need to reset the active features because they are dependent on our king square, and our king just moved.
-                HalfKA_HM.RefreshNN(this);
-            }
-
-#if DEBUG
-            if (IsThreefoldRepetition())
-            {
-                Log("Move " + move.ToString() + " caused a draw by threefold!");
-            }
-#endif
         }
 
 
@@ -625,11 +593,6 @@ namespace LTChess.Logic.Core
             State++;
 
 
-            if (ToMove == Color.Black)
-            {
-                FullMoves++;
-            }
-
             if (State->EPSquare != SquareNB)
             {
                 //  Set EnPassantTarget to 64 now.
@@ -660,10 +623,6 @@ namespace LTChess.Logic.Core
             Hash = State->Hash;
             ToMove = Not(ToMove);
 
-            if (ToMove == Color.White)
-            {
-                FullMoves--;
-            }
         }
 
 
@@ -1450,6 +1409,14 @@ namespace LTChess.Logic.Core
         }
 
 
+
+        [MethodImpl(Inline)]
+        public bool IsDraw()
+        {
+            return (IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition());
+        }
+
+
         /// <summary>
         /// Checks if the position is currently drawn by insufficient material.
         /// This generally only happens for KvK, KvKB, and KvKN endgames.
@@ -1704,12 +1671,10 @@ namespace LTChess.Logic.Core
                             //	White moved a pawn last
                             if (splits[i][1].Equals('3'))
                             {
-                                EnPassantTarget = StringToIndex(splits[i]);
                                 State->EPSquare = StringToIndex(splits[i]);
                             }
                             else if (splits[i][1].Equals('6'))
                             {
-                                EnPassantTarget = StringToIndex(splits[i]);
                                 State->EPSquare = StringToIndex(splits[i]);
                             }
 
@@ -1848,9 +1813,9 @@ namespace LTChess.Logic.Core
             {
                 fen.Append("-");
             }
-            if (EnPassantTarget != SquareNB)
+            if (State->EPSquare != SquareNB)
             {
-                fen.Append(" " + IndexToString(EnPassantTarget));
+                fen.Append(" " + IndexToString(State->EPSquare));
             }
             else
             {
