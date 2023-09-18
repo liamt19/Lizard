@@ -47,7 +47,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
 
         private static AccumulatorPSQT[] AccumulatorStack;
-        private static int CurrentAccumulator;
+        public static int CurrentAccumulator { private set; get; }
 
         private static Network[] LayerStack;
 
@@ -97,8 +97,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             Transformer = new FeatureTransformer();
 
 
-            _FeatureBuffer = (nint) NativeMemory.AlignedAlloc((sizeof(sbyte) * _TransformedFeaturesBufferLength), AllocAlignment);
-            NativeMemory.Clear((void*)_FeatureBuffer,         (sizeof(sbyte) * _TransformedFeaturesBufferLength));
+            _FeatureBuffer = (nint) AlignedAllocZeroed((sizeof(sbyte) * _TransformedFeaturesBufferLength), AllocAlignment);
 
             Stream kpFile;
             byte[] buff;
@@ -238,10 +237,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         }
 
         /// <summary>
-        /// Refreshes the current accumulator using the active features in the position <paramref name="pos"/>
+        /// Marks both perspectives of the current accumulator as needing to be refreshed.
         /// </summary>
         [MethodImpl(Inline)]
-        public static void RefreshNN(Position pos)
+        public static void RefreshNN()
         {
             if (CurrentAccumulator < 0)
             {
@@ -260,11 +259,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Updates the features in the next accumulator by copying the current features and adding/removing
         /// the features that will be changing. 
         /// <br></br>
-        /// If <paramref name="m"/> is a king move, the next accumulator
-        /// will only be marked as needing a refresh.
+        /// If <paramref name="m"/> is a king move, the next accumulator will be marked as needing a refresh.
         /// </summary>
-        [MethodImpl(Inline)]
-        public static bool MakeMove(Position pos, Move m)
+        [MethodImpl(Optimize)]
+        public static void MakeMove(Position pos, Move m)
         {
             ref Bitboard bb = ref pos.bb;
 
@@ -274,79 +272,37 @@ namespace LTChess.Logic.NN.HalfKA_HM
             PushAccumulator();
             ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
 
+            int us = bb.GetColorAtIndex(moveFrom);
+            int them = Not(us);
+
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            int ourKing = bb.KingIndex(us);
+            int theirKing = bb.KingIndex(them);
+
+            var ourAccumulation = Accumulator[us];
+            var theirAccumulation = Accumulator[them];
+
+            var ourPsq = Accumulator.PSQ(us);
+            var theirPsq = Accumulator.PSQ(them);
+
 
             if (ourPiece == Piece.King)
             {
-                Accumulator.RefreshPerspective[pos.ToMove] = true;
-                return false;
-            }
-            else
-            {
-                //  Otherwise, we only need to remove the features that are no longer there (move.From) and the piece that was on
-                //  move.To before it was captured, and add the new features (move.To).
+                //  When we make a king move, we will need to do a full recalculation of our features.
+                //  We can still update the opponent's side however, since their features are dependent on where THEIR king is, not ours.
+                //  This saves us a bit of time later since we won't need to refresh both sides for every king move.
+                Accumulator.RefreshPerspective[us] = true;
 
-                int us = bb.GetColorAtIndex(moveFrom);
-                int them = Not(us);
-                int theirPiece = bb.GetPieceAtIndex(moveTo);
-
-                int ourKing = bb.KingIndex(us);
-                int theirKing = bb.KingIndex(them);
-
-                var ourAccumulation = Accumulator[us];
-                var theirAccumulation = Accumulator[them];
-
-                var ourPsq = Accumulator.PSQ(us);
-                var theirPsq = Accumulator.PSQ(them);
-
-                int ourPieceOldIndex_US =   HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing);
-                int ourPieceOldIndex_THEM = HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing);
-
-                RemoveFeature(ourAccumulation, ourPsq, ourPieceOldIndex_US);
-                RemoveFeature(theirAccumulation, theirPsq, ourPieceOldIndex_THEM);
-
-                if (!m.Promotion)
-                {
-                    int ourPieceNewIndex_US =   HalfKAIndex(us, moveTo, FishPiece(ourPiece, us), ourKing);
-                    int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing);
-
-                    AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
-                    AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
-                }
-                else
-                {
-                    //  Add the promotion piece instead.
-                    int ourPieceNewIndex_US =   HalfKAIndex(us, moveTo, FishPiece(m.PromotionTo, us), ourKing);
-                    int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(m.PromotionTo, us), theirKing);
-
-                    AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
-                    AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
-                }
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing));
 
                 if (m.Capture)
                 {
-                    //  A captured piece needs to be removed from both perspectives as well.
-                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, moveTo, FishPiece(theirPiece, Not(us)), ourKing);
-                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing);
-
-                    RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
-                    RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
-
+                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing));
                 }
-
-                if (m.EnPassant)
-                {
-                    //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
-                    int idxPawn = moveTo + ShiftDownDir(us);
-
-                    int theirCapturedPieceIndex_US =    HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing);
-                    int theirCapturedPieceIndex_THEM =  HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing);
-
-                    RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
-                    RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
-                }
-
-                if (m.Castle)
+                else if (m.Castle)
                 {
 
                     int rookFrom = moveTo switch
@@ -365,26 +321,62 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         G8 => F8,
                     };
 
-                    int ourRookOldIndex_US =    HalfKAIndex(us, rookFrom, FishPiece(Piece.Rook, us), ourKing);
-                    int ourRookOldIndex_THEM =  HalfKAIndex(them, rookFrom, FishPiece(Piece.Rook, us), theirKing);
-
-                    RemoveFeature(ourAccumulation, ourPsq, ourRookOldIndex_US);
-                    RemoveFeature(theirAccumulation, theirPsq, ourRookOldIndex_THEM);
-
-                    int ourRookNewIndex_US =    HalfKAIndex(us, rookTo, FishPiece(Piece.Rook, us), ourKing);
-                    int ourRookNewIndex_THEM =  HalfKAIndex(them, rookTo, FishPiece(Piece.Rook, us), theirKing);
-
-                    AddFeature(ourAccumulation, ourPsq, ourRookNewIndex_US);
-                    AddFeature(theirAccumulation, theirPsq, ourRookNewIndex_THEM);
+                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookFrom, FishPiece(Piece.Rook, us), theirKing));
+                    AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookTo, FishPiece(Piece.Rook, us), theirKing));
                 }
 
+                return;
             }
 
-            return true;
+            //  Otherwise, we only need to remove the features that are no longer there (move.From) and the piece that was on
+            //  move.To before it was captured, and add the new features (move.To).
+
+            int ourPieceOldIndex_US = HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing);
+            int ourPieceOldIndex_THEM = HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing);
+
+            RemoveFeature(ourAccumulation, ourPsq, ourPieceOldIndex_US);
+            RemoveFeature(theirAccumulation, theirPsq, ourPieceOldIndex_THEM);
+
+            if (m.Promotion)
+            {
+                //  Add the promotion piece instead.
+                int ourPieceNewIndex_US = HalfKAIndex(us, moveTo, FishPiece(m.PromotionTo, us), ourKing);
+                int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(m.PromotionTo, us), theirKing);
+
+                AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
+                AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
+            }
+            else
+            {
+                int ourPieceNewIndex_US = HalfKAIndex(us, moveTo, FishPiece(ourPiece, us), ourKing);
+                int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing);
+
+                AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
+                AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
+            }
+
+            if (m.Capture)
+            {
+                //  A captured piece needs to be removed from both perspectives as well.
+                int theirCapturedPieceIndex_US = HalfKAIndex(us, moveTo, FishPiece(theirPiece, Not(us)), ourKing);
+                int theirCapturedPieceIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing);
+
+                RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
+                RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
+            }
+
+            if (m.EnPassant)
+            {
+                //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
+                int idxPawn = moveTo + ShiftDownDir(us);
+
+                int theirCapturedPieceIndex_US = HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing);
+                int theirCapturedPieceIndex_THEM = HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing);
+
+                RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
+                RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
+            }
         }
-
-
-
 
         /// <summary>
         /// Removes the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
@@ -501,7 +493,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// perspective of the player looking at them.
         /// </summary>
         [MethodImpl(Optimize)]
-        public static void AppendActiveIndices(Position pos, Span<int> active, int perspective)
+        public static int AppendActiveIndices(Position pos, Span<int> active, int perspective)
         {
             int spanIndex = 0;
 
@@ -534,6 +526,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 them = poplsb(them);
             }
+
+            return spanIndex;
         }
 
 

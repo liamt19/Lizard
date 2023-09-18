@@ -49,9 +49,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         static FeatureTransformer()
         {
-            Biases      = (Vector256<short>*) NativeMemory.AlignedAlloc(((HalfDimensions) / VSize.Short * 32),                   AllocAlignment);
-            Weights     = (Vector256<short>*) NativeMemory.AlignedAlloc(((HalfDimensions * InputDimensions) / VSize.Short * 32), AllocAlignment);
-            PSQTWeights = (Vector256<int>*)   NativeMemory.AlignedAlloc(((InputDimensions * PSQTBuckets) / VSize.Int * 32),      AllocAlignment);
+            Biases      = (Vector256<short>*) AlignedAllocZeroed(((HalfDimensions) / VSize.Short * 32),                   AllocAlignment);
+            Weights     = (Vector256<short>*) AlignedAllocZeroed(((HalfDimensions * InputDimensions) / VSize.Short * 32), AllocAlignment);
+            PSQTWeights = (Vector256<int>*)   AlignedAllocZeroed(((InputDimensions * PSQTBuckets) / VSize.Int * 32),      AllocAlignment);
 
             One = Vector256.Create((short)127).AsInt16();
         }
@@ -63,14 +63,46 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Optimize)]
         public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
+
+#if DEBUG
+            //  This is to ensure that both perspectives of the accumulator are being refreshed when they are supposed to.
+            if (true)
+            {
+                //Log("TransformFeatures(" + CurrentAccumulator + ")");
+                if (accumulator.RefreshPerspective[White])
+                {
+                    RefreshAccumulatorPerspective(pos, ref accumulator, White);
+                    //Log("\tWhite done");
+                }
+                if (accumulator.RefreshPerspective[Black])
+                {
+                    RefreshAccumulatorPerspective(pos, ref accumulator, Black);
+                    //Log("\tBlack done");
+                }
+
+                AccumulatorPSQT correct = new AccumulatorPSQT();
+                RefreshAccumulatorPerspective(pos, ref correct, White);
+                RefreshAccumulatorPerspective(pos, ref correct, Black);
+                if ((accumulator.White[0][0] != correct.White[0][0]) || (accumulator.Black[0][0] != correct.Black[0][0]))
+                {
+                    Log("FEN " + pos.GetFEN());
+                    Log("accumulator.White[0][0] == " + accumulator.White[0][0] + ", should be " + correct.White[0][0]);
+                    Log("accumulator.Black[0][0] == " + accumulator.Black[0][0] + ", should be " + correct.Black[0][0]);
+                    Log("");
+                }
+            }
+#endif
+
             if (accumulator.RefreshPerspective[White])
             {
                 RefreshAccumulatorPerspective(pos, ref accumulator, White);
             }
+
             if (accumulator.RefreshPerspective[Black])
             {
                 RefreshAccumulatorPerspective(pos, ref accumulator, Black);
             }
+
 
             const int Control = 0b11011000;
 
@@ -121,12 +153,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Span<int> active = stackalloc int[MaxActiveDimensions];
 
-            if (SkipInitEnabled)
-            {
-                active.Clear();
-            }
-
-            HalfKA_HM.AppendActiveIndices(pos, active, perspective);
+            int activeCount = HalfKA_HM.AppendActiveIndices(pos, active, perspective);
 
             var accumulation = accumulator[perspective];
             var PSQTaccumulation = accumulator.PSQ(perspective);
@@ -141,7 +168,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
 
                 int i = 0;
-                while (i < MaxActiveDimensions)
+                while (i < activeCount)
                 {
                     int index = active[i++];
                     if (index <= 0)
@@ -172,7 +199,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
 
                 int i = 0;
-                while (i < MaxActiveDimensions)
+                while (i < activeCount)
                 {
                     int index = active[i++];
                     if (index <= 0)
