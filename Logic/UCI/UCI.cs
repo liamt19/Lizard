@@ -9,6 +9,8 @@ using LTChess.Logic.Book;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
 
+using static LTChess.Logic.Search.Search;
+
 namespace LTChess.Logic.Core
 {
     public class UCI
@@ -18,6 +20,12 @@ namespace LTChess.Logic.Core
 
         public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
+
+        /// <summary>
+        /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
+        /// where # is a (hopefully) unique number for this instance.
+        /// </summary>
+        private const bool WriteToConcurrentLogs = false;
 
         public static int DefaultMoveOverhead = 10;
 
@@ -54,27 +62,50 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// Appends the string <paramref name="s"/> to the file <see cref="LogFileName"/>
         /// </summary>
-        public static void LogString(string s)
+        public static void LogString(string s, bool newLine = true)
         {
-            if (IsRunningConcurrently)
-            {
-                return;
-            }
-
             lock (LogFileLock)
             {
-                using (FileStream fs = new FileStream(LogFileName, FileMode.Append, FileAccess.Write, FileShare.Read))
+                try
                 {
+                    string fileToWrite = LogFileName;
+
+                    if (IsRunningConcurrently)
+                    {
+                        if (WriteToConcurrentLogs)
+                        {
+                            fileToWrite = @".\ucilog_" + ConcurrencyCount + ".txt";
+                        }
+                        else
+                        {
+                            //  Concurrent logging off, just return here.
+                            return;
+                        }
+                    }
+
+                    using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
                     using StreamWriter sw = new StreamWriter(fs);
 
 #if DEBUG
                     long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.debug_time_off;
                     sw.WriteLine(timeMS.ToString("0000000") + " " + s);
 #else
-                    sw.WriteLine(s);
+                    if (newLine)
+                    {
+                        sw.WriteLine(s);
+                    }
+                    else
+                    {
+                        sw.Write(s);
+                    }
 #endif
 
                     sw.Flush();
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("ERROR LogString('" + s + "') failed!");
+                    Console.WriteLine(e.ToString());
                 }
             }
         }
@@ -209,7 +240,7 @@ namespace LTChess.Logic.Core
 
                     if (UseHalfKA)
                     {
-                        HalfKA_HM.RefreshNN(info.Position);
+                        HalfKA_HM.RefreshNN();
                         HalfKA_HM.ResetNN();
                     }
                 }
@@ -415,20 +446,20 @@ namespace LTChess.Logic.Core
             {
                 //  We will need to reduce our search time if we have less time than info.MaxSearchTime
 
-                //  If we have more than 5 seconds, we can use all of the time we have above that.
-                //  Otherwise, just use our remaining time.
                 int newTime = (info.Position.ToMove == Color.White ? whiteTime : blackTime);
 
                 LogString("[INFO]: only have " + whiteTime + "ms left <= MaxSearchTime: " + info.TimeManager.MaxSearchTime + ", setting time to " + newTime + "ms");
                 info.TimeManager.MaxSearchTime = newTime;
             }
 
+            //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
+            //  then we make one ourselves
             if (!hasMoveTime && (info.TimeManager.MaxSearchTime == SearchConstants.DefaultSearchTime) && hasWhiteTime && hasBlackTime)
             {
                 info.TimeManager.MakeMoveTime(info.Position.ToMove);
             }
 
-            SimpleSearch.StartSearching(ref info, !hasDepthCommand);
+            Search.Search.StartSearching(ref info, !hasDepthCommand);
             LogString("[INFO]: Returned from call to StartSearching at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
         }
 
@@ -467,6 +498,7 @@ namespace LTChess.Logic.Core
         {
             info.Position = new Position();
             TranspositionTable.Clear();
+            Search.Search.HandleNewGame();
         }
 
         private void HandleSetOption(string optName, string optValue)
