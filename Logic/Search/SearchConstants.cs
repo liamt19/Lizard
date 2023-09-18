@@ -21,11 +21,6 @@
         /// </summary>
         public const int SearchLowTimeThreshold = 3 * 1000;
 
-        /// <summary>
-        /// If we are at or past this depth, start checking if our time is approaching the low time threshold.
-        /// Searches in depths 1-4 currently finish within a few milliseconds, and beginning at depth 5 they can begin to take 2-3 seconds.
-        /// </summary>
-        public const int SearchLowTimeMinDepth = 2;
 
         /// <summary>
         /// Every 4095 nodes, check to see if we are near or at the maximum search time.
@@ -84,14 +79,6 @@
 
 
 
-
-        /// <summary>
-        /// Null Move Pruning gives our opponent an extra move to try to improve their evaluation.
-        /// If they can't improve it enough, then we stop looking at that node
-        /// since we are reasonably sure that they are losing.
-        /// </summary>
-        public const bool UseNullMovePruning = true;
-
         /// <summary>
         /// Nodes need to be at this depth of higher to be considered for pruning.
         /// This also influences the reduced depth that the following nodes are searched
@@ -101,134 +88,22 @@
         public const int NullMovePruningMinDepth = 3;
 
 
-
-
-        /// <summary>
-        /// Delta pruning will ignore captures which wouldn't help the losing side improve their position during quiescence searches.
-        /// For example, if we are down a queen, then testing a pawn capture is less important than testing the capture of a bishop/rook.
-        /// </summary>
-        public const bool UseDeltaPruning = true;
-
-        /// <summary>
-        /// This value is added to the value of the captured piece when we are considering if a capture
-        /// is "worth it" or not, and represents possible positional compensation in exchange for material.
-        /// This should generally be set equal to the value of a knight minus the value of a pawn,
-        /// although setting it higher doesn't hurt performance too much.
-        /// </summary>
-        public const int DeltaPruningMargin = EvaluationConstants.ValueKnight - EvaluationConstants.ValuePawn;
-
-
-
-
-        /// <summary>
-        /// const Exchange Evaluation checks whether a series of captures on a square gains or loses material.
-        /// This is meant to help speed up quiescence search since we can determine if a series of 8 captures
-        /// in a row wins us material without having to make/unmake 8 moves.
-        /// </summary>
-        public const bool UseQuiescenceSEE = false;
-
-        public const bool UseAggressiveQPruning = false;
-
-
-        /// <summary>
-        /// Futility pruning will cause moves at depth 1 that don't appear to raise alpha enough
-        /// from going into a potentially lengthy quiescence search. 
-        /// </summary>
-        public const bool UseFutilityPruning = true;
-
-        /// <summary>
-        /// The depth must be less than or equal to this for futility pruning to be considered.
-        /// </summary>
-        public const int FutilityPruningMaxDepth = 6;
-
         /// <summary>
         /// This margin is added to the pruning check, per depth.
         /// </summary>
         public const int FutilityPruningMarginPerDepth = 120;
 
 
-
-
-        public const bool UseReverseFutilityPruning = true;
-
         /// <summary>
         /// The depth must be less than or equal to this for reverse futility pruning to be considered.
         /// </summary>
         public const int ReverseFutilityPruningMaxDepth = 8;
-
         public const int ReverseFutilityPruningPerDepth = 70;
         public const int ReverseFutilityPruningImproving = 75;
 
 
-
-        public const bool UseRazoring = true;
-
+        public const int RazoringMaxDepth = 6;
         public const int RazoringMargin = 275;
-
-
-
-        public const bool UseHistoryHeuristic = false;
-
-
-        public const bool UseKillerHeuristic = true;
-
-
-        /// <summary>
-        /// Late Move Pruning will only look at a certain amount of quiet moves (which are non-captures)
-        /// based on the current search depth before stopping the search in the branch.
-        /// <br></br>
-        /// If the search has found at least one decent move before the cutoff, it will ignore the rest
-        /// of the moves at that depth, with the reasoning being that our move ordering should've put 
-        /// the best quiet moves before that cutoff (and most if not all non-quiet moves before those), 
-        /// so it is likely that the remaining quiet moves aren't good enough to be searched.
-        /// </summary>
-        public const bool UseLateMovePruning = true;
-
-        /// <summary>
-        /// The depth must be at or below this to be considered for move count based pruning.
-        /// </summary>
-        public const int LMPDepth = 3;
-
-
-
-        /// <summary>
-        /// Late Move Reduction will decrease the depth that "bad" moves are searched at.
-        /// This is based on move ordering, which puts tries to sort moves based on how 
-        /// likely they are to be "good" or important (like captures, checks, and castling moves).
-        /// </summary>
-        public const bool UseLateMoveReduction = true;
-
-        /// <summary>
-        /// Number of plys to reduce.
-        /// </summary>
-        public const int LMRReductionAmount = 1;
-
-        /// <summary>
-        /// The depth must be at or above this amount to be reduced.
-        /// </summary>
-        public const int LMRDepth = 3;
-
-        public const bool UseLogReductionTable = true;
-
-
-
-        /// <summary>
-        /// Whether to use various search extensions, which will increase the search depth by 1 or more.
-        /// This is usually applied when a move causes check since it might be important to spend more time
-        /// looking at that line.
-        /// </summary>
-        public const bool UseSearchExtensions = true;
-
-        /// <summary>
-        /// The maximum number of depth increases allowed during a search. 
-        /// </summary>
-        public const int MaxExtensions = 4;
-
-        /// <summary>
-        /// A pawn must be at or closer than this distance to cause an extension.
-        /// </summary>
-        public const int PassedPawnExtensionDistance = 3;
-
 
 
         /// <summary>
