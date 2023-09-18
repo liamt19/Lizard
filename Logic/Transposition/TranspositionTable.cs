@@ -33,7 +33,7 @@ namespace LTChess.Logic.Transposition
         {
 
             ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*) NativeMemory.AlignedAlloc((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
+            Clusters = (TTCluster*) AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();
@@ -127,7 +127,7 @@ namespace LTChess.Logic.Transposition
         /// <summary>
         /// Increases the age that TT entries must have to be considered a "TT Hit".
         /// <br></br>
-        /// This is done on every call to <see cref="SimpleSearch.StartSearching"/> to prevent the transposition table
+        /// This is done on every call to <see cref="Search.Search.StartSearching"/> to prevent the transposition table
         /// from spilling into another search.
         /// </summary>
         [MethodImpl(Inline)]
@@ -172,6 +172,8 @@ namespace LTChess.Logic.Transposition
 
             int NullMoves = 0;
 
+            int[] slots = new int[3];
+
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 ref var cluster = ref Clusters[i];
@@ -195,6 +197,11 @@ namespace LTChess.Logic.Transposition
                         Invalid++;
                     }
 
+                    if (tt.NodeType != TTNodeType.Invalid)
+                    {
+                        slots[j]++;
+                    }
+
                     if (tt.BestMove.IsNull() && tt.NodeType != TTNodeType.Invalid)
                     {
                         NullMoves++;
@@ -205,6 +212,7 @@ namespace LTChess.Logic.Transposition
             int entries = Beta + Alpha + Exact;
             double percent = (double)entries / (ClusterCount * EntriesPerCluster);
             Log("TT:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (percent * 100) + "%");
+            Log("Slots:\t " + slots[0] + " / " + slots[1] + " / " + slots[2]);
             Log("Alpha:\t " + Alpha);
             Log("Beta:\t " + Beta);
             Log("Exact:\t " + Exact);

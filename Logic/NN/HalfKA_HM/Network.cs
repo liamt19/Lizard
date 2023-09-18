@@ -72,7 +72,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             _bytesToAlloc += ((ac_0.BufferSize + ClippedReLU_Padding) + (ac_1.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
             _bytesToAlloc += ((ac_sqr_0.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
 
-            _buffer = NativeMemory.AlignedAlloc((nuint)_bytesToAlloc, AllocAlignment);
+            _buffer = AlignedAllocZeroed((nuint)_bytesToAlloc, AllocAlignment);
         }
 
         public uint GetHashValue()

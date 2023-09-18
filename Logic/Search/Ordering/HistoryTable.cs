@@ -30,9 +30,8 @@ namespace LTChess.Logic.Search.Ordering
 
         public HistoryTable()
         {
-            MainHistory         = (short*) NativeMemory.AlignedAlloc(sizeof(short) * MainHistoryElements, AllocAlignment);
-            CaptureHistory      = (short*) NativeMemory.AlignedAlloc(sizeof(short) * CaptureHistoryElements, AllocAlignment);
-            //ContinuationHistory = (short*) NativeMemory.AlignedAlloc(sizeof(short) * ContinuationHistoryElements, AllocAlignment);
+            MainHistory         = (short*) AlignedAllocZeroed(sizeof(short) * MainHistoryElements, AllocAlignment);
+            CaptureHistory      = (short*) AlignedAllocZeroed(sizeof(short) * CaptureHistoryElements, AllocAlignment);
         }
 
         [MethodImpl(Inline)]

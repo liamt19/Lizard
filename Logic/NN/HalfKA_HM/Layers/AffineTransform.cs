@@ -53,8 +53,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             BufferSize = CeilToMultiple((short)OutputDimensions, MaxSimdWidth);
             BufferSizeBytes = BufferSize * sizeof(int);
 
-            Weights = (Vector256<sbyte>*)  NativeMemory.AlignedAlloc((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
-            Biases  = (Vector256<int>*)    NativeMemory.AlignedAlloc((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
+            Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
+            Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
 
             NumOutputRegs = (uint)Math.Min(MaxNumOutputRegs, OutputDimensions);
 

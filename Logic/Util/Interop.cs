@@ -163,7 +163,25 @@ namespace LTChess.Logic.Util
                 return res;
             }
         }
-    
+
+
+        /// <summary>
+        /// Allocates a block of memory of size <paramref name="byteCount"/>, aligned on the boundary <paramref name="alignment"/>,
+        /// and clears the block before returning its address.
+        /// <para></para>
+        /// The <see cref="NativeMemory"/> class provides <see cref="NativeMemory.AlignedAlloc"/> to make sure that the block is aligned,
+        /// and <see cref="NativeMemory.AllocZeroed"/>, to ensure that the memory in that block is set to 0 before it is used,
+        /// but doesn't have a method to do these both.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static unsafe void* AlignedAllocZeroed(nuint byteCount, nuint alignment = AllocAlignment)
+        {
+            void* block = NativeMemory.AlignedAlloc(byteCount, alignment);
+            NativeMemory.Clear(block, byteCount);
+
+            return block;
+        }
+
 
     }
 }
