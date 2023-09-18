@@ -8,11 +8,11 @@
 
         public const int EndgameMaterial = (ValuePawn * 2 * 4) + (ValueRook * 2) + (ValueKnight * 2);
 
-        public const int ValuePawn = 100;
-        public const int ValueKnight = 310 + 20;
-        public const int ValueBishop = 330 + 30;
-        public const int ValueRook = 510 + 40;
-        public const int ValueQueen = 1000 + 50;
+        public const int ValuePawn = 210;
+        public const int ValueKnight = 840;
+        public const int ValueBishop = 920;
+        public const int ValueRook = 1370;
+        public const int ValueQueen = 2690;
 
         public static readonly int[] PieceValues = { ValuePawn, ValueKnight, ValueBishop, ValueRook, ValueQueen };
 
