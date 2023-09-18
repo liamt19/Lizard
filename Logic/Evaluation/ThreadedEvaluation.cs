@@ -11,8 +11,10 @@ namespace LTChess.Logic.Search
         public const int ScoreMate = 30000;
         public const int ScoreInfinite = 31200;
 
+        public const int ScoreMateMax = ScoreMate - MaxPly;
+        public const int ScoreAssuredWin = 20000;
         public const int ScoreWin = 10000;
-        public const int ScoreTTWin = ScoreInfinite - (2 * MaxPly);
+        public const int ScoreTTWin = ScoreInfinite - 512;
         public const int ScoreTTLoss = -ScoreTTWin;
         public const int ScoreDraw = 0;
 
