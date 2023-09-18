@@ -563,11 +563,11 @@ namespace LTChess.Logic.Data
 
                 //  files includes idx's file, and the files to idx's left and right if they are on the same rank still (between B and G)
                 ulong files = GetFileBB(idx);
-                if (GetIndexRank(idx - 1) == y)
+                if (idx > A1 && GetIndexRank(idx - 1) == y)
                 {
                     files |= GetFileBB(idx - 1);
                 }
-                if (GetIndexRank(idx + 1) == y)
+                if (idx < H8 && GetIndexRank(idx + 1) == y)
                 {
                     files |= GetFileBB(idx + 1);
                 }
