@@ -1,15 +1,14 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
+using LTChess.Logic.Search.Ordering;
+
 namespace LTChess.Logic.Search
 {
     /// <summary>
-    /// Used during a search to keep track of the static evaluations of previous positions.
-    /// <br></br>
-    /// It is helpful to know if the static evaluation of the position is better now than it was on our last turn
-    /// since that would suggest that our score is improving.
+    /// Used during a search to keep track of information from earlier plies/depths
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 32)]
+    [StructLayout(LayoutKind.Explicit, Size = 64)]
     public unsafe struct SearchStackEntry
     {
         public static SearchStackEntry NullEntry = new SearchStackEntry();
@@ -24,32 +23,59 @@ namespace LTChess.Logic.Search
         public Move CurrentMove;
 
         [FieldOffset(12)]
+        public Move ExcludedMove;
+
+
+        /// <summary>
+        /// A pointer to a 2D array of scores (short[12][64]) for a particular move.
+        /// <br></br>
+        /// This should be updated after a move is made, and before a recursive call to Negamax/QSearch.
+        /// </summary>
+        [FieldOffset(16)]
+        public PieceToHistory* ContinuationHistory;
+
+        [FieldOffset(24)]
+        public int StatScore;
+
+        [FieldOffset(28)]
         public int Ply;
 
-        [FieldOffset(16)]
+
+
+        [FieldOffset(32)]
+        public int MoveCount;
+
+        [FieldOffset(36)]
+        public int Extensions;
+
+        [FieldOffset(40)]
+        public int Cutoffs;
+
+        [FieldOffset(44)]
         public short StaticEval;
 
-        [FieldOffset(18)]
+        [FieldOffset(46)]
+        private fixed byte _pad0[2];
+
+
+        [FieldOffset(48)]
         public bool InCheck;
 
-        [FieldOffset(19)]
+        [FieldOffset(49)]
         public bool TTPV;
 
-        [FieldOffset(20)]
+        [FieldOffset(50)]
         public bool TTHit;
 
-        [FieldOffset(21)]
-        public fixed byte pad[11];
+        [FieldOffset(51)]
+        private fixed byte _pad1[13];
+
+
 
         public SearchStackEntry()
         {
             Clear();
 
-            byte[] temp = "hello world"u8.ToArray();
-            for (int i = 0; i < 11; i++)
-            {
-                pad[i] = temp[i];
-            }
         }
 
         public void Clear()
@@ -57,12 +83,35 @@ namespace LTChess.Logic.Search
             CurrentMove = Move.Null;
             Killer0 = Move.Null;
             Killer1 = Move.Null;
+            ExcludedMove = Move.Null;
+
+            ContinuationHistory = null;
+            StatScore = 0;
             Ply = 0;
+
+
+            MoveCount = 0;
+            Extensions = 0;
+            Cutoffs = 0;
             StaticEval = ScoreNone;
 
             InCheck = false;
             TTPV = false;
             TTHit = false;
+        }
+
+        public static string GetMovesPlayed(SearchStackEntry* curr)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            //  Not using a while loop here to prevent infinite loops or some other nonsense.
+            for (int i = curr->Ply; i >= 0; i--)
+            {
+                sb.Insert(0, curr->CurrentMove.ToString() + " ");
+                curr--;
+            }
+
+            return sb.ToString();
         }
     }
 }
