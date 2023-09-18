@@ -1,17 +1,103 @@
 ﻿
 #define SHOW_STATS
 
+using LTChess.Logic.Data;
 namespace LTChess.Logic.Search.Ordering
 {
     public static unsafe class MoveOrdering
     {
+
+        /// <summary>
+        /// Gives each of the<paramref name="size"/> pseudo-legal moves in <paramref name = "list"/> scores and places those scores into<paramref name="scores"/>.
+        /// </summary>
+        /// <param name="ss">The entry containing Killer moves to prioritize</param>
+        /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
+        /// <param name="continuationHistory">
+        /// An array of 6 pointers to <see cref="SearchStackEntry.ContinuationHistory"/>. This should be [ (ss - 1), (ss - 2), null, (ss - 4), null, (ss - 6) ].
+        /// </param>
+        /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
+        [MethodImpl(Inline)]
+        public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory, 
+                                        Span<Move> list, in Span<int> scores, int size, CondensedMove ttMove)
+        {
+            int pc = bb.GetColorAtIndex(list[0].From);
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                int moveTo = m.To;
+                int moveFrom = m.From;
+
+                if (m == ttMove)
+                {
+                    scores[i] = int.MaxValue - 100000;
+                }
+                else if (m == ss->Killer0)
+                {
+                    scores[i] = int.MaxValue - 1000000;
+                }
+                else if (m == ss->Killer1)
+                {
+                    scores[i] = int.MaxValue - 2000000;
+                }
+                else if (m.Capture)
+                {
+                    int capturedPiece = bb.GetPieceAtIndex(moveTo);
+                    int capIdx = HistoryTable.CapIndex(bb.GetPieceAtIndex(moveFrom), pc, moveTo, capturedPiece);
+                    scores[i] = (7 * GetPieceValue(capturedPiece)) + history.CaptureHistory[capIdx] / 16;
+                }
+                else
+                {
+                    int contIdx = PieceToHistory.GetIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo);
+
+                    scores[i] =  2 *  (history.MainHistory[((pc * HistoryTable.MainHistoryPCStride) + m.MoveMask)]);
+                    scores[i] += 2 *  (*continuationHistory[0])[contIdx];
+                    scores[i] +=      (*continuationHistory[1])[contIdx];
+                    scores[i] +=      (*continuationHistory[3])[contIdx];
+                    scores[i] +=      (*continuationHistory[5])[contIdx];
+
+                    if (m.Checks)
+                    {
+                        scores[i] += 10000;
+                    }
+                }
+
+
+            }
+        }
+
+        [MethodImpl(Inline)]
+        public static void OrderNextMove(in Span<Move> moves, in Span<int> scores, int size, int listIndex)
+        {
+            if (size < 2)
+            {
+                return;
+            }
+
+            int max = int.MinValue;
+            int maxIndex = -1;
+
+            for (int i = listIndex; i < size; i++)
+            {
+                if (scores[i] > max)
+                {
+                    max = scores[i];
+                    maxIndex = i;
+                }
+            }
+
+            (moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
+            (scores[maxIndex], scores[listIndex]) = (scores[listIndex], scores[maxIndex]);
+        }
+
+
         /// <summary>
         /// A table containing move scores given to captures based on the value of the attacking piece in comparison to the piece being captured.
         /// We want to look at PxQ before QxQ because it would win more material if their queen was actually defended.
         /// <br></br>
         /// For example, the value of a bishop capturing a queen would be <see cref="MvvLva"/>[<see cref="Piece.Queen"/>][<see cref="Piece.Bishop"/>], which is 6003
         /// </summary>
-        public static readonly int[][] MvvLva =
+        private static readonly int[][] MvvLva =
         {
             //          pawn, knight, bishop, rook, queen, king
             new int[] { 10005, 10004, 10003, 10002, 10001, 10000 },
@@ -29,10 +115,9 @@ namespace LTChess.Logic.Search.Ordering
         /// based on the results from the previous depth, and don't necessarily want to spend time looking at 
         /// a "bad" move's entire search tree again when we already have a couple moves that look promising.
         /// </summary>
-        /// <param name="ply">The current ply of the search, used to determine what the killer moves are for that ply</param>
         /// <param name="pvOrTTMove">This is set to the TTEntry.BestMove from the previous depth, or possibly Move.Null</param>
         [MethodImpl(Inline)]
-        public static unsafe void AssignNormalMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, SearchStackEntry* ss, int size, int ply, CondensedMove pvOrTTMove)
+        private static void _AssignNormalMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, SearchStackEntry* ss, int size, CondensedMove pvOrTTMove)
         {
             for (int i = 0; i < size; i++)
             {
@@ -86,65 +171,8 @@ namespace LTChess.Logic.Search.Ordering
 
         }
 
-
-
-        /// <summary>
-        /// Orders the <paramref name="list"/> of moves based on the value of the piece being captured. 
-        /// All moves that capture queens will be sorted before moves that capture rooks, etc.
-        /// <br></br>
-        /// The values in <paramref name="scores"/> are the difference in piece value between the piece that is moving
-        /// and the piece that is being captured (i.e. a bishop capturing a queen == 1000 - 330).
-        /// </summary>
-        /// <param name="list">Move list to be sorted in descending order of capture value</param>
-        /// <param name="scores">Set to the difference in material for each move</param>
-        /// <param name="size">The number of captures in the move list</param>
         [MethodImpl(Inline)]
-        public static void SortByCaptureValueFast(ref Bitboard bb, in Span<Move> list, in Span<int> scores, int size)
-        {
-            for (int i = 0; i < size; i++)
-            {
-                scores[i] = GetPieceValue(bb.PieceTypes[list[i].To]) - GetPieceValue(bb.PieceTypes[list[i].From]);
-                if (list[i].EnPassant)
-                {
-                    scores[i] = EvaluationConstants.ValuePawn;
-                }
-                else if (list[i].Promotion)
-                {
-                    scores[i] += GetPieceValue(list[i].PromotionTo);
-                }
-            }
-
-            int max;
-            for (int i = 0; i < size - 1; i++)
-            {
-                max = i;
-                for (int j = i + 1; j < size; j++)
-                {
-                    //  TODO: EnPassant not considered here
-                    if (GetPieceValue(bb.PieceTypes[list[j].To]) > GetPieceValue(bb.PieceTypes[list[max].To]))
-                    {
-                        max = j;
-                    }
-                }
-
-                (list[max], list[i]) = (list[i], list[max]);
-                (scores[max], scores[i]) = (scores[i], scores[max]);
-            }
-        }
-
-
-
-        [MethodImpl(Inline)]
-        public static void AssignQuiescenceMoveScores(in Bitboard bb, in Span<Move> list, in Span<int> scores, int size)
-        {
-            for (int i = 0; i < size; i++)
-            {
-                scores[i] = GetPieceValue(bb.PieceTypes[list[i].To]);
-            }
-        }
-
-        [MethodImpl(Inline)]
-        public static void AssignQuiescenceMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, int size)
+        private static void _AssignQuiescenceMoveScores(in Position pos, in HistoryTable history, in Span<Move> list, in Span<int> scores, int size)
         {
             ref Bitboard bb = ref pos.bb;
 
@@ -164,33 +192,9 @@ namespace LTChess.Logic.Search.Ordering
                 {
                     scores[i] = history.MainHistory[((pos.ToMove * HistoryTable.MainHistoryPCStride) + m.MoveMask)];
                 }
-                
             }
         }
 
-        [MethodImpl(Inline)]
-        public static void OrderNextMove(in Span<Move> moves, in Span<int> scores, int size, int listIndex)
-        {
-            if (size < 2)
-            {
-                return;
-            }
-
-            int max = short.MinValue;
-            int maxIndex = -1;
-
-            for (int i = listIndex; i < size; i++)
-            {
-                if (scores[i] > max)
-                {
-                    max = scores[i];
-                    maxIndex = i;
-                }
-            }
-
-            (moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
-            (scores[maxIndex], scores[listIndex]) = (scores[listIndex], scores[maxIndex]);
-        }
     }
 
 
