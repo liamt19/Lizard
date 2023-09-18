@@ -8,7 +8,7 @@
     /// </summary>
     public class PrincipalVariationTable
     {
-        public const int TableSize = NormalListCapacity;
+        public const int TableSize = MaxPly;
 
         private readonly Move[][] Table;
         private readonly int[] LineLengths;
