@@ -88,7 +88,7 @@ namespace LTChess.Logic.NN.Simple768
 
             if (move.EnPassant)
             {
-                int idxPawn = (bb.Pieces[Piece.Pawn] & SquareBB[pos.EnPassantTarget - 8]) != 0 ? pos.EnPassantTarget - 8 : pos.EnPassantTarget + 8;
+                int idxPawn = (bb.Pieces[Piece.Pawn] & SquareBB[pos.State->EPSquare - 8]) != 0 ? pos.State->EPSquare - 8 : pos.State->EPSquare + 8;
                 Network768.ActivateAccumulator(Piece.Pawn, Not(pc), idxPawn, false);
             }
 

@@ -198,13 +198,13 @@ namespace LTChess.Logic.Book
             }
 
             ulong enPassantHash = 0;
-            if (pos.EnPassantTarget != SquareNB)
+            if (pos.State->EPSquare != SquareNB)
             {
                 int up = ShiftUpDir(pos.ToMove);
-                int epPawnSquare = pos.EnPassantTarget - up;
+                int epPawnSquare = pos.State->EPSquare - up;
                 if ((GetRankBB(epPawnSquare) & NeighborsMask[epPawnSquare] & bb.Pieces[Piece.Pawn] & bb.Colors[pos.ToMove]) != 0)
                 {
-                    enPassantHash ^= RandomEnPassant[GetIndexFile(pos.EnPassantTarget)];
+                    enPassantHash ^= RandomEnPassant[GetIndexFile(pos.State->EPSquare)];
                 }
             }
 

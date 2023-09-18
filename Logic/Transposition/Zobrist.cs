@@ -102,9 +102,9 @@
                 hash ^= CastlingRightsHashes[3];
             }
 
-            if (position.EnPassantTarget != SquareNB)
+            if (position.State->EPSquare != SquareNB)
             {
-                hash ^= EnPassantFileHashes[GetIndexFile(position.EnPassantTarget)];
+                hash ^= EnPassantFileHashes[GetIndexFile(position.State->EPSquare)];
             }
 
             if (position.ToMove == Color.Black)
