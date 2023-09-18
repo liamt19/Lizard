@@ -239,7 +239,9 @@ namespace LTChess.Logic.Data
                 //  If multiple of the same piece type can move to the same square, then we have to
                 //  differentiate them by including either the file, rank, or both, that this piece is moving from.
                 ulong multPieces = bb.AttackersTo(moveTo, bb.Occupancy) & bb.Colors[bb.GetColorAtIndex(moveFrom)] & bb.Pieces[pt];
-                if (popcount(multPieces) > 1)
+
+                //  This isn't done for pawns though since their notation is always unambiguous
+                if (popcount(multPieces) > 1 && pt != Pawn)
                 {
                     if ((multPieces & GetFileBB(moveFrom)) == SquareBB[moveFrom])
                     {
