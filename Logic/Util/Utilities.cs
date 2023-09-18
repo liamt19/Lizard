@@ -15,8 +15,8 @@ namespace LTChess.Logic.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "8.3";
-        public const string EngineTagLine = "Now with even more pointers!";
+        public const string EngineBuildVersion = "8.4";
+        public const string EngineTagLine = "En passant is so powerful that it was reducing the previous release's ELO by over 100!";
 
         public const int MaxListCapacity = 512;
         public const int ExtendedListCapacity = 256;
@@ -34,7 +34,7 @@ namespace LTChess.Logic.Util
         /// </summary>
         public const int MaxSearchStackPly = 256 - 10;
 
-        public const nuint AllocAlignment = 32;
+        public const nuint AllocAlignment = 64;
 
         public const ulong Border = 0xFF818181818181FF;
         public const ulong PawnPromotionSquares = 0xFF000000000000FF;
@@ -91,6 +91,7 @@ namespace LTChess.Logic.Util
         public static bool JITHasntSeenSearch = false;
 
         public static bool IsRunningConcurrently = false;
+        public static int ConcurrencyCount = 0;
 
         public static long debug_time_off = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
@@ -127,9 +128,37 @@ namespace LTChess.Logic.Util
         /// </summary>
         public static void CheckConcurrency()
         {
-            if (Process.GetProcesses().Where(x => x.ProcessName == (Process.GetCurrentProcess().ProcessName)).Count() > 1)
+            Process thisProc = Process.GetCurrentProcess();
+            var selfProcs = Process.GetProcesses().Where(x => (x.ProcessName == thisProc.ProcessName)).ToList();
+
+            var thisTime = thisProc.StartTime.Ticks;
+
+            for (int i = 0; i < selfProcs.Count; i++)
             {
-                Log("Running concurrently!");
+                try
+                {
+                    //  Ensure that the processes are exactly the same as this one
+                    if (selfProcs[i].MainModule.FileName != thisProc.MainModule.FileName)
+                    {
+                        continue;
+                    }
+                }
+                catch (Exception e)
+                {
+                    //  This will be a Win32Exception for trying to enumerate the modules of a SYSTEM process
+                    ConcurrencyCount++;
+                    continue;
+                }
+
+                if (selfProcs[i].StartTime.Ticks < thisTime)
+                {
+                    ConcurrencyCount++;
+                }
+            }
+
+            if (selfProcs.Count != 1)
+            {
+                Log("Running concurrently! (" + ConcurrencyCount + " of " + (selfProcs.Count - 1) + " procs)");
                 IsRunningConcurrently = true;
             }
         }
@@ -633,7 +662,17 @@ namespace LTChess.Logic.Util
         {
             if (ThreadedEvaluation.IsScoreMate(score, out int mateIn))
             {
-                return "mate " + mateIn;
+                //  "mateIn" is returned in plies, but we want it in actual moves
+                if (score > 0)
+                {
+                    return "mate " + ((ScoreMate - score + 1) / 2);
+                }
+                else
+                {
+                    return "mate " + ((-ScoreMate - score) / 2);
+                }
+                
+                //return "mate " + mateIn;
             }
             else
             {
