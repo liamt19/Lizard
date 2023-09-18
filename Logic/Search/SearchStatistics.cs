@@ -74,12 +74,11 @@ namespace LTChess.Logic.Search
 
         public static ulong EvalCalls = 0;
 
-        public static ulong ReductionsNotImproving = 0;
         public static ulong ExtensionsPV = 0;
         public static ulong ExtensionsTTMove = 0;
         public static ulong ExtensionsKingChecked = 0;
-        public static ulong ExtensionsCausesCheck = 0;
-        public static ulong ExtensionsPassedPawns = 0;
+        public static ulong ReductionsNotImproving = 0;
+        public static ulong ReductionsCausesCheck = 0;
         public static ulong ReductionsUnder1 = 0;
         public static ulong ReductionsUnderLMR1 = 0;
 
