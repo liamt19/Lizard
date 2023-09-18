@@ -156,7 +156,7 @@ namespace LTChess
 
                     Task.Run(() =>
                     {
-                        SimpleSearch.StartSearching(ref info);
+                        Search.StartSearching(ref info);
                         Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
@@ -186,7 +186,7 @@ namespace LTChess
 
                     Task.Run(() =>
                     {
-                        SimpleSearch.StartSearching(ref info);
+                        Search.StartSearching(ref info);
                         Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
@@ -197,9 +197,14 @@ namespace LTChess
 
                     Task.Run(() =>
                     {
-                        SimpleSearch.StartSearching(ref info);
+                        Search.StartSearching(ref info);
                         Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
+                }
+                else if (input.EqualsIgnoreCase("ucinewgame"))
+                {
+                    p = new Position();
+                    Search.HandleNewGame();
                 }
                 else if (input.Equals("listmoves"))
                 {
@@ -211,7 +216,7 @@ namespace LTChess
                     info = new SearchInformation(p, 12, MaxSearchTime);
                     Task.Run(() =>
                     {
-                        SimpleSearch.StartSearching(ref info);
+                        Search.StartSearching(ref info);
                         Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
                     });
                 }
@@ -295,7 +300,7 @@ namespace LTChess
 
                             if (UseHalfKA)
                             {
-                                HalfKA_HM.RefreshNN(p);
+                                HalfKA_HM.RefreshNN();
                                 HalfKA_HM.ResetNN();
                             }
                         }
@@ -323,9 +328,11 @@ namespace LTChess
             info = new SearchInformation(temp);
             info.MaxDepth = 4;
             info.SetMoveTime(250);
-            SimpleSearch.StartSearching(ref info);
+            Search.StartSearching(ref info);
 
+            Search.HandleNewGame();
             SearchStatistics.Zero();
+
 
             JITHasntSeenSearch = false;
         }
@@ -443,13 +450,13 @@ namespace LTChess
         }
 
 
-        public static void DotTraceProfile(int depth = 14)
+        public static void DotTraceProfile(int depth = 24)
         {
             info.TimeManager.MaxSearchTime = 30000;
             info.MaxDepth = depth;
             Task.Run(() =>
             {
-                SimpleSearch.StartSearching(ref info);
+                Search.StartSearching(ref info);
                 Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
             }).Wait();
 
@@ -459,7 +466,7 @@ namespace LTChess
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
             Exception e = (Exception)args.ExceptionObject;
-
+            
             Log("An UnhandledException occurred!\r\n" + e.ToString());
             using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
             {

@@ -102,8 +102,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                         m256_add_dpbusd_epi32x2(ref acc[k], in0, in1, weight0, weight1);
                     }
-
-                    int z = 0;
                 }
 
                 if (NumOutputRegs % 4 == 0)

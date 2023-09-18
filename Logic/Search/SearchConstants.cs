@@ -93,6 +93,11 @@
         /// </summary>
         public const int FutilityPruningMarginPerDepth = 120;
 
+        /// <summary>
+        /// If moves exceed this margin, they are treated as "good" in multiple places.
+        /// </summary>
+        public const int ExchangeBase = 200;
+
 
         /// <summary>
         /// The depth must be less than or equal to this for reverse futility pruning to be considered.

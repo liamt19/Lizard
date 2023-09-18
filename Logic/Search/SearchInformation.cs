@@ -228,7 +228,7 @@ namespace LTChess.Logic.Search
             //  Start fresh, since a PV at depth 3 could write to PV[0-2] and the time we call GetPV
             //  it could fail at PV[1] and leave the wrong move in PV[2].
             Array.Clear(this.PV);
-            int pvLen = SimpleSearch.GetPV(this.PV);
+            int pvLen = Search.GetPV(this.PV);
 
             Position temp = new Position(this.Position.GetFEN(), false);
 

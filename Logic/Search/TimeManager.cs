@@ -146,6 +146,8 @@ namespace LTChess.Logic.Search
 
             if (MovesToGo != -1)
             {
+                //  This is a fairly simple approach to this:
+                //  we either search for 1/20th of our time or 1 / MovesToGo, whichever is greater.
                 newSearchTime = Math.Max(newSearchTime, PlayerTime[ToMove] / MovesToGo);
             }
 
