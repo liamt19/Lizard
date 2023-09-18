@@ -25,7 +25,7 @@ namespace LTChess.Logic.Transposition
         public CondensedMove BestMove;  //  2 = 16 bits
         public ushort Key;              //  2 = 16 bits
         public sbyte AgePVType;         //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
-        public sbyte _depth;           //  1 =  8 bits
+        public sbyte _depth;            //  1 =  8 bits
 
 
         public short Score
@@ -117,6 +117,13 @@ namespace LTChess.Logic.Transposition
                 //this.Depth = (sbyte)(depth + DepthOffset);
                 this.Depth = (sbyte)depth;
                 this.AgePVType = (sbyte)(TranspositionTable.Age | (isPV ? 1 : 0) << 2 | (int)nodeType);
+
+#if DEBUG
+                if (score != ScoreNone && (score >= ScoreTTWin || score <= ScoreTTLoss))
+                {
+                    Log("WARN the score " + score + " is outside of bounds for normal TT entries!");
+                }
+#endif
             }
         }
 
