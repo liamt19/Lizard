@@ -127,6 +127,66 @@ namespace LTChess.Logic.Transposition
             }
         }
 
+        /// <summary>
+        /// Converts the <paramref name="ttScore"/> retrieved from a TT hit to a usable score from the root position.
+        /// <para></para>
+        /// The returned score is also clamped by the root position's HalfmoveClock, so a mate score is treated as a non-mate score
+        /// if we might lose by the 50 move rule before that mate.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static short MakeNormalScore(short ttScore, int ply, int halfmoves)
+        {
+            if (ttScore == ScoreNone)
+            {
+                return ttScore;
+            }
+
+            if (ttScore >= ScoreTTWin)
+            {
+                if (ttScore >= ScoreMateMax && ScoreMate - ttScore > 99 - halfmoves)
+                {
+                    return ScoreMateMax - 1;
+                }
+
+                return (short)(ttScore - ply);
+            }
+
+            if (ttScore <= ScoreTTLoss)
+            {
+                if (ttScore <= ScoreMatedMax && ScoreMate + ttScore > 99 - halfmoves)
+                {
+                    return ScoreMatedMax + 1;
+                }
+
+                return (short) (ttScore + ply);
+            }
+
+            return ttScore;
+        }
+
+        /// <summary>
+        /// Converts the <paramref name="score"/> to one suitable for the TT.
+        /// <para></para>
+        /// If <paramref name="score"/> is a mate score, it would ordinarily be saved as a "mate in X" in relation to the current search ply of X.
+        /// This is not correct since a mate in 1 could be delayed by a few moves to make it a mate in mate in 2/3/... instead, so what we really
+        /// care about is the number of plies from the current position and not the number of plies when the score was calculated.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static short MakeTTScore(short score, int ply)
+        {
+            if (score >= ScoreTTWin)
+            {
+                return (short) (score + ply);
+            }
+
+            if (score <= ScoreTTLoss)
+            {
+                return (short) (score - ply);
+            }
+
+            return score;
+        }
+
         public override string ToString()
         {
             return NodeType.ToString() + ", Depth " + Depth + ", BestMove " + BestMove.ToString() + ", Score " + Score + ", StatEval: " + StatEval + ", Key " + Key;
