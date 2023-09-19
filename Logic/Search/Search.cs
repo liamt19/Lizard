@@ -211,7 +211,7 @@ namespace LTChess.Logic.Search
                 LastBestMove = info.BestMove;
                 LastBestScore = info.BestScore;
 
-                if (allowDepthIncrease && info.TimeManager.GetSearchTime() < SearchLowTimeThreshold && depth == maxDepthStart)
+                if (allowDepthIncrease && depth == maxDepthStart)
                 {
                     maxDepthStart++;
                     //Log("Extended search depth to " + (maxDepthStart - 1));

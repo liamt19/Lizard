@@ -22,6 +22,11 @@
         public const int SearchLowTimeThreshold = 3 * 1000;
 
 
+        public const bool StopLosingOnTimeFromVerizon = true;
+        public const int VerizonDisconnectionBuffer = 10 * 1000;
+
+
+
         /// <summary>
         /// Every 4095 nodes, check to see if we are near or at the maximum search time.
         /// </summary>

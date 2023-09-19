@@ -142,7 +142,21 @@ namespace LTChess.Logic.Search
         public void MakeMoveTime(int ToMove)
         {
             int inc = PlayerIncrement[ToMove];
-            int newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / 20);
+            int newSearchTime;
+
+            if (StopLosingOnTimeFromVerizon)
+            {
+                // This tries to keep ~10 seconds on the clock
+                newSearchTime = PlayerIncrement[ToMove] + ((PlayerTime[ToMove] - VerizonDisconnectionBuffer) / 20);
+
+                if ((PlayerTime[ToMove] - VerizonDisconnectionBuffer) <= 0) {
+                    newSearchTime = PlayerIncrement[ToMove] / 4;
+                }
+            }
+            else
+            {
+                newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / 20);
+            }
 
             if (MovesToGo != -1)
             {

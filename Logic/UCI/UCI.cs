@@ -448,7 +448,8 @@ namespace LTChess.Logic.Core
 
                 int newTime = (info.Position.ToMove == Color.White ? whiteTime : blackTime);
 
-                LogString("[INFO]: only have " + whiteTime + "ms left <= MaxSearchTime: " + info.TimeManager.MaxSearchTime + ", setting time to " + newTime + "ms");
+                // TODO: this should no longer happen
+                LogString("[ERROR]: only have " + whiteTime + "ms left <= MaxSearchTime: " + info.TimeManager.MaxSearchTime + ", setting time to " + newTime + "ms");
                 info.TimeManager.MaxSearchTime = newTime;
             }
 
@@ -475,7 +476,21 @@ namespace LTChess.Logic.Core
 
                 if (info.BestMove.IsNull())
                 {
-                    LogString("[ERROR]: info.BestMove in OnSearchDone was null!");
+                    if (StopLosingOnTimeFromVerizon && info.TimeManager.PlayerTime[info.Position.ToMove] <= 1)
+                    {
+                        //  If the bestmove is null, and our search time was too low to give a reasonable time to search,
+                        //  then just pick the first legal move we can make and send that instead.
+                        Span<Move> legal = stackalloc Move[NormalListCapacity];
+                        int size = info.Position.GenAllLegalMovesTogether(legal);
+
+                        LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0]);
+                        info.BestMove = legal[0];
+                    }
+                    else
+                    {
+                        LogString("[ERROR]: info.BestMove in OnSearchDone was null!");
+                    }
+
                     LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
                 }
                 else if (!info.Position.IsLegal(info.BestMove))
