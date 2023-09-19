@@ -331,38 +331,28 @@ namespace LTChess.Logic.NN.HalfKA_HM
             //  Otherwise, we only need to remove the features that are no longer there (move.From) and the piece that was on
             //  move.To before it was captured, and add the new features (move.To).
 
-            int ourPieceOldIndex_US = HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing);
-            int ourPieceOldIndex_THEM = HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing);
-
-            RemoveFeature(ourAccumulation, ourPsq, ourPieceOldIndex_US);
-            RemoveFeature(theirAccumulation, theirPsq, ourPieceOldIndex_THEM);
+            RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing));
+            RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing));
 
             if (m.Promotion)
             {
                 //  Add the promotion piece instead.
-                int ourPieceNewIndex_US = HalfKAIndex(us, moveTo, FishPiece(m.PromotionTo, us), ourKing);
-                int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(m.PromotionTo, us), theirKing);
 
-                AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
-                AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
+                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(m.PromotionTo, us), ourKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(m.PromotionTo, us), theirKing));
             }
             else
             {
-                int ourPieceNewIndex_US = HalfKAIndex(us, moveTo, FishPiece(ourPiece, us), ourKing);
-                int ourPieceNewIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing);
-
-                AddFeature(ourAccumulation, ourPsq, ourPieceNewIndex_US);
-                AddFeature(theirAccumulation, theirPsq, ourPieceNewIndex_THEM);
+                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(ourPiece, us), ourKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing));
             }
 
             if (m.Capture)
             {
                 //  A captured piece needs to be removed from both perspectives as well.
-                int theirCapturedPieceIndex_US = HalfKAIndex(us, moveTo, FishPiece(theirPiece, Not(us)), ourKing);
-                int theirCapturedPieceIndex_THEM = HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing);
 
-                RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
-                RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
+                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(theirPiece, Not(us)), ourKing));
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing));
             }
 
             if (m.EnPassant)
@@ -370,11 +360,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
                 int idxPawn = moveTo + ShiftDownDir(us);
 
-                int theirCapturedPieceIndex_US = HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing);
-                int theirCapturedPieceIndex_THEM = HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing);
-
-                RemoveFeature(ourAccumulation, ourPsq, theirCapturedPieceIndex_US);
-                RemoveFeature(theirAccumulation, theirPsq, theirCapturedPieceIndex_THEM);
+                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing));
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing));
             }
         }
 
@@ -391,20 +378,15 @@ namespace LTChess.Logic.NN.HalfKA_HM
             const int RelativeDimensions = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
 
+            int ci = (RelativeDimensions * index);
             for (int j = 0; j < NumChunks; j++)
             {
-                Vector256<short> column = FeatureTransformer.Weights[(RelativeDimensions * index) + j];
-
-                accumulation[j] = Avx2.Subtract(accumulation[j], column);
+                accumulation[j] = Avx2.Subtract(accumulation[j], FeatureTransformer.Weights[ci + j]);
             }
-
-
 
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
-                Vector256<int> column = FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight];
-
-                psqtAccumulation[j] = Sub256(psqtAccumulation[j], column);
+                psqtAccumulation[j] = Sub256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
             }
         }
 
@@ -422,18 +404,15 @@ namespace LTChess.Logic.NN.HalfKA_HM
             const int RelativeDimensions = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
 
+            int ci = (RelativeDimensions * index);
             for (int j = 0; j < NumChunks; j++)
             {
-                Vector256<short> column = FeatureTransformer.Weights[(RelativeDimensions * index) + j];
-
-                accumulation[j] = Avx2.Add(accumulation[j], column);
+                accumulation[j] = Avx2.Add(accumulation[j], FeatureTransformer.Weights[ci + j]);
             }
 
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
-                Vector256<int> column = FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight];
-
-                psqtAccumulation[j] = Add256(psqtAccumulation[j], column);
+                psqtAccumulation[j] = Add256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
             }
 
         }

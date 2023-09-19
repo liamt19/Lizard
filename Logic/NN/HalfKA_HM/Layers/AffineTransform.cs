@@ -97,10 +97,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                     for (int k = 0; k < NumOutputRegs; k++)
                     {
-                        Vector256<sbyte> weight0 = Weights[smallIndex + k];
-                        Vector256<sbyte> weight1 = Weights[smallIndex + k + NumOutputRegs];
-
-                        m256_add_dpbusd_epi32x2(ref acc[k], in0, in1, weight0, weight1);
+                        m256_add_dpbusd_epi32x2(ref acc[k], in0, in1, Weights[smallIndex + k], Weights[smallIndex + k + NumOutputRegs]);
                     }
                 }
 
@@ -157,10 +154,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        Vector256<sbyte> col0 = Weights[((i + 0) * (OutputDimensions * 4) / VSize.SByte) + k];
-                        Vector256<sbyte> col1 = Weights[((i + 1) * (OutputDimensions * 4) / VSize.SByte) + k];
-
-                        m256_add_dpbusd_epi32x2(ref outs[k], in0.AsByte(), in1.AsByte(), col0, col1);
+                        m256_add_dpbusd_epi32x2(ref outs[k], in0.AsByte(), in1.AsByte(), Weights[((i + 0) * (OutputDimensions * 4) / VSize.SByte) + k], Weights[((i + 1) * (OutputDimensions * 4) / VSize.SByte) + k]);
                     }
                 }
 
@@ -178,8 +172,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 for (int j = 0; j < NumChunks; j++)
                 {
                     Vector256<byte> inp = LoadSpan256(input, j * vectorStride);
-                    Vector256<sbyte> weightVec = Weights[j];
-                    m256_add_dpbusd_epi32(ref sum0, inp, weightVec);
+                    m256_add_dpbusd_epi32(ref sum0, inp, Weights[j]);
                 }
 
                 output[0] = m256_hadd(sum0, Biases[0][0]);

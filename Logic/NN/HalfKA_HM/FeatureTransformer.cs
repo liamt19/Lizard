@@ -1,7 +1,4 @@
 ﻿
-#define VF
-
-
 using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
@@ -178,8 +175,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        Vector256<short> column = Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)];
-                        acc[k] = Add256(acc[k], column);
+                        acc[k] = Add256(acc[k], Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)]);
                     }
                 }
 
@@ -209,9 +205,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumPsqtRegs; k++)
                     {
-                        Vector256<int> column = PSQTWeights[(index + j * PsqtTileHeight)];
-
-                        psq[k] = Add256(psq[k], column);
+                        psq[k] = Add256(psq[k], PSQTWeights[(index + j * PsqtTileHeight)]);
                     }
                 }
 
