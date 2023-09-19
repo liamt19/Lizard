@@ -26,10 +26,24 @@ namespace LTChess.Logic.Data
         private const int FlagDoubleCheck = 0b010000 << 26;
         private const int FlagPromotion =   0b100000 << 26;
 
+        /// <summary>
+        /// A mask of <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>
+        /// </summary>
         private const int Mask_Check = 0b011000 << 26;
+
+        /// <summary>
+        /// A mask of <see cref="To"/> and <see cref="From"/>
+        /// </summary>
         private const int Mask_ToFrom = 0xFFF;
 
+        /// <summary>
+        /// A mask of <see cref="To"/>, <see cref="From"/>, and <see cref="PromotionTo"/>
+        /// </summary>
         private const int Mask_Condensed_EQ = 0x3FFF;
+
+        /// <summary>
+        /// A mask of <see cref="To"/>, <see cref="From"/>, <see cref="PromotionTo"/>, and <see cref="Castle"/>
+        /// </summary>
         private const int Mask_EQ = 0x10003FFF;
 
         /// <summary>
@@ -143,23 +157,19 @@ namespace LTChess.Logic.Data
 
         public Move(int from, int to)
         {
-            _data |= (to);
-            _data |= (from << 6);
+            _data = to | (from << 6);
         }
 
         public Move(int from, int to, int promotionTo)
         {
-            _data |= (to);
-            _data |= (from << 6);
-            this.PromotionTo = promotionTo;
-            Promotion = true;
+            _data = to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion;
         }
 
 
         [MethodImpl(Inline)]
         public bool IsNull()
         {
-            return (From == 0 && To == 0 && SqChecker == 0);
+            return (_data & Mask_ToFrom) == 0;
         }
 
         [MethodImpl(Inline)]
