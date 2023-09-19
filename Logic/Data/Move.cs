@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace LTChess.Logic.Data
@@ -28,6 +29,8 @@ namespace LTChess.Logic.Data
         private const int Mask_Check = 0b011000 << 26;
         private const int Mask_ToFrom = 0xFFF;
 
+        private const int Mask_Condensed_EQ = 0x3FFF;
+        private const int Mask_EQ = 0x10003FFF;
 
         /// <summary>
         /// Gets or sets the square that this piece is moving to.
@@ -59,35 +62,24 @@ namespace LTChess.Logic.Data
         }
 
         /// <summary>
-        /// Gets or sets the square that this move causes check from.
-        /// </summary>
-        public int SqChecker
-        {
-            get => ((_data >> 12) & 0x3F);
-            set => _data = ((_data & ~(0x3F << 12)) | (value << 12));
-        }
-
-        /// <summary>
-        /// Gets or sets the square that this move causes check from.
-        /// <para></para>
-        /// This is currently unused since SqChecker is only used to determine if a non-king move captures the piece giving check (or blocks it),
-        /// and double checks can't be resolved by a non-king move.
-        /// </summary>
-        public int SqDoubleChecker
-        {
-            get => ((_data >> 18) & 0x3F);
-            set => _data = ((_data & ~(0x3F << 18)) | (value << 18));
-        }
-
-        /// <summary>
         /// Gets or sets the piece type that this pawn is promoting to. This is stored as (piece type - 1) to save space,
         /// so a PromotionTo == 0 (Piece.Pawn) is treated as 1 (Piece.Knight).
         /// </summary>
         public int PromotionTo
         {
-            get => ((_data >> 24) & 0x3) + 1;
-            set => _data = ((_data & ~(0x3 << 24)) | ((value - 1) << 24));
+            get => ((_data >> 12) & 0x3) + 1;
+            set => _data = ((_data & ~(0x3 << 12)) | ((value - 1) << 12));
         }
+
+        /// <summary>
+        /// Gets or sets the square that this move causes check from.
+        /// </summary>
+        public int SqChecker
+        {
+            get => ((_data >> 18) & 0x3F);
+            set => _data = ((_data & ~(0x3F << 18)) | (value << 18));
+        }
+
 
         /// <summary>
         /// Gets or sets whether this move is a capture or not.
@@ -290,23 +282,31 @@ namespace LTChess.Logic.Data
             return SmithNotation();
         }
 
+
         /// <summary>
-        /// Returns true if <paramref name="obj"/> is a <see cref="Move"/> or <see cref="CondensedMove"/> with the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
+        /// Returns true if the <see cref="Move"/> <paramref name="move"/> has the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
         /// </summary>
         [MethodImpl(Inline)]
-        public override bool Equals(object? obj)
+        public bool Equals(Move move)
         {
-            if (obj is Move move)
-            {
-                return (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo);
-            }
+            //  Today we learned that the JIT doesn't appear to create separate paths for Equals(object) and Equals(Move/CondensedMove).
+            //  This meant that every time we did move.Equals(other) the generated IL had ~8 extra instructions,
+            //  plus a pair of lengthy "box/unbox" instructions since a Move is a value type being passes as an object.
 
-            if (obj is CondensedMove other)
-            {
-                return (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo);
-            }
+            Debug.Assert(((move._data & Mask_EQ) == (_data & Mask_EQ)) == (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo));
 
-            return false;
+            return ((move._data & Mask_EQ) == (_data & Mask_EQ));
+        }
+
+        /// <summary>
+        /// Returns true if the <see cref="CondensedMove"/> <paramref name="move"/> has the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public bool Equals(CondensedMove move)
+        {
+            Debug.Assert((((move.GetToFromPromotion) == (_data & Mask_Condensed_EQ)) && move.Castle == Castle) == (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo));
+
+            return ((move.GetToFromPromotion) == (_data & Mask_Condensed_EQ)) && move.Castle == Castle;
         }
 
 

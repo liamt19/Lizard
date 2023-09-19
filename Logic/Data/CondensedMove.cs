@@ -20,10 +20,14 @@ namespace LTChess.Logic.Data
         //  6 bits for: From, To
         //  2 bits for: PromotionTo
         //  Total of 16.
-        private ushort _data;
+        public ushort _data;
 
         private const int FlagEnPassant = 0b000001 << 14;
         private const int FlagCastle = 0b000010 << 14;
+
+        private const int Mask_Condensed_EQ = 0x3FFF;
+
+        public int GetToFromPromotion => (_data & Mask_Condensed_EQ);
 
 
         public int To
@@ -44,6 +48,9 @@ namespace LTChess.Logic.Data
             set => _data = (ushort) ((_data & ~(0x3 << 12)) | ((value - 1) << 12));
         }
 
+        /// <summary>
+        /// TODO: this isn't needed
+        /// </summary>
         public bool EnPassant
         {
             get => ((_data & FlagEnPassant) != 0);
@@ -114,33 +121,16 @@ namespace LTChess.Logic.Data
         }
 
         [MethodImpl(Inline)]
-        public override bool Equals(object? obj)
+        public bool Equals(CondensedMove other)
         {
-            if (obj is CondensedMove)
-            {
-                CondensedMove other = (CondensedMove)obj;
-                return (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo);
-            }
-
-            if (obj is Move)
-            {
-                Move other = (Move)obj;
-                return (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo);
-            }
-
-            return false;
+            Debug.Assert((other.GetToFromPromotion == GetToFromPromotion) == (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo));
+            return (other.GetToFromPromotion == GetToFromPromotion);
         }
 
         [MethodImpl(Inline)]
-        public static bool operator ==(CondensedMove left, CondensedMove right)
+        public bool Equals(Move other)
         {
-            return left.Equals(right);
-        }
-
-        [MethodImpl(Inline)]
-        public static bool operator !=(CondensedMove left, CondensedMove right)
-        {
-            return !(left == right);
+            return other.Equals(this);
         }
 
         public static implicit operator CondensedMove(Move m) => new CondensedMove(m);

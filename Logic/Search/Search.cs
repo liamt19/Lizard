@@ -318,7 +318,7 @@ namespace LTChess.Logic.Search
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
             short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
-            CondensedMove ttMove = (ss->TTHit ? tte->BestMove : Move.Null);
+            CondensedMove ttMove = (ss->TTHit ? tte->BestMove : CondensedMove.Null);
             ss->TTPV = isPV || (ss->TTHit && tte->PV);
 
             short eval;
@@ -374,7 +374,7 @@ namespace LTChess.Logic.Search
 
             if (!isPV && !ss->InCheck)
             {
-                if (depth <= ReverseFutilityPruningMaxDepth && (ttMove == Move.Null) &&
+                if (depth <= ReverseFutilityPruningMaxDepth && (ttMove.Equals(CondensedMove.Null)) &&
                     (eval < ScoreAssuredWin) && (eval >= beta) &&
                     (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
                 {
@@ -499,7 +499,7 @@ namespace LTChess.Logic.Search
                         R--;
 
                     //  Extend if this move was also the one in the TTEntry
-                    if (m == ttMove)
+                    if (m.Equals(ttMove))
                         R--;
 
 

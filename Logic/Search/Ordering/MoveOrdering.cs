@@ -28,7 +28,7 @@ namespace LTChess.Logic.Search.Ordering
                 int moveTo = m.To;
                 int moveFrom = m.From;
 
-                if (m == ttMove)
+                if (m.Equals(ttMove))
                 {
                     scores[i] = int.MaxValue - 100000;
                 }
