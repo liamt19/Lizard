@@ -43,15 +43,6 @@ namespace LTChess.Logic.Search
         private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
 
 
-        /// <summary>
-        /// Index with [inCheck] [Capture]
-        /// <para></para>
-        /// Continuations[0][0] is the PieceToHistory[][] for a non-capture while we aren't in check,
-        /// and that PieceToHistory[0, 1, 2] is the correct PieceToHistory for a white (0) knight (1) moving to C1 (2).
-        /// This is then used by <see cref="MoveOrdering"/>.AssignScores
-        /// </summary>
-        private static ContinuationHistory[][] Continuations;
-
         private static HistoryTable History;
 
         private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
@@ -79,13 +70,6 @@ namespace LTChess.Logic.Search
             
             _SentinelStart = _SearchStackBlock + 10;
 
-
-            Continuations = new ContinuationHistory[2][]
-            {
-                    new ContinuationHistory[2] {new(), new()},
-                    new ContinuationHistory[2] {new(), new()},
-            };
-
             History = new HistoryTable();
         }
 
@@ -101,8 +85,8 @@ namespace LTChess.Logic.Search
 
             for (int i = 0; i < 2; i++)
             {
-                Continuations[i][0].Clear();
-                Continuations[i][1].Clear();
+                History.Continuations[i][0].Clear();
+                History.Continuations[i][1].Clear();
             }
         }
 
@@ -125,7 +109,7 @@ namespace LTChess.Logic.Search
             {
                 (ss + i)->Clear();
                 (ss + i)->Ply = i;
-                (ss + i)->ContinuationHistory = Continuations[0][0][0, 0, 0];
+                (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
 
             //  Clear out the last search's PV line.
@@ -484,7 +468,7 @@ namespace LTChess.Logic.Search
                 int histIdx = PieceToHistory.GetIndex(ourColor, thisPieceType, toSquare);
                 prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = History.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
                 pos.MakeMove(m);
 
                 info.NodeCount++;
@@ -838,7 +822,7 @@ namespace LTChess.Logic.Search
 
                 prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = History.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
 
                 pos.MakeMove(m);
                 score = -QSearch<NodeType>(ref info, (ss + 1), -beta, -alpha, depth - 1);
