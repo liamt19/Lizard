@@ -24,18 +24,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         public readonly Vector256<int>* Biases;
         public readonly Vector256<sbyte>* Weights;
 
-        public readonly bool IsLarge;
-
         public const int OutputSimdWidth = SimdWidth / 4;
-
-        private const uint MaxNumOutputRegs = 8;
-        private const uint SmallBlockSize = SimdWidth;
-
-        private readonly uint NumOutputRegs;
-        private readonly uint BigBlockSize;
-        private readonly uint NumSmallBlocksInBigBlock;
-        private readonly uint NumSmallBlocksPerOutput;
-        private readonly uint NumBigBlocks;
 
 
         /// <summary>
@@ -55,80 +44,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
             Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
-
-            NumOutputRegs = (uint)Math.Min(MaxNumOutputRegs, OutputDimensions);
-
-            BigBlockSize                = (uint) (NumOutputRegs * PaddedInputDimensions);
-            NumSmallBlocksInBigBlock    = (uint) (BigBlockSize / SmallBlockSize);
-            NumSmallBlocksPerOutput     = (uint) (PaddedInputDimensions / SmallBlockSize);
-            NumBigBlocks                = (uint) (OutputDimensions / NumOutputRegs);
-
-            IsLarge = (CeilToMultiple((short)inDims, MaxSimdWidth) >= 128);
         }
 
 
         public void Propagate(Span<sbyte> input, Span<int> output)
-        {
-            if (!IsLarge)
-            {
-                PropagateSmall(input, output);
-            }
-            else
-            {
-                PropagateLarge(input, output);
-            }
-        }
-
-        public void PropagateLarge(Span<sbyte> input, Span<int> output)
-        {
-            for (int bigBlock = 0; bigBlock < NumBigBlocks; bigBlock++)
-            {
-                Span<Vector256<int>> acc = stackalloc Vector256<int>[(int)NumOutputRegs];
-                var bigIndex = bigBlock * BigBlockSize;
-
-                for (int smallBlock = 0; smallBlock < NumSmallBlocksPerOutput; smallBlock += 2)
-                {
-                    int smallIndex = (int) (bigIndex + (smallBlock * SmallBlockSize * NumOutputRegs)) / VSize.SByte;
-
-                    Vector256<byte> in0 = LoadSpan256(input, (smallBlock + 0) * VSize.Byte);
-                    Vector256<byte> in1 = LoadSpan256(input, (smallBlock + 1) * VSize.Byte);
-
-                    for (int k = 0; k < NumOutputRegs; k++)
-                    {
-                        m256_add_dpbusd_epi32x2(ref acc[k], in0, in1, Weights[smallIndex + k], Weights[smallIndex + k + NumOutputRegs]);
-                    }
-                }
-
-                if (NumOutputRegs % 4 == 0)
-                {
-                    for (int k = 0; k < NumOutputRegs; k += 4)
-                    {
-                        int idx = (int) (bigBlock * NumOutputRegs + k) / 4;
-
-                        //  The Biases array is stored as a Vector256[], but m256_haddx4 requires a Vector128...
-                        //  This extracts the low Vector128, then the high Vector128, then moves to the next Vector256 and repeats.
-
-                        //  TODO: CA1857
-                        Vector128<int> biasVec = Avx2.ExtractVector128(Biases[idx / 2], (byte)(idx % 2));
-
-                        var summed = m256_haddx4(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasVec);
-                        Avx.Store((int*)Unsafe.AsPointer(ref output[idx * 4]), summed);
-                    }
-                }
-                else
-                {
-                    for (int k = 0; k < NumOutputRegs; k++)
-                    {
-                        int idx = (int)(bigBlock * NumOutputRegs + k);
-                        int b = Biases[idx / VSize.Int][0];
-
-                        output[idx] = m256_hadd(acc[k], b);
-                    }
-                }
-            }
-        }
-
-        public void PropagateSmall(Span<sbyte> input, Span<int> output)
         {
             if (OutputDimensions % OutputSimdWidth == 0)
             {
@@ -201,7 +120,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i++)
                 {
-                    uint cursedIndex = (IsLarge ? GetLargeWeightIndex(i) : GetSmallWeightIndex(i));
+                    uint cursedIndex = GetSmallWeightIndex(i);
                     _Weights[cursedIndex] = br.ReadSByte();
                 }
 
@@ -243,19 +162,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             return hashValue;
         }
 
-        private uint GetLargeWeightIndex(int i)
-        {
-            uint smallBlock     = (uint) ((i / SmallBlockSize) % NumSmallBlocksInBigBlock);
-            uint smallBlockCol  = (uint) (smallBlock / NumSmallBlocksPerOutput);
-            uint smallBlockRow  = (uint) (smallBlock % NumSmallBlocksPerOutput);
-            uint bigBlock       = (uint) (i / BigBlockSize);
-            uint rest           = (uint) (i % SmallBlockSize);
-
-            return bigBlock * BigBlockSize
-                    + smallBlockRow * SmallBlockSize * NumOutputRegs
-                    + smallBlockCol * SmallBlockSize
-                    + rest;
-        }
 
         [MethodImpl(Inline)]
         private uint GetSmallWeightIndex(int i)
@@ -294,7 +200,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             return Sse2.ConvertToInt32(sum128) + bias;
         }
 
-        public static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
+        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
                                                                             Vector256<sbyte> b0, Vector256<sbyte> b1)
         {
             Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a0, b0);
@@ -307,7 +213,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         }
 
 
-        public static Vector128<int> m256_haddx4(Vector256<int> sum0, Vector256<int> sum1, Vector256<int> sum2, Vector256<int> sum3, Vector128<int> bias)
+        private static Vector128<int> m256_haddx4(Vector256<int> sum0, Vector256<int> sum1, Vector256<int> sum2, Vector256<int> sum3, Vector128<int> bias)
         {
             sum0 = Avx2.HorizontalAdd(sum0, sum1);
             sum2 = Avx2.HorizontalAdd(sum2, sum3);

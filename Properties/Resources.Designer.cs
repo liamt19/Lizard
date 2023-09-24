@@ -82,9 +82,9 @@ namespace LTChess.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] nn_e1fb1ade4432 {
+        public static byte[] nn_5af11540bbfe {
             get {
-                object obj = ResourceManager.GetObject("nn-e1fb1ade4432", resourceCulture);
+                object obj = ResourceManager.GetObject("nn-5af11540bbfe", resourceCulture);
                 return ((byte[])(obj));
             }
         }

@@ -20,7 +20,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <summary>
         /// The input layer
         /// </summary>
-        private AffineTransform fc_0;
+        private AffineTransformSparse fc_0;
         private SqrClippedReLU ac_sqr_0;
         private ClippedReLU ac_0;
 
@@ -46,8 +46,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public Network()
         {
-
-            fc_0 = new AffineTransform(TransformedFeatureDimensions, FC_0_OUTPUTS + 1);
+            fc_0 = new AffineTransformSparse(TransformedFeatureDimensions, FC_0_OUTPUTS + 1);
             ac_sqr_0 = new SqrClippedReLU(FC_0_OUTPUTS + 1);
             ac_0 = new ClippedReLU(FC_0_OUTPUTS);
 
