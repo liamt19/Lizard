@@ -32,6 +32,15 @@ namespace LTChess.Logic.Transposition
             _pad[1] = (byte) ')';
         }
 
+        public void Clear()
+        {
+            fixed(void* ptr = &_elem0)
+            {
+                //  Clear all 3 here.
+                NativeMemory.Clear((void*)ptr, (nuint)sizeof(TTEntry) * 3);
+            }
+        }
+
         public ref TTEntry this[int index]
         {
             get

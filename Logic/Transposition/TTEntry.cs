@@ -86,6 +86,7 @@ namespace LTChess.Logic.Transposition
             this.Key = MakeKey(key);
             this.Score = score;
             this.NodeType = nodeType;
+            this.AgePVType = 0;
             //this.Depth = (sbyte)(depth + DepthOffset);
             this.Depth = (sbyte)depth;
 
@@ -189,7 +190,7 @@ namespace LTChess.Logic.Transposition
 
         public override string ToString()
         {
-            return NodeType.ToString() + ", Depth " + Depth + ", BestMove " + BestMove.ToString() + ", Score " + Score + ", StatEval: " + StatEval + ", Key " + Key;
+            return NodeType.ToString() + ", Depth " + Depth + ", Age: " + Age + ", BestMove " + BestMove.ToString() + ", Score " + Score + ", StatEval: " + StatEval + ", Key " + Key;
         }
     }
 }

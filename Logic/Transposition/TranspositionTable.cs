@@ -48,7 +48,11 @@ namespace LTChess.Logic.Transposition
         {
             for (ulong i = 0; i < ClusterCount; i++)
             {
-                Clusters[i] = new TTCluster();
+                var cluster = Clusters[i];
+                if (cluster[0].Key != 0 || cluster[1].Key != 0 || cluster[2].Key != 0)
+                {
+                    Clusters[i].Clear();
+                }
             }
         }
 
@@ -165,6 +169,7 @@ namespace LTChess.Logic.Transposition
 
         public static void PrintClusterStatus()
         {
+            int recentEntries = 0;
             int Beta = 0;
             int Alpha = 0;
             int Exact = 0;
@@ -206,12 +211,23 @@ namespace LTChess.Logic.Transposition
                     {
                         NullMoves++;
                     }
+
+                    if (tt.Age == Age)
+                    {
+                        recentEntries++;
+                    }
                 }
             }
 
             int entries = Beta + Alpha + Exact;
-            double percent = (double)entries / (ClusterCount * EntriesPerCluster);
-            Log("TT:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (percent * 100) + "%");
+
+            //  "Full" is the total number of entries of any age in the TT.
+            Log("Full:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (((double)entries / (ClusterCount * EntriesPerCluster)) * 100) + "%");
+
+            //  "Recent" is the number of entries that have the same age as the TT's Age.
+            Log("Recent:\t " + recentEntries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (((double)recentEntries / (ClusterCount * EntriesPerCluster)) * 100) + "%");
+            
+            //  "Slots[0,1,2]" are the number of entries that exist in each TTCluster slot
             Log("Slots:\t " + slots[0] + " / " + slots[1] + " / " + slots[2]);
             Log("Alpha:\t " + Alpha);
             Log("Beta:\t " + Beta);
