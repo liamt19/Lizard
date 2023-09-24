@@ -49,13 +49,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Vector256<int>* PSQ(int perspective)
         {
             return (perspective == Color.White) ? PSQTWhite : PSQTBlack;
         }
 
-        [MethodImpl(Inline)]
         public void CopyTo(ref AccumulatorPSQT target)
         {
             int size = ByteSize * Unsafe.SizeOf<short>();

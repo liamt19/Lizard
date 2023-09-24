@@ -16,7 +16,6 @@ namespace LTChess.Logic.Search.Ordering
         /// An array of 6 pointers to <see cref="SearchStackEntry.ContinuationHistory"/>. This should be [ (ss - 1), (ss - 2), null, (ss - 4), null, (ss - 6) ].
         /// </param>
         /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
-        [MethodImpl(Inline)]
         public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory, 
                                         Span<Move> list, in Span<int> scores, int size, CondensedMove ttMove)
         {
@@ -66,7 +65,6 @@ namespace LTChess.Logic.Search.Ordering
             }
         }
 
-        [MethodImpl(Inline)]
         public static void OrderNextMove(in Span<Move> moves, in Span<int> scores, int size, int listIndex)
         {
             if (size < 2)

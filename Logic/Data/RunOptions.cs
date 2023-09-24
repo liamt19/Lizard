@@ -3,7 +3,6 @@
 #define INLINE
 //#undef INLINE
 
-#define OPTIMIZE
 
 
 #define USE_SKIP_INIT
@@ -32,11 +31,7 @@ namespace LTChess.Logic.Data
         public const MethodImplOptions Inline = MethodImplOptions.PreserveSig;
 #endif
 
-#if (OPTIMIZE)
-        public const MethodImplOptions Optimize = MethodImplOptions.AggressiveOptimization;
-#else
-        public const MethodImplOptions Optimize = MethodImplOptions.PreserveSig;
-#endif
+        public const MethodImplOptions NoInline = MethodImplOptions.NoInlining;
 
 #if (PEXT)
         public const bool HasPext = true;

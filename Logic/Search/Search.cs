@@ -97,7 +97,6 @@ namespace LTChess.Logic.Search
         /// If <paramref name="allowDepthIncrease"/> is true, then the search will continue above the requested maximum depth
         /// so long as there is still search time remaining.
         /// </summary>
-        [MethodImpl(Optimize)]
         public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
         {
             //  Increase the age of the Transposition table
@@ -252,7 +251,6 @@ namespace LTChess.Logic.Search
         ///     The depth to search to, which is then extended by QSearch.
         /// </param>
         /// <returns>The evaluation of the best move.</returns>
-        [MethodImpl(Optimize)]
         public static int Negamax<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
         {
             bool isRoot = (typeof(NodeType) == typeof(RootNode));
@@ -631,7 +629,6 @@ namespace LTChess.Logic.Search
         }
 
 
-        [MethodImpl(Inline)]
         public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
@@ -864,7 +861,6 @@ namespace LTChess.Logic.Search
 
 
 
-        [MethodImpl(Optimize)]
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
                                 Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
         {
@@ -911,7 +907,6 @@ namespace LTChess.Logic.Search
             }
         }
 
-        [MethodImpl(Inline)]
         private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
         {
             foreach (int i in new int[] {1, 2, 4, 6})
@@ -952,7 +947,6 @@ namespace LTChess.Logic.Search
         /// <br></br>
         /// https://github.com/official-stockfish/Stockfish/blob/3f7fb5ac1d58e1c90db063053e9f913b9df79994/src/position.cpp#L1044
         /// </summary>
-        [MethodImpl(Inline)]
         public static bool SEE_GE(Position pos, in Move m, int threshold = 1)
         {
             if (m.Castle || m.EnPassant || m.Promotion)
