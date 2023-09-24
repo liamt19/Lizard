@@ -817,12 +817,7 @@ namespace LTChess.Logic.Core
 
             //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
             //  Some organizations classify 2 knights a draw and others don't.
-            if ((knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2))
-            {
-                return true;
-            }
-
-            return false;
+            return ((knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2));
         }
 
 
@@ -917,10 +912,6 @@ namespace LTChess.Logic.Core
             {
                 return (ulong)size;
             }
-            else if (depth == 0)
-            {
-                return 1;
-            }
 
             ulong n = 0;
             for (int i = 0; i < size; i++)
@@ -930,6 +921,33 @@ namespace LTChess.Logic.Core
                 n += Perft(depth - 1);
                 UnmakeMove(m, false);
             }
+            return n;
+        }
+
+        /// <summary>
+        /// Same as perft but returns the evaluation at each of the leaves. 
+        /// Only for benchmarking/debugging.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong PerftNN(int depth)
+        {
+            Span<Move> list = stackalloc Move[NormalListCapacity];
+            int size = GenAllLegalMovesTogether(list);
+
+            if (depth == 0)
+            {
+                return (ulong)HalfKA_HM.GetEvaluation(this);
+            }
+
+            ulong n = 0;
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i];
+                MakeMove(m, true);
+                n += PerftNN(depth - 1);
+                UnmakeMove(m, true);
+            }
+
             return n;
         }
 
