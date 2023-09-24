@@ -47,6 +47,22 @@ namespace LTChess.Logic.Search.Ordering
             };
         }
 
+        public void Dispose()
+        {
+            NativeMemory.AlignedFree(MainHistory);
+            NativeMemory.AlignedFree(CaptureHistory);
+
+            for (int i = 0; i < 2; i++)
+            {
+                Continuations[i][0].Dispose();
+                Continuations[i][1].Dispose();
+            }
+
+            MainHistory = null;
+            CaptureHistory = null;
+        }
+
+
         /// <summary>
         /// Applies the <paramref name="bonus"/> to the score at the specified <paramref name="index"/> in the short* <paramref name="field"/>.
         /// This <paramref name="bonus"/> is clamped by the value of <paramref name="clamp"/>.
@@ -108,6 +124,11 @@ namespace LTChess.Logic.Search.Ordering
         public const nuint ByteSize = sizeof(short) * Length;
 
         public PieceToHistory() { }
+
+        public void Dispose()
+        {
+            NativeMemory.AlignedFree(_History);
+        }
 
         /// <summary>
         /// Returns the score at the index <paramref name="idx"/>, which should have been calculated with <see cref="GetIndex"/>
@@ -204,6 +225,15 @@ namespace LTChess.Logic.Search.Ordering
             }
         }
 
+        public void Dispose()
+        {
+            for (nuint i = 0; i < Length; i++)
+            {
+                (_History + i)->Dispose();
+            }
+
+            NativeMemory.AlignedFree(_History);
+        }
 
 
         public PieceToHistory* this[int pc, int pt, int sq]
