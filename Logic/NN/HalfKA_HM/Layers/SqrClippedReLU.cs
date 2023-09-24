@@ -13,13 +13,13 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
     public unsafe class SqrClippedReLU
     {
-        public int InputDimensions;
-        public int OutputDimensions;
+        public readonly int InputDimensions;
+        public readonly int OutputDimensions;
 
-        public int BufferSize;
-        public int BufferSizeBytes;
+        public readonly int BufferSize;
+        public readonly int BufferSizeBytes;
 
-        const int VectorSize = (VSize.Int / 2);
+        private const int VectorSize = (VSize.Int / 2);
 
         public SqrClippedReLU(int inDims)
         {

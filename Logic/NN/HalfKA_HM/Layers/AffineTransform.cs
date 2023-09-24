@@ -6,27 +6,27 @@ using System.Runtime.Intrinsics;
 using System.Runtime.InteropServices;
 using System;
 using System.Net;
-using LEB128;
+using System.Numerics;
 using System.Reflection;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
     public unsafe class AffineTransform
     {
-        public int InputDimensions;
-        public int OutputDimensions;
+        public readonly int InputDimensions;
+        public readonly int OutputDimensions;
 
-        public int BufferSize;
-        public int BufferSizeBytes;
+        public readonly int BufferSize;
+        public readonly int BufferSizeBytes;
 
         public readonly int PaddedInputDimensions;
 
-        public Vector256<int>* Biases;
-        public Vector256<sbyte>* Weights;
-
-        public const int OutputSimdWidth = SimdWidth / 4;
+        public readonly Vector256<int>* Biases;
+        public readonly Vector256<sbyte>* Weights;
 
         public readonly bool IsLarge;
+
+        public const int OutputSimdWidth = SimdWidth / 4;
 
         private const uint MaxNumOutputRegs = 8;
         private const uint SmallBlockSize = SimdWidth;
@@ -67,20 +67,18 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         }
 
 
-        [MethodImpl(Inline)]
         public void Propagate(Span<sbyte> input, Span<int> output)
         {
-            if (IsLarge)
-            {
-                PropagateLarge(input, output);
-            }
-            else
+            if (!IsLarge)
             {
                 PropagateSmall(input, output);
             }
+            else
+            {
+                PropagateLarge(input, output);
+            }
         }
 
-        [MethodImpl(Inline)]
         public void PropagateLarge(Span<sbyte> input, Span<int> output)
         {
             for (int bigBlock = 0; bigBlock < NumBigBlocks; bigBlock++)
@@ -109,6 +107,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                         //  The Biases array is stored as a Vector256[], but m256_haddx4 requires a Vector128...
                         //  This extracts the low Vector128, then the high Vector128, then moves to the next Vector256 and repeats.
+
+                        //  TODO: CA1857
                         Vector128<int> biasVec = Avx2.ExtractVector128(Biases[idx / 2], (byte)(idx % 2));
 
                         var summed = m256_haddx4(acc[k + 0], acc[k + 1], acc[k + 2], acc[k + 3], biasVec);
@@ -126,11 +126,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     }
                 }
             }
-
         }
 
-
-        [MethodImpl(Inline)]
         public void PropagateSmall(Span<sbyte> input, Span<int> output)
         {
             if (OutputDimensions % OutputSimdWidth == 0)
@@ -149,12 +146,14 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 const int vectorStride = VSize.Int;
                 for (int i = 0; i < NumChunks; i += 2)
                 {
-                    Vector256<int> in0 = Vector256.Create(input32[i + 0]);
-                    Vector256<int> in1 = Vector256.Create(input32[i + 1]);
+                    Vector256<byte> in0 = Vector256.Create(input32[i + 0]).AsByte();
+                    Vector256<byte> in1 = Vector256.Create(input32[i + 1]).AsByte();
 
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        m256_add_dpbusd_epi32x2(ref outs[k], in0.AsByte(), in1.AsByte(), Weights[((i + 0) * (OutputDimensions * 4) / VSize.SByte) + k], Weights[((i + 1) * (OutputDimensions * 4) / VSize.SByte) + k]);
+                        var b0 = Weights[((i + 0) * (OutputDimensions * 4) / VSize.SByte) + k];
+                        var b1 = Weights[((i + 1) * (OutputDimensions * 4) / VSize.SByte) + k];
+                        m256_add_dpbusd_epi32x2(ref outs[k], in0, in1, b0, b1);
                     }
                 }
 
@@ -197,28 +196,13 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int i = 0; i < OutputDimensions; i++)
                 {
-                    if (IsLEB128)
-                    {
-                        _Biases[i] = (int)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
-                    }
-                    else
-                    {
-                        _Biases[i] = br.ReadInt32();
-                    }
+                    _Biases[i] = br.ReadInt32();
                 }
 
                 for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i++)
                 {
-                    if (IsLEB128)
-                    {
-                        _Weights[i] = (sbyte)LEB128.LEB128.ReadLEB128Signed(br.BaseStream);
-                    }
-                    else
-                    {
-                        uint cursedIndex = (IsLarge ? GetLargeWeightIndex(i) : GetSmallWeightIndex(i));
-                        _Weights[cursedIndex] = br.ReadSByte();
-                    }
-
+                    uint cursedIndex = (IsLarge ? GetLargeWeightIndex(i) : GetSmallWeightIndex(i));
+                    _Weights[cursedIndex] = br.ReadSByte();
                 }
 
                 for (int i = 0; i < OutputDimensions; i += VSize.Int)
@@ -259,7 +243,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             return hashValue;
         }
 
-        [MethodImpl(Inline)]
         private uint GetLargeWeightIndex(int i)
         {
             uint smallBlock     = (uint) ((i / SmallBlockSize) % NumSmallBlocksInBigBlock);
@@ -281,49 +264,37 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static void m256_add_dpbusd_epi32x4(ref Vector256<int> acc, 
-            Vector256< byte> a0, Vector256< byte> a1, Vector256< byte> a2, Vector256< byte> a3, 
-            Vector256<sbyte> b0, Vector256<sbyte> b1, Vector256<sbyte> b2, Vector256<sbyte> b3)
-        {
-            Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a0, b0);
-            Vector256<short> product1 = Avx2.MultiplyAddAdjacent(a1, b1);
-            Vector256<short> product2 = Avx2.MultiplyAddAdjacent(a2, b2);
-            Vector256<short> product3 = Avx2.MultiplyAddAdjacent(a3, b3);
-
-            product0 = Avx2.AddSaturate(product0, product1);
-            Vector256<int> product0f = Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One);
-
-            product2 = Avx2.AddSaturate(product2, product3);
-            Vector256<int> product2f = Avx2.MultiplyAddAdjacent(product2, Vector256<short>.One);
-
-            acc = Avx2.Add(acc, Avx2.Add(product0f, product2f));
-        }
-
-        [MethodImpl(Inline)]
-        private static void m256_add_dpbusd_epi32(ref Vector256<int> acc, Vector256<byte> a, Vector256<sbyte> b)
+        public static void m256_add_dpbusd_epi32(ref Vector256<int> acc, Vector256<byte> a, Vector256<sbyte> b)
         {
             Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a, b);
             acc = Avx2.Add(acc, Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One));
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+        private static int m256_hadd(Vector128<int> lo, Vector128<int> hi, int bias)
+        {
+            const int _MM_PERM_BADC = 0x4E;
+            const int _MM_PERM_CDAB = 0xB1;
+
+            var sum128 = Sse2.Add(lo, hi);
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_BADC));
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_CDAB));
+            return Sse2.ConvertToInt32(sum128) + bias;
+        }
+
         private static int m256_hadd(Vector256<int> sum, int bias)
         {
             const int _MM_PERM_BADC = 0x4E;
             const int _MM_PERM_CDAB = 0xB1;
 
             Vector128<int> lo = Avx2.ExtractVector128(sum, 0);
-            var sum128 = Ssse3.Add(lo, Avx2.ExtractVector128(sum, 1));
-            sum128 = Ssse3.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_BADC));
-            sum128 = Ssse3.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_CDAB));
-            return Ssse3.ConvertToInt32(sum128) + bias;
+            
+            var sum128 = Sse2.Add(lo, Avx2.ExtractVector128(sum, 1));
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_BADC));
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_CDAB));
+            return Sse2.ConvertToInt32(sum128) + bias;
         }
 
-
-
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
+        public static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
                                                                             Vector256<sbyte> b0, Vector256<sbyte> b1)
         {
             Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a0, b0);
@@ -336,8 +307,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         }
 
 
-        [MethodImpl(MethodImplOptions.AggressiveOptimization)]
-        private static Vector128<int> m256_haddx4(Vector256<int> sum0, Vector256<int> sum1, Vector256<int> sum2, Vector256<int> sum3, Vector128<int> bias)
+        public static Vector128<int> m256_haddx4(Vector256<int> sum0, Vector256<int> sum1, Vector256<int> sum2, Vector256<int> sum3, Vector128<int> bias)
         {
             sum0 = Avx2.HorizontalAdd(sum0, sum1);
             sum2 = Avx2.HorizontalAdd(sum2, sum3);

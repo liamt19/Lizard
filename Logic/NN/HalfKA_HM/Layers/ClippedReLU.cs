@@ -16,19 +16,18 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
     public class ClippedReLU
     {
-        public int InputDimensions;
-        public int OutputDimensions;
+        public readonly int InputDimensions;
+        public readonly int OutputDimensions;
 
-        public int BufferSize;
-        public int BufferSizeBytes;
+        public readonly int BufferSize;
+        public readonly int BufferSizeBytes;
 
         //  Stockfish uses reintepret_cast extensively, which can be recreated in C# but seemed kind of finicky in my testing
         //  They used it to create a Vector256<int>[] from the int[] input, and would then just index that Vector array when loading / storing.
         //  That is functionally the same as just loading the vector from the same index, but I have to multiply their index by 
         //  VSize.Int (which is 8 for me) since Vector256<int>[0] should contain the first VSize.Int items (0-7),
         //  Vector256<int>[1] should have the next 8 (8-15), etc.
-        public const int VectorSize = VSize.Int;
-
+        private const int VectorSize = VSize.Int;
 
         public ClippedReLU(int inputDims)
         {   
@@ -43,7 +42,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         /// <summary>
         /// Clamps the output from the previous <see cref="AffineTransform"/> layer between [0, 127]
         /// </summary>
-        [MethodImpl(Inline)]
         public void Propagate(Span<int> input, Span<sbyte> output)
         {
             if (InputDimensions % SimdWidth == 0)
