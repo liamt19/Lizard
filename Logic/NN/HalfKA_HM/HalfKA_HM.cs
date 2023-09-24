@@ -29,18 +29,19 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// NNUE-PyTorch (https://github.com/glinscott/nnue-pytorch/tree/master) compresses networks using LEB128,
         /// but older Stockfish networks didn't do this.
         /// </summary>
-        public const bool IsLEB128 = false;
+        public static bool IsLEB128;
 
-        public const string NNV3 = @"nn-735bba95dec0.nnue";
-        public const string NNV4 = @"nn-6877cd24400e.nnue";
-        public const string NNV5 = @"nn-e1fb1ade4432.nnue";
+
+        public const string NNV6_Sparse = @"nn-cd2ff4716c34.nnue";
+        public const string NNV6_Sparse_LEB = @"nn-5af11540bbfe.nnue";
 
         public const string Name = "HalfKAv2_hm(Friend)";
 
         public const uint VersionValue = 0x7AF32F20u;
         public const uint HashValue = 0x7F234CB8u;
         public const uint Dimensions = SquareNB * PS_NB / 2;
-        public const int TransformedFeatureDimensions = 1024;
+
+        public const int TransformedFeatureDimensions = 1536;
 
         public const int MaxActiveDimensions = 32;
 
@@ -112,7 +113,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             else
             {
                 //  Just load the default network
-                networkToLoad = NNV5;
+                networkToLoad = NNV6_Sparse_LEB;
                 Log("Using embedded NNUE with HalfKA_v2_hm network " + networkToLoad);
 
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
@@ -122,8 +123,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
                 catch (Exception e)
                 {
-                    //  TODO: have a fallback here for classical eval
-                    Log("Tried to load '" + resourceName + "' from embedded resources failed!");
+                    Log("Attempt to load '" + resourceName + "' from embedded resources failed!");
                     throw;
                 }
                 
@@ -137,7 +137,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
             for (int i = 0; i < LayerStacks; i++)
             {
                 uint header = br.ReadUInt32();
-                LayerStack[i].ReadParameters(br);
+                if (!LayerStack[i].ReadParameters(br))
+                {
+                    throw new Exception("Failed reading network parameters for LayerStack[" + i + " / " + LayerStacks + "]!");
+                }
             }
 
             kpFile.Dispose();
@@ -189,15 +192,16 @@ namespace LTChess.Logic.NN.HalfKA_HM
             br.Read(archBuffer);
 
             string arch = System.Text.Encoding.UTF8.GetString(archBuffer);
-            Debug.WriteLine("Network architecture:");
-            Debug.WriteLine(arch);
-        }
+            Debug.WriteLine("Network architecture: '" + arch + "'");
 
+            IsLEB128 = LEB128.CheckStream(br);
+
+
+        }
 
         /// <summary>
         /// Transforms the features on the board into network input, and returns the network output as the evaluation of the position
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetEvaluation(Position pos, bool adjusted = false)
         {
             const int delta = 24;
@@ -208,14 +212,20 @@ namespace LTChess.Logic.NN.HalfKA_HM
             Span<sbyte> features = new Span<sbyte>((void*)_FeatureBuffer, _TransformedFeaturesBufferLength);
             int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
 
-            var output = LayerStack[bucket].Propagate(features);
+            var positional = LayerStack[bucket].Propagate(features);
+
+            int v;
 
             if (adjusted)
             {
-                return (((1024 - delta) * psqt + (1024 + delta) * output) / (1024 * OutputScale));
+                v = (((1024 - delta) * psqt + (1024 + delta) * positional) / (1024 * OutputScale));
+            }
+            else
+            {
+                v = (psqt + positional) / OutputScale;
             }
 
-            return (psqt + output) / OutputScale;
+            return v;
         }
 
         /// <summary>
@@ -261,7 +271,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <br></br>
         /// If <paramref name="m"/> is a king move, the next accumulator will be marked as needing a refresh.
         /// </summary>
-        [MethodImpl(Optimize)]
         public static void MakeMove(Position pos, Move m)
         {
             ref Bitboard bb = ref pos.bb;
@@ -370,7 +379,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
-        [MethodImpl(Inline)]
         public static void RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
@@ -396,7 +404,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
-        [MethodImpl(Inline)]
         public static void AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = HalfDimensions / (SimdWidth / 2);
@@ -418,60 +425,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         }
 
 
-        /// <summary>
-        /// Returns a list of active indices for each side. 
-        /// Every piece on the board has a unique index based on their king's square, their color, and the
-        /// perspective of the player looking at them.
-        /// </summary>
-        [MethodImpl(Optimize)]
-        public static void AppendActiveIndices(Position pos, Span<int> active)
-        {
-            int spanIndex = 0;
-
-            ref Bitboard bb = ref pos.bb;
-
-            for (int perspective = 0; perspective < 2; perspective++)
-            {
-                ulong us = bb.Colors[perspective];
-                ulong them = bb.Colors[Not(perspective)];
-                int ourKing = bb.KingIndex(perspective);
-
-                while (us != 0)
-                {
-                    int idx = lsb(us);
-
-                    int pt = bb.GetPieceAtIndex(idx);
-                    int fishPT = FishPiece(pt, perspective);
-                    int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
-                    active[spanIndex++] = kpIdx;
-
-                    us = poplsb(us);
-                }
-
-                while (them != 0)
-                {
-                    int idx = lsb(them);
-
-                    int pt = bb.GetPieceAtIndex(idx);
-                    int fishPT = FishPiece(pt, Not(perspective));
-                    int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
-                    active[spanIndex++] = kpIdx;
-
-                    them = poplsb(them);
-                }
-
-                spanIndex = MaxActiveDimensions;
-            }
-
-        }
-
 
         /// <summary>
         /// Returns a list of active indices for each side. 
         /// Every piece on the board has a unique index based on their king's square, their color, and the
         /// perspective of the player looking at them.
         /// </summary>
-        [MethodImpl(Optimize)]
         public static int AppendActiveIndices(Position pos, Span<int> active, int perspective)
         {
             int spanIndex = 0;
@@ -484,26 +443,22 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             while (us != 0)
             {
-                int idx = lsb(us);
+                int idx = poplsb(&us);
 
                 int pt = bb.GetPieceAtIndex(idx);
                 int fishPT = FishPiece(pt, perspective);
                 int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                 active[spanIndex++] = kpIdx;
-
-                us = poplsb(us);
             }
 
             while (them != 0)
             {
-                int idx = lsb(them);
+                int idx = poplsb(&them);
 
                 int pt = bb.GetPieceAtIndex(idx);
                 int fishPT = FishPiece(pt, Not(perspective));
                 int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                 active[spanIndex++] = kpIdx;
-
-                them = poplsb(them);
             }
 
             return spanIndex;
@@ -515,7 +470,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// This is then mirrored if <paramref name="ksq"/> is on the A/B/C/D files, which would change the index of a piece on the E file to the D file
         /// and vice versa.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int Orient(int perspective, int s, int ksq = 0)
         {
             return (s ^ (perspective * Squares.A8) ^ ((GetIndexFile(ksq) < Files.E ? 1 : 0) * Squares.H1));
@@ -525,7 +479,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Returns the feature index for a piece of type <paramref name="fishPT"/> on the square <paramref name="s"/>,
         /// seen by the player with the color <paramref name="perspective"/> and whose king is on <paramref name="ksq"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public static int HalfKAIndex(int perspective, int s, int fishPT, int ksq)
         {
             int o_ksq = Orient(perspective, ksq, ksq);
@@ -567,26 +520,22 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 while (us != 0)
                 {
-                    int idx = lsb(us);
+                    int idx = poplsb(&us);
 
                     int pt = bb.GetPieceAtIndex(idx);
                     int fishPT = FishPiece(pt, perspective);
                     int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                     Log("\t" + kpIdx + "\t = " + bb.SquareToString(idx));
-
-                    us = poplsb(us);
                 }
 
                 while (them != 0)
                 {
-                    int idx = lsb(them);
+                    int idx = poplsb(&them);
 
                     int pt = bb.GetPieceAtIndex(idx);
                     int fishPT = FishPiece(pt, Not(perspective));
                     int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                     Log("\t" + kpIdx + "\t = " + bb.SquareToString(idx));
-
-                    them = poplsb(them);
                 }
 
                 Log("\n");

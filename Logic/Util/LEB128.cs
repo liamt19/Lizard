@@ -20,8 +20,10 @@
 
 using System;
 using System.IO;
+using System.Runtime.Intrinsics;
+using System.Text;
 
-namespace LEB128
+namespace LTChess.Logic.Util
 {
     /// <summary>
     /// Single-file utility to read and write integers in the LEB128 (7-bit little endian base-128) format.
@@ -29,108 +31,119 @@ namespace LEB128
     /// </summary>
     public static class LEB128
     {
+        private const string MagicString = "COMPRESSED_LEB128";
+        public const int MagicStringSize = 17;
+
         private const long SIGN_EXTEND_MASK = -1L;
         private const int INT64_BITSIZE = (sizeof(long) * 8);
 
-        public static void WriteLEB128Signed(this Stream stream, long value) => WriteLEB128Signed(stream, value, out _);
-
-        public static void WriteLEB128Signed(this Stream stream, long value, out int bytes)
+        /// <summary>
+        /// Returns true if the NNUE file has a "COMPRESSED_LEB128" header, which means that the weights and biases
+        /// for the FeatureTransformer are compressed.
+        /// <br></br>
+        /// The BinaryReader <paramref name="br"/>'s position in the stream is unchanged.
+        /// </summary>
+        public static unsafe bool CheckStream(BinaryReader br)
         {
-            bytes = 0;
-            bool more = true;
+            const int skip = 4;
 
-            while (more)
+            if (br.BaseStream.CanSeek)
             {
-                byte chunk = (byte)(value & 0x7fL); // extract a 7-bit chunk
-                value >>= 7;
+                byte[] buff = new byte[MagicStringSize];
 
-                bool signBitSet = (chunk & 0x40) != 0; // sign bit is the msb of a 7-bit byte, so 0x40
-                more = !((value == 0 && !signBitSet) || (value == -1 && signBitSet));
-                if (more) { chunk |= 0x80; } // set msb marker that more bytes are coming
+                //  The first time "COMPRESSED_LEB128" shows up, it comes after the FeatureTransformer header.
+                //  We need to seek 4 bytes past that to begin reading
+                br.BaseStream.Seek(skip, SeekOrigin.Current);
+                int readCnt = br.BaseStream.Read(buff, 0, MagicStringSize);
+                br.BaseStream.Seek(-readCnt - skip, SeekOrigin.Current);
 
-                stream.WriteByte(chunk);
-                bytes += 1;
-            };
-        }
+                if (readCnt != MagicStringSize)
+                {
+                    return false;
+                }
 
-        public static void WriteLEB128Unsigned(this Stream stream, ulong value) => WriteLEB128Unsigned(stream, value, out _);
-
-        public static void WriteLEB128Unsigned(this Stream stream, ulong value, out int bytes)
-        {
-            bytes = 0;
-            bool more = true;
-
-            while (more)
-            {
-                byte chunk = (byte)(value & 0x7fUL); // extract a 7-bit chunk
-                value >>= 7;
-
-                more = value != 0;
-                if (more) { chunk |= 0x80; } // set msb marker that more bytes are coming
-
-                stream.WriteByte(chunk);
-                bytes += 1;
-            };
-        }
-
-        public static long ReadLEB128Signed(this Stream stream) => ReadLEB128Signed(stream, out _);
-
-        public static long ReadLEB128Signed(this Stream stream, out int bytes)
-        {
-            bytes = 0;
-
-            long value = 0;
-            int shift = 0;
-            bool more = true, signBitSet = false;
-
-            while (more)
-            {
-                var next = stream.ReadByte();
-                if (next < 0) { throw new InvalidOperationException("Unexpected end of stream"); }
-
-                byte b = (byte)next;
-                bytes += 1;
-
-                more = (b & 0x80) != 0; // extract msb
-                signBitSet = (b & 0x40) != 0; // sign bit is the msb of a 7-bit byte, so 0x40
-
-                long chunk = b & 0x7fL; // extract lower 7 bits
-                value |= chunk << shift;
-                shift += 7;
-            };
-
-            // extend the sign of shorter negative numbers
-            if (shift < INT64_BITSIZE && signBitSet) { value |= SIGN_EXTEND_MASK << shift; }
-
-            return value;
-        }
-
-        public static ulong ReadLEB128Unsigned(this Stream stream) => ReadLEB128Unsigned(stream, out _);
-
-        public static ulong ReadLEB128Unsigned(this Stream stream, out int bytes)
-        {
-            bytes = 0;
-
-            ulong value = 0;
-            int shift = 0;
-            bool more = true;
-
-            while (more)
-            {
-                var next = stream.ReadByte();
-                if (next < 0) { throw new InvalidOperationException("Unexpected end of stream"); }
-
-                byte b = (byte)next;
-                bytes += 1;
-
-                more = (b & 0x80) != 0;   // extract msb
-                ulong chunk = b & 0x7fUL; // extract lower 7 bits
-                value |= chunk << shift;
-                shift += 7;
+                string str;
+                fixed (byte* ptr = &buff[0])
+                {
+                    str = Encoding.UTF8.GetString(ptr, MagicStringSize);
+                }
+                
+                if (str.Equals(MagicString))
+                {
+                    return true;
+                }
             }
 
-            return value;
+            return false;
         }
 
+
+        public static unsafe void ReadLEBInt16(BinaryReader br, short* output, int count)
+        {
+            const uint BUF_SIZE = 4096;
+
+            Stream stream = br.BaseStream;
+            br.BaseStream.Position += MagicStringSize;
+
+            byte[] buf = new byte[BUF_SIZE];
+            var bytes_left = br.ReadUInt32();
+            uint buf_pos = BUF_SIZE;
+            for (int i = 0; i < count; ++i)
+            {
+                short result = 0;
+                int shift = 0;
+                do
+                {
+                    if (buf_pos == BUF_SIZE)
+                    {
+                        stream.Read(buf, 0, (int) Math.Min(bytes_left, BUF_SIZE));
+                        buf_pos = 0;
+                    }
+                    byte b = buf[buf_pos++];
+                    --bytes_left;
+                    result |= (short) ((b & 0x7f) << shift);
+                    shift += 7;
+                    if ((b & 0x80) == 0)
+                    {
+                        output[i] = ((sizeof(short) * 8 <= shift) || (b & 0x40) == 0) ? result : ((short) (result | ~((1 << shift) - 1)));
+                        break;
+                    }
+                } while (shift < sizeof(short) * 8);
+            }
+        }
+
+        public static unsafe void ReadLEBInt32(BinaryReader br, int* output, int count)
+        {
+            const uint BUF_SIZE = 4096;
+
+            Stream stream = br.BaseStream;
+            br.BaseStream.Position += MagicStringSize;
+
+            byte[] buf = new byte[BUF_SIZE];
+            var bytes_left = br.ReadUInt32();
+            uint buf_pos = BUF_SIZE;
+            for (int i = 0; i < count; ++i)
+            {
+                int result = 0;
+                int shift = 0;
+                do
+                {
+                    if (buf_pos == BUF_SIZE)
+                    {
+                        stream.Read(buf, 0, (int)Math.Min(bytes_left, BUF_SIZE));
+                        buf_pos = 0;
+                    }
+                    byte b = buf[buf_pos++];
+                    --bytes_left;
+                    result |= (int)((b & 0x7f) << shift);
+                    shift += 7;
+                    if ((b & 0x80) == 0)
+                    {
+                        output[i] = ((sizeof(int) * 8 <= shift) || (b & 0x40) == 0) ? result : ((int)(result | ~((1 << shift) - 1)));
+                        break;
+                    }
+                } while (shift < sizeof(int) * 8);
+            }
+        }
     }
 }

@@ -33,9 +33,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public const int BufferSize = (int)(OutputDimensions * sizeof(ushort));
 
-        public static Vector256<short>* Biases;
-        public static Vector256<short>* Weights;
-        public static Vector256<int>* PSQTWeights;
+        private static readonly Vector256<short>* Biases;
+        public static readonly Vector256<short>* Weights;
+        public static readonly Vector256<int>* PSQTWeights;
 
 
         public const int NumRegs = 16;
@@ -57,7 +57,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Takes the input from the <paramref name="accumulator"/> and places them into <paramref name="output"/>,
         /// refreshing the <paramref name="accumulator"/> if necessary.
         /// </summary>
-        [MethodImpl(Optimize)]
         public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
 
@@ -142,7 +141,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Finds the active features (existing pieces on the board) and updates the Accumulator to include those pieces.
         /// This is comparatively very slow, so it should only be done when absolutely necessary, like when our king moves.
         /// </summary>
-        [MethodImpl(Inline)]
         public void RefreshAccumulatorPerspective(Position pos, ref AccumulatorPSQT accumulator, int perspective)
         {
             const int RelativeWeightIndex = (int)HalfDimensions / 16;
@@ -228,19 +226,31 @@ namespace LTChess.Logic.NN.HalfKA_HM
             uint header = br.ReadUInt32();
             Debug.WriteLine("FeatureTransformer header: " + header.ToString("X"));
 
-            for (int i = 0; i < HalfDimensions; i += VSize.Short)
+            if (HalfKA_HM.IsLEB128)
             {
-                Biases[i / VSize.Short] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
-            }
+                Debug.WriteLine("FeatureTransformer reading LEB compressed biases/weights");
 
-            for (int i = 0; i < HalfDimensions * InputDimensions; i += VSize.Short)
-            {
-                Weights[i / VSize.Short] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
-            }
 
-            for (int i = 0; i < PSQTBuckets * InputDimensions; i += VSize.Int)
+                LEB128.ReadLEBInt16(br, (short*)Biases, (int)HalfDimensions);
+                LEB128.ReadLEBInt16(br, (short*)Weights, (int)(HalfDimensions * InputDimensions));
+                LEB128.ReadLEBInt32(br, (int*)PSQTWeights, (int)(PSQTBuckets * InputDimensions));
+            }
+            else
             {
-                PSQTWeights[i / VSize.Int] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt32();
+                for (int i = 0; i < HalfDimensions; i += VSize.Short)
+                {
+                    Biases[i / VSize.Short] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                }
+
+                for (int i = 0; i < HalfDimensions * InputDimensions; i += VSize.Short)
+                {
+                    Weights[i / VSize.Short] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                }
+
+                for (int i = 0; i < PSQTBuckets * InputDimensions; i += VSize.Int)
+                {
+                    PSQTWeights[i / VSize.Int] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt32();
+                }
             }
 
             return true;
