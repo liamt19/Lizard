@@ -126,20 +126,6 @@ namespace LTChess.Logic.NN
         /// Uses <see cref="Avx2"/> if the CPU supports it: <inheritdoc cref="Avx.Store"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static void Store256(ref Vector256<short> vector, short[] array, int index)
-        {
-            if (Avx2.IsSupported)
-            {
-                Avx.Store((short*)UnsafeAddrOfPinnedArrayElementUnchecked(array, index), vector);
-            }
-            else
-            {
-                Unsafe.WriteUnaligned(ref Unsafe.As<short, byte>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), index)), vector);
-            }
-        }
-
-        /// <inheritdoc cref="Store256"/>
-        [MethodImpl(Inline)]
         public static void Store256(ref Vector256<int> vector, int[] array, int index)
         {
             if (Avx2.IsSupported)
@@ -257,21 +243,6 @@ namespace LTChess.Logic.NN
                 Unsafe.WriteUnaligned(ref Unsafe.As<sbyte, byte>(ref span[index]), vector);
             }
         }
-
-        /// <inheritdoc cref="StoreSpan256"/>
-        [MethodImpl(Inline)]
-        public static void StoreSpan256(ref Vector256<sbyte> vector, in Span<sbyte> span, int index)
-        {
-            if (Avx2.IsSupported)
-            {
-                Avx.Store((sbyte*)Unsafe.AsPointer(ref span[index]), vector);
-            }
-            else
-            {
-                Unsafe.WriteUnaligned(ref Unsafe.As<sbyte, byte>(ref span[index]), vector);
-            }
-        }
-
 
 
         /// <summary>

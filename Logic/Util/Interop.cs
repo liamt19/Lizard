@@ -38,12 +38,15 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static unsafe void prefetch(void* address)
         {
-            Sse.Prefetch0(address);
+            if (Sse.IsSupported)
+            {
+                Sse.Prefetch0(address);
+            }
         }
 
 
         /// <summary>
-        /// Returns the number of bits set in <paramref name="value"/> using <c>Popcnt.X64.PopCount(<paramref name="value"/>)</c>
+        /// Returns the number of bits set in <paramref name="value"/> using <c>_mm_popcnt_u64</c>
         /// </summary>
         [MethodImpl(Inline)]
         public static ulong popcount(ulong value)
@@ -105,12 +108,25 @@ namespace LTChess.Logic.Util
             }
         }
 
+        /// <summary>
+        /// Returns the number of trailing least significant zero bits in <paramref name="value"/> using <c>_mm_tzcnt_64</c>,
+        /// and clears the lowest set bit with <c>_blsr_u64</c>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static unsafe int poplsb(ulong* value)
         {
-            int sq = (int)Bmi1.X64.TrailingZeroCount(*value);
-            *value = Bmi1.X64.ResetLowestSetBit(*value);
-            return sq;
+            if (Bmi1.X64.IsSupported)
+            {
+                int sq = (int)Bmi1.X64.TrailingZeroCount(*value);
+                *value = Bmi1.X64.ResetLowestSetBit(*value);
+                return sq;
+            }
+            else
+            {
+                int sq = BitScanValues[((ulong)((long)value & -(long)value) * 0x03F79D71B4CB0A89) >> 58];
+                *value = (*value & (*value - 1));
+                return sq;
+            }
         }
 
         /// <summary>

@@ -200,12 +200,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static ulong Forward(int color, ulong b)
         {
-            if (color == Color.White)
-            {
-                return Shift(Direction.NORTH, b);
-            }
-
-            return Shift(Direction.SOUTH, b);
+            return (color == Color.White) ? Shift(Direction.NORTH, b) : Shift(Direction.SOUTH, b);
         }
 
         /// <summary>
