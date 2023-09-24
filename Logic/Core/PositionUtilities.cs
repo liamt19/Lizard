@@ -20,8 +20,7 @@
 
             while (pinners != 0)
             {
-                int maybePinner = lsb(pinners);
-                pinners = poplsb(pinners);
+                int maybePinner = poplsb(&pinners);
 
                 //  "The pieces between our king and one of their pieces"
                 temp = BetweenBB[ourKing][maybePinner] & (bb.Colors[pc] | them);

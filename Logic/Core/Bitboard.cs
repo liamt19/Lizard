@@ -1,7 +1,10 @@
 ﻿namespace LTChess.Logic.Core
 {
     /// <summary>
-    /// Manages the bitboards for the position
+    /// Manages the bitboards for a position, which are 64-bit number arrays for each piece type and color.
+    /// <para></para>
+    /// This implementation uses 6 ulongs for the 6 piece types, and 2 for White/Black. 
+    /// This struct also has an array for the piece type that exists on each square.
     /// </summary>
     public unsafe struct Bitboard
     {
@@ -172,11 +175,9 @@
             ulong temp = Colors[pc];
             while (temp != 0)
             {
-                int idx = lsb(temp);
+                int idx = poplsb(&temp);
 
                 mat += GetPieceValue(GetPieceAtIndex(idx));
-
-                temp = poplsb(temp);
             }
 
             return mat;
@@ -281,6 +282,30 @@
                   | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
                   | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
 
+        }
+
+        /// <summary>
+        /// Returns a mask of the squares that a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
+        /// on the square <paramref name="idx"/> attacks, given the board occupancy <paramref name="occupied"/>
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong AttackMask(int idx, int pc, int pt, ulong occupied)
+        {
+            switch (pt)
+            {
+                case Pawn:
+                    return PawnAttackMasks[pc][idx];
+                case Knight:
+                    return (KnightMasks[idx]);
+                case Bishop:
+                    return (GetBishopMoves(occupied, idx));
+                case Rook:
+                    return (GetRookMoves(occupied, idx));
+                case Queen:
+                    return (GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx));
+            }
+
+            return 0;
         }
 
 

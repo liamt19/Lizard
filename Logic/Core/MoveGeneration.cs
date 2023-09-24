@@ -116,8 +116,7 @@ namespace LTChess.Logic.Core
             {
                 while (moves != 0)
                 {
-                    int to = lsb(moves);
-                    moves = poplsb(moves);
+                    int to = poplsb(&moves);
 
                     Move m = new Move(to - up, to);
                     MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
@@ -126,8 +125,7 @@ namespace LTChess.Logic.Core
 
                 while (twoMoves != 0)
                 {
-                    int to = lsb(twoMoves);
-                    twoMoves = poplsb(twoMoves);
+                    int to = poplsb(&twoMoves);
 
                     Move m = new Move(to - up - up, to);
                     MakeCheck(Piece.Pawn, ToMove, theirKing, ref m);
@@ -136,8 +134,7 @@ namespace LTChess.Logic.Core
 
                 while (promotions != 0)
                 {
-                    int to = lsb(promotions);
-                    promotions = poplsb(promotions);
+                    int to = poplsb(&promotions);
 
                     size = MakePromotionChecks(to - up, to, ToMove, theirKing, ml, size);
                 }
@@ -146,8 +143,7 @@ namespace LTChess.Logic.Core
 
             while (capturesL != 0)
             {
-                int to = lsb(capturesL);
-                capturesL = poplsb(capturesL);
+                int to = poplsb(&capturesL);
 
                 Move m = new Move(to - up - Direction.WEST, to);
                 m.Capture = true;
@@ -158,8 +154,7 @@ namespace LTChess.Logic.Core
 
             while (capturesR != 0)
             {
-                int to = lsb(capturesR);
-                capturesR = poplsb(capturesR);
+                int to = poplsb(&capturesR);
 
                 Move m = new Move(to - up - Direction.EAST, to);
                 m.Capture = true;
@@ -170,16 +165,14 @@ namespace LTChess.Logic.Core
 
             while (promotionCapturesL != 0)
             {
-                int to = lsb(promotionCapturesL);
-                promotionCapturesL = poplsb(promotionCapturesL);
+                int to = poplsb(&promotionCapturesL);
 
                 size = MakePromotionChecks(to - up - Direction.WEST, to, ToMove, theirKing, ml, size);
             }
 
             while (promotionCapturesR != 0)
             {
-                int to = lsb(promotionCapturesR);
-                promotionCapturesR = poplsb(promotionCapturesR);
+                int to = poplsb(&promotionCapturesR);
 
                 size = MakePromotionChecks(to - up - Direction.EAST, to, ToMove, theirKing, ml, size);
             }
@@ -191,8 +184,7 @@ namespace LTChess.Logic.Core
 
                 while (mask != 0)
                 {
-                    int from = lsb(mask);
-                    mask = poplsb(mask);
+                    int from = poplsb(&mask);
 
                     Move m = new Move(from, State->EPSquare);
                     m.EnPassant = true;
@@ -241,9 +233,8 @@ namespace LTChess.Logic.Core
             int theirKing = bb.KingIndex(Not(ToMove));
             while (ourPieces != 0)
             {
-                int idx = lsb(ourPieces);
+                int idx = poplsb(&ourPieces);
                 ulong moves = (KnightMasks[idx] & ~us);
-                ourPieces = poplsb(ourPieces);
 
                 if (onlyCaptures)
                 {
@@ -252,8 +243,7 @@ namespace LTChess.Logic.Core
 
                 while (moves != 0)
                 {
-                    int to = lsb(moves);
-                    moves = poplsb(moves);
+                    int to = poplsb(&moves);
 
                     Move m = new Move(idx, to);
                     if ((them & SquareBB[to]) != 0)
@@ -279,9 +269,8 @@ namespace LTChess.Logic.Core
             int theirKing = bb.KingIndex(Not(ToMove));
             while (ourPieces != 0)
             {
-                int idx = lsb(ourPieces);
+                int idx = poplsb(&ourPieces);
                 ulong moves = GetBishopMoves(us | them, idx) & ~us;
-                ourPieces = poplsb(ourPieces);
 
                 if (onlyCaptures)
                 {
@@ -290,8 +279,7 @@ namespace LTChess.Logic.Core
 
                 while (moves != 0)
                 {
-                    int to = lsb(moves);
-                    moves = poplsb(moves);
+                    int to = poplsb(&moves);
 
                     Move m = new Move(idx, to);
                     if ((them & SquareBB[to]) != 0)
@@ -317,9 +305,8 @@ namespace LTChess.Logic.Core
             int theirKing = bb.KingIndex(Not(ToMove));
             while (ourPieces != 0)
             {
-                int idx = lsb(ourPieces);
+                int idx = poplsb(&ourPieces);
                 ulong moves = GetRookMoves(us | them, idx) & ~us;
-                ourPieces = poplsb(ourPieces);
 
                 if (onlyCaptures)
                 {
@@ -328,8 +315,7 @@ namespace LTChess.Logic.Core
 
                 while (moves != 0)
                 {
-                    int to = lsb(moves);
-                    moves = poplsb(moves);
+                    int to = poplsb(&moves);
 
                     Move m = new Move(idx, to);
                     if ((them & SquareBB[to]) != 0)
@@ -355,9 +341,8 @@ namespace LTChess.Logic.Core
             int theirKing = bb.KingIndex(Not(ToMove));
             while (ourPieces != 0)
             {
-                int idx = lsb(ourPieces);
+                int idx = poplsb(&ourPieces);
                 ulong moves = (GetBishopMoves(us | them, idx) | GetRookMoves(us | them, idx)) & ~us;
-                ourPieces = poplsb(ourPieces);
 
                 if (onlyCaptures)
                 {
@@ -366,8 +351,7 @@ namespace LTChess.Logic.Core
 
                 while (moves != 0)
                 {
-                    int to = lsb(moves);
-                    moves = poplsb(moves);
+                    int to = poplsb(&moves);
 
                     Move m = new Move(idx, to);
                     if ((them & SquareBB[to]) != 0)
@@ -435,8 +419,7 @@ namespace LTChess.Logic.Core
 
             while (moves != 0)
             {
-                int to = lsb(moves);
-                moves = poplsb(moves);
+                int to = poplsb(&moves);
 
                 Move m = new Move(idx, to);
                 if ((them & SquareBB[to]) != 0)
