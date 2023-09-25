@@ -177,7 +177,7 @@ namespace LTChess.Logic.Core
                 size = MakePromotionChecks(to - up - Direction.EAST, to, ToMove, theirKing, ml, size);
             }
 
-            if (State->EPSquare != SquareNB)
+            if (State->EPSquare != EPNone)
             {
                 ulong[] pawnAttacks = (ToMove == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
                 ulong mask = notPromotingPawns & pawnAttacks[State->EPSquare];

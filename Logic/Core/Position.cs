@@ -66,8 +66,8 @@ namespace LTChess.Logic.Core
         /// If you find yourself in a game exceeding 2047 moves, go outside.
         /// </summary>
         private const int StateStackSize = 2048;
-        private StateInfo* StateStack;
-        private nint _stateBlock;
+        private readonly StateInfo* StateStack;
+        private readonly nint _stateBlock;
 
 
         /// <summary>
@@ -352,19 +352,19 @@ namespace LTChess.Logic.Core
 
             int tempEPSquare = State->EPSquare;
 
-            if (State->EPSquare != SquareNB)
+            if (State->EPSquare != EPNone)
             {
                 //  Set st->EPSquare to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
                 Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
-                State->EPSquare = SquareNB;
+                State->EPSquare = EPNone;
             }
 
             if (ourPiece == Piece.Pawn)
             {
                 if (move.EnPassant)
                 {
-                    Debug.Assert(tempEPSquare != SquareNB);
+                    Debug.Assert(tempEPSquare != EPNone);
                     int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Piece.Pawn);
                     Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
@@ -386,7 +386,7 @@ namespace LTChess.Logic.Core
                         State->EPSquare = moveTo + 8;
                     }
 
-                    if (State->EPSquare != SquareNB)
+                    if (State->EPSquare != EPNone)
                     {
                         //  Update the En Passant file if we just changed st->EPSquare
                         Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
@@ -588,12 +588,12 @@ namespace LTChess.Logic.Core
             State++;
 
 
-            if (State->EPSquare != SquareNB)
+            if (State->EPSquare != EPNone)
             {
                 //  Set EnPassantTarget to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
                 Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
-                State->EPSquare = SquareNB;
+                State->EPSquare = EPNone;
             }
 
             Hash = Hash.ZobristChangeToMove();
@@ -1214,7 +1214,7 @@ namespace LTChess.Logic.Core
             {
                 fen.Append("-");
             }
-            if (State->EPSquare != SquareNB)
+            if (State->EPSquare != EPNone)
             {
                 fen.Append(" " + IndexToString(State->EPSquare));
             }

@@ -156,5 +156,6 @@
         public const int H8 = 63;
 
         public const int SquareNB = 64;
+        public const int EPNone = 0;
     }
 }

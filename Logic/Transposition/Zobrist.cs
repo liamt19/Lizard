@@ -102,7 +102,7 @@
                 hash ^= CastlingRightsHashes[3];
             }
 
-            if (position.State->EPSquare != SquareNB)
+            if (position.State->EPSquare != EPNone)
             {
                 hash ^= EnPassantFileHashes[GetIndexFile(position.State->EPSquare)];
             }

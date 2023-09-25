@@ -198,7 +198,7 @@ namespace LTChess.Logic.Book
             }
 
             ulong enPassantHash = 0;
-            if (pos.State->EPSquare != SquareNB)
+            if (pos.State->EPSquare != EPNone)
             {
                 int up = ShiftUpDir(pos.ToMove);
                 int epPawnSquare = pos.State->EPSquare - up;

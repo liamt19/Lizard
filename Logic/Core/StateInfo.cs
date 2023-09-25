@@ -27,7 +27,7 @@ namespace LTChess.Logic.Core
 
         public CastlingStatus CastleStatus = CastlingStatus.None;
         public int HalfmoveClock = 0;
-        public int EPSquare = SquareNB;
+        public int EPSquare = EPNone;
         public int CapturedPiece = None;
 
         public StateInfo()
