@@ -5,7 +5,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Platforms>AnyCPU;x64</Platforms>
+    <Platforms>x64</Platforms>
     <StartupObject>LTChess.Program</StartupObject>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <BaseOutputPath>bin</BaseOutputPath>
@@ -17,20 +17,15 @@
 	<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
   <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   <EnablePreviewFeatures>true</EnablePreviewFeatures>
-  <LangVersion>8.6</LangVersion>
-  <EnableNETAnalyzers>False</EnableNETAnalyzers>
-
+  <LangVersion>latest</LangVersion>
+  
     <GenerateDependencyFile>false</GenerateDependencyFile>
 
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
+    <Configurations>Debug;Release</Configurations>
+    <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
     
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT</DefineConstants>
-    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -39,16 +34,11 @@
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT</DefineConstants>
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT</DefineConstants>
     <DebugType>embedded</DebugType>
+    <Optimize>True</Optimize>
   </PropertyGroup>
 
   <ItemGroup>
