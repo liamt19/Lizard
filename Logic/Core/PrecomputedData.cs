@@ -12,7 +12,7 @@ namespace LTChess.Logic.Data
         /// <summary>
         /// Index using [depth][moveIndex]
         /// </summary>
-        public static int[][] LogarithmicReductionTable = new int[MaxDepth][];
+        public static int[][] LogarithmicReductionTable = new int[MaxPly][];
 
         public static int[][] LMPTable = new int[2][];
 
@@ -653,10 +653,10 @@ namespace LTChess.Logic.Data
 
         private static void DoReductionTable()
         {
-            for (int depth = 0; depth < MaxDepth; depth++)
+            for (int depth = 0; depth < MaxPly; depth++)
             {
-                LogarithmicReductionTable[depth] = new int[NormalListCapacity];
-                for (int moveIndex = 0; moveIndex < NormalListCapacity; moveIndex++)
+                LogarithmicReductionTable[depth] = new int[MaxListCapacity];
+                for (int moveIndex = 0; moveIndex < MaxListCapacity; moveIndex++)
                 {
                     //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
                     LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2.25 + 0.25);
@@ -670,9 +670,9 @@ namespace LTChess.Logic.Data
 
             const int improving = 1;
             const int not_improving = 0;
-            LMPTable[not_improving] = new int[MaxDepth];
-            LMPTable[improving] = new int[MaxDepth];
-            for (int depth = 0; depth < MaxDepth; depth++)
+            LMPTable[not_improving] = new int[MaxPly];
+            LMPTable[improving] = new int[MaxPly];
+            for (int depth = 0; depth < MaxPly; depth++)
             {
                 LMPTable[not_improving][depth] = (3 + depth * depth) / 2;
                 LMPTable[improving][depth] = (3 + depth * depth);
@@ -781,6 +781,15 @@ namespace LTChess.Logic.Data
             return false;
         }
 
+
+        /// <summary>
+        /// Returns true if <paramref name="x"/> and <paramref name="y"/> are both between 0 and 7.
+        /// </summary>
+        [MethodImpl(Inline)]
+        private static bool InBounds(int x, int y)
+        {
+            return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
+        }
     }
 
     public readonly struct DiagonalInfo
