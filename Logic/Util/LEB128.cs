@@ -43,19 +43,15 @@ namespace LTChess.Logic.Util
         /// <br></br>
         /// The BinaryReader <paramref name="br"/>'s position in the stream is unchanged.
         /// </summary>
-        public static unsafe bool CheckStream(BinaryReader br)
+        public static unsafe bool IsCompressed(BinaryReader br)
         {
-            const int skip = 4;
 
             if (br.BaseStream.CanSeek)
             {
                 byte[] buff = new byte[MagicStringSize];
 
-                //  The first time "COMPRESSED_LEB128" shows up, it comes after the FeatureTransformer header.
-                //  We need to seek 4 bytes past that to begin reading
-                br.BaseStream.Seek(skip, SeekOrigin.Current);
                 int readCnt = br.BaseStream.Read(buff, 0, MagicStringSize);
-                br.BaseStream.Seek(-readCnt - skip, SeekOrigin.Current);
+                br.BaseStream.Seek(-readCnt, SeekOrigin.Current);
 
                 if (readCnt != MagicStringSize)
                 {
@@ -80,7 +76,7 @@ namespace LTChess.Logic.Util
 
         public static unsafe void ReadLEBInt16(BinaryReader br, short* output, int count)
         {
-            const uint BUF_SIZE = 4096;
+            const uint BUF_SIZE = 4096 * 8;
 
             Stream stream = br.BaseStream;
             br.BaseStream.Position += MagicStringSize;
