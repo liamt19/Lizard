@@ -90,7 +90,7 @@ namespace LTChess.Logic.Transposition
             //this.Depth = (sbyte)(depth + DepthOffset);
             this.Depth = (sbyte)depth;
 
-            this.BestMove = move;
+            this.BestMove = new CondensedMove(move);
         }
 
         [MethodImpl(Inline)]
@@ -105,7 +105,7 @@ namespace LTChess.Logic.Transposition
         {
             if (!move.IsNull() || (ushort) key != this.Key)
             {
-                this.BestMove = move;
+                this.BestMove = new CondensedMove(move);
             }
 
             if (nodeType == TTNodeType.Exact ||
@@ -122,7 +122,7 @@ namespace LTChess.Logic.Transposition
 #if DEBUG
                 if (score != ScoreNone && (score >= ScoreTTWin || score <= ScoreTTLoss))
                 {
-                    Log("WARN the score " + score + " is outside of bounds for normal TT entries!");
+                    //Debug.WriteLine("WARN the score " + score + " is outside of bounds for normal TT entries!");
                 }
 #endif
             }

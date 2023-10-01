@@ -133,8 +133,6 @@ namespace LTChess.Logic.Data
             return other.Equals(this);
         }
 
-        public static implicit operator CondensedMove(Move m) => new CondensedMove(m);
-
 
 
         [MethodImpl(Inline)]
