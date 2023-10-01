@@ -58,6 +58,26 @@
 
 
         /// <summary>
+        /// Calls to search will display this amount of principal variation lines. 
+        /// <para></para>
+        /// Ordinarily engines only search for the 1 "best" move, but with MultiPV values 
+        /// above 1 this will also display the 2nd best move, the 3rd best, etc.
+        /// </summary>
+        public const int MultiPV = 1;
+
+
+        /// <summary>
+        /// This number of threads will be used during searches.
+        /// <para></para>
+        /// For values above 1, the engine will create extra threads to increase the amount of nodes that can be looked at.
+        /// Do note that a decent amount of the nodes that are looked at by secondary threads won't influence anything,
+        /// but higher numbers of threads tends to correlate with better playing strength.
+        /// </summary>
+        public const int NumThreads = 2;
+
+
+
+        /// <summary>
         /// Aspiration windows will clamp the expected evaluation (alpha/beta values) at the next depth to the evaluation of the current depth.
         /// The thought behind this is that the evaluation at the next depth generally doesn't change all that much,
         /// so we could save time by guessing what the evaluation should be and only looking at the nodes that will get us there.

@@ -40,7 +40,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         private readonly nuint fc_2_idx;
 
         private readonly int _bytesToAlloc;
-        private readonly void* _buffer;
 
         private const int ClippedReLU_Padding = 32;
 
@@ -70,8 +69,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             _bytesToAlloc  = (fc_0.BufferSize + fc_1.BufferSize + fc_2.BufferSize) * sizeof(int);
             _bytesToAlloc += ((ac_0.BufferSize + ClippedReLU_Padding) + (ac_1.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
             _bytesToAlloc += ((ac_sqr_0.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
-
-            _buffer = AlignedAllocZeroed((nuint)_bytesToAlloc, AllocAlignment);
+        
         }
 
         public uint GetHashValue()
@@ -101,7 +99,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public int Propagate(Span<sbyte> transformedFeatures)
         {
-            NativeMemory.Clear(_buffer, (nuint)_bytesToAlloc);
+            var _buffer = AlignedAllocZeroed((nuint)_bytesToAlloc, AllocAlignment);
 
             Span<int>   fc_0_out     = new Span<int>   ((void*) ((nuint)_buffer + fc_0_idx    ), fc_0.BufferSize);
             Span<sbyte> ac_sqr_0_out = new Span<sbyte> ((void*) ((nuint)_buffer + ac_sqr_0_idx), ac_sqr_0.BufferSize);
@@ -124,6 +122,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             ac_1.Propagate(fc_1_out, ac_1_out);
 
             fc_2.Propagate(ac_1_out, fc_2_out);
+
+            NativeMemory.AlignedFree(_buffer);
 
             int fwdOut = (int) (fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
             int outputValue = fc_2_out[0] + fwdOut;

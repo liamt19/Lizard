@@ -8,6 +8,7 @@ using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.Simple768;
+using LTChess.Logic.Threads;
 
 namespace LTChess.Logic.Core
 {
@@ -88,9 +89,14 @@ namespace LTChess.Logic.Core
         private int GamePly = 0;
 
         /// <summary>
+        /// The SearchThread that owns this Position instance.
+        /// </summary>
+        public readonly SearchThread Owner;
+
+        /// <summary>
         /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
         /// </summary>
-        public Position(string fen = InitialFEN, bool ResetNN = true)
+        public Position(string fen = InitialFEN, bool ResetNN = true, SearchThread owner = null)
         {
             MaterialCount = new int[2];
             MaterialCountNonPawn = new int[2];
@@ -105,6 +111,15 @@ namespace LTChess.Logic.Core
             _SentinelStart = &StateStack[0];
             State = &StateStack[0];
 
+            Owner = owner;
+
+            if (ResetNN && owner == null)
+            {
+                throw new Exception("Position('" + fen + "', " + ResetNN + ", ...) has ResetNN true and was given a nullptr for owner! ResetNN == true must have an owner");
+            }
+
+            Debug.WriteLine("Position owner is " + Owner.ToString());
+
             LoadFromFEN(fen);
 
             if (UseSimple768 && ResetNN)
@@ -115,8 +130,9 @@ namespace LTChess.Logic.Core
 
             if (UseHalfKA && ResetNN)
             {
-                HalfKA_HM.RefreshNN();
-                HalfKA_HM.ResetNN();
+                Owner.AccumulatorIndex = 0;
+                Owner.CurrentAccumulator.RefreshPerspective[White] = true;
+                Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
             }
         }
 
@@ -572,7 +588,7 @@ namespace LTChess.Logic.Core
 
             if (UseHalfKA && UnmakeMoveNN)
             {
-                HalfKA_HM.UnmakeMoveNN();
+                Owner.AccumulatorIndex--;
             }
         }
 

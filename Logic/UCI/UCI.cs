@@ -13,7 +13,7 @@ using static LTChess.Logic.Search.Search;
 
 namespace LTChess.Logic.Core
 {
-    public class UCI
+    public unsafe class UCI
     {
 
         private SearchInformation info;
@@ -27,8 +27,6 @@ namespace LTChess.Logic.Core
         /// </summary>
         private const bool WriteToConcurrentLogs = false;
 
-        public static int DefaultMoveOverhead = 10;
-
         private Dictionary<string, UCIOption> Options;
 
         private static object LogFileLock = new object();
@@ -39,7 +37,7 @@ namespace LTChess.Logic.Core
         {
             ProcessUCIOptions();
 
-            info = new SearchInformation(new Position(), DefaultSearchDepth);
+            info = new SearchInformation(new Position(owner: SearchPool.MainThread), DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
             if (File.Exists(LogFileName))
@@ -87,7 +85,7 @@ namespace LTChess.Logic.Core
                     using StreamWriter sw = new StreamWriter(fs);
 
 #if DEBUG
-                    long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.debug_time_off;
+                    long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.StartTimeMS;
                     sw.WriteLine(timeMS.ToString("0000000") + " " + s);
 #else
                     if (newLine)
@@ -174,7 +172,7 @@ namespace LTChess.Logic.Core
                 }
                 else if (cmd == "position")
                 {
-                    info = new SearchInformation(new Position(), DefaultSearchDepth);
+                    info = new SearchInformation(new Position(owner: SearchPool.MainThread), DefaultSearchDepth);
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;
 
@@ -183,7 +181,7 @@ namespace LTChess.Logic.Core
                         //  Some UCI's send commands that look like "position startpos moves e2e4 c7c5 g1f3"
                         //  If the command does have a "moves" component, then set the fen normally,
                         //  and try to make the moves that we were told to.
-                        info.Position = new Position();
+                        info.Position = new Position(owner: SearchPool.MainThread);
                         if (param.Length > 1 && param[1] == "moves")
                         {
                             for (int i = 2; i < param.Length; i++)
@@ -210,7 +208,7 @@ namespace LTChess.Logic.Core
                         {
                             if (param[i] == "moves")
                             {
-                                info.Position = new Position(fen);
+                                info.Position = new Position(fen, owner: SearchPool.MainThread);
                                 for (int j = i + 1; j < param.Length; j++)
                                 {
                                     if (!info.Position.TryMakeMove(param[j]))
@@ -233,26 +231,29 @@ namespace LTChess.Logic.Core
                         if (!hasExtraMoves)
                         {
                             LogString("[INFO]: Set position to " + fen);
-                            info.Position = new Position(fen);
+                            info.Position = new Position(fen, owner: SearchPool.MainThread);
                         }
 
                     }
 
                     if (UseHalfKA)
                     {
-                        HalfKA_HM.RefreshNN();
-                        HalfKA_HM.ResetNN();
+                        info.Position.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
+                        info.Position.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
+                        info.Position.Owner.AccumulatorIndex = 0;
                     }
                 }
                 else if (cmd == "go")
                 {
                     info.StopSearching = false;
+                    SearchPool.StopThreads = false;
                     HandleGo(param);
                 }
                 else if (cmd == "stop")
                 {
-                    LogString("[INFO]: got stop command at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+                    LogString("[INFO]: got stop command at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
                     info.StopSearching = true;
+                    SearchPool.StopThreads = true;
                 }
                 else if (cmd == "leave")
                 {
@@ -297,15 +298,8 @@ namespace LTChess.Logic.Core
             }
         }
 
-        /// <summary>
-        /// Sends the "info depth (number) ..." string to the UCI
-        /// </summary>
-        private void OnDepthDone(ref SearchInformation info)
-        {
 
-            info.LastSearchInfo = FormatSearchInformation(ref info);
-            SendString(info.LastSearchInfo);
-        }
+
 
         //  https://gist.github.com/DOBRO/2592c6dad754ba67e6dcaec8c90165bf
 
@@ -327,15 +321,17 @@ namespace LTChess.Logic.Core
         /// <param name="param">List of parameters sent with the "go" command.</param>
         private void HandleGo(string[] param)
         {
+            LogString("[INFO]: Got 'go' command" + TimeManager.GetFormattedTime());
             if (info.SearchActive)
             {
                 LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
                 return;
             }
 
-            info.MaxDepth = DefaultSearchDepth;
-            info.TimeManager.MaxSearchTime = DefaultSearchTime;
-            LogString("[INFO]: Got 'go' command" + TimeManager.GetFormattedTime());
+            //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
+            info.MaxNodes = ulong.MaxValue - 1;
+            info.TimeManager.MaxSearchTime = MaxSearchTime;
+            info.MaxDepth = MaxDepth;
 
             if (info.SearchFinishedCalled)
             {
@@ -348,6 +344,7 @@ namespace LTChess.Logic.Core
             bool hasBlackTime = false;
 
             bool hasDepthCommand = false;
+            bool isInfinite = false;
 
             int whiteTime = 0;
             int blackTime = 0;
@@ -357,10 +354,7 @@ namespace LTChess.Logic.Core
                 if (param[i] == "movetime")
                 {
                     info.SetMoveTime(int.Parse(param[i + 1]));
-                    info.TimeManager.MoveTime = int.Parse(param[i + 1]);
-                    info.TimeManager.HasMoveTime = true;
-
-                    info.TimeManager.MaxSearchTime = int.Parse(param[i + 1]);
+                    //info.TimeManager.MaxSearchTime = int.Parse(param[i + 1]);
                     LogString("[INFO]: MaxSearchTime is set to " + info.TimeManager.MaxSearchTime);
 
                     hasMoveTime = true;
@@ -393,9 +387,16 @@ namespace LTChess.Logic.Core
                 }
                 else if (param[i] == "infinite")
                 {
+                    //  TODO: These are to make sure that a plain "go" command is treated the same as a "go infinite",
+                    //  and that a "go infinite" shouldn't actually have to change any of the constraints.
+                    Debug.Assert(info.MaxNodes == ulong.MaxValue - 1);
+                    Debug.Assert(info.TimeManager.MaxSearchTime == MaxSearchTime);
+                    Debug.Assert(info.MaxDepth == MaxDepth);
+
                     info.MaxNodes = ulong.MaxValue - 1;
                     info.TimeManager.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
+                    isInfinite = true;
                 }
                 else if (param[i] == "wtime")
                 {
@@ -408,8 +409,8 @@ namespace LTChess.Logic.Core
                         info.RootPlayerToMove = Color.White;
 
                         LogString("[INFO]: We have " + info.TimeManager.PlayerTime[info.Position.ToMove] + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000") +
-                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
+                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
                     }
                 }
                 else if (param[i] == "btime")
@@ -423,8 +424,8 @@ namespace LTChess.Logic.Core
                         info.RootPlayerToMove = Color.Black;
 
                         LogString("[INFO]: We have " + info.TimeManager.PlayerTime[info.Position.ToMove] + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000") +
-                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
+                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
                     }
                 }
                 else if (param[i] == "winc")
@@ -455,14 +456,27 @@ namespace LTChess.Logic.Core
 
             //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
             //  then we make one ourselves
-            if (!hasMoveTime && (info.TimeManager.MaxSearchTime == SearchConstants.DefaultSearchTime) && hasWhiteTime && hasBlackTime)
+            if (!hasMoveTime && hasWhiteTime && hasBlackTime)
             {
                 info.TimeManager.MakeMoveTime(info.Position.ToMove);
             }
 
-            Search.Search.StartSearching(ref info, !hasDepthCommand);
-            LogString("[INFO]: Returned from call to StartSearching at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+            //Search.Search.StartSearching(ref info, !hasDepthCommand);
+            SearchPool.StartSearch(info.Position, ref info);
+            LogString("[INFO]: Returned from call to start_thinking at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
         }
+
+
+        /// <summary>
+        /// Sends the "info depth (number) ..." string to the UCI
+        /// </summary>
+        private void OnDepthDone(ref SearchInformation info)
+        {
+            //info.LastSearchInfo = FormatSearchInformation(ref info);
+            info.LastSearchInfo = FormatSearchInformationMultiPV(ref info);
+            SendString(info.LastSearchInfo);
+        }
+
 
 
         private void OnSearchDone(ref SearchInformation info)
@@ -473,6 +487,16 @@ namespace LTChess.Logic.Core
             if (!info.SearchFinishedCalled)
             {
                 info.SearchFinishedCalled = true;
+
+                Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
+                info.BestMove = bestThreadMove;
+
+#if DEBUG
+                if (SearchPool.MainThread.RootMoves[0].Move != bestThreadMove)
+                {
+                    Log("WARN MainThread best move = " + SearchPool.MainThread.RootMoves[0].Move + " was different than BestThread's = " + bestThreadMove);
+                }
+#endif
 
                 if (info.BestMove.IsNull())
                 {
@@ -501,7 +525,7 @@ namespace LTChess.Logic.Core
                 }
 
                 SendString("bestmove " + info.BestMove.ToString());
-                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000")));
+                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
             }
             else
             {
@@ -511,7 +535,7 @@ namespace LTChess.Logic.Core
 
         public void HandleNewGame()
         {
-            info.Position = new Position();
+            SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
             Search.Search.HandleNewGame();
         }

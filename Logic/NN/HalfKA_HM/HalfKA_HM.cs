@@ -1,4 +1,4 @@
-﻿using static LTChess.Logic.NN.HalfKA_HM.FeatureTransformer;
+﻿
 using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
@@ -45,17 +45,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public const int MaxActiveDimensions = 32;
 
-
-
-        private static AccumulatorPSQT[] AccumulatorStack;
-        public static int CurrentAccumulator { private set; get; }
-
         private static Network[] LayerStack;
 
-        private static FeatureTransformer Transformer;
+        //private static FeatureTransformer Transformer;
 
-
-        private static nint _FeatureBuffer;
         private const int _TransformedFeaturesBufferLength = FeatureTransformer.BufferSize;
 
         private static bool Initialized = false;
@@ -77,15 +70,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Initialized = true;
 
-
-            AccumulatorStack = new AccumulatorPSQT[MaxListCapacity];
-            for (int i = 0; i < MaxListCapacity; i++)
-            {
-                AccumulatorStack[i] = new AccumulatorPSQT();
-            }
-            CurrentAccumulator = 0;
-
-
             //  Set up the network architecture layers
             LayerStack = new Network[LayerStacks];
             for (int i = 0; i < LayerStacks; i++)
@@ -93,12 +77,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 LayerStack[i] = new Network();
             }
 
-
-            //  Set up the feature transformer
-            Transformer = new FeatureTransformer();
-
-
-            _FeatureBuffer = (nint) AlignedAllocZeroed((sizeof(sbyte) * _TransformedFeaturesBufferLength), AllocAlignment);
 
             Stream kpFile;
             byte[] buff;
@@ -133,7 +111,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             using BinaryReader br = new BinaryReader(kpFile);
             ReadHeader(br);
-            Transformer.ReadParameters(br);
+            FeatureTransformer.ReadParameters(br);
             for (int i = 0; i < LayerStacks; i++)
             {
                 uint header = br.ReadUInt32();
@@ -145,25 +123,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             kpFile.Dispose();
         }
-
-        /// <summary>
-        /// Resets <see cref="CurrentAccumulator"/> to 0
-        /// </summary>
-        [MethodImpl(Inline)]
-        private static void ResetAccumulator() => CurrentAccumulator = 0;
-
-        /// <summary>
-        /// Copies the current accumulator to the next accumulator in the stack, and increments <see cref="CurrentAccumulator"/>
-        /// </summary>
-        [MethodImpl(Inline)]
-        private static void PushAccumulator() => AccumulatorStack[CurrentAccumulator].CopyTo(ref AccumulatorStack[++CurrentAccumulator]);
-
-        /// <summary>
-        /// Decrements <see cref="CurrentAccumulator"/>
-        /// </summary>
-        [MethodImpl(Inline)]
-        private static void PullAccumulator() => CurrentAccumulator--;
-
 
 
         public static void ReadHeader(BinaryReader br)
@@ -194,7 +153,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             string arch = System.Text.Encoding.UTF8.GetString(archBuffer);
             Debug.WriteLine("Network architecture: '" + arch + "'");
 
-            IsLEB128 = LEB128.CheckStream(br);
+            IsLEB128 = LEB128.IsCompressed(br);
 
 
         }
@@ -204,13 +163,18 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int GetEvaluation(Position pos, bool adjusted = false)
         {
+            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
+            return GetEvaluation(pos, ref Accumulator, adjusted);
+        }
+
+        public static int GetEvaluation(Position pos, ref AccumulatorPSQT accumulator, bool adjusted = false)
+        {
             const int delta = 24;
 
-            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
-            int bucket = (int) (popcount(pos.bb.Occupancy) - 1) / 4;
+            int bucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
 
-            Span<sbyte> features = new Span<sbyte>((void*)_FeatureBuffer, _TransformedFeaturesBufferLength);
-            int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
+            Span<sbyte> features = stackalloc sbyte[_TransformedFeaturesBufferLength];
+            int psqt = FeatureTransformer.TransformFeatures(pos, features, ref accumulator, bucket);
 
             var positional = LayerStack[bucket].Propagate(features);
 
@@ -228,42 +192,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
             return v;
         }
 
-        /// <summary>
-        /// Undoes a move that was previously made by reverting to the previous accumulator.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static void UnmakeMoveNN()
-        {
-            PullAccumulator();
-        }
-
-        /// <summary>
-        /// Resets the current accumulator to the first accumulator in the stack.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static void ResetNN()
-        {
-            ResetAccumulator();
-        }
-
-        /// <summary>
-        /// Marks both perspectives of the current accumulator as needing to be refreshed.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static void RefreshNN()
-        {
-            if (CurrentAccumulator < 0)
-            {
-                Log("WARN RefreshNN called when CurrentAccumulator == " + CurrentAccumulator + ", setting to 0");
-                CurrentAccumulator = 0;
-            }
-
-            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
-
-            Accumulator.RefreshPerspective[White] = true;
-            Accumulator.RefreshPerspective[Black] = true;
-        }
-
 
         /// <summary>
         /// Updates the features in the next accumulator by copying the current features and adding/removing
@@ -278,8 +206,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int moveFrom = m.From;
             int moveTo = m.To;
 
-            PushAccumulator();
-            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
+            pos.Owner.CurrentAccumulator.CopyTo(ref pos.Owner.Accumulators[++pos.Owner.AccumulatorIndex]);
+            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
 
             int us = bb.GetColorAtIndex(moveFrom);
             int them = Not(us);
@@ -381,10 +309,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         public static void RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
-            const uint NumChunks = HalfDimensions / (SimdWidth / 2);
+            const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
 
-            const int RelativeDimensions = (int)HalfDimensions / 16;
-            const int RelativeTileHeight = TileHeight / 16;
+            const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
+            const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
 
             int ci = (RelativeDimensions * index);
             for (int j = 0; j < NumChunks; j++)
@@ -392,7 +320,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 accumulation[j] = Avx2.Subtract(accumulation[j], FeatureTransformer.Weights[ci + j]);
             }
 
-            for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+            for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
                 psqtAccumulation[j] = Sub256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
             }
@@ -406,10 +334,10 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         public static void AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
-            const uint NumChunks = HalfDimensions / (SimdWidth / 2);
+            const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
 
-            const int RelativeDimensions = (int)HalfDimensions / 16;
-            const int RelativeTileHeight = TileHeight / 16;
+            const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
+            const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
 
             int ci = (RelativeDimensions * index);
             for (int j = 0; j < NumChunks; j++)
@@ -417,7 +345,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 accumulation[j] = Avx2.Add(accumulation[j], FeatureTransformer.Weights[ci + j]);
             }
 
-            for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
+            for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
                 psqtAccumulation[j] = Add256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
             }
@@ -606,6 +534,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
+            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {
@@ -621,8 +550,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     {
                         bb.RemovePiece(idx, pc, pt);
 
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
-                        AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
+                        Accumulator.RefreshPerspective[White] = true;
+                        Accumulator.RefreshPerspective[Black] = true;
                         int eval = GetEvaluation(pos, false);
                         v = baseEval - eval;
 
@@ -641,17 +570,15 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\n");
 
-            ref AccumulatorPSQT Accumulator = ref AccumulatorStack[CurrentAccumulator];
+
             int correctBucket = (int)(popcount(pos.bb.Occupancy) - 1) / 4;
-
-            Span<sbyte> features = new Span<sbyte>((void*)_FeatureBuffer, _TransformedFeaturesBufferLength);
-
+            Span<sbyte> features = stackalloc sbyte[_TransformedFeaturesBufferLength];
 
             Log("Bucket\t\tPSQT\t\tPositional\tTotal");
             for (int bucket = 0; bucket < LayerStacks; bucket++)
             {
                 Accumulator.RefreshPerspective[White] = Accumulator.RefreshPerspective[Black] = true;
-                int psqt = Transformer.TransformFeatures(pos, features, ref Accumulator, bucket);
+                int psqt = FeatureTransformer.TransformFeatures(pos, features, ref Accumulator, bucket);
                 var output = LayerStack[bucket].Propagate(features);
 
                 psqt /= 16;
@@ -739,8 +666,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 bb.AddPiece(i, pieceColor, pieceType);
 
-                AccumulatorStack[CurrentAccumulator].RefreshPerspective[White] = true;
-                AccumulatorStack[CurrentAccumulator].RefreshPerspective[Black] = true;
+                pos.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
+                pos.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
                 int eval = GetEvaluation(pos, false);
 
                 bb.RemovePiece(i, pieceColor, pieceType);

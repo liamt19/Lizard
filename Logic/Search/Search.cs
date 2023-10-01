@@ -1,7 +1,7 @@
 ﻿
 #define SHOW_STATS
 
-
+using System;
 using System.Runtime.InteropServices;
 
 using LTChess.Logic.Core;
@@ -10,6 +10,7 @@ using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Search.Ordering;
+using LTChess.Logic.Threads;
 
 using static LTChess.Logic.Search.Ordering.MoveOrdering;
 using static LTChess.Logic.Transposition.TTEntry;
@@ -31,47 +32,6 @@ namespace LTChess.Logic.Search
         /// </summary>
         private const int DepthQNoChecks = -1;
 
-        /// <summary>
-        /// The best move found in the previous call to Deepen.
-        /// If a search is interrupted, this will replace <c>info.BestMove</c>.
-        /// </summary>
-        private static Move LastBestMove = Move.Null;
-
-        /// <summary>
-        /// The evaluation of <see cref="LastBestMove"/>, which will also replace <c>info.BestScore</c> for interrupted searches.
-        /// </summary>
-        private static int LastBestScore = ThreadedEvaluation.ScoreDraw;
-
-
-        private static HistoryTable History;
-
-        private static PrincipalVariationTable PvMoves = new PrincipalVariationTable();
-
-        private static SearchStackEntry* _SearchStackBlock;
-
-
-        /// <summary>
-        /// We start indexing the SearchStackEntry block at index 10 to prevent indexing outside of bounds.
-        /// This really only needs to be 6, so we don't have to check where we are in the Stack when we get
-        /// the StaticEval or ContinuationHistory of previous states.
-        /// <br></br>
-        /// I just set it to 10 to make it a nice round number.
-        /// </summary>
-        private static readonly SearchStackEntry* _SentinelStart;
-
-        static Search()
-        {
-            _SearchStackBlock = (SearchStackEntry*) AlignedAllocZeroed((nuint)(sizeof(SearchStackEntry) * MaxPly), AllocAlignment);
-
-            for (int i = 0; i < MaxPly; i++)
-            {
-                *(_SearchStackBlock + i) = new SearchStackEntry();
-            }
-            
-            _SentinelStart = _SearchStackBlock + 10;
-
-            History = new HistoryTable();
-        }
 
 
         /// <summary>
@@ -80,157 +40,7 @@ namespace LTChess.Logic.Search
         /// </summary>
         public static void HandleNewGame()
         {
-            NativeMemory.Clear(History.MainHistory,    sizeof(short) * HistoryTable.MainHistoryElements);
-            NativeMemory.Clear(History.CaptureHistory, sizeof(short) * HistoryTable.CaptureHistoryElements);
-
-            for (int i = 0; i < 2; i++)
-            {
-                History.Continuations[i][0].Clear();
-                History.Continuations[i][1].Clear();
-            }
-        }
-
-        /// <summary>
-        /// Begin a new search with the parameters in <paramref name="info"/>.
-        /// This performs iterative deepening, which searches at higher and higher depths as time goes on.
-        /// <br></br>
-        /// If <paramref name="allowDepthIncrease"/> is true, then the search will continue above the requested maximum depth
-        /// so long as there is still search time remaining.
-        /// </summary>
-        public static void StartSearching(ref SearchInformation info, bool allowDepthIncrease = false)
-        {
-            //  Increase the age of the Transposition table
-            TranspositionTable.TTUpdate();
-
-            //  Reset each of the SearchStack items to the default
-            SearchStackEntry* ss = _SentinelStart;
-            for (int i = -10; i < MaxSearchStackPly; i++)
-            {
-                (ss + i)->Clear();
-                (ss + i)->Ply = i;
-                (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
-            }
-
-            //  Clear out the last search's PV line.
-            PvMoves.Clear();
-
-            LastBestMove = Move.Null;
-            LastBestScore = ThreadedEvaluation.ScoreDraw;
-
-            info.TimeManager.RestartTimer();
-
-            int depth = 1;
-
-            int maxDepthStart = info.MaxDepth;
-            double maxTime = info.TimeManager.MaxSearchTime;
-
-            info.NodeCount = 0;
-            info.SearchActive = true;
-
-            int alpha = AlphaStart;
-            int beta = BetaStart;
-            bool aspirationFailed = false;
-
-            bool continueDeepening = true;
-            while (continueDeepening)
-            {
-                info.MaxDepth = depth;
-
-                if (UseAspirationWindows && !aspirationFailed && depth > 1)
-                {
-                    alpha = LastBestScore - (AspirationWindowMargin + (depth * AspirationMarginPerDepth));
-                    beta = LastBestScore + (AspirationWindowMargin + (depth * AspirationMarginPerDepth));
-#if DEBUG
-                    //Log("Depth " + depth + " aspiration bounds are [A: " + alpha + ", eval: " + LastBestScore + ", B: " + beta + "]");
-#endif
-                }
-
-                aspirationFailed = false;
-                ulong prevNodes = info.NodeCount;
-
-                int score = Negamax<RootNode>(ref info, ss, alpha, beta, info.MaxDepth, false);
-                info.BestScore = score;
-
-                ulong afterNodes = info.NodeCount;
-
-                if (info.StopSearching)
-                {
-                    Log("Received StopSearching command just after Deepen at depth " + depth);
-                    info.SearchActive = false;
-
-                    //  If our search was interrupted, info.BestMove probably doesn't contain the actual best move,
-                    //  and instead has the best move from whichever call to FindBest set it last.
-
-                    if (PvMoves.Get(0) != LastBestMove)
-                    {
-                        Log("WARN PvMoves[0] " + PvMoves.Get(0).ToString(info.Position) + " != LastBestMove " + LastBestMove.ToString(info.Position));
-                    }
-
-                    info.SetLastMove(LastBestMove, LastBestScore);
-                    info.OnSearchFinish?.Invoke(ref info);
-                    info.TimeManager.ResetTimer();
-                    return;
-                }
-
-                if (UseAspirationWindows && (info.BestScore <= alpha || info.BestScore >= beta))
-                {
-                    //  Redo the search with the default bounds, at the same depth.
-                    alpha = AlphaStart;
-                    beta = BetaStart;
-
-                    //  TODO: not sure if engines are supposed to include nodes that they are searching again in this context.
-                    info.NodeCount -= (afterNodes - prevNodes);
-
-                    aspirationFailed = true;
-
-
-#if DEBUG
-                    SearchStatistics.AspirationWindowFails++;
-                    SearchStatistics.AspirationWindowTotalDepthFails += (ulong)depth;
-                    //Log("Depth " + depth + " failed aspiration bounds, got " + info.BestScore);
-                    if (SearchStatistics.AspirationWindowFails > 1000)
-                    {
-                        Log("Depth " + depth + " failed aspiration bounds " + SearchStatistics.AspirationWindowFails + " times, quitting");
-                        return;
-                    }
-#endif
-                    continue;
-                }
-
-                info.OnDepthFinish?.Invoke(ref info);
-
-
-                if (false && continueDeepening && ThreadedEvaluation.IsScoreMate(info.BestScore, out int mateIn))
-                {
-                    Log(info.BestMove.ToString(info.Position) + " forces mate in " + mateIn + ", aborting at depth " + depth + " after " + info.TimeManager.GetSearchTime() + "ms");
-                    break;
-                }
-
-                depth++;
-                LastBestMove = info.BestMove;
-                LastBestScore = info.BestScore;
-
-                if (allowDepthIncrease && depth == maxDepthStart)
-                {
-                    maxDepthStart++;
-                    //Log("Extended search depth to " + (maxDepthStart - 1));
-                }
-
-                continueDeepening = (depth <= maxDepthStart && depth < MaxDepth && info.TimeManager.GetSearchTime() <= maxTime);
-            }
-
-            info.OnSearchFinish?.Invoke(ref info);
-            info.TimeManager.ResetTimer();
-
-            if (UseSimple768)
-            {
-                NNUEEvaluation.ResetNN();
-            }
-
-            if (UseHalfKA)
-            {
-                HalfKA_HM.ResetNN();
-            }
+            SearchPool.Clear();
         }
 
 
@@ -256,30 +66,6 @@ namespace LTChess.Logic.Search
             bool isRoot = (typeof(NodeType) == typeof(RootNode));
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
 
-            //  Check every few thousand nodes if we need to stop the search.
-            if ((info.NodeCount & SearchCheckInCount) == 0)
-            {
-                if (info.TimeManager.CheckUp(info.RootPlayerToMove))
-                {
-                    info.StopSearching = true;
-                }
-            }
-
-            if (info.NodeCount >= info.MaxNodes || info.StopSearching)
-            {
-                info.StopSearching = true;
-                return 0;
-            }
-
-            if (isPV)
-            {
-                PvMoves.InitializeLength(ss->Ply);
-                if (ss->Ply > info.SelectiveDepth)
-                {
-                    info.SelectiveDepth = ss->Ply;
-                }
-            }
-
             //  At depth 0, we go into a Quiescence search, which verifies that the evaluation at this depth is reasonable
             //  by checking all of the available captures after the last move (in depth 1).
             if (depth <= 0)
@@ -287,20 +73,47 @@ namespace LTChess.Logic.Search
                 return QSearch<NodeType>(ref info, (ss), alpha, beta, depth);
             }
 
-
             Position pos = info.Position;
             ref Bitboard bb = ref pos.bb;
+            SearchThread thisThread = pos.Owner;
+            HistoryTable history = thisThread.History;
             ulong posHash = pos.Hash;
             Move bestMove = Move.Null;
             int ourColor = pos.ToMove;
 
+
+            if (thisThread.IsMain && ((++thisThread.CheckupCount) >= SearchThread.CheckupMax))
+            {
+                thisThread.CheckupCount = 0;
+                //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
+                if (info.TimeManager.CheckUp(info.RootPlayerToMove) || 
+                    SearchPool.GetNodeCount() >= info.MaxNodes)
+                {
+                    SearchPool.StopThreads = true;
+                }
+            }
+
+            if (isPV)
+            {
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
+            }
+
             if (!isRoot)
             {
-                if (pos.IsDraw())
+                if (SearchPool.StopThreads || pos.IsDraw() || ss->Ply >= MaxSearchStackPly - 1)
                 {
-                    //  Instead of looking further and probably breaking something,
-                    //  Just evaluate this move as a draw here and keep looking at the others.
-                    return ScoreDraw;
+                    if (pos.Checked)
+                    {
+                        //  Instead of looking further and probably breaking something,
+                        //  Just evaluate this move as a draw here and keep looking at the others.
+                        return ScoreDraw;
+                    }
+                    else
+                    {
+                        //  If we aren't in check, then just return the static eval instead of a draw score for consistency.
+                        return info.GetEvaluation(pos);
+                    }
+
                 }
 
                 alpha = Math.Max(MakeMateScore(ss->Ply), alpha);
@@ -315,9 +128,18 @@ namespace LTChess.Logic.Search
             (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
-            short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
-            CondensedMove ttMove = (ss->TTHit ? tte->BestMove : CondensedMove.Null);
             ss->TTPV = isPV || (ss->TTHit && tte->PV);
+            short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
+
+            CondensedMove ttMove;
+            if (isRoot)
+            {
+                ttMove = thisThread.RootMoves[thisThread.PVIndex].CondMove;
+            }
+            else
+            {
+                ttMove = ss->TTHit ? tte->BestMove : CondensedMove.Null;
+            }
 
             short eval;
             int score = -ScoreMate - MaxPly;
@@ -415,8 +237,8 @@ namespace LTChess.Logic.Search
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
-            //AssignNormalMoveScores(pos, History, list, scores, ss, size, tte->BestMove);
-            AssignScores(ref bb, ss, History, contHist, list, scores, size, tte->BestMove);
+            //AssignScores(ref bb, ss, History, contHist, list, scores, size, tte->BestMove);
+            AssignScores(ref bb, ss, history, contHist, list, scores, size, ttMove);
 
             int legalMoves = 0;     //  Number of moves that have been encountered so far in the loop.
             int lmpMoves = 0;       //  Number of non-captures that have been encountered so far.
@@ -425,6 +247,7 @@ namespace LTChess.Logic.Search
             int quietCount = 0;     //  Number of quiet moves that have been played, to a max of 64.
             int captureCount = 0;   //  Number of capture moves that have been played, to a max of 32.
 
+            Move* PV = stackalloc Move[MaxPly];
             Span<Move> captureMoves = stackalloc Move[32];
             Span<Move> quietMoves = stackalloc Move[64];
 
@@ -466,11 +289,16 @@ namespace LTChess.Logic.Search
                 int histIdx = PieceToHistory.GetIndex(ourColor, thisPieceType, toSquare);
                 prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = History.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
                 pos.MakeMove(m);
 
-                info.NodeCount++;
+                thisThread.Nodes++;
                 playedMoves++;
+
+                if (isPV)
+                {
+                    (ss + 1)->PV = null;
+                }
 
                 int newDepth = depth - 1;
                 bool doFullSearch = false;
@@ -501,7 +329,7 @@ namespace LTChess.Logic.Search
                         R--;
 
 
-                    ss->StatScore = 2 * History.MainHistory[(ourColor * HistoryTable.MainHistoryPCStride) + m.MoveMask] +
+                    ss->StatScore = 2 * history.MainHistory[(ourColor * HistoryTable.MainHistoryPCStride) + m.MoveMask] +
                                         (*contHist[0])[histIdx] +
                                         (*contHist[1])[histIdx] +
                                         (*contHist[3])[histIdx];
@@ -550,12 +378,58 @@ namespace LTChess.Logic.Search
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
+                    (ss + 1)->PV = PV;
+                    (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(ref info, (ss + 1), -beta, -alpha, newDepth, false);
                 }
 
                 pos.UnmakeMove(m);
 
                 Debug.Assert(score > -ScoreInfinite && score < ScoreInfinite);
+
+                if (SearchPool.StopThreads)
+                {
+                    return ScoreDraw;
+                }
+
+                if (isRoot)
+                {
+                    int rmIndex = -1;
+                    for (int j = 0; j < thisThread.RootMoves.Count; j++)
+                    {
+                        if (thisThread.RootMoves[j].Move == m)
+                        {
+                            rmIndex = j;
+                            break;
+                        }
+                    }
+
+                    Debug.Assert(rmIndex != -1, "Move " + m + " wasn't in this thread's RootMoves!");
+
+                    RootMove rm = thisThread.RootMoves[rmIndex];
+
+                    rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
+
+                    if (playedMoves == 1 || score > alpha)
+                    {
+                        //Log("search(" + thisThread.ThreadIdx + ") setting " + rm.Move.ToString() + " to " + score);
+                        rm.Score = score;
+                        rm.Depth = thisThread.SelDepth;
+
+                        rm.PVLength = 1;
+                        Array.Fill(rm.PV, Move.Null, 1, MaxPly - rm.PVLength);
+                        for (Move* childMove = (ss + 1)->PV; *childMove != Move.Null; ++childMove)
+                        {
+                            rm.PV[rm.PVLength++] = *childMove;
+                        }
+                    }
+                    else
+                    {
+                        rm.Score = -ScoreInfinite;
+                    }
+
+
+                }
 
                 if (score > bestScore)
                 {
@@ -566,9 +440,9 @@ namespace LTChess.Logic.Search
                         //  This is the best move so far
                         bestMove = m;
 
-                        if (isPV)
+                        if (isPV && !isRoot)
                         {
-                            Search.PvMoves.Insert(ss->Ply, m);
+                            UpdatePV(ss->PV, m, (ss + 1)->PV);
                         }
 
                         if (score >= beta)
@@ -621,7 +495,11 @@ namespace LTChess.Logic.Search
                 nodeTypeToSave = TTNodeType.Beta;
             }
 
-            tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), nodeTypeToSave, depth, bestMove, ss->StaticEval, ss->TTPV);
+            if (!(isRoot && thisThread.PVIndex > 0))
+            {
+                tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), nodeTypeToSave, depth, bestMove, ss->StaticEval, ss->TTPV);
+            }
+
             info.BestMove = bestMove;
             info.BestScore = bestScore;
 
@@ -632,22 +510,11 @@ namespace LTChess.Logic.Search
         public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
-
-            //  Check every few thousand nodes if we need to stop the search.
-            if ((info.NodeCount & SearchCheckInCount) == 0)
-            {
-                if (info.TimeManager.CheckUp(info.RootPlayerToMove))
-                {
-                    info.StopSearching = true;
-                }
-            }
-
-            if (info.StopSearching)
-            {
-                return 0;
-            }
+            Debug.Assert(typeof(NodeType) != typeof(RootNode), "QSearch shouldn't be called from a root node!");
 
             Position pos = info.Position;
+            SearchThread thisThread = pos.Owner;
+            HistoryTable history = thisThread.History;
             ulong posHash = pos.Hash;
             Move bestMove = Move.Null;
             int ourColor = pos.ToMove;
@@ -665,14 +532,16 @@ namespace LTChess.Logic.Search
             CondensedMove ttMove = (ss->TTHit ? tte->BestMove : CondensedMove.Null);
             bool ttPV = (ss->TTHit && tte->PV);
 
-            if (info.Position.IsDraw())
+            Move* PV = stackalloc Move[MaxPly];
+            if (isPV)
             {
-                return ScoreDraw;
+                (ss + 1)->PV = PV;
+                ss->PV[0] = Move.Null;
             }
 
-            if (ss->Ply >= MaxSearchStackPly - 1)
+            if (pos.IsDraw() || ss->Ply >= MaxSearchStackPly - 1)
             {
-                return ss->InCheck ? 0 : info.GetEvaluation(info.Position);
+                return ss->InCheck ? ScoreDraw : info.GetEvaluation(pos);
             }
 
             if (!isPV && tte->Depth >= ttDepth && ttScore != ScoreNone)
@@ -739,8 +608,8 @@ namespace LTChess.Logic.Search
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
-            //AssignQuiescenceMoveScores(pos, Search.History, list, scores, size);
-            AssignScores(ref pos.bb, ss, History, contHist, list, scores, size, tte->BestMove);
+
+            AssignScores(ref pos.bb, ss, history, contHist, list, scores, size, ttMove);
 
             int prevSquare = ((ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To);
             int legalMoves = 0;
@@ -773,7 +642,6 @@ namespace LTChess.Logic.Search
                 }
 
                 captures++;
-                info.NodeCount++;
 
                 if (bestScore > ScoreTTLoss)
                 {
@@ -819,7 +687,8 @@ namespace LTChess.Logic.Search
 
                 prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = History.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                thisThread.Nodes++;
 
                 pos.MakeMove(m);
                 score = -QSearch<NodeType>(ref info, (ss + 1), -beta, -alpha, depth - 1);
@@ -832,6 +701,11 @@ namespace LTChess.Logic.Search
                     if (score > alpha)
                     {
                         bestMove = m;
+
+                        if (isPV)
+                        {
+                            UpdatePV(ss->PV, m, (ss + 1)->PV);
+                        }
 
                         if (score < beta)
                         {
@@ -859,12 +733,19 @@ namespace LTChess.Logic.Search
 
 
 
-
+        private static void UpdatePV(Move* pv, Move move, Move* childPV)
+        {
+            for (*pv++ = move; childPV != null && *childPV != Move.Null;)
+            {
+                *pv++ = *childPV++;
+            }
+            *pv = Move.Null;
+        }
 
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
                                 Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
         {
-
+            HistoryTable History = pos.Owner.History;
             int moveFrom = bestMove.From;
             int moveTo = bestMove.To;
 
@@ -1057,32 +938,9 @@ namespace LTChess.Logic.Search
         /// <summary>
         /// Returns the PV line from a search, which is the series of moves that the engine thinks will be played.
         /// </summary>
-        public static int GetPV(in Move[] moves)
+        public static int GetPV(in Move[] moves, ref SearchInformation info)
         {
-            int max = PvMoves.Count();
-
-            if (max == 0)
-            {
-                Log("WARN PvMoves.Count was 0, trying to get line[0] anyways");
-                int i = 0;
-                while (i < PrincipalVariationTable.TableSize)
-                {
-                    moves[i] = PvMoves.Get(i);
-                    if (moves[i].IsNull())
-                    {
-                        break;
-                    }
-                    i++;
-                }
-                max = i;
-            }
-
-            for (int i = 0; i < PvMoves.Count(); i++)
-            {
-                moves[i] = PvMoves.Get(i);
-            }
-
-            return max;
+            return 1;
         }
 
     }

@@ -1,6 +1,8 @@
 ﻿
-//  Thanks C# 10!
+#define JB
+#undef JB
 
+//  Thanks C# 10!
 global using System.Runtime.CompilerServices;
 global using System.Diagnostics;
 
@@ -26,6 +28,7 @@ global using static LTChess.Logic.Util.PositionUtilities;
 global using static LTChess.Logic.Util.Utilities;
 global using static LTChess.Logic.Util.Interop;
 global using static LTChess.Logic.NN.NNRunOptions;
+global using static LTChess.Logic.Threads.SearchThreadPool;
 
 using LTChess.Logic.Book;
 using LTChess.Logic.NN.Simple768;
@@ -46,19 +49,20 @@ namespace LTChess
         public static void Main()
         {
             InitializeAll();
-            p = new Position();
+
+            p = new Position(owner: SearchPool.Threads[0]);
             info = new SearchInformation(p);
 
             DoInputLoop();
-
-            Console.WriteLine("Done");
-            Console.ReadLine();
         }
 
         public static void InitializeAll()
         {
 #if DEBUG
             Stopwatch sw = Stopwatch.StartNew();
+
+            //  Give the VS debugger a friendly name for the main program thread
+            Thread.CurrentThread.Name = "MainThread";
 #endif
 
             Utilities.CheckConcurrency();
@@ -81,12 +85,6 @@ namespace LTChess
                 NNUEEvaluation.ResetNN();
             }
 
-            if (UseHalfKA)
-            {
-                HalfKA_HM.ResetNN();
-            }
-
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
@@ -102,7 +100,6 @@ namespace LTChess
         public static void DoInputLoop()
         {
             Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-
             string input;
             while (true)
             {
@@ -111,7 +108,9 @@ namespace LTChess
                 {
                     continue;
                 }
-                else if (input.EqualsIgnoreCase("uci"))
+                string[] param = input.Split(' ');
+                
+                if (input.EqualsIgnoreCase("uci"))
                 {
                     UCI uci = new UCI();
                     uci.Run();
@@ -134,72 +133,41 @@ namespace LTChess
                     }
                     Log("New FEN is " + p.GetFEN());
                 }
-                else if (input.StartsWithIgnoreCase("go perft "))
+                else if (input.StartsWith("go"))
                 {
-                    int depth = int.Parse(input.Substring(9));
-                    Task.Run(() => DoPerftDivide(depth, false));
-                }
-                else if (input.StartsWithIgnoreCase("go perftp "))
-                {
-                    int depth = int.Parse(input.Substring(10));
-                    Task.Run(() => DoPerftDivideParallel(depth));
-                }
-                else if (input.StartsWithIgnoreCase("go depth"))
-                {
-                    info = new SearchInformation(p, DefaultSearchDepth);
-                    if (input.Length > 9 && int.TryParse(input.Substring(9), out int selDepth))
+                    if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
                     {
-                        info.MaxDepth = selDepth;
+                        int depth = int.Parse(param[2]);
+                        Task.Run(() => DoPerftDivideParallel(depth));
+                        continue;
+                    }
+                    else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
+                    {
+                        int depth = int.Parse(param[2]);
+                        Task.Run(() => DoPerftDivide(depth, false));
+                        continue;
                     }
 
+                    info = new SearchInformation(p, MaxDepth);
                     info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
 
-                    Task.Run(() =>
+                    for (int i = 1; i < param.Length; i++)
                     {
-                        Search.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                    });
-                }
-                else if (input.StartsWithIgnoreCase("go time"))
-                {
-                    info = new SearchInformation(p, MaxDepth);
-                    bool timeInMS = false;
-
-                    if (input.EndsWith("ms"))
-                    {
-                        timeInMS = true;
-                        input = input.Substring(0, input.Length - 2);
-                    }
-                    else if (input.EndsWith("s"))
-                    {
-                        input = input.Substring(0, input.Length - 1);
-                    }
-
-                    if (input.Length > 8 && int.TryParse(input.Substring(8), out int searchTime))
-                    {
-                        info.TimeManager.MaxSearchTime = searchTime;
-                        if (!timeInMS)
+                        if (param[i] == "movetime" && i < param.Length - 1 && int.TryParse(param[i + 1], out int moveTime))
                         {
-                            info.TimeManager.MaxSearchTime *= 1000;
+                            info.SetMoveTime(moveTime);
+                        }
+                        else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
+                        {
+                            info.TimeManager.MaxSearchTime = time;
+                        }
+                        else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
+                        {
+                            info.MaxDepth = depth;
                         }
                     }
 
-                    Task.Run(() =>
-                    {
-                        Search.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                    });
-                }
-                else if (input.EqualsIgnoreCase("go") || input.EqualsIgnoreCase("go infinite"))
-                {
-                    info = new SearchInformation(p, MaxDepth);
-                    info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
-
-                    Task.Run(() =>
-                    {
-                        Search.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                    });
+                    SearchPool.StartSearch(p, ref info);
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
@@ -209,16 +177,6 @@ namespace LTChess
                 else if (input.Equals("listmoves"))
                 {
                     PrintMoves();
-                }
-                else if (input.StartsWithIgnoreCase("puzzle"))
-                {
-                    p = new Position(input.Substring(7));
-                    info = new SearchInformation(p, 12, MaxSearchTime);
-                    Task.Run(() =>
-                    {
-                        Search.StartSearching(ref info);
-                        Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-                    });
                 }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
@@ -231,6 +189,7 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
                     info.StopSearching = true;
+                    SearchPool.StopThreads = true;
 
                 }
                 else if (input.EqualsIgnoreCase("eval"))
@@ -300,8 +259,9 @@ namespace LTChess
 
                             if (UseHalfKA)
                             {
-                                HalfKA_HM.RefreshNN();
-                                HalfKA_HM.ResetNN();
+                                p.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
+                                p.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
+                                p.Owner.AccumulatorIndex = 0;
                             }
                         }
                     }
@@ -319,22 +279,31 @@ namespace LTChess
         /// </summary>
         private static void WarmUpJIT()
         {
-            JITHasntSeenSearch = true;
+            BlockOutputForJIT = true;
 
-            Position temp = new Position();
+            Position temp = new Position(owner: SearchPool.Threads[0]);
 
             temp.Perft(4);
 
             info = new SearchInformation(temp);
-            info.MaxDepth = 4;
+            info.MaxDepth = 12;
             info.SetMoveTime(250);
-            Search.StartSearching(ref info);
+            
+            //Search.StartSearching(ref info);
+            SearchPool.StartSearch(temp, ref info);
+
+            Thread.Sleep(100);
+            while (SearchPool.SharedInfo.SearchActive) 
+            {
+                Thread.Sleep(10);
+            }
 
             Search.HandleNewGame();
             SearchStatistics.Zero();
+            TranspositionTable.Clear();
+            SearchPool.Clear();
 
-
-            JITHasntSeenSearch = false;
+            BlockOutputForJIT = false;
         }
 
 
@@ -368,7 +337,9 @@ namespace LTChess
             Move[] mlist = new Move[NormalListCapacity];
             int size = p.GenAllLegalMovesTogether(mlist);
 
-            Parallel.For(0u, size, i =>
+            ParallelOptions opts = new ParallelOptions();
+            opts.MaxDegreeOfParallelism = size;
+            Parallel.For(0u, size, opts, i =>
             {
                 Position threadPosition = new Position(rootFEN, false);
 
@@ -450,18 +421,7 @@ namespace LTChess
         }
 
 
-        public static void DotTraceProfile(int depth = 24)
-        {
-            info.TimeManager.MaxSearchTime = 30000;
-            info.MaxDepth = depth;
-            Task.Run(() =>
-            {
-                Search.StartSearching(ref info);
-                Log("Line: " + info.GetPVString() + " = " + FormatMoveScore(info.BestScore));
-            }).Wait();
 
-            Environment.Exit(123);
-        }
 
         private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs args)
         {
@@ -489,6 +449,42 @@ namespace LTChess
             int legalCnt = p.GenAllLegalMovesTogether(legal);
 
             Log("Legal: [" + legal.Stringify(p, legalCnt) + "]");
+        }
+
+        public static void DotTraceProfile(int depth = 24)
+        {
+            info.TimeManager.MaxSearchTime = 30000;
+            info.MaxDepth = depth;
+
+#if JB
+            JetBrains.Profiler.Api.MeasureProfiler.StartCollectingData();
+#endif
+            SearchPool.StartSearch(p, ref info);
+
+            Thread.Sleep(50);
+            while (SearchPool.SharedInfo.SearchActive)
+            {
+                Thread.Sleep(1);
+            }
+
+#if JB
+            JetBrains.Profiler.Api.MeasureProfiler.SaveData();
+#endif
+
+            Environment.Exit(123);
+        }
+
+        public static void TryToBreakSomething(int min = 100, int max = 300)
+        {
+            Random r = new Random();
+            while (true)
+            {
+                Console.WriteLine("\r\nStart:\r\n");
+                SearchPool.StartSearch(p, ref info);
+                Thread.Sleep(r.Next(min, max));
+                SearchPool.StopThreads = true;
+                Thread.Sleep(r.Next(min, max));
+            }
         }
     }
 

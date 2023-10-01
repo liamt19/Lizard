@@ -2,6 +2,7 @@
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.Simple768;
+using LTChess.Logic.Threads;
 
 namespace LTChess.Logic.Search
 {
@@ -21,11 +22,6 @@ namespace LTChess.Logic.Search
         /// The depth to stop the search at.
         /// </summary>
         public int MaxDepth = DefaultSearchDepth;
-
-        /// <summary>
-        /// The ply of the deepest Pv search so far, which should be at least equal to MaxDepth but almost always higher.
-        /// </summary>
-        public int SelectiveDepth = 0;
 
         /// <summary>
         /// The number of nodes the search should stop at.
@@ -81,17 +77,14 @@ namespace LTChess.Logic.Search
         public int RootPlayerToMove = Color.White;
 
         /// <summary>
-        /// Set to true if this SearchInformation instance is being used in a threaded search.
-        /// </summary>
-        public bool IsMultiThreaded = false;
-
-        /// <summary>
         /// A private reference to a ThreadedEvaluation instance, which is used by the thread to evaluate the positions
         /// that it encounters during the search.
         /// </summary>
-        private ThreadedEvaluation tdEval;
+        private ThreadedEvaluation _ClassicalEval;
 
         public TimeManager TimeManager;
+
+        public bool IsInfinite => (MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime);
 
         /// <summary>
         /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
@@ -106,11 +99,10 @@ namespace LTChess.Logic.Search
 
             if (UseHalfKA)
             {
-                SearchStatistics.EvalCalls++;
                 return (short) HalfKA_HM.GetEvaluation(position, FavorPositionalEval);
             }
 
-            return (short) this.tdEval.Evaluate(position, position.ToMove, Trace);
+            return (short) this._ClassicalEval.Evaluate(position, position.ToMove, Trace);
         }
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
@@ -132,8 +124,9 @@ namespace LTChess.Logic.Search
             PV = new Move[Utilities.MaxDepth];
 
             this.OnDepthFinish = PrintSearchInfo;
+            this.OnSearchFinish = PrintHumanReadableLine;
 
-            tdEval = new ThreadedEvaluation();
+            _ClassicalEval = new ThreadedEvaluation();
         }
 
         public static SearchInformation Infinite(Position p)
@@ -147,29 +140,8 @@ namespace LTChess.Logic.Search
         public void SetMoveTime(int moveTime)
         {
             TimeManager.MoveTime = moveTime;
+            TimeManager.MaxSearchTime = moveTime;
             TimeManager.HasMoveTime = true;
-        }
-
-        /// <summary>
-        /// Replaces the BestMove and BestScore fields when a search is interrupted.
-        /// </summary>
-        /// <param name="move">The best Move from the previous depth</param>
-        /// <param name="score">The evaluation from the previous depth</param>
-        [MethodImpl(Inline)]
-        public void SetLastMove(Move move, int score)
-        {
-            if (!move.IsNull())
-            {
-                Log("SetLastMove(" + move + ", " + score + ") is replacing previous " + BestMove + ", " + BestScore);
-
-                this.BestMove = move;
-                this.BestScore = score;
-            }
-            else
-            {
-                //  This shouldn't happen.
-                Log("ERROR SetLastMove(" + move + ", " + score + ") " + "[old " + BestMove + ", " + BestScore + "] was illegal in FEN " + Position.GetFEN());
-            }
         }
 
         /// <summary>
@@ -178,15 +150,8 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public void PrintSearchInfo(ref SearchInformation info)
         {
-            info.LastSearchInfo = FormatSearchInformation(ref info);
-            if (IsMultiThreaded)
-            {
-                Log(Thread.CurrentThread.ManagedThreadId + " ->\t" + LastSearchInfo);
-            }
-            else
-            {
-                Log(info.LastSearchInfo);
-            }
+            info.LastSearchInfo = FormatSearchInformationMultiPV(ref info);
+            Log(info.LastSearchInfo);
 
 #if DEBUG
             SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.TimeManager.GetSearchTime());
@@ -194,95 +159,39 @@ namespace LTChess.Logic.Search
         }
 
         /// <summary>
-        /// Creates a deep copy of an existing <see cref="SearchInformation"/>
+        /// Prints a human-readable version of the PV after a search has finished.
         /// </summary>
-        public static SearchInformation Clone(SearchInformation other)
+        [MethodImpl(Inline)]
+        public void PrintHumanReadableLine(ref SearchInformation info)
         {
-            SearchInformation copy = (SearchInformation)other.MemberwiseClone();
-            copy.Position = new Position(other.Position.GetFEN());
+            StringBuilder sb = new StringBuilder();
 
-            copy.PV = new Move[other.PV.Length];
-            for (int i = 0; i < other.PV.Length; i++)
+            SearchThread thisThread = info.Position.Owner;
+            List<RootMove> rootMoves = thisThread.RootMoves;
+            RootMove rm = rootMoves[0];
+
+            Position temp = new Position(info.Position.GetFEN(), false, null);
+
+            sb.Append("Line:");
+            int i = 0;
+
+            for (; i < MaxPly; i++)
             {
-                copy.PV[i] = other.PV[i];
-            }
-
-            copy.OnDepthFinish = copy.PrintSearchInfo;
-
-
-            return copy;
-        }
-
-        /// <summary>
-        /// Returns a string with the PV line from this search, 
-        /// which begins with the best move, followed by a series of moves that we think will be played in response.
-        /// <br></br>
-        /// If <paramref name="EngineFormat"/> is true, then the string will look like "e2e4 e7e5 g1g3 b8c6" which is what
-        /// chess UCI and other engines programs expect a PV to look like.
-        /// </summary>
-        /// <param name="EngineFormat">If false, provides the line in human readable form (i.e. Nxf7+ instead of e5f7)</param>
-        public string GetPVString(bool EngineFormat = false)
-        {
-            StringBuilder pv = new StringBuilder();
-
-            //  Start fresh, since a PV at depth 3 could write to PV[0-2] and the time we call GetPV
-            //  it could fail at PV[1] and leave the wrong move in PV[2].
-            Array.Clear(this.PV);
-            int pvLen = Search.GetPV(this.PV);
-
-            Position temp = new Position(this.Position.GetFEN(), false);
-
-            int maxPvDepth = Math.Min(this.MaxDepth, pvLen);
-            for (int i = 0; i < maxPvDepth; i++)
-            {
-                if (this.PV[i].IsNull())
+                if (rm.PV[i] == Move.Null)
                 {
-                    if (!(temp.CheckInfo.InCheck || temp.CheckInfo.InDoubleCheck))
-                    {
-                        Log("WARN GetPVString's PV[" + i + "] was null!");
-                    }
-                    else if (!EngineFormat)
-                    {
-                        //  This should only happen for checkmates, which means that the last move in the human-readable
-                        //  PV string is only considered as causing check (+) rather than checkmate (#).
-                        //  If this isn't being sent to a UCI, change the last move's "+" to a "#".
-                        pv.Remove(pv.Length - 2, 2);
-                        pv.Append("# ");
-                    }
                     break;
                 }
 
-                if (EngineFormat)
-                {
-                    if (temp.bb.IsPseudoLegal(this.PV[i]) && temp.IsLegal(this.PV[i]))
-                    {
-                        pv.Append(this.PV[i] + " ");
-                        temp.MakeMove(this.PV[i], false);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                else
-                {
-                    if (temp.bb.IsPseudoLegal(this.PV[i]))
-                    {
-                        pv.Append(this.PV[i].ToString(temp) + " ");
-                        temp.MakeMove(this.PV[i], false);
-                    }
-                    else
-                    {
-                        pv.Append(this.PV[i].ToString() + "? ");
-                    }
-                }
+                sb.Append(" " + rm.PV[i].ToString(temp));
+                temp.MakeMove(rm.PV[i], false);
             }
 
-            if (pv.Length > 1)
+            for (; i > 0; i--)
             {
-                pv.Remove(pv.Length - 1, 1);
+                temp.UnmakeMove(rm.PV[i], false);
             }
-            return pv.ToString();
+
+            Log(sb.ToString());
         }
 
         public override string ToString()

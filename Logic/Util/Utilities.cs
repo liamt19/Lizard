@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
+using LTChess.Logic.Threads;
 
 namespace LTChess.Logic.Util
 {
@@ -88,12 +89,12 @@ namespace LTChess.Logic.Util
         public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
 
 
-        public static bool JITHasntSeenSearch = false;
+        public static bool BlockOutputForJIT = false;
 
         public static bool IsRunningConcurrently = false;
         public static int ConcurrencyCount = 0;
 
-        public static long debug_time_off = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+        public static long StartTimeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
@@ -101,7 +102,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static void Log(string s)
         {
-            if (JITHasntSeenSearch)
+            if (BlockOutputForJIT)
             {
                 return;
             }
@@ -118,7 +119,6 @@ namespace LTChess.Logic.Util
             Debug.WriteLine(s);
         }
 
-        public static void Log(int i) => Log(i.ToString());
 
         /// <summary>
         /// If there are multiple instances of this engine running, we won't write to the ucilog file.
@@ -163,11 +163,6 @@ namespace LTChess.Logic.Util
             }
         }
 
-        [MethodImpl(Inline)]
-        public static int Rotate180(int square)
-        {
-            return square ^ 0x3F;
-        }
 
 
         public static class Direction
@@ -235,23 +230,29 @@ namespace LTChess.Logic.Util
                 : 0;
         }
 
-        [MethodImpl(Inline)]
-        public static ulong PawnShift(int color, ulong b)
-        {
-            if (color == Color.White)
-            {
-                return Shift(Direction.NORTH_WEST, b) | Shift(Direction.NORTH_EAST, b);
-            }
 
-            return Shift(Direction.SOUTH_WEST, b) | Shift(Direction.SOUTH_EAST, b);
+
+        /// <summary>
+        /// Returns a ulong with bits set along whichever file <paramref name="idx"/> is in.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static ulong GetFileBB(int idx)
+        {
+            return (FileABB << GetIndexFile(idx));
         }
 
+        /// <summary>
+        /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static double InCentipawns(double score)
+        public static ulong GetRankBB(int idx)
         {
-            double div = Math.Round(score / 100, 2);
-            return div;
+            return (Rank1BB << (8 * GetIndexRank(idx)));
         }
+
+
+
+
 
         [MethodImpl(Inline)]
         public static int Not(int color)
@@ -259,6 +260,8 @@ namespace LTChess.Logic.Util
             //return (color == Color.White) ? Color.Black : Color.White;
             return color ^ 1;
         }
+
+
 
         [MethodImpl(Inline)]
         public static string ColorToString(int color)
@@ -298,30 +301,6 @@ namespace LTChess.Logic.Util
 
             return "None";
         }
-
-        /// <summary>
-        /// Returns a random ulong using the Random instance <paramref name="random"/>.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong NextUlong(this Random random)
-        {
-            Span<byte> arr = new byte[8];
-            random.NextBytes(arr);
-
-            return BitConverter.ToUInt64(arr);
-        }
-
-        /// <summary>
-        /// Returns the letter of the file numbered <paramref name="fileNumber"/>, so GetFileChar(0) returns 'a'.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static char GetFileChar(int fileNumber) => (char)(97 + fileNumber);
-
-        /// <summary>
-        /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static int GetFileInt(char fileLetter) => fileLetter - 97;
 
         /// <summary>
         /// Returns the first letter of the name of the piece of type <paramref name="pieceType"/>, so PieceToFENChar(0 [Piece.Pawn]) returns 'P'.
@@ -384,7 +363,33 @@ namespace LTChess.Logic.Util
             return Piece.None;
         }
 
-        public static int FENToColor(char c) => char.IsUpper(c) ? Color.White : Color.Black;
+
+
+        /// <summary>
+        /// Returns a random ulong using the Random instance <paramref name="random"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static ulong NextUlong(this Random random)
+        {
+            Span<byte> arr = new byte[8];
+            random.NextBytes(arr);
+
+            return BitConverter.ToUInt64(arr);
+        }
+
+
+
+        /// <summary>
+        /// Returns the letter of the file numbered <paramref name="fileNumber"/>, so GetFileChar(0) returns 'a'.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static char GetFileChar(int fileNumber) => (char)(97 + fileNumber);
+
+        /// <summary>
+        /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static int GetFileInt(char fileLetter) => fileLetter - 97;
 
         /// <summary>
         /// Returns the file (x coordinate) for the index, which is between A=0 and H=7.
@@ -426,11 +431,6 @@ namespace LTChess.Logic.Util
             return "" + GetFileChar(GetIndexFile(idx)) + (GetIndexRank(idx) + 1);
         }
 
-        [MethodImpl(Inline)]
-        public static string CoordToString(int x, int y)
-        {
-            return "" + GetFileChar(x) + (y + 1);
-        }
 
         /// <summary>
         /// Returns the index of the square <paramref name="s"/>, which should look like "a1" or "e4".
@@ -441,55 +441,7 @@ namespace LTChess.Logic.Util
             return CoordToIndex(GetFileInt(s[0]), int.Parse(s[1].ToString()) - 1);
         }
 
-        /// <summary>
-        /// Returns true if <paramref name="x"/> and <paramref name="y"/> are both between 0 and 7.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static bool InBounds(int x, int y)
-        {
-            return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
-        }
 
-        /// <summary>
-        /// Returns a string formatted as an 8x8 square with the bits set in <paramref name="bb"/> as 1's and everything else as 0's.
-        /// </summary>
-        public static string FormatBB(ulong bb)
-        {
-            StringBuilder temp = new StringBuilder();
-
-            temp.Append(Convert.ToString((long)bb, 2));
-            if (temp.Length != 64)
-            {
-                temp.Insert(0, "0", 64 - temp.Length);
-            }
-
-            string s = temp.ToString();
-
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < 8; i++)
-            {
-                if (i != 7)
-                {
-                    sb.AppendLine(s.Substring(8 * i, 8).Flip());
-                }
-                else
-                {
-                    sb.Append(s.Substring(8 * i, 8).Flip());
-                }
-            }
-
-            return sb.ToString() + "\r\n";
-        }
-
-        /// <summary>
-        /// Returns the string <paramref name="s"/> backwards.
-        /// </summary>
-        public static string Flip(this string s)
-        {
-            char[] charArray = s.ToCharArray();
-            Array.Reverse(charArray);
-            return new string(charArray);
-        }
 
         /// <summary>
         /// Returns a text representation of the board
@@ -527,20 +479,6 @@ namespace LTChess.Logic.Util
             }
             sb.AppendLine("   A B C D E F G H");
 
-            return sb.ToString();
-        }
-
-        public static string SpanToString<T>(Span<T> list) where T : struct
-        {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < list.Length; i++)
-            {
-                sb.Append(list[i].ToString() + ", ");
-            }
-            if (sb.Length > 3)
-            {
-                sb.Remove(sb.Length - 2, 2);
-            }
             return sb.ToString();
         }
 
@@ -622,29 +560,58 @@ namespace LTChess.Logic.Util
             return s.Contains(other, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Returns a string representing the current search statistics, which is sent to chess GUI programs.
-        /// <br></br>
-        /// If <paramref name="TraceEval"/> is true, an evaluation of the position will be printed as well.
-        /// </summary>
-        public static string FormatSearchInformation(ref SearchInformation info)
+
+        public static string FormatSearchInformationMultiPV(ref SearchInformation info)
         {
-            int depth = info.MaxDepth;
-            int selDepth = info.SelectiveDepth;
+            SearchThread thisThread = info.Position.Owner;
+
+            List<RootMove> rootMoves = thisThread.RootMoves;
+            int multiPV = Math.Min(MultiPV, rootMoves.Count);
+
             double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
-            var score = FormatMoveScore(info.BestScore);
-            double nodes = info.NodeCount;
+            double nodes = SearchPool.GetNodeCount();
             int nodesPerSec = ((int)(nodes / (time / 1000)));
 
             StringBuilder sb = new StringBuilder();
-            sb.Append("info depth " + depth);
-            sb.Append(" seldepth " + selDepth);
-            sb.Append(" time " + time);
-            sb.Append(" score " + score);
-            sb.Append(" nodes " + nodes);
-            sb.Append(" nps " + nodesPerSec);
-            sb.Append(" hashfull " + TranspositionTable.GetHashFull());
-            sb.Append(" pv " + info.GetPVString(true));
+
+            for (int i = 0; i < multiPV; i++)
+            {
+                RootMove rm = rootMoves[i];
+                bool moveSearched = (rm.Score != -ScoreInfinite);
+
+                int depth = moveSearched ? thisThread.RootDepth : Math.Max(1, thisThread.RootDepth - 1);
+                int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+                var score = FormatMoveScore(moveScore);
+
+                sb.Append("info depth " + depth);
+                sb.Append(" seldepth " + rm.Depth);
+                sb.Append(" multipv " + (i + 1));
+                sb.Append(" time " + time);
+                sb.Append(" score " + score);
+                sb.Append(" nodes " + nodes);
+                sb.Append(" nps " + nodesPerSec);
+                sb.Append(" hashfull " + TranspositionTable.GetHashFull());
+
+                sb.Append(" pv");
+                for (int j = 0; j < MaxPly; j++)
+                {
+                    if (rm.PV[j] == Move.Null)
+                    {
+                        break;
+                    }
+
+                    sb.Append(" " + rm.PV[j]);
+                }
+
+
+                if (i != multiPV - 1)
+                {
+                    sb.Append("\n");
+                }
+            }
+
+
+
 
             return sb.ToString();
         }
@@ -684,25 +651,65 @@ namespace LTChess.Logic.Util
             return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
         }
 
-
-
-
-        /// <summary>
-        /// Returns a ulong with bits set along whichever file <paramref name="idx"/> is in.
-        /// </summary>
         [MethodImpl(Inline)]
-        public static ulong GetFileBB(int idx)
+        public static double InCentipawns(double score)
         {
-            return (FileABB << GetIndexFile(idx));
+            double div = Math.Round(score / 100, 2);
+            return div;
         }
 
+
         /// <summary>
-        /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
+        /// Sorts the <paramref name="items"/> between the starting index <paramref name="offset"/> and last index <paramref name="end"/>
+        /// using <typeparamref name="T"/>'s CompareTo method. This is done in a stable manner so long as the CompareTo method returns
+        /// 0 (or negative numbers) for items with identical values.
+        /// <para></para>
+        /// This is a rather inefficient algorithm ( O(n^2)? ) but for small amounts of <paramref name="items"/> or small ranges 
+        /// of [<paramref name="offset"/>, <paramref name="end"/>] this works well enough.
         /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong GetRankBB(int idx)
+        public static void StableSort<T>(ref List<T> items, int offset = 0, int end = -1) where T : IComparable<T>
         {
-            return (Rank1BB << (8 * GetIndexRank(idx)));
+            if (end == -1)
+            {
+                end = items.Count;
+            }
+
+            for (int i = offset; i < end; i++)
+            {
+                int best = i;
+
+                for (int j = i + 1; j < end; j++)
+                {
+                    if (items[j].CompareTo(items[best]) > 0)
+                    {
+                        best = j;
+                    }
+                }
+
+                if (best != i)
+                {
+                    Debug.WriteLine("StableSort is replacing items[" + i + "] = " + items[i] + " with items[" + best + "] = " + items[best]);
+                    (items[i], items[best]) = (items[best], items[i]);
+                }
+            }
+        }
+
+        public static bool HasMove(this List<RootMove> rootMoves, Move m, int offset = 0, int end = -1)
+        {
+            if (end == -1)
+            {
+                end = rootMoves.Count;
+            }
+
+            for (int i = offset; i < end; i++)
+            {
+                if (rootMoves[i].Move == m)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
     }

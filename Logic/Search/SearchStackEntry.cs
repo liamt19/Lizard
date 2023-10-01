@@ -68,16 +68,20 @@ namespace LTChess.Logic.Search
         public bool TTHit;
 
         [FieldOffset(51)]
-        private fixed byte _pad1[13];
+        private fixed byte _pad1[5];
 
+        [FieldOffset(56)]
+        public Move* PV;
 
 
         public SearchStackEntry()
         {
             Clear();
-
         }
 
+        /// <summary>
+        /// Zeroes the fields within this Entry.
+        /// </summary>
         public void Clear()
         {
             CurrentMove = Move.Null;
@@ -98,6 +102,8 @@ namespace LTChess.Logic.Search
             InCheck = false;
             TTPV = false;
             TTHit = false;
+
+            PV = null;
         }
 
         public static string GetMovesPlayed(SearchStackEntry* curr)

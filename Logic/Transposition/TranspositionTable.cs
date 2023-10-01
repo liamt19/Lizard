@@ -46,6 +46,8 @@ namespace LTChess.Logic.Transposition
         [MethodImpl(Inline)]
         public static void Clear()
         {
+            SearchPool.MainThread.WaitForThreadFinished();
+
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 var cluster = Clusters[i];
@@ -131,7 +133,7 @@ namespace LTChess.Logic.Transposition
         /// <summary>
         /// Increases the age that TT entries must have to be considered a "TT Hit".
         /// <br></br>
-        /// This is done on every call to <see cref="Search.Search.StartSearching"/> to prevent the transposition table
+        /// This is done on every call to <see cref="Threads.SearchThread.MainThreadSearch"/> to prevent the transposition table
         /// from spilling into another search.
         /// </summary>
         [MethodImpl(Inline)]
