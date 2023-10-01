@@ -63,6 +63,13 @@ namespace LTChess.Logic.Search
             PlayerTime = new int[2] { SearchConstants.MaxSearchTime, SearchConstants.MaxSearchTime };
         }
 
+        public void CopyTo(TimeManager other)
+        {
+            other = (TimeManager) this.MemberwiseClone();
+            Array.Copy(this.PlayerIncrement, other.PlayerIncrement, PlayerIncrement.Length);
+            Array.Copy(this.PlayerTime, other.PlayerTime, PlayerTime.Length);
+        }
+
         [MethodImpl(Inline)]
         public void StartTimer() => TotalSearchTime.Start();
 
@@ -75,6 +82,9 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public void RestartTimer() => TotalSearchTime.Restart();
 
+        /// <summary>
+        /// Returns the current search time in milliseconds.
+        /// </summary>
         [MethodImpl(Inline)]
         public double GetSearchTime() => TotalSearchTime.Elapsed.TotalMilliseconds;
 
@@ -129,7 +139,7 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public static string GetFormattedTime()
         {
-            return ",\tcurrent time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - debug_time_off).ToString("0000000"));
+            return ",\tcurrent time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000"));
         }
 
         /// <summary>
