@@ -16,8 +16,8 @@ namespace LTChess.Logic.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "8.4";
-        public const string EngineTagLine = "En passant is so powerful that it was reducing the previous release's ELO by over 100!";
+        public const string EngineBuildVersion = "9.0";
+        public const string EngineTagLine = "I guess there is a reason that most engines don't have multi-threading support :)";
 
         public const int MaxListCapacity = 512;
         public const int ExtendedListCapacity = 256;
