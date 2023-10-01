@@ -19,8 +19,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// 
     /// https://github.com/official-stockfish/Stockfish/blob/84f3e867903f62480c33243dd0ecbffd342796fc/src/nnue/nnue_feature_transformer.h
     /// </summary>
-    public unsafe class FeatureTransformer
+    public static unsafe class FeatureTransformer
     {
+
         // Number of output dimensions for one side
         public const uint HalfDimensions = HalfKA_HM.TransformedFeatureDimensions;
 
@@ -57,12 +58,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Takes the input from the <paramref name="accumulator"/> and places them into <paramref name="output"/>,
         /// refreshing the <paramref name="accumulator"/> if necessary.
         /// </summary>
-        public int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
+        public static int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
 
 #if DEBUG
             //  This is to ensure that both perspectives of the accumulator are being refreshed when they are supposed to.
-            if (true)
+            if (false)
             {
                 //Log("TransformFeatures(" + CurrentAccumulator + ")");
                 if (accumulator.RefreshPerspective[White])
@@ -141,7 +142,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Finds the active features (existing pieces on the board) and updates the Accumulator to include those pieces.
         /// This is comparatively very slow, so it should only be done when absolutely necessary, like when our king moves.
         /// </summary>
-        public void RefreshAccumulatorPerspective(Position pos, ref AccumulatorPSQT accumulator, int perspective)
+        public static void RefreshAccumulatorPerspective(Position pos, ref AccumulatorPSQT accumulator, int perspective)
         {
             const int RelativeWeightIndex = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
@@ -221,12 +222,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <summary>
         /// Reads the weights and biases from the network file.
         /// </summary>
-        public bool ReadParameters(BinaryReader br)
+        public static bool ReadParameters(BinaryReader br)
         {
             uint header = br.ReadUInt32();
             Debug.WriteLine("FeatureTransformer header: " + header.ToString("X"));
 
-            if (HalfKA_HM.IsLEB128)
+            if (LEB128.IsCompressed(br))
             {
                 Debug.WriteLine("FeatureTransformer reading LEB compressed biases/weights");
 
