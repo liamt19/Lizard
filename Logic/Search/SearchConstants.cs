@@ -63,7 +63,7 @@
         /// Ordinarily engines only search for the 1 "best" move, but with MultiPV values 
         /// above 1 this will also display the 2nd best move, the 3rd best, etc.
         /// </summary>
-        public const int MultiPV = 1;
+        public static int MultiPV = 1;
 
 
         /// <summary>
@@ -73,7 +73,7 @@
         /// Do note that a decent amount of the nodes that are looked at by secondary threads won't influence anything,
         /// but higher numbers of threads tends to correlate with better playing strength.
         /// </summary>
-        public const int NumThreads = 2;
+        public static int Threads = 2;
 
 
 

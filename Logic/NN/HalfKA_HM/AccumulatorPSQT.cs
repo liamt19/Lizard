@@ -85,5 +85,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
             target.RefreshPerspective[0] = RefreshPerspective[0];
             target.RefreshPerspective[1] = RefreshPerspective[1];
         }
+
+        public void Dispose()
+        {
+            NativeMemory.AlignedFree(White);
+            NativeMemory.AlignedFree(Black);
+
+            NativeMemory.AlignedFree(PSQTWhite);
+            NativeMemory.AlignedFree(PSQTBlack);
+        }
     }
 }

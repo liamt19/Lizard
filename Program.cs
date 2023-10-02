@@ -222,6 +222,13 @@ namespace LTChess
                 {
                     Log(p.ToString());
                 }
+                else if (input.StartsWithIgnoreCase("threads"))
+                {
+                    if (int.TryParse(param[1], out int threadCount))
+                    {
+                        SearchPool.Resize(threadCount);
+                    }
+                }
                 else if (input.ContainsIgnoreCase("searchinfo"))
                 {
                     PrintSearchInfo();

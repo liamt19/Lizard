@@ -16,7 +16,7 @@ namespace LTChess.Logic.Threads
     {
         public static SearchThreadPool SearchPool;
 
-        public const int ThreadCount = SearchConstants.NumThreads;
+        public int ThreadCount = SearchConstants.Threads;
 
         public SearchInformation SharedInfo;
         public SearchThread[] Threads;
@@ -31,25 +31,44 @@ namespace LTChess.Logic.Threads
         static SearchThreadPool()
         {
             //  Initialize the global threadpool here
-            SearchPool = new SearchThreadPool();
-
-            //  And assign it the number of threads specified in SearchConstants.NumThreads
-            SearchPool.MakeThreads();
+            SearchPool = new SearchThreadPool(SearchConstants.Threads);
         }
 
-        public SearchThreadPool()
+        public SearchThreadPool(int threadCount)
         {
+            Resize(threadCount);
+        }
+
+        public void Resize(int newThreadCount)
+        {
+            if (Threads != null)
+            {
+                MainThread.WaitForThreadFinished();
+
+                int joins = 0;
+                for (int i = 0; i < ThreadCount; i++)
+                {
+                    if (Threads[i] != null)
+                    {
+                        Threads[i].Dispose();
+                        joins++;
+                    }
+                }
+                Debug.WriteLine("Joined " + joins + " existing threads");
+            }
+
+            this.ThreadCount = newThreadCount;
             Threads = new SearchThread[ThreadCount];
         }
 
-        public void MakeThreads()
-        {
+
             for (int i = 0; i < ThreadCount; i++)
             {
                 Threads[i] = new SearchThread(i);
             }
 
             MainThread.WaitForThreadFinished();
+            Debug.WriteLine("Spawned " + ThreadCount + " new threads");
         }
 
 

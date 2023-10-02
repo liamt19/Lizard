@@ -542,6 +542,38 @@ namespace LTChess.Logic.Core
 
         private void HandleSetOption(string optName, string optValue)
         {
+
+            //  Currently only "Threads" and "MultiPV" can be changed at runtime.
+            if (optName.EqualsIgnoreCase("Threads"))
+            {
+                if (int.TryParse(optValue, out int newVal))
+                {
+                    SearchPool.Resize(newVal);
+                }
+                else
+                {
+                    Log("ERROR Failed setting SearchPool Threads to '" + optValue + "', couldn't parse the number");
+                }
+            }
+            else if (optName.EqualsIgnoreCase("MultiPV"))
+            {
+                if (int.TryParse(optValue, out int newVal))
+                {
+                    MultiPV = newVal;
+                }
+                else
+                {
+                    Log("ERROR Failed setting MultiPV to '" + optValue + "', couldn't parse the number");
+                }
+            }
+            else
+            {
+                LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
+            }
+
+            return;
+
+
             //  This checks if optName was sent in it's "friendly format" (Use Quiescence SEE), or sent regularly (UseQuiescenceSEE)
             if (!Options.ContainsKey(optName))
             {
@@ -587,7 +619,9 @@ namespace LTChess.Logic.Core
                     opt.FieldHandle.SetValue(null, arr);
                 }
 
+#if TUNE
                 Tune.NormalizeTerms();
+#endif
 
             }
             catch (Exception e)
@@ -599,7 +633,7 @@ namespace LTChess.Logic.Core
 
         }
 
-        private void ProcessUCIOptions()
+        private void ProcessUCIOptions(bool friendly = false)
         {
             Options = new Dictionary<string, UCIOption>();
 
@@ -608,17 +642,22 @@ namespace LTChess.Logic.Core
 
             foreach (FieldInfo field in fields)
             {
+                string fieldName = field.Name;
+
+                if (friendly)
+                {
                 //  Give that field a friendly name, which has spaces between capital letters.
                 //  i.e. "UseQuiescenceSEE" is presented as "Use Quiescence SEE"
-                string friendlyName = Regex.Replace(field.Name, "([A-Z]+)", (match) => { return " " + match; }).Trim();
+                    fieldName = Regex.Replace(field.Name, "([A-Z]+)", (match) => { return " " + match; }).Trim();
+                }
 
                 //  Most options are numbers and are called "spin"
                 //  If they are true/false, they are called "check"
                 string fieldType = (field.FieldType == typeof(bool) ? "check" : "spin");
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
-                UCIOption opt = new UCIOption(friendlyName, fieldType, defaultValue, field);
-                Options.Add(friendlyName, opt);
+                UCIOption opt = new UCIOption(fieldName, fieldType, defaultValue, field);
+                Options.Add(fieldName, opt);
             }
 
             //  Add some of the terms in EvaluationConstants as UCI options

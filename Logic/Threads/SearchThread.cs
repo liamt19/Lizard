@@ -14,9 +14,11 @@ using static System.Formats.Asn1.AsnWriter;
 
 namespace LTChess.Logic.Threads
 {
-    public unsafe class SearchThread
+    public unsafe class SearchThread : IDisposable
     {
         public const int CheckupMax = 512;
+
+        private bool _Disposed = false;
 
         /// <summary>
         /// The number of nodes that this thread has encountered.
@@ -415,19 +417,49 @@ namespace LTChess.Logic.Threads
         /// <summary>
         /// To be called when the SearchThreadPool can be resized...
         /// </summary>
-        public void Dispose()
+        protected virtual void Dispose(bool disposing)
         {
+            if (_Disposed)
+            {
+                return;
+            }
+
+            if (disposing)
+            {
             Debug.Assert(Searching == false);
 
             //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
             Quit = true;
-            PrepareToSearch();
 
-            //  Destroy the underlying system thread
-            _SysThread.Join();
+                Debug.WriteLine("Set Quit to " + Quit + " for " + FriendlyName);
+            PrepareToSearch();
+            }
+
 
             //  And free up the memory we allocated for this thread.
             History.Dispose();
+
+            for (int i = 0; i < Accumulators.Length; i++)
+            {
+                Accumulators[i].Dispose();
+            }
+
+            Debug.WriteLine("Joining " + FriendlyName);
+            //  Destroy the underlying system thread
+            _SysThread.Join();
+
+            _Disposed = true;
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~SearchThread()
+        {
+            Dispose(false);
         }
 
         /// <summary>
