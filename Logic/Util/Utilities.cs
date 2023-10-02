@@ -572,6 +572,8 @@ namespace LTChess.Logic.Util
             double nodes = SearchPool.GetNodeCount();
             int nodesPerSec = ((int)(nodes / (time / 1000)));
 
+            int lastValidScore = 0;
+
             StringBuilder sb = new StringBuilder();
 
             for (int i = 0; i < multiPV; i++)
@@ -581,6 +583,28 @@ namespace LTChess.Logic.Util
 
                 int depth = moveSearched ? thisThread.RootDepth : Math.Max(1, thisThread.RootDepth - 1);
                 int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
+
+                if (!moveSearched && i > 0)
+                {
+                    if (depth == 1)
+                    {
+                        continue;
+                    }
+
+                    if (moveScore == -ScoreInfinite)
+                    {
+                        //  Much of the time, the 4th/5th and beyond MultiPV moves aren't given a score when the search ends.
+                        //  If this is the case, either display the average score if it is lower than the last properly score move,
+                        //  or just display the previous score minus one. This isn't technically correct but it is better than showing "-31200"
+                        moveScore = Math.Min(lastValidScore - 1, rm.AverageScore);
+                    }
+                }
+
+                if (moveScore != -ScoreInfinite)
+                {
+                    lastValidScore = moveScore;
+                }
+
                 var score = FormatMoveScore(moveScore);
 
                 sb.Append("info depth " + depth);
