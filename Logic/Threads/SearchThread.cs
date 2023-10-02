@@ -369,6 +369,8 @@ namespace LTChess.Logic.Threads
                         window = 10;
                     }
 
+                    int fails = 0;
+
                     while (true)
                     {
                         score = Logic.Search.Search.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);
@@ -387,16 +389,12 @@ namespace LTChess.Logic.Threads
                         else if (score >= beta)
                         {
                             beta = Math.Min(beta + window, BetaStart);
-
-                            if (Math.Abs(score) < ScoreTTWin)
-                            {
-                                RootDepth--;
-                            }
                         }
                         else
                             break;
 
-                        window += window / 4;
+                        fails++;
+                        window += (window * fails);
                     }
 
                     StableSort(ref RootMoves, 0);
@@ -426,13 +424,13 @@ namespace LTChess.Logic.Threads
 
             if (disposing)
             {
-            Debug.Assert(Searching == false);
+                Debug.Assert(Searching == false);
 
-            //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
-            Quit = true;
+                //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
+                Quit = true;
 
                 Debug.WriteLine("Set Quit to " + Quit + " for " + FriendlyName);
-            PrepareToSearch();
+                PrepareToSearch();
             }
 
 

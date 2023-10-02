@@ -103,7 +103,10 @@ namespace LTChess.Logic.Search
             if (currentTime > (MaxSearchTime - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
             {
                 //  Stop if we are close to going over the max time
-                Log("Stopping normally! Used " + currentTime + " of allowed " + MaxSearchTime + "ms" + GetFormattedTime());
+                if (UCI.Active)
+                {
+                    Log("Stopping normally! Used " + currentTime + " of allowed " + MaxSearchTime + "ms" + GetFormattedTime());
+                }
 
                 shouldStop = true;
             }

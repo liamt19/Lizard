@@ -67,22 +67,14 @@
 
             while (white != 0)
             {
-                int idx = lsb(white);
-
-                int pt = bb.PieceTypes[idx];
-                hash ^= ColorPieceSquareHashes[Color.White][pt][idx];
-
-                white = poplsb(white);
+                int idx = poplsb(&white);
+                hash ^= ColorPieceSquareHashes[Color.White][bb.PieceTypes[idx]][idx];
             }
 
             while (black != 0)
             {
-                int idx = lsb(black);
-
-                int pt = bb.PieceTypes[idx];
-                hash ^= ColorPieceSquareHashes[Color.Black][pt][idx];
-
-                black = poplsb(black);
+                int idx = poplsb(&black);
+                hash ^= ColorPieceSquareHashes[Color.Black][bb.PieceTypes[idx]][idx];
             }
 
             if ((position.State->CastleStatus & CastlingStatus.WK) != 0)

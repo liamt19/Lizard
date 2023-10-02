@@ -36,7 +36,7 @@
         /// <summary>
         /// The default depth to search to.
         /// </summary>
-        public const int DefaultSearchDepth = 7;
+        public const int DefaultSearchDepth = MaxDepth;
 
         /// <summary>
         /// Default amount of time in milliseconds that a search will run for before it is cancelled.
