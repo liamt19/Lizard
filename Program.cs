@@ -37,6 +37,7 @@ using System.Reflection;
 using LTChess.Logic.NN;
 using System.Runtime.InteropServices;
 using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.Threads;
 
 namespace LTChess
 {
@@ -100,10 +101,11 @@ namespace LTChess
         public static void DoInputLoop()
         {
             Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-            string input;
+
+            ThreadSetup setup = new ThreadSetup();
             while (true)
             {
-                input = Console.ReadLine();
+                string input = Console.ReadLine();
                 if (input == null || input.Length == 0)
                 {
                     continue;
@@ -118,14 +120,24 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("position fen "))
                 {
                     p.LoadFromFEN(input.Substring(13));
+                    setup.StartFEN = input.Substring(13);
                 }
                 else if (input.StartsWithIgnoreCase("position startpos moves "))
                 {
                     p.LoadFromFEN(InitialFEN);
+
+                    setup.StartFEN = InitialFEN;
+                    setup.SetupMoves.Clear();
+
                     var splits = input.Split(' ').ToList();
                     for (int i = 3; i < splits.Count; i++)
                     {
-                        if (!p.TryMakeMove(splits[i]))
+                        if (p.TryFindMove(splits[i], out Move m))
+                        {
+                            p.MakeMove(m);
+                            setup.SetupMoves.Add(m);
+                        }
+                        else
                         {
                             Log("Failed doing extra moves! '" + splits[i] + "' isn't a legal move in the FEN " + p.GetFEN());
                             break;
@@ -167,7 +179,7 @@ namespace LTChess
                         }
                     }
 
-                    SearchPool.StartSearch(p, ref info);
+                    SearchPool.StartSearch(p, ref info, setup);
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {

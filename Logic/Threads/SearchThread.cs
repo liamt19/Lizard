@@ -162,8 +162,8 @@ namespace LTChess.Logic.Threads
         {
             Quit = false;
 
-            Accumulators = new AccumulatorPSQT[MaxPly];
-            for (int i = 0; i < MaxPly; i++)
+            Accumulators = new AccumulatorPSQT[Position.StateStackSize];
+            for (int i = 0; i < Accumulators.Length; i++)
             {
                 Accumulators[i] = new AccumulatorPSQT();
             }

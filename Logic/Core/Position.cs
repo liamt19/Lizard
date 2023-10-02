@@ -66,8 +66,7 @@ namespace LTChess.Logic.Core
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
         /// If you find yourself in a game exceeding 2047 moves, go outside.
         /// </summary>
-        private const int StateStackSize = 2048;
-        private readonly StateInfo* StateStack;
+        public const int StateStackSize = 2048;
         private readonly nint _stateBlock;
 
 
@@ -75,6 +74,7 @@ namespace LTChess.Logic.Core
         /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
         /// </summary>
         private readonly StateInfo* _SentinelStart;
+        public StateInfo* StartingState => (_SentinelStart);
 
         /// <summary>
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
@@ -86,7 +86,7 @@ namespace LTChess.Logic.Core
         /// <br></br>
         /// Only used to easily keep track of how far along the StateStack we currently are.
         /// </summary>
-        private int GamePly = 0;
+        public int GamePly = 0;
 
         /// <summary>
         /// The SearchThread that owns this Position instance.
@@ -106,7 +106,7 @@ namespace LTChess.Logic.Core
             this.bb = *(Bitboard*)_bbBlock;
 
             _stateBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
-            StateStack = (StateInfo*)_stateBlock;
+            StateInfo* StateStack = (StateInfo*)_stateBlock;
 
             _SentinelStart = &StateStack[0];
             State = &StateStack[0];
@@ -118,7 +118,7 @@ namespace LTChess.Logic.Core
                 throw new Exception("Position('" + fen + "', " + ResetNN + ", ...) has ResetNN true and was given a nullptr for owner! ResetNN == true must have an owner");
             }
 
-            Debug.WriteLine("Position owner is " + Owner.ToString());
+            Debug.WriteLine("Position owner is " + (Owner != null ? Owner.ToString() : "NULL?"));
 
             LoadFromFEN(fen);
 
@@ -850,11 +850,15 @@ namespace LTChess.Logic.Core
             {
                 return false;
             }
-
-            int count = 0;
+            
             ulong currHash = State->Hash;
 
 #if DEBUG
+            if (Zobrist.GetHash(this) != currHash)
+            {
+                Debug.WriteLine("WARN Zobrist.GetHash returned '" + Zobrist.GetHash(this) + "' but State->Hash is " + State->Hash);
+            }
+
             StateInfo* dbg = State;
             List<ulong> Hashes = new List<ulong>(State->HalfmoveClock);
             for (int i = 0; i < GamePly; i++)
@@ -864,12 +868,14 @@ namespace LTChess.Logic.Core
                 {
                     break;
                 }
-                dbg = (dbg - 1);
+                dbg--;
             }
 #endif
 
             //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
             //  If we encounter the current hash 2 additional times, then this is a draw.
+
+            int count = 0;
             StateInfo* temp = State;
             for (int i = 0; i < GamePly - 1; i += 2)
             {
@@ -887,21 +893,7 @@ namespace LTChess.Logic.Core
                     break;
                 }
 
-#if DEBUG
-                if ((temp - 1) == null || !StateInfo.PointerValid((temp - 1)))
-                {
-                    Log(StateInfo.StringFormat((temp - 1)) + "'s Previous was freed while it was in use by " + StateInfo.StringFormat(State));
-                    break;
-                }
-
-                if ((temp - 2) == null || !StateInfo.PointerValid((temp - 2)))
-                {
-                    Log(StateInfo.StringFormat((temp - 1)) + "'s Previous->Previous was freed while it was in use by " + StateInfo.StringFormat(State));
-                    break;
-                }
-#endif
-
-                temp = (temp - 2);
+                temp -= 2;
             }
             return false;
         }
@@ -1239,7 +1231,7 @@ namespace LTChess.Logic.Core
                 fen.Append(" -");
             }
 
-            fen.Append(" " + HalfMoves + " " + FullMoves);
+            fen.Append(" " + State->HalfmoveClock + " " + FullMoves);
 
             return fen.ToString();
         }

@@ -100,7 +100,12 @@ namespace LTChess.Logic.Search
 
             if (!isRoot)
             {
-                if (SearchPool.StopThreads || pos.IsDraw() || ss->Ply >= MaxSearchStackPly - 1)
+                if (pos.IsDraw())
+                {
+                    return ScoreDraw;
+                }
+
+                if (SearchPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
                 {
                     if (pos.Checked)
                     {
@@ -539,7 +544,13 @@ namespace LTChess.Logic.Search
                 ss->PV[0] = Move.Null;
             }
 
-            if (pos.IsDraw() || ss->Ply >= MaxSearchStackPly - 1)
+
+            if (pos.IsDraw())
+            {
+                return ScoreDraw;
+            }
+
+            if (ss->Ply >= MaxSearchStackPly - 1)
             {
                 return ss->InCheck ? ScoreDraw : info.GetEvaluation(pos);
             }

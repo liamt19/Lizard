@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using LTChess.Logic.Book;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.Threads;
 
 using static LTChess.Logic.Search.Search;
 
@@ -17,6 +18,7 @@ namespace LTChess.Logic.Core
     {
 
         private SearchInformation info;
+        private ThreadSetup setup;
 
         public const string LogFileName = @".\ucilog.txt";
         public const string FilenameLast = @".\ucilog_last.txt";
@@ -37,6 +39,7 @@ namespace LTChess.Logic.Core
         {
             ProcessUCIOptions();
 
+            setup = new ThreadSetup();
             info = new SearchInformation(new Position(owner: SearchPool.MainThread), DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
@@ -176,8 +179,12 @@ namespace LTChess.Logic.Core
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;
 
+                    setup.SetupMoves.Clear();
+
                     if (param[0] == "startpos")
                     {
+                        setup.StartFEN = InitialFEN;
+
                         //  Some UCI's send commands that look like "position startpos moves e2e4 c7c5 g1f3"
                         //  If the command does have a "moves" component, then set the fen normally,
                         //  and try to make the moves that we were told to.
@@ -186,10 +193,16 @@ namespace LTChess.Logic.Core
                         {
                             for (int i = 2; i < param.Length; i++)
                             {
-                                if (!info.Position.TryMakeMove(param[i]))
+                                if (info.Position.TryFindMove(param[i], out Move m))
+                                {
+                                    info.Position.MakeMove(m);
+                                }
+                                else
                                 {
                                     LogString("[ERROR]: Failed doing extra moves! '" + param[i] + "' didn't work with FEN " + info.Position.GetFEN());
                                 }
+
+                                setup.SetupMoves.Add(m);
                             }
 
                             LogString("[INFO]: New FEN is " + info.Position.GetFEN());
@@ -203,6 +216,10 @@ namespace LTChess.Logic.Core
                     {
                         Debug.Assert(param[0] == "fen");
                         string fen = param[1];
+
+                        setup.StartFEN = fen;
+                        
+
                         bool hasExtraMoves = false;
                         for (int i = 2; i < param.Length; i++)
                         {
@@ -211,10 +228,17 @@ namespace LTChess.Logic.Core
                                 info.Position = new Position(fen, owner: SearchPool.MainThread);
                                 for (int j = i + 1; j < param.Length; j++)
                                 {
-                                    if (!info.Position.TryMakeMove(param[j]))
+
+                                    if (info.Position.TryFindMove(param[j], out Move m))
+                                    {
+                                        info.Position.MakeMove(m);
+                                    }
+                                    else
                                     {
                                         LogString("[ERROR]: Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
                                     }
+
+                                    setup.SetupMoves.Add(m);
                                 }
 
                                 LogString("[INFO]: New FEN is " + info.Position.GetFEN());
@@ -462,7 +486,7 @@ namespace LTChess.Logic.Core
             }
 
             //Search.Search.StartSearching(ref info, !hasDepthCommand);
-            SearchPool.StartSearch(info.Position, ref info);
+            SearchPool.StartSearch(info.Position, ref info, setup);
             LogString("[INFO]: Returned from call to start_thinking at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
         }
 
@@ -646,8 +670,8 @@ namespace LTChess.Logic.Core
 
                 if (friendly)
                 {
-                //  Give that field a friendly name, which has spaces between capital letters.
-                //  i.e. "UseQuiescenceSEE" is presented as "Use Quiescence SEE"
+                    //  Give that field a friendly name, which has spaces between capital letters.
+                    //  i.e. "UseQuiescenceSEE" is presented as "Use Quiescence SEE"
                     fieldName = Regex.Replace(field.Name, "([A-Z]+)", (match) => { return " " + match; }).Trim();
                 }
 

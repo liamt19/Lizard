@@ -59,8 +59,7 @@ namespace LTChess.Logic.Threads
 
             this.ThreadCount = newThreadCount;
             Threads = new SearchThread[ThreadCount];
-        }
-
+            
 
             for (int i = 0; i < ThreadCount; i++)
             {
@@ -74,6 +73,11 @@ namespace LTChess.Logic.Threads
 
         public void StartSearch(Position rootPosition, ref SearchInformation rootInfo)
         {
+            StartSearch(rootPosition, ref rootInfo, new ThreadSetup(rootPosition.GetFEN(), new List<Move>()));
+        }
+
+        public void StartSearch(Position rootPosition, ref SearchInformation rootInfo, ThreadSetup setup)
+        {
             MainThread.WaitForThreadFinished();
 
             StopThreads = false;
@@ -83,12 +87,19 @@ namespace LTChess.Logic.Threads
             Span<Move> moves = stackalloc Move[NormalListCapacity];
             int size = rootPosition.GenAllLegalMovesTogether(moves);
 
-            var rootFEN = rootPosition.GetFEN();
+            var rootFEN = setup.StartFEN;
+            if (rootFEN == InitialFEN && setup.SetupMoves.Count == 0)
+            {
+                rootFEN = rootPosition.GetFEN();
+            }
+
             for (int i = 0; i < ThreadCount; i++)
             {
                 var td = Threads[i];
 
                 td.Nodes = 0;
+
+                td.CompletedDepth = 0;
                 td.RootDepth = 0;
                 td.SelDepth = 0;
 
@@ -101,6 +112,19 @@ namespace LTChess.Logic.Threads
                 }
 
                 td.RootPosition = new Position(rootFEN, true, td);
+                foreach (var move in setup.SetupMoves)
+                {
+                    td.RootPosition.MakeMove(move);
+                }
+
+                Debug.Assert((td.RootPosition.State->Hash) == (rootPosition.State->Hash));
+
+#if DEBUG
+                for (int j = 0; j < rootPosition.GamePly; j++)
+                {
+                    Debug.Assert(((td.RootPosition.StartingState + j)->Hash) == (rootPosition.StartingState + j)->Hash);
+                }
+#endif
             }
 
             SharedInfo.TimeManager.StartTimer();
