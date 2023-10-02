@@ -168,7 +168,12 @@ namespace LTChess.Logic.Search
 
             SearchThread thisThread = info.Position.Owner;
             List<RootMove> rootMoves = thisThread.RootMoves;
+
+            Move[] PV = new Move[MaxPly];
             RootMove rm = rootMoves[0];
+            Array.Copy(rm.PV, PV, MaxPly);
+            
+
 
             Position temp = new Position(info.Position.GetFEN(), false, null);
 
@@ -177,18 +182,13 @@ namespace LTChess.Logic.Search
 
             for (; i < MaxPly; i++)
             {
-                if (rm.PV[i] == Move.Null)
+                if (PV[i] == Move.Null)
                 {
                     break;
                 }
 
-                sb.Append(" " + rm.PV[i].ToString(temp));
-                temp.MakeMove(rm.PV[i], false);
-            }
-
-            for (; i > 0; i--)
-            {
-                temp.UnmakeMove(rm.PV[i], false);
+                sb.Append(" " + PV[i].ToString(temp));
+                temp.MakeMove(PV[i], false);
             }
 
             Log(sb.ToString());
