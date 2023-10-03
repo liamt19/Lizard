@@ -28,6 +28,8 @@ namespace LTChess.Logic.Threads
         /// </summary>
         public volatile bool StopThreads;
 
+        public Barrier Blocker;
+
         static SearchThreadPool()
         {
             //  Initialize the global threadpool here
@@ -36,6 +38,7 @@ namespace LTChess.Logic.Threads
 
         public SearchThreadPool(int threadCount)
         {
+            Blocker = new Barrier(1);
             Resize(threadCount);
         }
 
@@ -185,6 +188,22 @@ namespace LTChess.Logic.Threads
             {
                 Threads[i].WaitForThreadFinished();
             }
+        }
+
+
+        public void BlockCallerUntilFinished()
+        {
+            if (Blocker.ParticipantCount == 1)
+            {
+                Blocker.AddParticipant();
+                Blocker.SignalAndWait();
+                Blocker.RemoveParticipant();
+            }
+            else
+            {
+                Debug.WriteLine("WARN BlockCallerUntilFinished was called, but the barrier had " + Blocker.ParticipantCount + " participants (should have been 1)");
+            }
+            
         }
 
 

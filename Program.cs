@@ -308,14 +308,8 @@ namespace LTChess
             info.MaxDepth = 12;
             info.SetMoveTime(250);
             
-            //Search.StartSearching(ref info);
             SearchPool.StartSearch(temp, ref info);
-
-            Thread.Sleep(100);
-            while (SearchPool.SharedInfo.SearchActive) 
-            {
-                Thread.Sleep(10);
-            }
+            SearchPool.BlockCallerUntilFinished();
 
             Search.HandleNewGame();
             SearchStatistics.Zero();
@@ -479,12 +473,7 @@ namespace LTChess
             JetBrains.Profiler.Api.MeasureProfiler.StartCollectingData();
 #endif
             SearchPool.StartSearch(p, ref info);
-
-            Thread.Sleep(50);
-            while (SearchPool.SharedInfo.SearchActive)
-            {
-                Thread.Sleep(1);
-            }
+            SearchPool.BlockCallerUntilFinished();
 
 #if JB
             JetBrains.Profiler.Api.MeasureProfiler.SaveData();

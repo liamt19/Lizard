@@ -296,6 +296,14 @@ namespace LTChess.Logic.Threads
             SearchPool.SharedInfo.TimeManager.ResetTimer();
 
             SearchPool.SharedInfo.SearchActive = false;
+
+            //  If the main program thread called BlockCallerUntilFinished,
+            //  then the Blocker's ParticipantCount will be 2 instead of 1.
+            if (SearchPool.Blocker.ParticipantCount == 2)
+            {
+                //  Signal that we are here, but only wait for 1 ms if the main thread isn't already waiting
+                SearchPool.Blocker.SignalAndWait(1);
+            }
         }
 
         /// <summary>
