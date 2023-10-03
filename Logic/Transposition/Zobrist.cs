@@ -2,7 +2,7 @@
 {
     public static unsafe class Zobrist
     {
-        public static ulong[][][] ColorPieceSquareHashes;
+        private static ulong[][][] ColorPieceSquareHashes;
         private static ulong[] CastlingRightsHashes;
         private static ulong[] EnPassantFileHashes;
         private static ulong BlackHash;
@@ -127,22 +127,17 @@
         }
 
         /// <summary>
-        /// Updates the castling status of the hash, and doesn't change anything if the castling status hasn't shanged
+        /// Updates the castling status of the hash, and doesn't change anything if the castling status hasn't changed
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristCastle(this ulong hash, CastlingStatus prev, CastlingStatus curr)
+        public static ulong ZobristCastle(this ulong hash, CastlingStatus prev, CastlingStatus toRemove)
         {
-            //  Nothing is changing
-            if ((prev & curr) == 0)
+            ulong change = (ulong) (prev & toRemove);
+            while (change != 0)
             {
-                return hash;
+                hash ^= CastlingRightsHashes[poplsb(&change)];
             }
-            else
-            {
-                int idx = lsb((ulong)curr);
-                return hash ^ CastlingRightsHashes[idx];
-            }
-
+            return hash;
         }
 
         /// <summary>

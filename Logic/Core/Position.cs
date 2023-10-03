@@ -35,10 +35,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int FullMoves = 1;
 
-        public CastlingStatus Castling;
-
         public CheckInfo CheckInfo;
-
 
         /// <summary>
         /// Set to the color of the player whose turn it is to move.
@@ -426,7 +423,7 @@ namespace LTChess.Logic.Core
                 //  And replace it with the promotion piece
                 bb.AddPiece(moveTo, ourColor, move.PromotionTo);
 
-                Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveFrom);
+                Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
                 Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
                 MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
@@ -1003,12 +1000,13 @@ namespace LTChess.Logic.Core
                 string[] splits = fen.Split(new char[] { '/', ' ' });
 
                 bb.Reset();
-                Castling = CastlingStatus.None;
                 HalfMoves = 0;
                 FullMoves = 1;
 
                 State->CastleStatus = CastlingStatus.None;
                 State->HalfmoveClock = 0;
+
+                //  TODO: set GamePly to 0 here?
 
                 for (int i = 0; i < splits.Length; i++)
                 {
@@ -1056,16 +1054,10 @@ namespace LTChess.Logic.Core
                     {
                         if (splits[i].Contains("-"))
                         {
-                            Castling = 0;
                             State->CastleStatus = CastlingStatus.None;
                         }
                         else
                         {
-                            Castling |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
-                            Castling |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
-                            Castling |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
-                            Castling |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
-
                             State->CastleStatus |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
                             State->CastleStatus |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
                             State->CastleStatus |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
