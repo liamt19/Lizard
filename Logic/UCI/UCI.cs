@@ -217,9 +217,6 @@ namespace LTChess.Logic.Core
                         Debug.Assert(param[0] == "fen");
                         string fen = param[1];
 
-                        setup.StartFEN = fen;
-                        
-
                         bool hasExtraMoves = false;
                         for (int i = 2; i < param.Length; i++)
                         {
@@ -251,6 +248,8 @@ namespace LTChess.Logic.Core
                             }
 
                         }
+
+                        setup.StartFEN = fen;
 
                         if (!hasExtraMoves)
                         {
