@@ -449,6 +449,21 @@ namespace LTChess
 
                 sw.Flush();
             }
+
+            if (UCI.Active)
+            {
+                //  Try to tell the UCI what happened before this process terminates
+                UCI.SendString("info string I'm going to crash! Exception: ");
+
+                //  Send each exception line separately, in case the UCI doesn't like
+                //  newlines in the strings that it reads.
+                foreach (string s in e.ToString().Split(Environment.NewLine))
+                {
+                    UCI.SendString("info string " + s);
+                    Thread.Sleep(10);
+                }
+                
+            }
         }
 
         private static void PrintMoves()

@@ -54,7 +54,7 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// Writes the string <paramref name="s"/> to standard output, which will be received by chess UCI's.
         /// </summary>
-        public void SendString(string s)
+        public static void SendString(string s)
         {
             Console.WriteLine(s);
             LogString("[OUT]: " + s);
