@@ -76,8 +76,8 @@ namespace LTChess.Logic.Search
             Position pos = info.Position;
             ref Bitboard bb = ref pos.bb;
             SearchThread thisThread = pos.Owner;
-            HistoryTable history = thisThread.History;
-            ulong posHash = pos.Hash;
+            ref HistoryTable history = ref thisThread.History;
+            ulong posHash = pos.State->Hash;
             Move bestMove = Move.Null;
             int ourColor = pos.ToMove;
 
@@ -242,7 +242,6 @@ namespace LTChess.Logic.Search
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
-            //AssignScores(ref bb, ss, History, contHist, list, scores, size, tte->BestMove);
             AssignScores(ref bb, ss, history, contHist, list, scores, size, ttMove);
 
             int legalMoves = 0;     //  Number of moves that have been encountered so far in the loop.
@@ -417,7 +416,6 @@ namespace LTChess.Logic.Search
 
                     if (playedMoves == 1 || score > alpha)
                     {
-                        //Log("search(" + thisThread.ThreadIdx + ") setting " + rm.Move.ToString() + " to " + score);
                         rm.Score = score;
                         rm.Depth = thisThread.SelDepth;
 
@@ -519,8 +517,8 @@ namespace LTChess.Logic.Search
 
             Position pos = info.Position;
             SearchThread thisThread = pos.Owner;
-            HistoryTable history = thisThread.History;
-            ulong posHash = pos.Hash;
+            ref HistoryTable history = ref thisThread.History;
+            ulong posHash = pos.State->Hash;
             Move bestMove = Move.Null;
             int ourColor = pos.ToMove;
 
@@ -756,7 +754,7 @@ namespace LTChess.Logic.Search
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
                                 Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
         {
-            HistoryTable History = pos.Owner.History;
+            ref HistoryTable history = ref pos.Owner.History;
             int moveFrom = bestMove.From;
             int moveTo = bestMove.To;
 
@@ -769,7 +767,7 @@ namespace LTChess.Logic.Search
             if (bestMove.Capture)
             {
                 int idx = HistoryTable.CapIndex(thisPiece, thisColor, moveTo, capturedPiece);
-                History.ApplyBonus(History.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
+                history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
             }
             else
             {
@@ -782,12 +780,12 @@ namespace LTChess.Logic.Search
                     ss->Killer0 = bestMove;
                 }
 
-                History.ApplyBonus(History.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + bestMove.MoveMask), captureBonus, HistoryTable.MainHistoryClamp);
+                history.ApplyBonus(history.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + bestMove.MoveMask), captureBonus, HistoryTable.MainHistoryClamp);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    History.ApplyBonus(History.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + m.MoveMask), -captureBonus, HistoryTable.MainHistoryClamp);
+                    history.ApplyBonus(history.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + m.MoveMask), -captureBonus, HistoryTable.MainHistoryClamp);
                     UpdateContinuations(ss, thisColor, pos.bb.GetPieceAtIndex(m.From), m.To, -captureBonus);
                 }
             }
@@ -795,7 +793,7 @@ namespace LTChess.Logic.Search
             for (int i = 0; i < captureCount; i++)
             {
                 int idx = HistoryTable.CapIndex(pos.bb.GetPieceAtIndex(captureMoves[i].From), thisColor, captureMoves[i].To, pos.bb.GetPieceAtIndex(captureMoves[i].To));
-                History.ApplyBonus(History.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
+                history.ApplyBonus(history.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
             }
         }
 
