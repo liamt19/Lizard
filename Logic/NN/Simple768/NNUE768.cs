@@ -14,8 +14,8 @@ using System.Threading.Tasks;
 
 using LTChess.Logic.Data;
 using LTChess.Logic.NN;
+using LTChess.Logic.NN.HalfKA_HM;
 
-using static System.Net.WebRequestMethods;
 using static LTChess.Logic.NN.SIMD;
 
 namespace LTChess.Logic.NN.Simple768
@@ -57,19 +57,14 @@ namespace LTChess.Logic.NN.Simple768
 
         private readonly short[] OutBias = new short[OUTPUT];
 
-        [FixedAddressValueType]
-        private static Vector256<short>[] FeatureWeight = new Vector256<short>[(INPUT * HIDDEN) / VSize.Short];
+        private readonly Vector256<short>* FeatureWeight;
+        
+        private readonly Vector256<short>* FeatureBias;
+        
+        private readonly Vector256<short>* OutWeight;
 
         [FixedAddressValueType]
-        private static Vector256<short>[] FeatureBias = new Vector256<short>[(HIDDEN) / VSize.Short];
-
-        [FixedAddressValueType]
-        private static Vector256<short>[] OutWeight = new Vector256<short>[(HIDDEN * 2 * OUTPUT) / VSize.Short];
-
-        private static nint ftBiasPtr;
-
-        [FixedAddressValueType]
-        private Accumulator[] Accumulators;
+        private readonly AccumulatorPSQT[] Accumulators;
 
         private readonly int[] Output = new int[OUTPUT];
 
@@ -77,13 +72,22 @@ namespace LTChess.Logic.NN.Simple768
 
         public NNUE768()
         {
-            Accumulators = new Accumulator[ACCUMULATOR_STACK_SIZE];
+            if (SearchConstants.Threads != 0)
+            {
+                Log("WARN This network architecture currently only works for single-thread access!");
+                Log("The output will almost certainly be incorrect.\n");
+            }
+
+            Accumulators = new AccumulatorPSQT[ACCUMULATOR_STACK_SIZE];
 
             for (int i = 0; i < Accumulators.Length; i++)
             {
-                Accumulators[i] = new Accumulator();
+                Accumulators[i] = new AccumulatorPSQT();
             }
 
+            FeatureWeight   = (Vector256<short>*) AlignedAllocZeroed(sizeof(short) * (INPUT * HIDDEN),      AllocAlignment);
+            FeatureBias     = (Vector256<short>*) AlignedAllocZeroed(sizeof(short) * (HIDDEN),              AllocAlignment);
+            OutWeight       = (Vector256<short>*) AlignedAllocZeroed(sizeof(short) * (HIDDEN * 2 * OUTPUT), AllocAlignment);
         }
 
 
@@ -93,18 +97,31 @@ namespace LTChess.Logic.NN.Simple768
         [MethodImpl(Inline)]
         public void PushAccumulator()
         {
-            Accumulators[CurrentAccumulator].CopyTo(Accumulators[++CurrentAccumulator]);
+            int size = HIDDEN * Unsafe.SizeOf<short>();
+
+            Unsafe.CopyBlockUnaligned(
+                Accumulators[CurrentAccumulator + 1].White,
+                Accumulators[CurrentAccumulator].White,
+                (uint)size
+            );
+            Unsafe.CopyBlockUnaligned(
+                Accumulators[CurrentAccumulator + 1].Black,
+                Accumulators[CurrentAccumulator].Black,
+                (uint)size
+            );
+
+            CurrentAccumulator++;
         }
 
         [MethodImpl(Inline)]
         public void PullAccumulator() => CurrentAccumulator--;
 
-        [MethodImpl(Inline)]
+
         public void RefreshAccumulator(Position pos)
         {
-            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
-            Buffer.MemoryCopy((void*)ftBiasPtr, (void*)Marshal.UnsafeAddrOfPinnedArrayElement(accumulator.White, 0), HIDDEN * 2, HIDDEN * 2);
-            Buffer.MemoryCopy((void*)ftBiasPtr, (void*)Marshal.UnsafeAddrOfPinnedArrayElement(accumulator.Black, 0), HIDDEN * 2, HIDDEN * 2);
+            ref AccumulatorPSQT accumulator = ref Accumulators[CurrentAccumulator];
+            Buffer.MemoryCopy((void*)FeatureBias, (void*)(accumulator.White), HIDDEN * 2, HIDDEN * 2);
+            Buffer.MemoryCopy((void*)FeatureBias, (void*)(accumulator.Black), HIDDEN * 2, HIDDEN * 2);
 
             ulong occ = pos.bb.Occupancy;
             while (occ != 0)
@@ -119,7 +136,7 @@ namespace LTChess.Logic.NN.Simple768
             }
         }
 
-        [MethodImpl(Inline)]
+
         public void EfficientlyUpdateAccumulator(int pt, int pc, int iFrom, int iTo)
         {
             const int colorStride = 64 * Piece.PieceNB;
@@ -132,12 +149,12 @@ namespace LTChess.Logic.NN.Simple768
             int whiteIndexTo = pc * colorStride + opPieceStride + iTo;
             int blackIndexTo = Not(pc) * colorStride + opPieceStride + (iTo ^ 56);
 
-            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
+            ref AccumulatorPSQT accumulator = ref Accumulators[CurrentAccumulator];
             SubtractAndAddToAll(accumulator.White, FeatureWeight, whiteIndexFrom * VectorSize, whiteIndexTo * VectorSize);
             SubtractAndAddToAll(accumulator.Black, FeatureWeight, blackIndexFrom * VectorSize, blackIndexTo * VectorSize);
         }
 
-        [MethodImpl(Inline)]
+
         public void ActivateAccumulator(int pt, int pc, int i, bool Activate)
         {
             const int colorStride = 64 * Piece.PieceNB;
@@ -148,7 +165,7 @@ namespace LTChess.Logic.NN.Simple768
             int whiteIndex = pc * colorStride + opPieceStride + i;
             int blackIndex = Not(pc) * colorStride + opPieceStride + (i ^ 56);
 
-            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
+            ref AccumulatorPSQT accumulator = ref Accumulators[CurrentAccumulator];
 
             if (Activate)
             {
@@ -161,10 +178,10 @@ namespace LTChess.Logic.NN.Simple768
         }
 
 
-        [MethodImpl(Inline)]
+
         public int Evaluate(int ToMove)
         {
-            ref Accumulator accumulator = ref Accumulators[CurrentAccumulator];
+            ref AccumulatorPSQT accumulator = ref Accumulators[CurrentAccumulator];
 
             if (ToMove == Color.White)
             {
@@ -181,8 +198,8 @@ namespace LTChess.Logic.NN.Simple768
 
 
 
-        [MethodImpl(Inline)]
-        public void ClippedReLUFlattenAndForward(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] weights, in int[] output)
+
+        public void ClippedReLUFlattenAndForward(in Vector256<short>* inputA, in Vector256<short>* inputB, in Vector256<short>* weights, in int[] output)
         {
             const int loopMax = (HIDDEN) / 16;
             const int step = (HIDDEN / 4) / 16;
@@ -208,8 +225,8 @@ namespace LTChess.Logic.NN.Simple768
             output[0] = Vector256.Sum(sum);
         }
 
-        [MethodImpl(Inline)]
-        public static void AddToAll(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] delta, int offA, int offB)
+
+        public static void AddToAll(in Vector256<short>* inputA, in Vector256<short>* inputB, in Vector256<short>* delta, int offA, int offB)
         {
             const int loopMax = (HIDDEN) / 16;
             const int step = (HIDDEN / 4) / 16;
@@ -229,8 +246,8 @@ namespace LTChess.Logic.NN.Simple768
         }
 
 
-        [MethodImpl(Inline)]
-        public static void SubtractFromAll(in Vector256<short>[] inputA, in Vector256<short>[] inputB, in Vector256<short>[] delta, int offA, int offB)
+
+        public static void SubtractFromAll(in Vector256<short>* inputA, in Vector256<short>* inputB, in Vector256<short>* delta, int offA, int offB)
         {
             const int loopMax = (HIDDEN) / 16;
             const int step = (HIDDEN / 4) / 16;
@@ -250,8 +267,8 @@ namespace LTChess.Logic.NN.Simple768
         }
 
 
-        [MethodImpl(Inline)]
-        public static void SubtractAndAddToAll(in Vector256<short>[] input, in Vector256<short>[] delta, int offA, int offB)
+
+        public static void SubtractAndAddToAll(in Vector256<short>* input, in Vector256<short>* delta, int offA, int offB)
         {
             const int loopMax = (HIDDEN) / 16;
             const int step = (HIDDEN / 4) / 16;
@@ -308,7 +325,7 @@ namespace LTChess.Logic.NN.Simple768
 
             for (int i = 0; i < _FeatureWeight.Length; i += VSize.Short)
             {
-                FeatureWeight[i / VSize.Short] = Load256(_FeatureWeight, i);
+                FeatureWeight[i / VSize.Short] = Avx.LoadDquVector256((short*)UnsafeAddrOfPinnedArrayElementUnchecked(_FeatureWeight, i));
             }
 
             for (int i = 0; i < _FeatureBias.Length; i += VSize.Short)
@@ -321,7 +338,6 @@ namespace LTChess.Logic.NN.Simple768
                 OutWeight[i / VSize.Short] = Load256(_OutWeight, i);
             }
 
-            ftBiasPtr = Marshal.UnsafeAddrOfPinnedArrayElement(FeatureBias, 0);
         }
     }
 }
