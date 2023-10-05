@@ -60,36 +60,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
         {
-
-#if DEBUG
-            //  This is to ensure that both perspectives of the accumulator are being refreshed when they are supposed to.
-            if (false)
-            {
-                //Log("TransformFeatures(" + CurrentAccumulator + ")");
-                if (accumulator.RefreshPerspective[White])
-                {
-                    RefreshAccumulatorPerspective(pos, ref accumulator, White);
-                    //Log("\tWhite done");
-                }
-                if (accumulator.RefreshPerspective[Black])
-                {
-                    RefreshAccumulatorPerspective(pos, ref accumulator, Black);
-                    //Log("\tBlack done");
-                }
-
-                AccumulatorPSQT correct = new AccumulatorPSQT();
-                RefreshAccumulatorPerspective(pos, ref correct, White);
-                RefreshAccumulatorPerspective(pos, ref correct, Black);
-                if ((accumulator.White[0][0] != correct.White[0][0]) || (accumulator.Black[0][0] != correct.Black[0][0]))
-                {
-                    Log("FEN " + pos.GetFEN());
-                    Log("accumulator.White[0][0] == " + accumulator.White[0][0] + ", should be " + correct.White[0][0]);
-                    Log("accumulator.Black[0][0] == " + accumulator.Black[0][0] + ", should be " + correct.Black[0][0]);
-                    Log("");
-                }
-            }
-#endif
-
             if (accumulator.RefreshPerspective[White])
             {
                 RefreshAccumulatorPerspective(pos, ref accumulator, White);
