@@ -120,6 +120,22 @@ namespace LTChess.Logic.Data
         /// </summary>
         public static ulong[][] RayBB = new ulong[64][];
 
+        /// <summary>
+        /// Bitboards with bits set at every index that exists on the ray beginning on the first square, passing through the second square,
+        /// and continuing to the end of the board.
+        /// <br></br>
+        /// This is similar to RayBB, but in this case there are no bits set "behind" the first square.
+        /// <para></para>
+        /// This is used to get the mask of all of the squares in the same direction as a discovered check is coming from,
+        /// since using RayBB could provide incorrect squares if there are multiple Xrayers on the same rank / file. For example:
+        /// <br></br>
+        /// "7k/8/8/8/q2PKPpr/8/8/8 b - f3 0 1" was giving incorrect perft results after gxf3+ because the queen on A4 was on the same RayBB
+        /// as the rook on H4 and since the queen was on a lower index square the lsb(RayBB) was 
+        /// claiming that it was the piece giving check, instead of the rook.
+        /// <br></br>
+        /// </summary>
+        public static ulong[][] XrayBB = new ulong[64][];
+
         public static int[][] FileDistances = new int[64][];
         public static int[][] RankDistances = new int[64][];
 
@@ -144,8 +160,7 @@ namespace LTChess.Logic.Data
             DoSquareBBs();
             DoSquareDistances();
             DoDiagonals();
-
-            DoRays();
+            DoPieceRays();
 
             DoNeighbors();
             DoOutterNeighbors();
@@ -161,13 +176,20 @@ namespace LTChess.Logic.Data
             Initialized = true;
         }
 
-        public static void Recalculate()
+
+        /// <summary>
+        /// This should be run after every other constructor has been initialized.
+        /// This uses the MagicBitboards class to get bishop/rook moves, but the MagicBitboards
+        /// class needs this one to be initialized first...
+        /// </summary>
+        public static void RunPostInitialization()
         {
-            Stopwatch sw = Stopwatch.StartNew();
-            Initialize();
-            sw.Stop();
-            Log("PrecomputedData done in " + sw.Elapsed.TotalSeconds + " s");
+            if (RayBB[0] == null)
+            {
+                DoRayBBs();
+            }
         }
+
 
         private static void DoSquareBBs()
         {
@@ -282,7 +304,7 @@ namespace LTChess.Logic.Data
         /// <summary>
         /// Calculates the masks for rook and bishop moves on an empty board, must be done after the diagonals have been calculated.
         /// </summary>
-        private static void DoRays()
+        private static void DoPieceRays()
         {
             for (int sq = 0; sq < 64; sq++)
             {
@@ -292,24 +314,31 @@ namespace LTChess.Logic.Data
                 ulong bishopMask = (DiagonalMasksA1H8[sq] | DiagonalMasksA8H1[sq]) & ~(1UL << sq);
                 BishopRays[sq] = bishopMask;
             }
+        }
 
+        private static void DoRayBBs()
+        {
             for (int s1 = 0; s1 < 64; s1++)
             {
                 RayBB[s1] = new ulong[64];
+                XrayBB[s1] = new ulong[64];
 
                 for (int s2 = 0; s2 < 64; s2++)
                 {
                     if ((RookRays[s1] & SquareBB[s2]) != 0)
                     {
                         RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
+                        XrayBB[s1][s2] = (GetRookMoves(SquareBB[s1], s2) & RookRays[s1]) | (SquareBB[s1] | SquareBB[s2]);
                     }
                     else if ((BishopRays[s1] & SquareBB[s2]) != 0)
                     {
                         RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
+                        XrayBB[s1][s2] = (GetBishopMoves(SquareBB[s1], s2) & BishopRays[s1]) | (SquareBB[s1] | SquareBB[s2]);
                     }
                     else
                     {
                         RayBB[s1][s2] = 0;
+                        XrayBB[s1][s2] = 0;
                     }
                 }
             }

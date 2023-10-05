@@ -68,6 +68,10 @@ namespace LTChess.Logic.Magic
 
 
             Initialized = true;
+
+            //  GetBishopMoves can now be called, so initialize the 
+            //  RayBB and XrayBB masks.
+            PrecomputedData.RunPostInitialization();
         }
 
 
