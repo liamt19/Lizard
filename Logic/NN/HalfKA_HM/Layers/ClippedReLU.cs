@@ -67,7 +67,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     StoreSpan256(ref permuted, output, i * VectorSize);
                 }
             }
-            else
+            else if (InputDimensions > (SimdWidth / 2))
             {
                 int NumChunks = InputDimensions / (SimdWidth / 2);
                 Vector128<sbyte> Zero = Vector128<sbyte>.Zero;

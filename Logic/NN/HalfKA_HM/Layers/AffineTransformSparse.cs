@@ -193,14 +193,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
                 for (int i = 0; i < OutputDimensions; i += VSize.Int)
                 {
-                    if (OutputDimensions == 1)
-                    {
-                        Biases[i / VSize.Int] = Vector256.Create(_Biases[i], 0, 0, 0, 0, 0, 0, 0);
-                    }
-                    else
-                    {
-                        Biases[i / VSize.Int] = Load256(_Biases, i);
-                    }
+                    Biases[i / VSize.Int] = Load256(_Biases, i);
                 }
 
                 for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i += VSize.SByte)

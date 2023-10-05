@@ -54,8 +54,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             var start = NumChunks * 16;
             for (int i = start; i < InputDimensions; ++i)
-            {   
-                output[i] = (sbyte)Math.Max(0, Math.Min(127L, ((input[i] * input[i]) >> (2 * WeightScaleBits)) / 128));
+            {
+                output[i] = (sbyte)Math.Min(127L, ((input[i] * input[i]) >> (2 * WeightScaleBits)) / 128);
             }
 
         }

@@ -44,6 +44,12 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
             Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
+
+            if (OutputDimensions % OutputSimdWidth != 0 && OutputDimensions != 1)
+            {
+                throw new Exception("AffineTransform(" + inDims + ", " + outDims + ") is has a bad size! " +
+                    "The output dimensions must either be divisible by " + OutputSimdWidth + " or equal to 1.");
+            }
         }
 
 
@@ -81,7 +87,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     StoreSpan256(ref outs[k], output, k * vectorStride);
                 }
             }
-            else if (OutputDimensions == 1)
+            else
             {
                 const int vectorStride = VSize.SByte;
                 int NumChunks = PaddedInputDimensions / SimdWidth;
@@ -94,11 +100,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 }
 
                 output[0] = m256_hadd(sum0, Biases[0][0]);
-
-            }
-            else
-            {
-                throw new Exception();
             }
 
         }
