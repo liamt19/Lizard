@@ -606,11 +606,11 @@ namespace LTChess.Logic.Core
                             m.CausesCheck = true;
                         }
 
-                        Debug.Assert((State->Xrays[ourColor] & RayBB[from][theirKing]) != 0);
+                        Debug.Assert((State->Xrays[ourColor] & XrayBB[theirKing][from]) != 0);
 
                         //  The piece causing the discovery is the xrayer of our color 
                         //  that is on the same ray that the piece we were moving shared with the king.
-                        m.SqChecker = lsb(State->Xrays[ourColor] & RayBB[from][theirKing]);
+                        m.SqChecker = lsb(State->Xrays[ourColor] & XrayBB[theirKing][from]);
                     }
                 }
 
