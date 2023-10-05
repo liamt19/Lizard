@@ -41,10 +41,13 @@ namespace LTChess.Logic.Core
 
             thisMovesCount = GenAllKingMoves(us, them, pseudo, thisMovesCount, onlyCaptures);
 
+            int ourKing = bb.KingIndex(ToMove);
+            int theirKing = bb.KingIndex(Not(ToMove));
+
             for (int i = 0; i < thisMovesCount; i++)
             {
                 move = pseudo[i];
-                if (IsLegal(move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), pinned))
+                if (IsLegal(move, ourKing, theirKing, pinned))
                 {
                     legal[size++] = move;
                 }
