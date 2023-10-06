@@ -117,11 +117,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
             void* src = (void*)((nuint)_buffer + ac_0_idx);
             void* dst = (void*)((nuint)_buffer + ac_sqr_0_idx + FC_0_OUTPUTS);
             Buffer.MemoryCopy(src, dst, FC_0_OUTPUTS * sizeof(sbyte), FC_0_OUTPUTS * sizeof(sbyte));
-            
-            fc_1.Propagate(ac_sqr_0_out, fc_1_out);
+
+            fc_1.PropagateNormal(ac_sqr_0_out, fc_1_out);
             ac_1.Propagate(fc_1_out, ac_1_out);
 
-            fc_2.Propagate(ac_1_out, fc_2_out);
+            fc_2.PropagateOutput(ac_1_out, fc_2_out);
 
             NativeMemory.AlignedFree(_buffer);
 

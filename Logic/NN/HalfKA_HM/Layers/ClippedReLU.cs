@@ -1,7 +1,4 @@
-﻿
-
-
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
 using static LTChess.Logic.NN.SIMD;
 using System.Runtime.Intrinsics.X86;
@@ -14,7 +11,7 @@ using System.Reflection;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
-    public class ClippedReLU
+    public unsafe class ClippedReLU
     {
         public readonly int InputDimensions;
         public readonly int OutputDimensions;
@@ -29,6 +26,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         //  Vector256<int>[1] should have the next 8 (8-15), etc.
         private const int VectorSize = VSize.Int;
 
+        private readonly int kStart;
+
         public ClippedReLU(int inputDims)
         {   
             InputDimensions = inputDims;
@@ -36,6 +35,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             BufferSize = CeilToMultiple((short)OutputDimensions, 32);
             BufferSizeBytes = BufferSize * sizeof(sbyte);
+
+            kStart = InputDimensions % SimdWidth == 0
+                ? InputDimensions / SimdWidth * SimdWidth
+                : InputDimensions / (SimdWidth / 2) * (SimdWidth / 2);
         }
 
 
@@ -44,63 +47,34 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         /// </summary>
         public void Propagate(Span<int> input, Span<sbyte> output)
         {
-            if (InputDimensions % SimdWidth == 0)
+            int* inputPtr = (int*) Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*) Unsafe.AsPointer(ref output[0]);
+
+            int NumChunks = InputDimensions / SimdWidth;
+            Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
+            Vector256<int> Offsets = Vector256.Create(0, 4, 1, 5, 2, 6, 3, 7);
+
+            for (int i = 0; i < NumChunks; i++)
             {
-                int NumChunks = InputDimensions / SimdWidth;
-                Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
-                Vector256<int> Offsets = Vector256.Create(0, 4, 1, 5, 2, 6, 3, 7);
-                
-                for (int i = 0; i < NumChunks; i++)
-                {
-                    Vector256<short> words0 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                        LoadSpan256(input, (i * 4 + 0) * VectorSize),
-                        LoadSpan256(input, (i * 4 + 1) * VectorSize)), WeightScaleBits);
+                Vector256<short> words0 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
+                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 0) * VectorSize)),
+                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 1) * VectorSize))), WeightScaleBits);
 
-                    Vector256<short> words1 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                        LoadSpan256(input, (i * 4 + 2) * VectorSize),
-                        LoadSpan256(input, (i * 4 + 3) * VectorSize)), WeightScaleBits);
+                Vector256<short> words1 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
+                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 2) * VectorSize)),
+                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 3) * VectorSize))), WeightScaleBits);
 
-                    Vector256<sbyte> packed = Avx2.PackSignedSaturate(words0, words1);
-                    Vector256<sbyte> max = Avx2.Max(packed, Zero);
-                    Vector256<int> permuted = Avx2.PermuteVar8x32(max.AsInt32(), Offsets);
+                Vector256<sbyte> packed = Avx2.PackSignedSaturate(words0, words1);
+                Vector256<sbyte> max = Avx2.Max(packed, Zero);
+                Vector256<int> permuted = Avx2.PermuteVar8x32(max.AsInt32(), Offsets);
 
-                    StoreSpan256(ref permuted, output, i * VectorSize);
-                }
+                Avx.Store(outputPtr + (i * VectorSize), permuted);
             }
-            else if (InputDimensions > (SimdWidth / 2))
-            {
-                int NumChunks = InputDimensions / (SimdWidth / 2);
-                Vector128<sbyte> Zero = Vector128<sbyte>.Zero;
-
-                //  Vector128<int> contains 4 integers
-                const int VectorSize = 4;
-                for (int i = 0; i < NumChunks; i++)
-                {
-                    Vector128<short> words0 = Sse2.ShiftRightArithmetic(Sse2.PackSignedSaturate(
-                        LoadSpan128(input, (i * 4 + 0) * VectorSize),
-                        LoadSpan128(input, (i * 4 + 1) * VectorSize)), WeightScaleBits);
-
-                    Vector128<short> words1 = Sse2.ShiftRightArithmetic(Sse2.PackSignedSaturate(
-                        LoadSpan128(input, (i * 4 + 2) * VectorSize),
-                        LoadSpan128(input, (i * 4 + 3) * VectorSize)), WeightScaleBits);
-                    Vector128<sbyte> packed = Sse2.PackSignedSaturate(words0, words1);
-                    Vector128<sbyte> max = Sse41.Max(packed, Zero);
-
-                    StoreSpan128(ref max, output, i * VectorSize);
-                }
-            }
-
-
-            int kStart = InputDimensions % SimdWidth == 0
-                ? InputDimensions / SimdWidth * SimdWidth
-                : InputDimensions / (SimdWidth / 2) * (SimdWidth / 2);
 
             for (int i = kStart; i < InputDimensions; ++i)
             {
                 output[i] = (sbyte) Math.Max(0, Math.Min(127, input[i] >> WeightScaleBits));
             }
-
-
         }
 
 

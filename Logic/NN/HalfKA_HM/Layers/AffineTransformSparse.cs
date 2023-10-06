@@ -73,6 +73,9 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         private static readonly Vector256<int> Zero;
         private static readonly Vector128<ushort> Eight;
 
+        private readonly int NumRegs;
+        private readonly int WeightOffset;
+
         public AffineTransformSparse(int inDims, int outDims)
         {
             InputDimensions = inDims;
@@ -87,17 +90,22 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
 
             NNZ_Size = CeilToMultiple((short)InputDimensions, 8) / 4;
+            NumRegs = OutputDimensions / VSize.UInt;
+
+            WeightOffset = (OutputDimensions * ChunkSize) / VSize.SByte;
         }
 
-        public int FindNNZ(Span<int> input, Span<ushort> output)
+        public int FindNNZ(int* input, Span<ushort> output)
         {
             const int InputSimdWidth = VSize.Int;
             const int ChunkSize = 8;
             const int InputsPerChunk = ChunkSize / InputSimdWidth;
             const int OutputsPerChunk = ChunkSize / 8;
 
+            ushort* outputPtr = (ushort*)Unsafe.AsPointer(ref output[0]);
+
             int count = 0;
-            Vector128<ushort> baseVal = Vector128.Create((ushort)0);
+            Vector128<ushort> baseVal = Vector128<ushort>.Zero;
 
             int NumChunks = NNZ_Size / ChunkSize;
             for (int i = 0; i < NumChunks; i++)
@@ -105,7 +113,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 uint nnz = 0;
                 for (int j = 0; j < InputsPerChunk; j++)
                 {
-                    Vector256<int> chunk = LoadSpan256(input, (i * InputsPerChunk + j) * VSize.Int);
+                    Vector256<int> chunk = Avx.LoadDquVector256(input + ((i * InputsPerChunk + j) * VSize.Int));
                     Vector256<int> cmpgt = Avx2.CompareGreaterThan(chunk, Zero);
                     int mask = Avx.MoveMask(cmpgt.AsSingle());
                     nnz |= (uint)(mask) << (j * InputSimdWidth);
@@ -121,7 +129,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     }
 
                     var toStore = Sse2.Add(baseVal, offsets);
-                    Sse2.Store((ushort*) Unsafe.AsPointer(ref output[count]), toStore);
+                    Sse2.Store(outputPtr + count, toStore);
                     count += lookup_count[lookup];
                     baseVal = Sse2.Add(baseVal, Eight);
                 }
@@ -132,14 +140,13 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public void Propagate(Span<sbyte> input, Span<int> output)
         {
-            const int OutputSimdWidth = VSize.UInt;
-            var input32 = MemoryMarshal.Cast<sbyte, int>(input);
+            int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*)Unsafe.AsPointer(ref output[0]);
 
-            int NumRegs = OutputDimensions / OutputSimdWidth;
             Span<ushort> nnz = stackalloc ushort[NNZ_Size];
 
             // Find indices of nonzero 32bit blocks
-            int count = FindNNZ(input32, nnz);
+            int count = FindNNZ(inputPtr, nnz);
 
             Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
             for (int k = 0; k < NumRegs; k++)
@@ -150,25 +157,19 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             for (int j = 0; j < count; ++j)
             {
                 var i = nnz[j];
-                Vector256<byte> in0 = Vector256.Create(input32[i]).AsByte();
+                Vector256<byte> in0 = Avx2.BroadcastScalarToVector256(inputPtr + i).AsByte();
 
                 for (int k = 0; k < NumRegs; ++k)
                 {
-                    AffineTransform.m256_add_dpbusd_epi32(ref outs[k], in0, Weights[((i * OutputDimensions * ChunkSize) / VSize.SByte) + k]);
+                    AffineTransform.m256_add_dpbusd_epi32(ref outs[k], in0, Weights[(i * WeightOffset) + k]);
                 }
             }
 
             for (int k = 0; k < NumRegs; k++)
             {
-                StoreSpan256(ref outs[k], output, k * VSize.Int);
+                Avx.Store((outputPtr + (k * VSize.Int)), outs[k]);
             }
         }
-
-
-
-
-
-
 
 
         public bool ReadParameters(BinaryReader br)

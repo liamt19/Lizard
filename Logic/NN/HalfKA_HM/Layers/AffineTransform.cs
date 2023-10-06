@@ -26,6 +26,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public const int OutputSimdWidth = SimdWidth / 4;
 
+        private readonly int OutputNumChunks;
+        private readonly int NormalNumChunks;
+        private readonly int NumRegs;
+        private readonly int WeightOffset;
 
         /// <summary>
         /// Creates a new Affine layer, which takes input from the <see cref="ClippedReLU"/> layer that came before it
@@ -42,66 +46,72 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             BufferSize = CeilToMultiple((short)OutputDimensions, MaxSimdWidth);
             BufferSizeBytes = BufferSize * sizeof(int);
 
+            OutputNumChunks = PaddedInputDimensions / SimdWidth;
+            NormalNumChunks = CeilToMultiple((short)InputDimensions, 8) / 4;
+            NumRegs = OutputDimensions / OutputSimdWidth;
+            WeightOffset = (OutputDimensions * 4) / VSize.SByte;
+
             Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
             Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
 
             if (OutputDimensions % OutputSimdWidth != 0 && OutputDimensions != 1)
             {
-                throw new Exception("AffineTransform(" + inDims + ", " + outDims + ") is has a bad size! " +
+                throw new Exception("AffineTransform(" + inDims + ", " + outDims + ") has a bad size! " +
                     "The output dimensions must either be divisible by " + OutputSimdWidth + " or equal to 1.");
             }
         }
 
 
-        public void Propagate(Span<sbyte> input, Span<int> output)
+        public void PropagateNormal(Span<sbyte> input, Span<int> output)
         {
-            if (OutputDimensions % OutputSimdWidth == 0)
+            int* inputPtr = (int*) Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*) Unsafe.AsPointer(ref output[0]);
+
+            Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
+            for (int k = 0; k < NumRegs; k++)
             {
-                var input32 = MemoryMarshal.Cast<sbyte, int>(input);
+                outs[k] = Biases[k];
+            }
 
-                int NumChunks = CeilToMultiple((short)InputDimensions, 8) / 4;
-                int NumRegs = OutputDimensions / OutputSimdWidth;
+            const int vectorStride = VSize.Int;
+            for (int i = 0; i < NormalNumChunks; i += 2)
+            {
+                //  input contains 32 sbyte's, which corresponds to 8 integers.
+                //  We want to give m256_add_dpbusd_epi32x2 a vector of <inp[1], inp[2], inp[3], inp[4]>, repeated 8 times.
+                //  Do this by casting the first 4 sbyte's into an int, broadcasting that int into a Vector256<int>,
+                //  and converting that Vector256<int> into Vector256<byte>
 
-                Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
-                for (int k = 0; k < NumRegs; k++)
-                {
-                    outs[k] = Biases[k];
-                }
-
-                const int vectorStride = VSize.Int;
-                for (int i = 0; i < NumChunks; i += 2)
-                {
-                    Vector256<byte> in0 = Vector256.Create(input32[i + 0]).AsByte();
-                    Vector256<byte> in1 = Vector256.Create(input32[i + 1]).AsByte();
-
-                    for (int k = 0; k < NumRegs; k++)
-                    {
-                        var b0 = Weights[((i + 0) * (OutputDimensions * 4) / VSize.SByte) + k];
-                        var b1 = Weights[((i + 1) * (OutputDimensions * 4) / VSize.SByte) + k];
-                        m256_add_dpbusd_epi32x2(ref outs[k], in0, in1, b0, b1);
-                    }
-                }
+                Vector256<byte> in0 = Avx2.BroadcastScalarToVector256(inputPtr + i + 0).AsByte();
+                Vector256<byte> in1 = Avx2.BroadcastScalarToVector256(inputPtr + i + 1).AsByte();
 
                 for (int k = 0; k < NumRegs; k++)
                 {
-                    StoreSpan256(ref outs[k], output, k * vectorStride);
+                    var b0 = Weights[((i + 0) * WeightOffset) + k];
+                    var b1 = Weights[((i + 1) * WeightOffset) + k];
+                    m256_add_dpbusd_epi32x2(ref outs[k], in0, in1, b0, b1);
                 }
             }
-            else
+            
+            for (int k = 0; k < NumRegs; k++)
             {
-                const int vectorStride = VSize.SByte;
-                int NumChunks = PaddedInputDimensions / SimdWidth;
-                Vector256<int> sum0 = Vector256<int>.Zero;
+                Avx.Store(outputPtr + (k * vectorStride), outs[k]);
+            }
+        }
 
-                for (int j = 0; j < NumChunks; j++)
-                {
-                    Vector256<byte> inp = LoadSpan256(input, j * vectorStride);
-                    m256_add_dpbusd_epi32(ref sum0, inp, Weights[j]);
-                }
+        public void PropagateOutput(Span<sbyte> input, Span<int> output)
+        {
+            const int vectorStride = VSize.SByte;
+            byte* inputPtr = (byte*) Unsafe.AsPointer(ref input[0]);
 
-                output[0] = m256_hadd(sum0, Biases[0][0]);
+            Vector256<int> sum0 = Vector256<int>.Zero;
+
+            for (int j = 0; j < OutputNumChunks; j++)
+            {
+                Vector256<byte> inp = Avx.LoadDquVector256(inputPtr + (j * vectorStride));
+                m256_add_dpbusd_epi32(ref sum0, inp, Weights[j]);
             }
 
+            output[0] = m256_hadd(sum0, Biases[0][0]);
         }
 
 
