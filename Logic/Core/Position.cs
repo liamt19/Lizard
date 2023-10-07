@@ -112,7 +112,9 @@ namespace LTChess.Logic.Core
 
             if (ResetNN && owner == null)
             {
-                throw new Exception("Position('" + fen + "', " + ResetNN + ", ...) has ResetNN true and was given a nullptr for owner! ResetNN == true must have an owner");
+                Log("WARN Position('" + fen + "', " + ResetNN + ", ...) has ResetNN true and was given a nullptr for owner! (if ResetNN is true, an owner must be provided)");
+                Log("Assigning this Position instance to the SearchPool's MainThread, UB and other wierdness may occur...");
+                Owner = SearchPool.MainThread;
             }
 
             Debug.WriteLine("Position owner is " + (Owner != null ? Owner.ToString() : "NULL?"));
@@ -701,7 +703,6 @@ namespace LTChess.Logic.Core
         /// </summary>
         [MethodImpl(Inline)]
         public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
-
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the current position.
