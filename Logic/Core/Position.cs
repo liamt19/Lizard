@@ -980,7 +980,7 @@ namespace LTChess.Logic.Core
             Parallel.For(0, size, i =>
             {
                 PerftNode pn = new PerftNode();
-                Position threadPosition = new Position(rootFEN, false);
+                Position threadPosition = new Position(rootFEN, false, null);
                 pn.root = mlist[i].ToString();
                 threadPosition.MakeMove(mlist[i], false);
                 pn.number = threadPosition.Perft(depth - 1);

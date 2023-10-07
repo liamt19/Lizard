@@ -51,7 +51,7 @@ namespace LTChess
         {
             InitializeAll();
 
-            p = new Position(owner: SearchPool.Threads[0]);
+            p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
 
             DoInputLoop();
@@ -183,7 +183,7 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
-                    p = new Position();
+                    p = new Position(InitialFEN, owner: SearchPool.MainThread);
                     Search.HandleNewGame();
                 }
                 else if (input.Equals("listmoves"))
@@ -300,7 +300,7 @@ namespace LTChess
         {
             BlockOutputForJIT = true;
 
-            Position temp = new Position(owner: SearchPool.Threads[0]);
+            Position temp = new Position(owner: SearchPool.MainThread);
 
             temp.Perft(4);
 
@@ -354,7 +354,7 @@ namespace LTChess
             opts.MaxDegreeOfParallelism = size;
             Parallel.For(0u, size, opts, i =>
             {
-                Position threadPosition = new Position(rootFEN, false);
+                Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
 
                 threadPosition.MakeMove(mlist[i], false);
                 ulong result = threadPosition.Perft(depth - 1);
