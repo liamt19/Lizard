@@ -169,7 +169,7 @@
         /// Returns the sum of the <see cref="Piece"/> values for the <see cref="Color"/> <paramref name="pc"/>.
         /// </summary>
         [MethodImpl(Inline)]
-        public int MaterialCount(int pc)
+        public int MaterialCount(int pc, bool excludePawns = false)
         {
             int mat = 0;
             ulong temp = Colors[pc];
@@ -177,7 +177,11 @@
             {
                 int idx = poplsb(&temp);
 
-                mat += GetPieceValue(GetPieceAtIndex(idx));
+                int pt = GetPieceAtIndex(idx);
+                if (!(excludePawns && pt == Pawn))
+                {
+                    mat += GetPieceValue(pt);
+                }
             }
 
             return mat;
