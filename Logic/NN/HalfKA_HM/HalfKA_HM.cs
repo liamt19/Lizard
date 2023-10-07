@@ -215,8 +215,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
             int theirPiece = bb.GetPieceAtIndex(moveTo);
 
-            int ourKing = bb.KingIndex(us);
-            int theirKing = bb.KingIndex(them);
+            int ourKing = pos.State->KingSquares[us];
+            int theirKing = pos.State->KingSquares[them];
 
             var ourAccumulation = Accumulator[us];
             var theirAccumulation = Accumulator[them];
@@ -367,7 +367,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             ulong us = bb.Colors[perspective];
             ulong them = bb.Colors[Not(perspective)];
-            int ourKing = bb.KingIndex(perspective);
+            int ourKing = pos.State->KingSquares[perspective];
 
             while (us != 0)
             {
@@ -444,7 +444,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 Log(ColorToString(perspective) + ": ");
                 ulong us = bb.Colors[perspective];
                 ulong them = bb.Colors[Not(perspective)];
-                int ourKing = bb.KingIndex(perspective);
+                int ourKing = pos.State->KingSquares[perspective];
 
                 while (us != 0)
                 {

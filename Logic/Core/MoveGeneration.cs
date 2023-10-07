@@ -41,8 +41,8 @@ namespace LTChess.Logic.Core
 
             thisMovesCount = GenAllKingMoves(us, them, pseudo, thisMovesCount, onlyCaptures);
 
-            int ourKing = bb.KingIndex(ToMove);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int ourKing = State->KingSquares[ToMove];
+            int theirKing = State->KingSquares[Not(ToMove)];
 
             for (int i = 0; i < thisMovesCount; i++)
             {
@@ -113,7 +113,7 @@ namespace LTChess.Logic.Core
             ulong promotionCapturesL = Shift(up + Direction.WEST, promotingPawns) & them;
             ulong promotionCapturesR = Shift(up + Direction.EAST, promotingPawns) & them;
 
-            int theirKing = bb.KingIndex(theirColor);
+            int theirKing = State->KingSquares[theirColor];
 
             if (!onlyCaptures)
             {
@@ -233,7 +233,7 @@ namespace LTChess.Logic.Core
         public int GenAllKnightMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Knight] & us);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int theirKing = State->KingSquares[Not(ToMove)];
             while (ourPieces != 0)
             {
                 int idx = poplsb(&ourPieces);
@@ -269,7 +269,7 @@ namespace LTChess.Logic.Core
         public int GenAllBishopMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Bishop] & us);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int theirKing = State->KingSquares[Not(ToMove)];
             while (ourPieces != 0)
             {
                 int idx = poplsb(&ourPieces);
@@ -305,7 +305,7 @@ namespace LTChess.Logic.Core
         public int GenAllRookMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Rook] & us);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int theirKing = State->KingSquares[Not(ToMove)];
             while (ourPieces != 0)
             {
                 int idx = poplsb(&ourPieces);
@@ -341,7 +341,7 @@ namespace LTChess.Logic.Core
         public int GenAllQueenMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Queen] & us);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int theirKing = State->KingSquares[Not(ToMove)];
             while (ourPieces != 0)
             {
                 int idx = poplsb(&ourPieces);
@@ -376,8 +376,8 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public int GenAllKingMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
         {
-            int idx = bb.KingIndex(ToMove);
-            int theirKing = bb.KingIndex(Not(ToMove));
+            int idx = State->KingSquares[ToMove];
+            int theirKing = State->KingSquares[Not(ToMove)];
 
             ulong moves = (NeighborsMask[idx] & ~us);
 
@@ -519,7 +519,8 @@ namespace LTChess.Logic.Core
             int moveFrom = m.From;
             int moveTo = m.To;
 
-            if ((State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
+            //  State->CheckSquares[King == 5] is OOB, and kings can't directly check anyways...
+            if (pt != King && (State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
             {
                 //  This piece is making a direct check
                 m.CausesCheck = true;

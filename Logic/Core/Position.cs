@@ -255,6 +255,8 @@ namespace LTChess.Logic.Core
 
             if (ourPiece == Piece.King)
             {
+                State->KingSquares[ourColor] = moveTo;
+
                 if (move.Castle)
                 {
                     //  Move our rook and update the hash
@@ -458,7 +460,7 @@ namespace LTChess.Logic.Core
             State->Hash = Hash;
             if (move.Checks)
             {
-                State->Checkers = bb.AttackersTo(bb.KingIndex(theirColor), bb.Occupancy) & bb.Colors[ourColor];
+                State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
             }
             else
             {
@@ -643,7 +645,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public void SetState()
         {
-            State->Checkers = bb.AttackersTo(bb.KingIndex(ToMove), bb.Occupancy) & bb.Colors[Not(ToMove)];
+            State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
 
             SetCheckInfo();
 
@@ -657,14 +659,13 @@ namespace LTChess.Logic.Core
             State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black], &State->Xrays[Black]);
             State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White], &State->Xrays[White]);
 
-            int kingSq = bb.KingIndex(Not(ToMove));
+            int kingSq = State->KingSquares[Not(ToMove)];
 
             State->CheckSquares[Pawn]   = PawnAttackMasks[Not(ToMove)][kingSq];
             State->CheckSquares[Knight] = KnightMasks[kingSq];
             State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Rook]   = GetRookMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Queen]  = (State->CheckSquares[Bishop] | State->CheckSquares[Rook]);
-            State->CheckSquares[King]   = 0;
         }
 
 
@@ -699,7 +700,7 @@ namespace LTChess.Logic.Core
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool IsLegal(in Move move) => IsLegal(move, bb.KingIndex(ToMove), bb.KingIndex(Not(ToMove)), State->BlockingPieces[ToMove]);
+        public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
 
 
         /// <summary>
@@ -1103,6 +1104,8 @@ namespace LTChess.Logic.Core
                 return false;
             }
 
+            State->KingSquares[White] = bb.KingIndex(White);
+            State->KingSquares[Black] = bb.KingIndex(Black);
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
             Hash = Zobrist.GetHash(this);

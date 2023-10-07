@@ -17,7 +17,8 @@ namespace LTChess.Logic.Core
     [StructLayout(LayoutKind.Sequential)]
     public unsafe struct StateInfo
     {
-        public fixed ulong CheckSquares[PieceNB];
+        public fixed ulong CheckSquares[PieceNB - 1];
+        public fixed int KingSquares[2];
         public fixed ulong BlockingPieces[2];
         public fixed ulong Pinners[2];
         public fixed ulong Xrays[2];
