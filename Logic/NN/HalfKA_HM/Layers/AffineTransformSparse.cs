@@ -18,29 +18,33 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
     /// </summary>
     public unsafe class AffineTransformSparse
     {
-        private static readonly ushort[][] lookup_indices;
-        private static readonly int[] lookup_count;
+        private static readonly Vector128<ushort>* LookupIndices;
+        private static readonly int* LookupCount;
         static AffineTransformSparse()
         {
             Zero = Vector256.Create(0);
             Eight = Vector128.Create((ushort) 8);
 
-            lookup_indices = new ushort[256][];
+            LookupIndices = (Vector128<ushort>*) AlignedAllocZeroed((nuint)(sizeof(Vector128<ushort>) * 256), AllocAlignment);
+
+            ushort[] temp = new ushort[8];
             for (int i = 0; i < 256; i++)
             {
-                lookup_indices[i] = new ushort[8];
+                Array.Clear(temp);
                 int j = i;
                 int k = 0;
                 while (j != 0)
                 {
                     uint lsbIndex = uint.TrailingZeroCount((uint)j);
                     j &= j - 1;
-                    lookup_indices[i][k] = (ushort)lsbIndex;
+                    temp[k] = (ushort)lsbIndex;
                     ++k;
                 }
+
+                LookupIndices[i] = Sse2.LoadVector128((ushort*)Unsafe.AsPointer(ref temp[0]));
             }
 
-            lookup_count = new int[256];
+            LookupCount = (int*) AlignedAllocZeroed(sizeof(int) * 256);
             for (int i = 0; i < 256; i++)
             {
                 int j = i;
@@ -50,7 +54,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     j &= j - 1;
                     ++k;
                 }
-                lookup_count[i] = (int) k;
+                LookupCount[i] = (int) k;
             }
         }
 
@@ -95,14 +99,13 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             WeightOffset = (OutputDimensions * ChunkSize) / VSize.SByte;
         }
 
-        public int FindNNZ(int* input, Span<ushort> output)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int FindNNZ(int* input, ushort* outputPtr)
         {
             const int InputSimdWidth = VSize.Int;
             const int ChunkSize = 8;
             const int InputsPerChunk = ChunkSize / InputSimdWidth;
             const int OutputsPerChunk = ChunkSize / 8;
-
-            ushort* outputPtr = (ushort*)Unsafe.AsPointer(ref output[0]);
 
             int count = 0;
             Vector128<ushort> baseVal = Vector128<ushort>.Zero;
@@ -122,15 +125,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 for (int j = 0; j < OutputsPerChunk; j++)
                 {
                     var lookup = (nnz >> (j * 8)) & 0xFF;
-                    Vector128<ushort> offsets;
-                    fixed (ushort* ptr = &(lookup_indices[lookup][0]))
-                    {
-                        offsets = Sse2.LoadVector128(ptr);
-                    }
-
+                    Vector128<ushort> offsets = LookupIndices[lookup];
                     var toStore = Sse2.Add(baseVal, offsets);
                     Sse2.Store(outputPtr + count, toStore);
-                    count += lookup_count[lookup];
+                    count += LookupCount[lookup];
                     baseVal = Sse2.Add(baseVal, Eight);
                 }
             }
@@ -143,8 +141,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
             int* outputPtr = (int*)Unsafe.AsPointer(ref output[0]);
 
-            Span<ushort> nnz = stackalloc ushort[NNZ_Size];
-
+            ushort* nnz = stackalloc ushort[NNZ_Size];
             // Find indices of nonzero 32bit blocks
             int count = FindNNZ(inputPtr, nnz);
 
