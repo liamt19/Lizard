@@ -44,18 +44,11 @@
         [MethodImpl(Inline)]
         public static ulong DefendersOf(in Bitboard bb, int idx)
         {
-            ulong[] pawnBB;
             int ourColor = bb.GetColorAtIndex(idx);
             ulong us = bb.Colors[ourColor];
             ulong them = bb.Colors[Not(ourColor)];
-            if (ourColor == Color.White)
-            {
-                pawnBB = BlackPawnAttackMasks;
-            }
-            else
-            {
-                pawnBB = WhitePawnAttackMasks;
-            }
+
+            var pawnBB = (ourColor == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
 
             ulong ourDiags = (GetBishopMoves(us | them, idx) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]));
             ulong ourStraights = (GetRookMoves(us | them, idx) & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]));

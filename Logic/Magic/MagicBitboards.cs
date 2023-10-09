@@ -28,10 +28,10 @@ namespace LTChess.Logic.Magic
         private static ulong[][] BishopBlockerBoards = new ulong[64][];
         private static ulong[][] BishopAttackBoards = new ulong[64][];
 
-        public static FancyMagicSquare[] FancyRookMagics;
-        public static FancyMagicSquare[] FancyBishopMagics;
-        private static ulong[] RookTable = new ulong[0x19000];
-        private static ulong[] BishopTable = new ulong[0x19000];
+        public static FancyMagicSquare* FancyRookMagics;
+        public static FancyMagicSquare* FancyBishopMagics;
+        private static ulong* RookTable;
+        private static ulong* BishopTable;
 
         public static MagicSquare[] RookMagics;
         public static MagicSquare[] BishopMagics;
@@ -52,6 +52,9 @@ namespace LTChess.Logic.Magic
 
         public static void Initialize()
         {
+            RookTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+            BishopTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+
             if (HasPext)
             {
                 FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
@@ -196,9 +199,9 @@ namespace LTChess.Logic.Magic
         /// 
         /// Using Pext with move generation is about 5% faster in my testing, which adds up over time.
         /// </summary>
-        private static FancyMagicSquare[] InitializeFancyMagics(int pt, ulong[] table)
+        private static FancyMagicSquare* InitializeFancyMagics(int pt, ulong* table)
         {
-            FancyMagicSquare[] magicArray = new FancyMagicSquare[64];
+            FancyMagicSquare* magicArray = (FancyMagicSquare*) AlignedAllocZeroed((nuint) (sizeof(FancyMagicSquare) * 64), AllocAlignment);
 
             ulong b;
             int size = 0;
@@ -212,7 +215,7 @@ namespace LTChess.Logic.Magic
                 m.shift = (int)(64 - popcount(m.mask));
                 if (sq == A1)
                 {
-                    m.attacks = (ulong*) Marshal.UnsafeAddrOfPinnedArrayElement(table, 0);
+                    m.attacks = (ulong*) (table + 0);
                 }
                 else
                 {

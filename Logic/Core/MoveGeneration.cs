@@ -182,7 +182,7 @@ namespace LTChess.Logic.Core
 
             if (State->EPSquare != EPNone)
             {
-                ulong[] pawnAttacks = (ToMove == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
+                var pawnAttacks = (ToMove == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
                 ulong mask = notPromotingPawns & pawnAttacks[State->EPSquare];
 
                 while (mask != 0)

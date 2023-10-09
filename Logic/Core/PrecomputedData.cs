@@ -7,7 +7,7 @@ namespace LTChess.Logic.Data
     /// <summary>
     /// Precomputes Knight moves, neighboring squares, and the diagonals that each index is a part of
     /// </summary>
-    public static class PrecomputedData
+    public static unsafe class PrecomputedData
     {
         /// <summary>
         /// Index using [depth][moveIndex]
@@ -19,21 +19,21 @@ namespace LTChess.Logic.Data
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
         /// </summary>
-        public static ulong[] NeighborsMask = new ulong[64];
+        public static ulong* NeighborsMask;
 
         /// <summary>
         /// At each index, contains a mask of squares which neighbor the indices neighbors. So the mask for A1 contains A3, B3, C3, C2, C1.
         /// </summary>
-        public static ulong[] OutterNeighborsMask = new ulong[64];
+        public static ulong* OutterNeighborsMask;
 
         /// <summary>
         /// At each index, contains a mask of each of the squares that a knight could move to.
         /// </summary>
-        public static ulong[] KnightMasks = new ulong[64];
+        public static ulong* KnightMasks;
 
-        public static ulong[] RookRays = new ulong[64];
+        public static ulong* RookRays;
 
-        public static ulong[] BishopRays = new ulong[64];
+        public static ulong* BishopRays;
 
         public static int[][] DiagonalIndicesA1H8 = new int[64][];
 
@@ -58,20 +58,14 @@ namespace LTChess.Logic.Data
         /// <summary>
         /// Bitboards containing all of the squares that a White pawn on an index attacks. A White pawn on A2 attacks B3 etc.
         /// </summary>
-        public static ulong[] WhitePawnAttackMasks = new ulong[64];
+        public static ulong* WhitePawnAttackMasks;
 
         /// <summary>
         /// Bitboards containing all of the squares that a Black pawn on an index attacks. A Black pawn on A7 attacks B6 etc.
         /// </summary>
-        public static ulong[] BlackPawnAttackMasks = new ulong[64];
+        public static ulong* BlackPawnAttackMasks;
 
-        public static ulong[][] PawnAttackMasks = new ulong[2][];
-
-        public static ulong[] WhitePawnMoveMasks = new ulong[64];
-        public static ulong[] BlackPawnMoveMasks = new ulong[64];
-
-
-        public static ulong[][] PassedPawnMasks = new ulong[2][];
+        public static ulong** PawnAttackMasks;
 
         /// <summary>
         /// At each index, contains a mask of all of the squares above the index which determine whether or not a pawn is passed.
@@ -92,7 +86,7 @@ namespace LTChess.Logic.Data
         /// <summary>
         /// At each index, contains a ulong equal to (1UL << index).
         /// </summary>
-        public static ulong[] SquareBB = new ulong[64];
+        public static ulong* SquareBB;
 
         /// <summary>
         /// Bitboards with bits set at every index that exists in a line between two indices.
@@ -102,14 +96,14 @@ namespace LTChess.Logic.Data
         /// <para></para>
         /// So LineBB[A1][H1] gives 254, or 01111111
         /// </summary>
-        public static ulong[][] LineBB = new ulong[64][];
+        public static ulong** LineBB;
 
         /// <summary>
         /// Index using BetweenBB[s1][s2], this is the same as LineBB, but the index at s2 is never set.
         /// <para></para>
         /// So BetweenBB[A1][H1] gives 126, or 01111110
         /// </summary>
-        public static ulong[][] BetweenBB = new ulong[64][];
+        public static ulong** BetweenBB;
 
         /// <summary>
         /// Bitboards with bits set at every index that exists along the entire ray that two squares have in common.
@@ -118,7 +112,7 @@ namespace LTChess.Logic.Data
         /// and likewise for diagonals. Otherwise, those squares' RayBB is 0.
         /// <br></br>
         /// </summary>
-        public static ulong[][] RayBB = new ulong[64][];
+        public static ulong** RayBB;
 
         /// <summary>
         /// Bitboards with bits set at every index that exists on the ray beginning on the first square, passing through the second square,
@@ -134,7 +128,7 @@ namespace LTChess.Logic.Data
         /// claiming that it was the piece giving check, instead of the rook.
         /// <br></br>
         /// </summary>
-        public static ulong[][] XrayBB = new ulong[64][];
+        public static ulong** XrayBB;
 
         public static int[][] FileDistances = new int[64][];
         public static int[][] RankDistances = new int[64][];
@@ -184,7 +178,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public static void RunPostInitialization()
         {
-            if (RayBB[0] == null)
+            if (RayBB == null || RayBB[0] == null)
             {
                 DoRayBBs();
             }
@@ -193,6 +187,7 @@ namespace LTChess.Logic.Data
 
         private static void DoSquareBBs()
         {
+            SquareBB = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * SquareNB), AllocAlignment);
             for (int s = 0; s <= 63; ++s)
             {
                 SquareBB[s] = (1UL << s);
@@ -306,6 +301,8 @@ namespace LTChess.Logic.Data
         /// </summary>
         private static void DoPieceRays()
         {
+            RookRays   = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+            BishopRays = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
             for (int sq = 0; sq < 64; sq++)
             {
                 ulong rookMask = (GetFileBB(sq) | GetRankBB(sq)) & ~(1UL << sq);
@@ -318,10 +315,14 @@ namespace LTChess.Logic.Data
 
         private static void DoRayBBs()
         {
+            RayBB  = (ulong**) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+            XrayBB = (ulong**) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
             for (int s1 = 0; s1 < 64; s1++)
             {
-                RayBB[s1] = new ulong[64];
-                XrayBB[s1] = new ulong[64];
+                RayBB[s1]  = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                XrayBB[s1] = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
 
                 for (int s2 = 0; s2 < 64; s2++)
                 {
@@ -346,6 +347,9 @@ namespace LTChess.Logic.Data
 
         private static void DoNeighbors()
         {
+            NeighborsMask       = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+            OutterNeighborsMask = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
             for (int i = 0; i < 64; i++)
             {
                 List<int> list = new List<int>();
@@ -411,7 +415,7 @@ namespace LTChess.Logic.Data
             }
         }
 
-        private unsafe static void DoOutterNeighbors()
+        private static void DoOutterNeighbors()
         {
             for (int i = 0; i < 64; i++)
             {
@@ -432,6 +436,8 @@ namespace LTChess.Logic.Data
 
         private static void DoKnightMoves()
         {
+            KnightMasks = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
             for (int i = 0; i < 64; i++)
             {
                 int x = i % 8;
@@ -485,8 +491,13 @@ namespace LTChess.Logic.Data
 
         private static void DoPawnAttacks()
         {
-            PawnAttackMasks[Color.White] = new ulong[64];
-            PawnAttackMasks[Color.Black] = new ulong[64];
+            WhitePawnAttackMasks = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+            BlackPawnAttackMasks = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
+            PawnAttackMasks = (ulong**) AlignedAllocZeroed(sizeof(ulong) * 2, AllocAlignment);
+
+            PawnAttackMasks[White] = WhitePawnAttackMasks;
+            PawnAttackMasks[Black] = BlackPawnAttackMasks;
 
             for (int i = 0; i < 64; i++)
             {
@@ -563,17 +574,12 @@ namespace LTChess.Logic.Data
 
                 PawnAttackMasks[Color.White][i] = whiteAttack;
                 PawnAttackMasks[Color.Black][i] = blackAttack;
-
-                WhitePawnMoveMasks[i] = whiteMove;
-                BlackPawnMoveMasks[i] = blackMove;
             }
 
         }
 
         private static void DoPassedPawns()
         {
-            PassedPawnMasks[Color.White] = new ulong[64];
-            PassedPawnMasks[Color.Black] = new ulong[64];
 
             for (int idx = 0; idx < 64; idx++)
             {
@@ -603,10 +609,6 @@ namespace LTChess.Logic.Data
 
                 WhitePassedPawnMasks[idx] = whiteRanks & files;
                 BlackPassedPawnMasks[idx] = blackRanks & files;
-
-                PassedPawnMasks[Color.White][idx] = WhitePassedPawnMasks[idx];
-                PassedPawnMasks[Color.Black][idx] = BlackPassedPawnMasks[idx];
-
             }
         }
 
@@ -615,10 +617,14 @@ namespace LTChess.Logic.Data
         /// </summary>
         private static void DoBetweenBBs()
         {
+            LineBB    = (ulong**) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+            BetweenBB = (ulong**) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
             for (int s1 = 0; s1 < 64; s1++)
             {
-                LineBB[s1] = new ulong[64];
-                BetweenBB[s1] = new ulong[64];
+                LineBB[s1]    = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                BetweenBB[s1] = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+
                 int f1 = GetIndexFile(s1);
                 int r1 = GetIndexRank(s1);
                 for (int s2 = 0; s2 < 64; s2++)
