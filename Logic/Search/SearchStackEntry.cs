@@ -23,7 +23,7 @@ namespace LTChess.Logic.Search
         public Move CurrentMove;
 
         [FieldOffset(12)]
-        public Move ExcludedMove;
+        public Move Skip;
 
 
         /// <summary>
@@ -87,7 +87,7 @@ namespace LTChess.Logic.Search
             CurrentMove = Move.Null;
             Killer0 = Move.Null;
             Killer1 = Move.Null;
-            ExcludedMove = Move.Null;
+            Skip = Move.Null;
 
             ContinuationHistory = null;
             StatScore = 0;

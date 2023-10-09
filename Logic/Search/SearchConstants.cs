@@ -76,6 +76,13 @@
         public static int Threads = 2;
 
 
+        /// <summary>
+        /// Whether or not to extend searches if there is only one good move in a position.
+        /// <para></para>
+        /// Currently a bit unstable, and doesn't improve accuracy as much as it decreases speed.
+        /// </summary>
+        public static bool UseSingularExtensions = false;
+
 
         /// <summary>
         /// Aspiration windows will clamp the expected evaluation (alpha/beta values) at the next depth to the evaluation of the current depth.
@@ -135,6 +142,8 @@
         public const int RazoringMaxDepth = 6;
         public const int RazoringMargin = 275;
 
+
+        public const int ExtraCutNodeReductionMinDepth = 6;
 
         /// <summary>
         /// Whether to use the included (small) Polyglot opening book file.
