@@ -35,26 +35,6 @@ namespace LTChess.Logic.Data
 
         public static ulong* BishopRays;
 
-        public static int[][] DiagonalIndicesA1H8 = new int[64][];
-
-        public static int[][] DiagonalIndicesA8H1 = new int[64][];
-
-        /// <summary>
-        /// Contains ulongs for each square with bits set along the A1-H8 diagonal (bottom left to top right, from White's perspective).
-        /// So square E4 has bits set at B1, C2, D3, E4, F5... and G1 only has G1 and H2.
-        /// </summary>
-        public static ulong[] DiagonalMasksA1H8 = new ulong[64];
-
-        /// <summary>
-        /// Contains ulongs for each square with bits set along the A8-H1 diagonal (top left to bottom right, from White's perspective).
-        /// So square E4 has bits set at A8, B7, C6, D5, E4, F3... and B1 only has B1 and A2.
-        /// </summary>
-        public static ulong[] DiagonalMasksA8H1 = new ulong[64];
-
-        public static DiagonalInfo[][] InfoA1H8 = new DiagonalInfo[64][];
-        public static DiagonalInfo[][] InfoA8H1 = new DiagonalInfo[64][];
-
-
         /// <summary>
         /// Bitboards containing all of the squares that a White pawn on an index attacks. A White pawn on A2 attacks B3 etc.
         /// </summary>
@@ -130,14 +110,37 @@ namespace LTChess.Logic.Data
         /// </summary>
         public static ulong** XrayBB;
 
-        public static int[][] FileDistances = new int[64][];
-        public static int[][] RankDistances = new int[64][];
-
         /// <summary>
         /// At each index, contains the distance from that square to every other square.
         /// This is the Min(file distance, rank distance) between the two squares.
         /// </summary>
         public static int[][] SquareDistances = new int[64][];
+
+
+
+        private static int[][] DiagonalIndicesA1H8 = new int[64][];
+
+        private static int[][] DiagonalIndicesA8H1 = new int[64][];
+
+        /// <summary>
+        /// Contains ulongs for each square with bits set along the A1-H8 diagonal (bottom left to top right, from White's perspective).
+        /// So square E4 has bits set at B1, C2, D3, E4, F5... and G1 only has G1 and H2.
+        /// </summary>
+        private static ulong[] DiagonalMasksA1H8 = new ulong[64];
+
+        /// <summary>
+        /// Contains ulongs for each square with bits set along the A8-H1 diagonal (top left to bottom right, from White's perspective).
+        /// So square E4 has bits set at A8, B7, C6, D5, E4, F3... and B1 only has B1 and A2.
+        /// </summary>
+        private static ulong[] DiagonalMasksA8H1 = new ulong[64];
+
+        private static DiagonalInfo[][] InfoA1H8 = new DiagonalInfo[64][];
+        private static DiagonalInfo[][] InfoA8H1 = new DiagonalInfo[64][];
+
+        private static int[][] FileDistances = new int[64][];
+        private static int[][] RankDistances = new int[64][];
+
+
 
         private static bool Initialized = false;
 
@@ -799,7 +802,7 @@ namespace LTChess.Logic.Data
         /// <param name="iIndex1">The index that <paramref name="index1"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         /// <param name="iIndex2">The index that <paramref name="index2"/> exists at in <paramref name="diagonal"/>, or 0 if it doesn't.</param>
         [MethodImpl(Inline)]
-        public static unsafe bool OnSameDiagonal(int index1, int index2, out DiagonalInfo info)
+        private static unsafe bool OnSameDiagonal(int index1, int index2, out DiagonalInfo info)
         {
             info = InfoA1H8[index1][index2];
             if (info.onSame)
@@ -825,27 +828,26 @@ namespace LTChess.Logic.Data
         {
             return (x >= 0 && x <= 7 && y >= 0 && y <= 7);
         }
-    }
 
-    public readonly struct DiagonalInfo
-    {
-        public readonly int index1;
-        public readonly int index2;
-        public readonly int direction;
-        public readonly bool onSame;
-        public readonly int i1;
-        public readonly int i2;
-
-        public DiagonalInfo(int index1, int index2, int direction, bool onSame, int i1, int i2)
+        public readonly struct DiagonalInfo
         {
-            this.index1 = index1;
-            this.index2 = index2;
-            this.direction = direction;
-            this.onSame = onSame;
-            this.i1 = i1;
-            this.i2 = i2;
+            public readonly int index1;
+            public readonly int index2;
+            public readonly int direction;
+            public readonly bool onSame;
+            public readonly int i1;
+            public readonly int i2;
+
+            public DiagonalInfo(int index1, int index2, int direction, bool onSame, int i1, int i2)
+            {
+                this.index1 = index1;
+                this.index2 = index2;
+                this.direction = direction;
+                this.onSame = onSame;
+                this.i1 = i1;
+                this.i2 = i2;
+            }
         }
     }
-
 
 }
