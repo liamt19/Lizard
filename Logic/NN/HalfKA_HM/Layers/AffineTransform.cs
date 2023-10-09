@@ -189,8 +189,15 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public static void m256_add_dpbusd_epi32(ref Vector256<int> acc, Vector256<byte> a, Vector256<sbyte> b)
         {
-            Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a, b);
-            acc = Avx2.Add(acc, Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One));
+            if (AvxVnni.IsSupported)
+            {
+                acc = AvxVnni.MultiplyWideningAndAdd(acc, a, b);
+            }
+            else
+            {
+                Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a, b);
+                acc = Avx2.Add(acc, Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One));
+            }
         }
 
         private static int m256_hadd(Vector256<int> sum, int bias)
@@ -209,13 +216,21 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
                                                                             Vector256<sbyte> b0, Vector256<sbyte> b1)
         {
-            Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a0, b0);
-            Vector256<short> product1 = Avx2.MultiplyAddAdjacent(a1, b1);
+            if (AvxVnni.IsSupported)
+            {
+                acc = AvxVnni.MultiplyWideningAndAdd(acc, a0, b0);
+                acc = AvxVnni.MultiplyWideningAndAdd(acc, a1, b1);
+            }
+            else
+            {
+                Vector256<short> product0 = Avx2.MultiplyAddAdjacent(a0, b0);
+                Vector256<short> product1 = Avx2.MultiplyAddAdjacent(a1, b1);
 
-            product0 = Avx2.AddSaturate(product0, product1);
-            Vector256<int> product0f = Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One);
+                product0 = Avx2.AddSaturate(product0, product1);
+                Vector256<int> product0f = Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One);
 
-            acc = Avx2.Add(acc, product0f);
+                acc = Avx2.Add(acc, product0f);
+            }
         }
 
     }
