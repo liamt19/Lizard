@@ -193,17 +193,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             acc = Avx2.Add(acc, Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One));
         }
 
-        private static int m256_hadd(Vector128<int> lo, Vector128<int> hi, int bias)
-        {
-            const int _MM_PERM_BADC = 0x4E;
-            const int _MM_PERM_CDAB = 0xB1;
-
-            var sum128 = Sse2.Add(lo, hi);
-            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_BADC));
-            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_CDAB));
-            return Sse2.ConvertToInt32(sum128) + bias;
-        }
-
         private static int m256_hadd(Vector256<int> sum, int bias)
         {
             const int _MM_PERM_BADC = 0x4E;
@@ -227,20 +216,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             Vector256<int> product0f = Avx2.MultiplyAddAdjacent(product0, Vector256<short>.One);
 
             acc = Avx2.Add(acc, product0f);
-        }
-
-
-        private static Vector128<int> m256_haddx4(Vector256<int> sum0, Vector256<int> sum1, Vector256<int> sum2, Vector256<int> sum3, Vector128<int> bias)
-        {
-            sum0 = Avx2.HorizontalAdd(sum0, sum1);
-            sum2 = Avx2.HorizontalAdd(sum2, sum3);
-
-            sum0 = Avx2.HorizontalAdd(sum0, sum2);
-
-            var sum128lo = Avx2.ExtractVector128(sum0, 0);
-            var sum128hi = Avx2.ExtractVector128(sum0, 1);
-
-            return Ssse3.Add(Ssse3.Add(sum128lo, sum128hi), bias);
         }
 
     }
