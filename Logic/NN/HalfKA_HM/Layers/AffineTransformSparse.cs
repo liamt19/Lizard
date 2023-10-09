@@ -189,14 +189,20 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     _Weights[cursedIndex] = br.ReadSByte();
                 }
 
-                for (int i = 0; i < OutputDimensions; i += VSize.Int)
+                fixed (int* biasPtr = _Biases)
                 {
-                    Biases[i / VSize.Int] = Load256(_Biases, i);
+                    for (int i = 0; i < OutputDimensions; i += VSize.Int)
+                    {
+                        Biases[i / VSize.Int] = Avx.LoadDquVector256(biasPtr + i);
+                    }
                 }
 
-                for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i += VSize.SByte)
+                fixed (sbyte* weightPtr = _Weights)
                 {
-                    Weights[i / VSize.SByte] = Load256(_Weights, i);
+                    for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i += VSize.SByte)
+                    {
+                        Weights[i / VSize.SByte] = Avx.LoadDquVector256(weightPtr + i);
+                    }
                 }
             }
             catch (Exception e)
