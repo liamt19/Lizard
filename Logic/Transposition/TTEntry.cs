@@ -99,18 +99,17 @@ namespace LTChess.Logic.Transposition
             return (ushort)posHash;
         }
 
-
         [MethodImpl(Inline)]
-        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
+        public void Update(ulong key, short score, TTNodeType nodeType, int depth, CondensedMove move, short statEval, bool isPV = false)
         {
-            if (!move.IsNull() || (ushort) key != this.Key)
+            if (!move.IsNull() || (ushort)key != this.Key)
             {
-                this.BestMove = new CondensedMove(move);
+                this.BestMove = move;
             }
 
-            if (nodeType == TTNodeType.Exact ||
-                (ushort)key != this.Key || 
-                depth + 2 * (isPV ? 1 : 0) > this._depth - 11)
+            if (nodeType == TTNodeType.Exact
+                || (ushort)key != this.Key
+                || depth + 2 * (isPV ? 1 : 0) > this._depth - 11)
             {
                 this.Key = (ushort)key;
                 this.Score = score;
@@ -125,6 +124,19 @@ namespace LTChess.Logic.Transposition
                     //Debug.WriteLine("WARN the score " + score + " is outside of bounds for normal TT entries!");
                 }
 #endif
+            }
+        }
+
+        [MethodImpl(Inline)]
+        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
+        {
+            if (move.IsNull())
+            {
+                Update(key, score, nodeType, depth, CondensedMove.Null, statEval, isPV);
+            }
+            else
+            {
+                Update(key, score, nodeType, depth, new CondensedMove(move), statEval, isPV);
             }
         }
 

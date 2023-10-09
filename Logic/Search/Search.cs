@@ -185,7 +185,7 @@ namespace LTChess.Logic.Search
                 else
                 {
                     ss->StaticEval = eval = info.GetEvaluation(pos);
-                    tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, Move.Null, eval, ss->TTPV);
+                    tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
                 }
 
                 if (ss->Ply >= 2)
