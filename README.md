@@ -8,7 +8,7 @@ I'm uploading it here so I can keep backups of it and not lose it when my laptop
 
 ## Features
 ### NNUE Evaluation:
-Version 8.4 currently supports [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv5 architecture](https://github.com/official-stockfish/Stockfish/commit/c079acc26f93acc2eda08c7218c60559854f52f0), a diagram of which is available [here](https://github.com/official-stockfish/nnue-pytorch/blob/7d8770316238314e77a0209ae81d74f573dcae74/docs/img/SFNNv5_architecture_detailed.svg).
+Version 9.1 currently supports [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6 architecture](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
 
 In the near future I want to train my own network with a similar architecture. The use of Stockfish's networks was meant to make improving move searching easier since I didn't have to rely on my fairly poor classical evaluation.
 
@@ -26,10 +26,20 @@ In the near future I want to train my own network with a similar architecture. T
   - [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
 
 ## Status
-Version 8.4 brings a decent rating increase, and makes a lot fewer "dumb" moves.
-Many of the recent commits improved some of my early architectural decisions, and it is now far easier to debug and improve this engine's speed and playing strength.
+Version 9.1 has some major speed improvements to both searches and move generation.
+Currently rated a bit above 2500 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
 
-Currently rated a bit above 2400 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
+## Some spotty history:
+#### Version 8.4:
+A decent rating increase, and a lot fewer "dumb" moves. 
+Many of the commits between 8.0 and 8.4 improved some of the early architectural decisions, and it is now far easier to debug and improve the code. 
+It was rated a bit above 2400 bullet/blitz on Lichess.
 
-### Contributing
+#### Version 7.0:
+A large rating increase (around 250) and was far more polished. 
+It was rated a bit above 2000 bullet on Lichess.
+
+
+
+## Contributing
 If you have any ideas or comments, feel free to create an issue or pull request!
