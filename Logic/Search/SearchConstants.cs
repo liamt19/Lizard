@@ -79,7 +79,8 @@
         /// <summary>
         /// Whether or not to extend searches if there is only one good move in a position.
         /// <para></para>
-        /// Currently a bit unstable, and doesn't improve accuracy as much as it decreases speed.
+        /// This does reduce search speed (in terms of nodes/second), but the accuracy of the additional nodes 
+        /// that are searched make this well worth the speed hit.
         /// </summary>
         public static bool UseSingularExtensions = true;
 
