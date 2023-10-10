@@ -81,7 +81,7 @@
         /// <para></para>
         /// Currently a bit unstable, and doesn't improve accuracy as much as it decreases speed.
         /// </summary>
-        public static bool UseSingularExtensions = false;
+        public static bool UseSingularExtensions = true;
 
 
         /// <summary>

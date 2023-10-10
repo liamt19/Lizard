@@ -344,7 +344,7 @@ namespace LTChess.Logic.Search
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (6 + (isPV && tte->PV ? 1 : 0))
+                    && depth >= (5 + (isPV && tte->PV ? 1 : 0))
                     && m.Equals(ttMove) 
                     && Math.Abs(ttScore) < ScoreWin 
                     && ((tte->Bound & BoundLower) != 0) 
@@ -366,6 +366,10 @@ namespace LTChess.Logic.Search
                             && ss->Extensions <= 8)
                         {
                             extend = 2;
+                            if (depth < 12)
+                            {
+                                depth++;
+                            }
                         }
                     }
                     else if (singleBeta >= beta)
