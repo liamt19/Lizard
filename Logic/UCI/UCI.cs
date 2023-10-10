@@ -566,16 +566,17 @@ namespace LTChess.Logic.Core
         private void HandleSetOption(string optName, string optValue)
         {
 
-            //  Currently only "Threads" and "MultiPV" can be changed at runtime.
+            //  Currently only "Threads", "MultiPV", and "UseSingularExtensions" can be changed at runtime.
             if (optName.EqualsIgnoreCase("Threads"))
             {
                 if (int.TryParse(optValue, out int newVal))
                 {
                     SearchPool.Resize(newVal);
+                    LogString("[INFO]: Set SearchPool's ThreadCount to " + SearchPool.ThreadCount);
                 }
                 else
                 {
-                    Log("ERROR Failed setting SearchPool Threads to '" + optValue + "', couldn't parse the number");
+                    LogString("[ERROR]: Failed setting SearchPool Threads to '" + optValue + "', couldn't parse the number");
                 }
             }
             else if (optName.EqualsIgnoreCase("MultiPV"))
@@ -583,10 +584,28 @@ namespace LTChess.Logic.Core
                 if (int.TryParse(optValue, out int newVal))
                 {
                     MultiPV = newVal;
+                    LogString("[INFO]: Set MultiPV to " + MultiPV);
                 }
                 else
                 {
-                    Log("ERROR Failed setting MultiPV to '" + optValue + "', couldn't parse the number");
+                    LogString("[ERROR]: Failed setting MultiPV to '" + optValue + "', couldn't parse the number");
+                }
+            }
+            else if (optName.Replace(" ", string.Empty).EqualsIgnoreCase("UseSingularExtensions"))
+            {
+                if (optValue.EqualsIgnoreCase("true") || optValue.Equals("1"))
+                {
+                    UseSingularExtensions = true;
+                    LogString("[INFO]: Enabled Singular Extensions");
+                }
+                else if (optValue.EqualsIgnoreCase("false") || optValue.Equals("0"))
+                {
+                    UseSingularExtensions = false;
+                    LogString("[INFO]: Disabled Singular Extensions");
+                }
+                else
+                {
+                    LogString("[ERROR]: Failed setting UseSingularExtensions to '" + optValue + "', should be true/false or 1/0");
                 }
             }
             else
