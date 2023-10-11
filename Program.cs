@@ -278,9 +278,8 @@ namespace LTChess
 
                             if (UseHalfKA)
                             {
-                                p.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
-                                p.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
-                                p.Owner.AccumulatorIndex = 0;
+                                p.State->Accumulator->RefreshPerspective[White] = true;
+                                p.State->Accumulator->RefreshPerspective[Black] = true;
                             }
                         }
                     }
@@ -329,9 +328,9 @@ namespace LTChess
             int size = p.GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
             {
-                p.MakeMove(mlist[i], false);
+                p.MakeMove(mlist[i]);
                 ulong result = p.Perft(depth - 1);
-                p.UnmakeMove(mlist[i], false);
+                p.UnmakeMove(mlist[i]);
                 Log(mlist[i].ToString() + ": " + result);
                 total += result;
             }
@@ -356,7 +355,7 @@ namespace LTChess
             {
                 Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
 
-                threadPosition.MakeMove(mlist[i], false);
+                threadPosition.MakeMove(mlist[i]);
                 ulong result = threadPosition.Perft(depth - 1);
                 Log(mlist[i].ToString() + ": " + result);
 
@@ -406,7 +405,7 @@ namespace LTChess
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
-                p.MakeMove(m, true);
+                p.MakeMove(m);
                 int moveEval = 0;
 
                 if (UseSimple768)
@@ -422,7 +421,7 @@ namespace LTChess
                     moveEval = info.GetEvaluation(p, true);
                 }
 
-                p.UnmakeMove(m, true);
+                p.UnmakeMove(m);
                 scoreList.Add((m, moveEval));
             }
 

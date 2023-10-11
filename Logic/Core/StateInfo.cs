@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using LTChess.Logic.NN.HalfKA_HM;
 
 namespace LTChess.Logic.Core
 {
@@ -31,15 +32,12 @@ namespace LTChess.Logic.Core
         public int EPSquare = EPNone;
         public int CapturedPiece = None;
 
+        public AccumulatorPSQT* Accumulator;
+
         public StateInfo()
         {
 
         }
 
-
-        public static string StringFormat(StateInfo* st)
-        {
-            return ("[" + ((nuint)st).ToString("X12") + ", Previous: " + ((nuint)(st-1)).ToString("X12") + "]");
-        }
     }
 }

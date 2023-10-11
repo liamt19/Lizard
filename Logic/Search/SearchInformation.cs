@@ -188,7 +188,7 @@ namespace LTChess.Logic.Search
                 }
 
                 sb.Append(" " + PV[i].ToString(temp));
-                temp.MakeMove(PV[i], false);
+                temp.MakeMove(PV[i]);
             }
 
             Log(sb.ToString());

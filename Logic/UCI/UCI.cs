@@ -17,6 +17,7 @@ namespace LTChess.Logic.Core
     public unsafe class UCI
     {
 
+        private Position pos;
         private SearchInformation info;
         private ThreadSetup setup;
 
@@ -40,7 +41,8 @@ namespace LTChess.Logic.Core
             ProcessUCIOptions();
 
             setup = new ThreadSetup();
-            info = new SearchInformation(new Position(owner: SearchPool.MainThread), DefaultSearchDepth);
+            pos = new Position(owner: SearchPool.MainThread);
+            info = new SearchInformation(pos, DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
             if (File.Exists(LogFileName))
@@ -175,7 +177,7 @@ namespace LTChess.Logic.Core
                 }
                 else if (cmd == "position")
                 {
-                    info = new SearchInformation(new Position(owner: SearchPool.MainThread), DefaultSearchDepth);
+                    info = new SearchInformation(pos, DefaultSearchDepth);
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;
 
@@ -188,7 +190,7 @@ namespace LTChess.Logic.Core
                         //  Some UCI's send commands that look like "position startpos moves e2e4 c7c5 g1f3"
                         //  If the command does have a "moves" component, then set the fen normally,
                         //  and try to make the moves that we were told to.
-                        info.Position = new Position(owner: SearchPool.MainThread);
+                        info.Position.LoadFromFEN(setup.StartFEN);
                         if (param.Length > 1 && param[1] == "moves")
                         {
                             for (int i = 2; i < param.Length; i++)
@@ -222,7 +224,7 @@ namespace LTChess.Logic.Core
                         {
                             if (param[i] == "moves")
                             {
-                                info.Position = new Position(fen, owner: SearchPool.MainThread);
+                                info.Position.LoadFromFEN(fen);
                                 for (int j = i + 1; j < param.Length; j++)
                                 {
 
@@ -254,16 +256,15 @@ namespace LTChess.Logic.Core
                         if (!hasExtraMoves)
                         {
                             LogString("[INFO]: Set position to " + fen);
-                            info.Position = new Position(fen, owner: SearchPool.MainThread);
+                            info.Position.LoadFromFEN(fen);
                         }
 
                     }
 
                     if (UseHalfKA)
                     {
-                        info.Position.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
-                        info.Position.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
-                        info.Position.Owner.AccumulatorIndex = 0;
+                        info.Position.State->Accumulator->RefreshPerspective[White] = true;
+                        info.Position.State->Accumulator->RefreshPerspective[Black] = true;
                     }
                 }
                 else if (cmd == "go")

@@ -86,6 +86,38 @@ namespace LTChess.Logic.NN.HalfKA_HM
             target.RefreshPerspective[1] = RefreshPerspective[1];
         }
 
+        public void CopyTo(AccumulatorPSQT* target)
+        {
+            int size = ByteSize * Unsafe.SizeOf<short>();
+
+            Unsafe.CopyBlockUnaligned(
+                target->White,
+                White,
+                (uint)size
+            );
+            Unsafe.CopyBlockUnaligned(
+                target->Black,
+                Black,
+                (uint)size
+            );
+
+            size = PSQTBuckets * sizeof(int);
+
+            Unsafe.CopyBlockUnaligned(
+                target->PSQTWhite,
+                PSQTWhite,
+                (uint)size
+            );
+            Unsafe.CopyBlockUnaligned(
+                target->PSQTBlack,
+                PSQTBlack,
+                (uint)size
+            );
+
+            target->RefreshPerspective[0] = RefreshPerspective[0];
+            target->RefreshPerspective[1] = RefreshPerspective[1];
+        }
+
         public void Dispose()
         {
             NativeMemory.AlignedFree(White);

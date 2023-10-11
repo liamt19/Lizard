@@ -59,24 +59,44 @@ namespace LTChess.Logic.Core
 
         public bool Checked => (CheckInfo.InCheck || CheckInfo.InDoubleCheck);
 
+
         /// <summary>
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
         /// If you find yourself in a game exceeding 2047 moves, go outside.
         /// </summary>
         public const int StateStackSize = 2048;
-        private readonly nint _stateBlock;
 
+        private readonly nint _stateBlock;
 
         /// <summary>
         /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
         /// </summary>
         private readonly StateInfo* _SentinelStart;
+
+        /// <summary>
+        /// The initial StateInfo.
+        /// </summary>
         public StateInfo* StartingState => (_SentinelStart);
 
         /// <summary>
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
         /// </summary>
         public StateInfo* State;
+
+        /// <summary>
+        /// The StateInfo before the current one, or NULL if the current StateInfo is the first one, <see cref="_SentinelStart"/>
+        /// </summary>
+        public StateInfo* PreviousState => (State == _SentinelStart ? (null) : (State - 1));
+
+        /// <summary>
+        /// The StateInfo after the current one, which hopefully is within the bounds of <see cref="StateStackSize"/>
+        /// </summary>
+        public StateInfo* NextState => (State + 1);
+
+
+
+        private readonly nint _accumulatorBlock = nint.Zero;
+
 
         /// <summary>
         /// The number of moves that have been made so far since this Position was created.
@@ -91,28 +111,63 @@ namespace LTChess.Logic.Core
         public readonly SearchThread Owner;
 
         /// <summary>
-        /// Creates a new Position object, initializes it's internal FasterStack's and Bitboard, and loads the provided FEN.
+        /// Whether or not to incrementally update accumulators when making/unmaking moves.
+        /// This must be true if this position object is being used in a search, but
+        /// 
         /// </summary>
-        public Position(string fen = InitialFEN, bool ResetNN = true, SearchThread owner = null)
+        public readonly bool UpdateNN;
+
+
+        /// <summary>
+        /// Creates a new Position object and loads the provided FEN.
+        /// <br></br>
+        /// If <paramref name="createAccumulators"/> is true, then this Position will create and incrementally update 
+        /// its accumulators when making and unmaking moves.
+        /// <para></para>
+        /// <paramref name="owner"/> should be set to one of the <see cref="SearchThread"/>'s within the <see cref="SearchThreadPool.SearchPool"/>
+        /// (the <see cref="SearchThreadPool.MainThread"/> unless there are multiple threads in the pool).
+        /// <br></br>
+        /// If <paramref name="owner"/> is <see langword="null"/> then <paramref name="createAccumulators"/> should be false.
+        /// </summary>
+        public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread? owner = null)
         {
             MaterialCount = new int[2];
             MaterialCountNonPawn = new int[2];
 
+            this.UpdateNN = createAccumulators;
+            this.Owner = owner;
 
             _bbBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
             this.bb = *(Bitboard*)_bbBlock;
 
-            _stateBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
+            _stateBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
             StateInfo* StateStack = (StateInfo*)_stateBlock;
 
             _SentinelStart = &StateStack[0];
             State = &StateStack[0];
 
-            Owner = owner;
-
-            if (ResetNN && owner == null)
+            if (UpdateNN)
             {
-                Log("WARN Position('" + fen + "', " + ResetNN + ", ...) has ResetNN true and was given a nullptr for owner! (if ResetNN is true, an owner must be provided)");
+                //  Create the accumulators now if we need to.
+                //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
+                //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
+                _accumulatorBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(AccumulatorPSQT) * StateStackSize), AllocAlignment);
+                AccumulatorPSQT* accs = (AccumulatorPSQT*) _accumulatorBlock;
+                for (int i = 0; i < StateStackSize; i++)
+                {
+                    (StateStack + i)->Accumulator = (accs + i);
+                }
+
+                for (int i = 0; i < StateStackSize; i++)
+                {
+                    *((StateStack + i)->Accumulator) = new AccumulatorPSQT();
+                }
+            }
+
+
+            if (UpdateNN && Owner == null)
+            {
+                Log("WARN Position('" + fen + "', " + createAccumulators + ", ...) has ResetNN true and was given a nullptr for owner! (if ResetNN is true, an owner must be provided)");
                 Log("Assigning this Position instance to the SearchPool's MainThread, UB and other wierdness may occur...");
                 Owner = SearchPool.MainThread;
             }
@@ -121,17 +176,16 @@ namespace LTChess.Logic.Core
 
             LoadFromFEN(fen);
 
-            if (UseSimple768 && ResetNN)
+            if (UseSimple768 && createAccumulators)
             {
                 NNUEEvaluation.RefreshNN(this);
                 NNUEEvaluation.ResetNN();
             }
 
-            if (UseHalfKA && ResetNN)
+            if (UseHalfKA && UpdateNN)
             {
-                Owner.AccumulatorIndex = 0;
-                Owner.CurrentAccumulator.RefreshPerspective[White] = true;
-                Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
+                State->Accumulator->RefreshPerspective[White] = true;
+                State->Accumulator->RefreshPerspective[Black] = true;
             }
         }
 
@@ -141,8 +195,21 @@ namespace LTChess.Logic.Core
         /// </summary>
         ~Position()
         {
-            NativeMemory.AlignedFree((void*)_bbBlock);
-            NativeMemory.AlignedFree((void*)_stateBlock);
+            NativeMemory.AlignedFree((void*) _bbBlock);
+
+            if (UpdateNN)
+            {
+                //  Free each accumulator, then the block
+                for (int i = 0; i < StateStackSize; i++)
+                {
+                    var acc = *((_SentinelStart + i)->Accumulator);
+                    acc.Dispose();
+                }
+
+                NativeMemory.AlignedFree((void*)_accumulatorBlock);
+            }
+
+            NativeMemory.AlignedFree((void*) _stateBlock);
         }
 
         /// <summary>
@@ -159,7 +226,7 @@ namespace LTChess.Logic.Core
                 Move m = list[i];
                 if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
                 {
-                    MakeMove(m, false);
+                    MakeMove(m);
                     return true;
                 }
                 if (i == size - 1)
@@ -205,10 +272,16 @@ namespace LTChess.Logic.Core
         /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
         /// <param name="MakeMoveNN">If true, updates the NNUE networks.</param>
         [MethodImpl(Inline)]
-        public void MakeMove(Move move, bool MakeMoveNN = true)
+        public void MakeMove(Move move)
         {
-            //  Copy the current state into the next one
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)sizeof(StateInfo));
+            //  Copy everything except the pointer to the accumulator, which should never change.
+            //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*)));
+
+            if (UseHalfKA && UpdateNN)
+            {
+                HalfKA_HM.MakeMove(this, move);
+            }
 
             //  Move onto the next state
             State++;
@@ -216,15 +289,10 @@ namespace LTChess.Logic.Core
             State->HalfmoveClock++;
             GamePly++;
 
-            if (UseSimple768 && MakeMoveNN)
+            if (UseSimple768 && UpdateNN)
             {
                 NNUEEvaluation.MakeMoveNN(this, move);
             }
-            else if (UseHalfKA && MakeMoveNN)
-            {
-                HalfKA_HM.MakeMove(this, move);
-            }
-
 
             if (ToMove == Color.Black)
             {
@@ -474,7 +542,7 @@ namespace LTChess.Logic.Core
 
 
         [MethodImpl(Inline)]
-        public void UnmakeMove(Move move, bool UnmakeMoveNN = true)
+        public void UnmakeMove(Move move)
         {
             int moveFrom = move.From;
             int moveTo = move.To;
@@ -582,15 +650,11 @@ namespace LTChess.Logic.Core
 
             ToMove = Not(ToMove);
 
-            if (UseSimple768 && UnmakeMoveNN)
+            if (UseSimple768 && UpdateNN)
             {
                 NNUEEvaluation.UnmakeMoveNN();
             }
 
-            if (UseHalfKA && UnmakeMoveNN)
-            {
-                Owner.AccumulatorIndex--;
-            }
         }
 
 
@@ -601,10 +665,12 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public void MakeNullMove()
         {
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)sizeof(StateInfo));
+            //  Copy everything except the pointer to the accumulator, which should never change.
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*)));
+            State->Accumulator->CopyTo(NextState->Accumulator);
+
             State++;
-
-
+            
             if (State->EPSquare != EPNone)
             {
                 //  Set EnPassantTarget to 64 now.
@@ -852,25 +918,6 @@ namespace LTChess.Logic.Core
             
             ulong currHash = State->Hash;
 
-#if DEBUG
-            if (Zobrist.GetHash(this) != currHash)
-            {
-                Debug.WriteLine("WARN Zobrist.GetHash returned '" + Zobrist.GetHash(this) + "' but State->Hash is " + State->Hash);
-            }
-
-            StateInfo* dbg = State;
-            List<ulong> Hashes = new List<ulong>(State->HalfmoveClock);
-            for (int i = 0; i < GamePly; i++)
-            {
-                Hashes.Add(dbg->Hash);
-                if (dbg == _SentinelStart)
-                {
-                    break;
-                }
-                dbg--;
-            }
-#endif
-
             //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
             //  If we encounter the current hash 2 additional times, then this is a draw.
 
@@ -924,9 +971,9 @@ namespace LTChess.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
-                MakeMove(m, false);
+                MakeMove(m);
                 n += Perft(depth - 1);
-                UnmakeMove(m, false);
+                UnmakeMove(m);
             }
             return n;
         }
@@ -950,9 +997,9 @@ namespace LTChess.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i];
-                MakeMove(m, true);
+                MakeMove(m);
                 n += PerftNN(depth - 1);
-                UnmakeMove(m, true);
+                UnmakeMove(m);
             }
 
             return n;
@@ -982,7 +1029,7 @@ namespace LTChess.Logic.Core
                 PerftNode pn = new PerftNode();
                 Position threadPosition = new Position(rootFEN, false, null);
                 pn.root = mlist[i].ToString();
-                threadPosition.MakeMove(mlist[i], false);
+                threadPosition.MakeMove(mlist[i]);
                 pn.number = threadPosition.Perft(depth - 1);
 
                 list.Add(pn);
@@ -1120,6 +1167,12 @@ namespace LTChess.Logic.Core
 
             MaterialCountNonPawn[White] = MaterialCount[White] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[White] & bb.Pieces[Pawn]));
             MaterialCountNonPawn[Black] = MaterialCount[Black] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[Black] & bb.Pieces[Pawn]));
+
+            if (UpdateNN)
+            {
+                State->Accumulator->RefreshPerspective[White] = true;
+                State->Accumulator->RefreshPerspective[Black] = true;
+            }
 
             if (UseHalfKA && popcount(bb.Occupancy) > HalfKA_HM.MaxActiveDimensions)
             {

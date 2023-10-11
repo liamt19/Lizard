@@ -163,7 +163,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int GetEvaluation(Position pos, bool adjusted = false)
         {
-            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
+            ref AccumulatorPSQT Accumulator = ref *(pos.State->Accumulator);
             return GetEvaluation(pos, ref Accumulator, adjusted);
         }
 
@@ -206,8 +206,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int moveFrom = m.From;
             int moveTo = m.To;
 
-            pos.Owner.CurrentAccumulator.CopyTo(ref pos.Owner.Accumulators[++pos.Owner.AccumulatorIndex]);
-            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
+            pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
+            ref AccumulatorPSQT Accumulator = ref *(pos.NextState->Accumulator);
 
             int us = bb.GetColorAtIndex(moveFrom);
             int them = Not(us);
@@ -534,7 +534,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
-            ref AccumulatorPSQT Accumulator = ref pos.Owner.CurrentAccumulator;
+            ref AccumulatorPSQT Accumulator = ref *(pos.State->Accumulator);
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {
@@ -666,8 +666,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 bb.AddPiece(i, pieceColor, pieceType);
 
-                pos.Owner.CurrentAccumulator.RefreshPerspective[White] = true;
-                pos.Owner.CurrentAccumulator.RefreshPerspective[Black] = true;
+                pos.State->Accumulator->RefreshPerspective[White] = true;
+                pos.State->Accumulator->RefreshPerspective[Black] = true;
                 int eval = GetEvaluation(pos, false);
 
                 bb.RemovePiece(i, pieceColor, pieceType);

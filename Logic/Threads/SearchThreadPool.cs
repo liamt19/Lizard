@@ -114,20 +114,16 @@ namespace LTChess.Logic.Threads
                     td.RootMoves.Add(new RootMove(moves[j]));
                 }
 
-                td.RootPosition = new Position(rootFEN, true, td);
+                td.RootPosition.LoadFromFEN(rootFEN);
+
+                Debug.Assert(td.RootPosition.Owner == td);
+                
                 foreach (var move in setup.SetupMoves)
                 {
                     td.RootPosition.MakeMove(move);
                 }
 
                 Debug.Assert((td.RootPosition.State->Hash) == (rootPosition.State->Hash));
-
-#if DEBUG
-                for (int j = 0; j < rootPosition.GamePly; j++)
-                {
-                    Debug.Assert(((td.RootPosition.StartingState + j)->Hash) == (rootPosition.StartingState + j)->Hash);
-                }
-#endif
             }
 
             SharedInfo.TimeManager.StartTimer();

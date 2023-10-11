@@ -91,14 +91,6 @@ namespace LTChess.Logic.Threads
         /// </summary>
         public List<RootMove> RootMoves = new List<RootMove>(20);
 
-
-        /// <summary>
-        /// A stack of Accumulators that this thread will use when it gets NNUE evaluation.
-        /// </summary>
-        public AccumulatorPSQT[] Accumulators;
-        public int AccumulatorIndex;
-        public ref AccumulatorPSQT CurrentAccumulator => ref Accumulators[AccumulatorIndex];
-
         /// <summary>
         /// The unique history heuristic table for this thread.
         /// </summary>
@@ -162,13 +154,6 @@ namespace LTChess.Logic.Threads
         {
             Quit = false;
 
-            Accumulators = new AccumulatorPSQT[Position.StateStackSize];
-            for (int i = 0; i < Accumulators.Length; i++)
-            {
-                Accumulators[i] = new AccumulatorPSQT();
-            }
-            AccumulatorIndex = 0;
-
             History = new HistoryTable();
 
             _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
@@ -176,6 +161,10 @@ namespace LTChess.Logic.Threads
             {
                 _SysThread.Name = "(MAIN)Thread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
             }
+
+            //  Each thread its own position object, which lasts the entire
+            //  lifetime of the thread.
+            RootPosition = new Position(InitialFEN, true, this);
 
             IdleLoop();
         }
@@ -445,11 +434,6 @@ namespace LTChess.Logic.Threads
             //  And free up the memory we allocated for this thread.
             History.Dispose();
 
-            for (int i = 0; i < Accumulators.Length; i++)
-            {
-                Accumulators[i].Dispose();
-            }
-
             Debug.WriteLine("Joining " + FriendlyName);
             //  Destroy the underlying system thread
             _SysThread.Join();
@@ -473,8 +457,6 @@ namespace LTChess.Logic.Threads
         /// </summary>
         public void Clear()
         {
-            AccumulatorIndex = 0;
-
             NativeMemory.Clear(History.MainHistory, sizeof(short) * HistoryTable.MainHistoryElements);
             NativeMemory.Clear(History.CaptureHistory, sizeof(short) * HistoryTable.CaptureHistoryElements);
 
