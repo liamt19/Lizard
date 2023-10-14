@@ -555,6 +555,14 @@ namespace LTChess.Logic.Core
             {
                 LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
             }
+
+
+
+            if (ServerGC)
+            {
+                //  Force a GC now if we are running in the server mode.
+                ForceGC();
+            }
         }
 
         public void HandleNewGame()

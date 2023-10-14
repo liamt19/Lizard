@@ -89,6 +89,8 @@ namespace LTChess.Logic.Util
         public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
 
 
+        public static readonly bool ServerGC = System.Runtime.GCSettings.IsServerGC;
+
         public static bool BlockOutputForJIT = false;
 
         public static bool IsRunningConcurrently = false;
@@ -117,6 +119,22 @@ namespace LTChess.Logic.Util
             }
 
             Debug.WriteLine(s);
+        }
+
+
+        /// <summary>
+        /// Forces a blocking and compacting garbage collection. 
+        /// <para></para>
+        /// I don't care what StackOverflow has to say about calling <see cref="GC.Collect"/> yourself.
+        /// There is no good reason to leave an additional 190 MB of RAM in use because the GC hasn't decided to deal with it yet.
+        /// <br></br>
+        /// I'd rather force it to collect during an opponent's turn than have it decide to collect during our own.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static void ForceGC()
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+            GC.WaitForPendingFinalizers();
         }
 
 

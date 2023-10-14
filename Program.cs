@@ -260,8 +260,7 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("gc"))
                 {
-                    GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive);
-                    GC.WaitForPendingFinalizers();
+                    ForceGC();
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {

@@ -192,6 +192,14 @@ namespace LTChess.Logic.Search
             }
 
             Log(sb.ToString());
+
+
+
+            if (ServerGC)
+            {
+                //  Force a GC now if we are running in the server mode.
+                ForceGC();
+            }
         }
 
         public override string ToString()
