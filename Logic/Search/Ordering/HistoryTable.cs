@@ -23,9 +23,6 @@ namespace LTChess.Logic.Search.Ordering
         public const int CaptureHistoryElements = ((ColorNB * PieceNB) * SquareNB * PieceNB);
 
 
-        //  5D arrays aren't real, they can't hurt you.
-        //  5D arrays:
-
         /// <summary>
         /// Index with [inCheck] [Capture]
         /// <para></para>
@@ -33,18 +30,27 @@ namespace LTChess.Logic.Search.Ordering
         /// and that PieceToHistory[0, 1, 2] is the correct PieceToHistory for a white (0) knight (1) moving to C1 (2).
         /// This is then used by <see cref="MoveOrdering"/>.AssignScores
         /// </summary>
-        public ContinuationHistory[][] Continuations;
+        public ContinuationHistory** Continuations;
 
         public HistoryTable()
         {
             MainHistory         = (short*) AlignedAllocZeroed(sizeof(short) * MainHistoryElements, AllocAlignment);
             CaptureHistory      = (short*) AlignedAllocZeroed(sizeof(short) * CaptureHistoryElements, AllocAlignment);
 
-            Continuations = new ContinuationHistory[2][]
-            {
-                    new ContinuationHistory[2] {new(), new()},
-                    new ContinuationHistory[2] {new(), new()},
-            };
+            //  5D arrays aren't real, they can't hurt you.
+            //  5D arrays:
+            Continuations = (ContinuationHistory**) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            ContinuationHistory* cont0 = (ContinuationHistory*) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            ContinuationHistory* cont1 = (ContinuationHistory*) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+
+            cont0[0] = new ContinuationHistory();
+            cont0[1] = new ContinuationHistory();
+
+            cont1[0] = new ContinuationHistory();
+            cont1[1] = new ContinuationHistory();
+
+            Continuations[0] = cont0;
+            Continuations[1] = cont1;
         }
 
         public void Dispose()
