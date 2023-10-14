@@ -87,7 +87,7 @@ namespace LTChess.Logic.Threads
             SharedInfo = rootInfo;          //  Initialize the shared SearchInformation
             SharedInfo.SearchActive = true; //  And mark this search as having started
 
-            Span<Move> moves = stackalloc Move[NormalListCapacity];
+            Move* moves = stackalloc Move[NormalListCapacity];
             int size = rootPosition.GenAllLegalMovesTogether(moves);
 
             var rootFEN = setup.StartFEN;

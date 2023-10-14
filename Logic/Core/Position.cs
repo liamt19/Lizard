@@ -233,7 +233,7 @@ namespace LTChess.Logic.Core
         /// <returns>True if <paramref name="moveStr"/> was a recognized and legal move.</returns>
         public bool TryMakeMove(string moveStr)
         {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(list);
             for (int i = 0; i < size; i++)
             {
@@ -246,7 +246,7 @@ namespace LTChess.Logic.Core
                 if (i == size - 1)
                 {
                     Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(list.Stringify(this) + "\r\n" + list.Stringify());
+                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
                 }
             }
             return false;
@@ -259,7 +259,7 @@ namespace LTChess.Logic.Core
         /// <returns>True if <paramref name="moveStr"/> was a recognized and legal move.</returns>
         public bool TryFindMove(string moveStr, out Move move)
         {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(list);
             for (int i = 0; i < size; i++)
             {
@@ -272,7 +272,7 @@ namespace LTChess.Logic.Core
                 if (i == size - 1)
                 {
                     Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(list.Stringify(this) + "\r\n" + list.Stringify());
+                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
                 }
             }
 
@@ -974,7 +974,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public ulong Perft(int depth)
         {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(list);
 
             if (depth == 1)
@@ -1000,7 +1000,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public ulong PerftNN(int depth)
         {
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(list);
 
             if (depth == 0)
@@ -1034,7 +1034,7 @@ namespace LTChess.Logic.Core
 
             string rootFEN = this.GetFEN();
 
-            Move[] mlist = new Move[NormalListCapacity];
+            Move* mlist = stackalloc Move[NormalListCapacity];
             int size = GenAllLegalMovesTogether(mlist);
 
             List<PerftNode> list = new List<PerftNode>(size);

@@ -17,7 +17,7 @@ namespace LTChess.Logic.Search.Ordering
         /// </param>
         /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
         public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory, 
-                                        Span<Move> list, in Span<int> scores, int size, CondensedMove ttMove)
+                                        Move* list, in Span<int> scores, int size, CondensedMove ttMove)
         {
             int pc = bb.GetColorAtIndex(list[0].From);
 
@@ -65,7 +65,7 @@ namespace LTChess.Logic.Search.Ordering
             }
         }
 
-        public static void OrderNextMove(in Span<Move> moves, in Span<int> scores, int size, int listIndex)
+        public static void OrderNextMove(in Move* moves, in Span<int> scores, int size, int listIndex)
         {
             if (size < 2)
             {

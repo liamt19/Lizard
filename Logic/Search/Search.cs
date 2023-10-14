@@ -275,7 +275,7 @@ namespace LTChess.Logic.Search
                                             null                        , (ss - 4)->ContinuationHistory,
                                             null                        , (ss - 6)->ContinuationHistory };
 
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
@@ -291,8 +291,8 @@ namespace LTChess.Logic.Search
             bool didSkip = false;
 
             Move* PV = stackalloc Move[MaxPly];
-            Span<Move> captureMoves = stackalloc Move[32];
-            Span<Move> quietMoves = stackalloc Move[64];
+            Move* captureMoves = stackalloc Move[32];
+            Move* quietMoves = stackalloc Move[64];
 
             int lmpCutoff = LMPTable[improving ? 1 : 0][depth];
 
@@ -705,7 +705,7 @@ namespace LTChess.Logic.Search
                                             null                        , (ss - 4)->ContinuationHistory,
                                             null                        , (ss - 6)->ContinuationHistory };
 
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllPseudoLegalMovesTogether(list);
 
             Span<int> scores = stackalloc int[size];
@@ -854,7 +854,7 @@ namespace LTChess.Logic.Search
         /// and <paramref name="quietCount"/> quiet moves stored in <paramref name="quietMoves"/>.
         /// </summary>
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
-                                Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
+                                Move* quietMoves, int quietCount, Move* captureMoves, int captureCount)
         {
             ref HistoryTable history = ref pos.Owner.History;
             int moveFrom = bestMove.From;

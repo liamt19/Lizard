@@ -328,7 +328,7 @@ namespace LTChess
 
             Stopwatch sw = Stopwatch.StartNew();
 
-            Span<Move> mlist = stackalloc Move[NormalListCapacity];
+            Move* mlist = stackalloc Move[NormalListCapacity];
             int size = pos.GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
             {
@@ -350,7 +350,7 @@ namespace LTChess
 
             string rootFEN = p.GetFEN();
 
-            Move[] mlist = new Move[NormalListCapacity];
+            Move* mlist = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMovesTogether(mlist);
 
             ParallelOptions opts = new ParallelOptions();
@@ -402,7 +402,7 @@ namespace LTChess
 
             Log("\r\nMove evaluations (White's perspective):");
 
-            Span<Move> list = stackalloc Move[NormalListCapacity];
+            Move* list = stackalloc Move[NormalListCapacity];
             int size = p.GenAllLegalMovesTogether(list);
             List<(Move mv, int eval)> scoreList = new();
 
@@ -471,15 +471,15 @@ namespace LTChess
 
         private static void PrintMoves()
         {
-            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
+            Move* pseudo = stackalloc Move[NormalListCapacity];
             int pseudoCnt = p.GenAllPseudoLegalMovesTogether(pseudo);
 
-            Log("Pseudo: [" + pseudo.Stringify(p, pseudoCnt) + "]");
+            Log("Pseudo: [" + Stringify(pseudo, p, pseudoCnt) + "]");
 
-            Span<Move> legal = stackalloc Move[NormalListCapacity];
+            Move* legal = stackalloc Move[NormalListCapacity];
             int legalCnt = p.GenAllLegalMovesTogether(legal);
 
-            Log("Legal: [" + legal.Stringify(p, legalCnt) + "]");
+            Log("Legal: [" + Stringify(legal, p, legalCnt) + "]");
         }
 
         public static void DotTraceProfile(int depth = 24)

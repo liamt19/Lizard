@@ -124,7 +124,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             var accumulation = accumulator[perspective];
             var PSQTaccumulation = accumulator.PSQ(perspective);
 
-            Span<Vector256<short>> acc = stackalloc Vector256<short>[NumRegs];
+            Vector256<short>* acc = stackalloc Vector256<short>[NumRegs];
 
             for (int j = 0; j < HalfDimensions / TileHeight; j++)
             {
@@ -155,7 +155,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
             }
 
-            Span<Vector256<int>> psq = stackalloc Vector256<int>[NumPsqtRegs];
+            Vector256<int>* psq = stackalloc Vector256<int>[NumPsqtRegs];
             for (int j = 0; j < PSQTBuckets / PsqtTileHeight; j++)
             {
                 for (int k = 0; k < NumPsqtRegs; k++)

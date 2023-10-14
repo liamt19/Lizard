@@ -500,10 +500,13 @@ namespace LTChess.Logic.Util
             return sb.ToString();
         }
 
+
         /// <summary>
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// This would return something similar to "g1f3, e2e4, d2d4".
         /// </summary>
+        public static unsafe string Stringify(Move* list, int listSize = 0) => Stringify(new Span<Move>(list, listSize), listSize);
+
         public static string Stringify(this Span<Move> list, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
@@ -524,10 +527,13 @@ namespace LTChess.Logic.Util
             return sb.ToString();
         }
 
+
         /// <summary>
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// So instead of seeing "g1f3, e2e4, d2d4" it would show "Nf3, e4, d4".
         /// </summary>
+        public static unsafe string Stringify(Move* list, Position position, int listSize = 0) => Stringify(new Span<Move>(list, listSize), position, listSize);
+
         public static string Stringify(this Span<Move> list, Position position, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
@@ -548,6 +554,8 @@ namespace LTChess.Logic.Util
             }
             return sb.ToString();
         }
+
+
 
         //  https://stackoverflow.com/questions/18573004/how-to-center-align-arguments-in-a-format-string
         public static string CenteredString(string s, int width)

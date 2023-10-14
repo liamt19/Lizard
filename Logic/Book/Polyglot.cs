@@ -49,8 +49,9 @@ namespace LTChess.Logic.Book
 
                     weight = entry.Weight;
 
-                    Span<Move> legal = stackalloc Move[NormalListCapacity];
-                    int size = pos.GenAllLegalMovesTogether(legal);
+                    Move* legalPtr = stackalloc Move[NormalListCapacity];
+                    int size = pos.GenAllLegalMovesTogether(legalPtr);
+                    Span<Move> legal = new Span<Move>(legalPtr, size);
 
                     foreach (Move m in legal)
                     {

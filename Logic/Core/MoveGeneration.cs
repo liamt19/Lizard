@@ -17,9 +17,9 @@ namespace LTChess.Logic.Core
         /// <param name="legal">A Span of Move with sufficient size for the number of legal moves.</param>
         /// <returns>The number of legal moves generated and inserted into <paramref name="legal"/></returns>
         [MethodImpl(Inline)]
-        public int GenAllLegalMovesTogether(in Span<Move> legal, bool onlyCaptures = false)
+        public int GenAllLegalMovesTogether(in Move* legal, bool onlyCaptures = false)
         {
-            Span<Move> pseudo = stackalloc Move[NormalListCapacity];
+            Move* pseudo = stackalloc Move[NormalListCapacity];
             int size = 0;
 
             ulong pinned = State->BlockingPieces[ToMove];
@@ -63,7 +63,7 @@ namespace LTChess.Logic.Core
         /// <param name="pseudo">A Span of Move with sufficient size for the number of pseudo-legal moves.</param>
         /// <returns>The number of pseudo-legal moves generated and inserted into <paramref name="pseudo"/></returns>
         [MethodImpl(Inline)]
-        public int GenAllPseudoLegalMovesTogether(in Span<Move> pseudo, bool onlyCaptures = false)
+        public int GenAllPseudoLegalMovesTogether(in Move* pseudo, bool onlyCaptures = false)
         {
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
@@ -88,7 +88,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal pawn moves available to the side to move in the position, including en passant moves.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllPawnMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllPawnMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             ulong rank7 = (ToMove == Color.White) ? Rank7BB : Rank2BB;
             ulong rank3 = (ToMove == Color.White) ? Rank3BB : Rank6BB;
@@ -230,7 +230,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal knight moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllKnightMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllKnightMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Knight] & us);
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -266,7 +266,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal bishop moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllBishopMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllBishopMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Bishop] & us);
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -302,7 +302,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal rook moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllRookMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllRookMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Rook] & us);
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -338,7 +338,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal queen moves available to the side to move in the position.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllQueenMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllQueenMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             ulong ourPieces = (bb.Pieces[Piece.Queen] & us);
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -374,7 +374,7 @@ namespace LTChess.Logic.Core
         /// Generates all pseudo-legal king moves available to the side to move in the position, including castling moves.
         /// </summary>
         [MethodImpl(Inline)]
-        public int GenAllKingMoves(ulong us, ulong them, in Span<Move> ml, int size, bool onlyCaptures = false)
+        public int GenAllKingMoves(ulong us, ulong them, in Move* ml, int size, bool onlyCaptures = false)
         {
             int idx = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -565,7 +565,7 @@ namespace LTChess.Logic.Core
         /// if those promotions will put the enemy king in check or double check.
         /// </summary>
         [MethodImpl(Inline)]
-        private int MakePromotionChecks(int from, int promotionSquare, int ourColor, int theirKing, in Span<Move> ml, int size)
+        private int MakePromotionChecks(int from, int promotionSquare, int ourColor, int theirKing, in Move* ml, int size)
         {
             //int theirColor = Not(ourColor);
             ulong us = bb.Colors[ourColor];
