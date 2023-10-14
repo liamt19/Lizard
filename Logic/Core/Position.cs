@@ -182,7 +182,7 @@ namespace LTChess.Logic.Core
             if (UpdateNN && Owner == null)
             {
                 Log("WARN Position('" + fen + "', " + createAccumulators + ", ...) has ResetNN true and was given a nullptr for owner! (if ResetNN is true, an owner must be provided)");
-                Log("Assigning this Position instance to the SearchPool's MainThread, UB and other wierdness may occur...");
+                Log("Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
                 Owner = SearchPool.MainThread;
             }
 
