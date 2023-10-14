@@ -295,21 +295,15 @@
         [MethodImpl(Inline)]
         public ulong AttackMask(int idx, int pc, int pt, ulong occupied)
         {
-            switch (pt)
+            return pt switch
             {
-                case Pawn:
-                    return PawnAttackMasks[pc][idx];
-                case Knight:
-                    return (KnightMasks[idx]);
-                case Bishop:
-                    return (GetBishopMoves(occupied, idx));
-                case Rook:
-                    return (GetRookMoves(occupied, idx));
-                case Queen:
-                    return (GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx));
-            }
-
-            return 0;
+                Pawn =>    PawnAttackMasks[pc][idx],
+                Knight => (KnightMasks[idx]),
+                Bishop => (GetBishopMoves(occupied, idx)),
+                Rook =>   (GetRookMoves(occupied, idx)),
+                Queen =>  (GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx)),
+                _ => 0,
+            };
         }
 
 

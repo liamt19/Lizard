@@ -241,13 +241,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
                 else if (m.Castle)
                 {
-
+                    //  The generated freaks out about these switch statements not covering all options (although in practice they did),
+                    //  so giving it these the default option of "G8" reduces the code size by about 5%.
                     int rookFrom = moveTo switch
                     {
                         C1 => A1,
                         G1 => H1,
                         C8 => A8,
-                        G8 => H8,
+                        _ => H8,    //  G8 => H8
                     };
 
                     int rookTo = moveTo switch
@@ -255,7 +256,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         C1 => D1,
                         G1 => F1,
                         C8 => D8,
-                        G8 => F8,
+                        _ => F8,    //  G8 => F8
                     };
 
                     RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookFrom, FishPiece(Piece.Rook, us), theirKing));
