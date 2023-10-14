@@ -7,22 +7,103 @@
     <Nullable>enable</Nullable>
     <Platforms>x64</Platforms>
     <StartupObject>LTChess.Program</StartupObject>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <BaseOutputPath>bin</BaseOutputPath>
     <BaseIntermediateOutputPath>obj</BaseIntermediateOutputPath>
-	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-	<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-	<DebugType>portable</DebugType>
-	<GenerateDocumentationFile>False</GenerateDocumentationFile>
-	<ProduceReferenceAssembly>False</ProduceReferenceAssembly>
-  <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-  <EnablePreviewFeatures>true</EnablePreviewFeatures>
-  <LangVersion>latest</LangVersion>
-  
+	  <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	  <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    
+    <DebugType>portable</DebugType>
+    <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
+    <GenerateDocumentationFile>False</GenerateDocumentationFile>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <GenerateDependencyFile>false</GenerateDependencyFile>
 
-    <PublishReadyToRun>true</PublishReadyToRun>
+    <EnablePreviewFeatures>true</EnablePreviewFeatures>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+
     <PublishSingleFile>true</PublishSingleFile>
+
+
+
+    <!-- ################################################### -->
+    <!-- ##########   Good Switches (no touchy)   ########## -->
+    <!-- ################################################### -->
+
+    <!-- Tiered PGO lets the JIT collect information on how individual methods are called/used, and can
+         give them optimizations based on its observations which it otherwise couldn't have if the code was
+         optimized before launching. 
+         
+         In my testing, this can only help make methods faster, especially some of the smaller functions that are
+         called frequently. The JIT seems to like adding additional jumps+branches to them to address some common cases.
+         For example, MakeMove can be generated with an additional 200-300 bytes of generated code that are only for king moves,
+         which presumably help performance when it is called from some other method.
+    -->
+    <TieredPGO>true</TieredPGO>
+    
+    
+    <!-- Tiered Compilation will optimize methods in the background, after they have run a few times (30+).
+         It will eventually generate code that is approximately as good as FullOpts, but this can be nice to have for
+         a startup performance.
+    -->
+    <TieredCompilation>true</TieredCompilation>
+
+
+    
+    
+
+
+    <!-- ####################################### -->
+    <!-- ##########    OK Switches    ########## -->
+    <!-- ####################################### -->
+    
+    <!-- R2R doesn't appear to make a meaningful performance impact.
+         The Microsoft docs basically states that "AOT code isn't as good as JIT code, 
+         so tiered compilation will replace the most commonly used R2R methods with JIT code"
+         (https://learn.microsoft.com/en-us/dotnet/core/deploying/ready-to-run#interaction-with-tiered-compilation)
+         
+         Although logically I don't see what the point is of leaving unoptimized non-"most commonly used" R2R code floating around,
+         but this doesn't seem to make a big difference either way
+    -->
+    <PublishReadyToRun>true</PublishReadyToRun>
+
+    
+    <!-- Quick JIT is bad for startup performance, but might give better results later on.
+         If this is true, then the generated code for most methods will show up as "Tier0", "Instrumented Tier0", and later "Tier1".
+         If this is false and R2R is false, then TieredCompilation will be disabled as well.
+         
+         For those that are curious:
+         In large methods, Tier1 code is basically impossible to decompile and optimize.
+         At the time of writing, HalfKA_HM.MakeMove goes from ~1080 bytes as FullOpts to ~2050 bytes in Tier1.
+         In Tier1, it even has a call to Console.WriteLine, and I couldn't say where that is coming from if my life depended on it :)
+    -->
+    <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
+
+
+    <!-- If true, GC collections will be less frequent but more intensive and can take place on multiple threads (like an additional 12).
+         The process RAM usage will greatly increase before dropping sharply, as opposed to workstation GC which remains fairly constant.
+         This can help prevent some of the otherwise frequent ~10-15 ms pauses and defer them until a good time.
+    -->
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+
+    
+    
+    
+    
+
+
+    <!-- ################################################## -->
+    <!-- ##########   Bad Switches (no touchy)   ########## -->
+    <!-- ################################################## -->
+
+    <!-- Quick JIT for loops will be disabled if TieredCompilationQuickJit is disabled above, but disable it here just in case.  
+         This really doesn't appear to have any redeeming qualities.
+    -->
+    <TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
+
+
+    
+    
     <Configurations>Debug;Release</Configurations>
     <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
     
