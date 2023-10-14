@@ -1054,14 +1054,5 @@ namespace LTChess.Logic.Search
         }
 
 
-
-        /// <summary>
-        /// Returns the PV line from a search, which is the series of moves that the engine thinks will be played.
-        /// </summary>
-        public static int GetPV(in Move[] moves, ref SearchInformation info)
-        {
-            return 1;
-        }
-
     }
 }

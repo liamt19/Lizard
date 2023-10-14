@@ -282,9 +282,10 @@ namespace LTChess.Logic.Core
 
         /// <summary>
         /// Copies the current state into the <paramref name="newState"/>, then performs the move <paramref name="move"/>.
+        /// <br></br>
+        /// If <see cref="UpdateNN"/> is true, this method will also update the NNUE networks.
         /// </summary>
         /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
-        /// <param name="MakeMoveNN">If true, updates the NNUE networks.</param>
         [MethodImpl(Inline)]
         public void MakeMove(Move move)
         {
@@ -554,7 +555,7 @@ namespace LTChess.Logic.Core
             SetCheckInfo();
         }
 
-
+        
         [MethodImpl(Inline)]
         public void UnmakeMove(Move move)
         {

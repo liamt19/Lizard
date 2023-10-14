@@ -26,13 +26,6 @@
         public const int VerizonDisconnectionBuffer = 10 * 1000;
 
 
-
-        /// <summary>
-        /// Every 4095 nodes, check to see if we are near or at the maximum search time.
-        /// </summary>
-        public const int SearchCheckInCount = 4095;
-
-
         /// <summary>
         /// The default depth to search to.
         /// </summary>
