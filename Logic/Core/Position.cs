@@ -1066,6 +1066,7 @@ namespace LTChess.Logic.Core
                 HalfMoves = 0;
                 FullMoves = 1;
 
+                State = StartingState;
                 State->CastleStatus = CastlingStatus.None;
                 State->HalfmoveClock = 0;
 
