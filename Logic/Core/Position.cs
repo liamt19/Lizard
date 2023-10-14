@@ -72,6 +72,7 @@ namespace LTChess.Logic.Core
         /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
         /// </summary>
         private readonly StateInfo* _SentinelStart;
+        private readonly StateInfo* _SentinelEnd;
 
         /// <summary>
         /// The initial StateInfo.
@@ -91,7 +92,19 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// The StateInfo after the current one, which hopefully is within the bounds of <see cref="StateStackSize"/>
         /// </summary>
-        public StateInfo* NextState => (State + 1);
+        public StateInfo* NextState
+        {
+            get
+            {
+                if (State == _SentinelEnd)
+                {
+                    Log("ERROR: Current State is _SentinelEnd, and getting NextState is OOB!");
+                    return null;
+                }
+
+                return (State + 1);
+            }
+        }
 
 
 
@@ -144,6 +157,7 @@ namespace LTChess.Logic.Core
             StateInfo* StateStack = (StateInfo*)_stateBlock;
 
             _SentinelStart = &StateStack[0];
+            _SentinelEnd = &StateStack[StateStackSize - 1];
             State = &StateStack[0];
 
             if (UpdateNN)
