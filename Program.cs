@@ -321,21 +321,26 @@ namespace LTChess
         public static void DoPerftDivide(int depth, bool sortAlphabetical = true)
         {
             ulong total = 0;
+
+            //  The Position "p" has UpdateNN == true, which we don't want
+            //  for purely Perft usage.
+            Position pos = new Position(p.GetFEN(), false, null);
+
             Stopwatch sw = Stopwatch.StartNew();
 
             Span<Move> mlist = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllLegalMovesTogether(mlist);
+            int size = pos.GenAllLegalMovesTogether(mlist);
             for (int i = 0; i < size; i++)
             {
-                p.MakeMove(mlist[i]);
-                ulong result = p.Perft(depth - 1);
-                p.UnmakeMove(mlist[i]);
+                pos.MakeMove(mlist[i]);
+                ulong result = pos.Perft(depth - 1);
+                pos.UnmakeMove(mlist[i]);
                 Log(mlist[i].ToString() + ": " + result);
                 total += result;
             }
             sw.Stop();
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int) (total / sw.Elapsed.TotalSeconds)).ToString("N0") + ") nps" + "\r\n");
         }
 
         public static void DoPerftDivideParallel(int depth)
@@ -363,7 +368,7 @@ namespace LTChess
 
             sw.Stop();
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + ") nps" + "\r\n");
         }
 
 
