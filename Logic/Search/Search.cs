@@ -169,39 +169,39 @@ namespace LTChess.Logic.Search
                 }
             }
 
-
-
             if (ss->InCheck)
             {
                 ss->StaticEval = eval = ScoreNone;
                 goto MovesLoop;
             }
-            else
+            
+            if (doSkip)
             {
-                if (ss->TTHit)
-                {
-                    ss->StaticEval = eval = tte->StatEval;
-                    if (ss->StaticEval == ScoreNone)
-                    {
-                        ss->StaticEval = eval = info.GetEvaluation(pos);
-                    }
-
-                    if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
-                    {
-                        eval = ttScore;
-                    }
-                }
-                else if (!doSkip)
+                eval = ss->StaticEval;
+            }
+            else if (ss->TTHit)
+            {
+                ss->StaticEval = eval = tte->StatEval;
+                if (ss->StaticEval == ScoreNone)
                 {
                     ss->StaticEval = eval = info.GetEvaluation(pos);
-                    tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
                 }
 
-                if (ss->Ply >= 2)
+                if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
                 {
-                    improving = ss->StaticEval > ((ss - 2)->StaticEval != ScoreNone ? (ss - 2)->StaticEval :
-                                                 ((ss - 4)->StaticEval != ScoreNone ? (ss - 4)->StaticEval : 173));
+                    eval = ttScore;
                 }
+            }
+            else
+            {
+                ss->StaticEval = eval = info.GetEvaluation(pos);
+                tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
+            }
+
+            if (ss->Ply >= 2)
+            {
+                improving = ss->StaticEval > ((ss - 2)->StaticEval != ScoreNone ? (ss - 2)->StaticEval :
+                                             ((ss - 4)->StaticEval != ScoreNone ? (ss - 4)->StaticEval : 173));
             }
 
 
