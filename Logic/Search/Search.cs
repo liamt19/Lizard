@@ -835,7 +835,10 @@ namespace LTChess.Logic.Search
         }
 
 
-
+        /// <summary>
+        /// Appends the <paramref name="move"/> to the <paramref name="pv"/>, and then appends each non-null move 
+        /// in <paramref name="childPV"/> to <paramref name="pv"/>.
+        /// </summary>
         private static void UpdatePV(Move* pv, Move move, Move* childPV)
         {
             for (*pv++ = move; childPV != null && *childPV != Move.Null;)
@@ -845,6 +848,11 @@ namespace LTChess.Logic.Search
             *pv = Move.Null;
         }
 
+        /// <summary>
+        /// Updates the killer moves for <paramref name="ss"/>, and applies bonuses or penalties to the 
+        /// <paramref name="captureCount"/> captures stored in <paramref name="captureMoves"/>, 
+        /// and <paramref name="quietCount"/> quiet moves stored in <paramref name="quietMoves"/>.
+        /// </summary>
         private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
                                 Span<Move> quietMoves, int quietCount, Span<Move> captureMoves, int captureCount)
         {
@@ -891,6 +899,10 @@ namespace LTChess.Logic.Search
             }
         }
 
+        /// <summary>
+        /// Applies the <paramref name="bonus"/> to the continuation history for the previous 1, 2, 4, and 6 plies, 
+        /// given the piece of type <paramref name="pt"/> and color <paramref name="pc"/> moving to the square <paramref name="sq"/>
+        /// </summary>
         private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
         {
             foreach (int i in new int[] {1, 2, 4, 6})
@@ -908,13 +920,18 @@ namespace LTChess.Logic.Search
             }
         }
 
+        /// <summary>
+        /// Calculates a bonus, given the current <paramref name="depth"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         private static int StatBonus(int depth)
         {
             return Math.Min(250 * depth - 100, 1700);
         }
 
-
+        /// <summary>
+        /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our static evaluation is <paramref name="improving"/> or not.
+        /// </summary>
         [MethodImpl(Inline)]
         public static int GetReverseFutilityMargin(int depth, bool improving)
         {
