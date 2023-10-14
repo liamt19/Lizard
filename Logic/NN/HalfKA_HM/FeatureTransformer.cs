@@ -82,6 +82,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             var psqt = (accumulator.PSQ(perspectives[0])[0][bucket] -
                         accumulator.PSQ(perspectives[1])[0][bucket]) / 2;
 
+            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);            
+
             for (int p = 0; p < 2; p++)
             {
                 var accumulation = accumulator[perspectives[p]];
@@ -100,7 +102,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<long> permuted = Avx2.Permute4x64(saturated.AsInt64(), Control);
 
                     int storeIdx = (int)((offset) + (j * VSize.SByte));
-                    Avx.Store((long*)Unsafe.AsPointer(ref output[storeIdx]), permuted);
+                    Avx.Store((long*)(outputPtr + storeIdx), permuted);
                 }
             }
 
@@ -142,9 +144,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         break;
                     }
 
+                    var offset = RelativeWeightIndex * index + j * RelativeTileHeight;
+                    Vector256<short>* column = &Weights[offset];
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        acc[k] = Add256(acc[k], Weights[((RelativeWeightIndex * index + j * RelativeTileHeight) + k)]);
+                        acc[k] = Add256(acc[k], column[k]);
                     }
                 }
 
