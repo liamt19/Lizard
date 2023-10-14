@@ -206,8 +206,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int moveFrom = m.From;
             int moveTo = m.To;
 
-            pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
-            ref AccumulatorPSQT Accumulator = ref *(pos.NextState->Accumulator);
+            AccumulatorPSQT* accumulator = pos.NextState->Accumulator;
+            pos.State->Accumulator->CopyTo(accumulator);
 
             int us = bb.GetColorAtIndex(moveFrom);
             int them = Not(us);
@@ -218,11 +218,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int ourKing = pos.State->KingSquares[us];
             int theirKing = pos.State->KingSquares[them];
 
-            var ourAccumulation = Accumulator[us];
-            var theirAccumulation = Accumulator[them];
+            Vector256<short>* ourAccumulation = (*accumulator)[us];
+            Vector256<short>* theirAccumulation = (*accumulator)[them];
 
-            var ourPsq = Accumulator.PSQ(us);
-            var theirPsq = Accumulator.PSQ(them);
+            Vector256<int>* ourPsq = accumulator->PSQ(us);
+            Vector256<int>* theirPsq = accumulator->PSQ(them);
 
 
             if (ourPiece == Piece.King)
@@ -230,7 +230,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 //  When we make a king move, we will need to do a full recalculation of our features.
                 //  We can still update the opponent's side however, since their features are dependent on where THEIR king is, not ours.
                 //  This saves us a bit of time later since we won't need to refresh both sides for every king move.
-                Accumulator.RefreshPerspective[us] = true;
+                accumulator->RefreshPerspective[us] = true;
 
                 RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing));
                 AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing));
