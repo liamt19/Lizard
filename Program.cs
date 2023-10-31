@@ -155,7 +155,11 @@ namespace LTChess
                     if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
                     {
                         int depth = int.Parse(param[2]);
-                        Task.Run(() => DoPerftDivideParallel(depth));
+                        Task.Run(() =>
+                        {
+                            Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
+                            temp.PerftParallel(depth, true);
+                        });
                         continue;
                     }
                     else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
@@ -349,36 +353,7 @@ namespace LTChess
 
             Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int) (total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
-
-        public static void DoPerftDivideParallel(int depth)
-        {
-            ulong total = 0;
-            Stopwatch sw = Stopwatch.StartNew();
-
-            string rootFEN = p.GetFEN();
-
-            Move* mlist = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllLegalMovesTogether(mlist);
-
-            ParallelOptions opts = new ParallelOptions();
-            opts.MaxDegreeOfParallelism = size;
-            Parallel.For(0u, size, opts, i =>
-            {
-                Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
-
-                threadPosition.MakeMove(mlist[i]);
-                ulong result = threadPosition.Perft(depth - 1);
-                Log(mlist[i].ToString() + ": " + result);
-
-                total += result;
-            });
-
-            sw.Stop();
-
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + ") nps" + "\r\n");
-        }
-
-
+        
         public static void PrintSearchInfo()
         {
             Log(info.ToString());

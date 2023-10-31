@@ -1111,6 +1111,49 @@ namespace LTChess.Logic.Core
             return n;
         }
 
+        private Stopwatch PerftTimer = new Stopwatch();
+        private const int PerftParallelMinDepth = 6;
+        [MethodImpl(Inline)]
+        public ulong PerftParallel(int depth, bool isRoot = false)
+        {
+            if (isRoot)
+            {
+                PerftTimer.Restart();
+            }
+
+            //  This needs to be a pointer since a Span is a ref local and they can't be used inside of lambda functions.
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            int size = GenLegal(list);
+
+            ulong n = 0;
+
+            string rootFEN = GetFEN();
+
+            ParallelOptions opts = new ParallelOptions();
+            opts.MaxDegreeOfParallelism = MoveListSize;
+            Parallel.For(0u, size, opts, i =>
+            {
+                Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
+
+                threadPosition.MakeMove(list[i].Move);
+                ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
+                if (isRoot)
+                {
+                    Log(list[i].Move.ToString() + ": " + result);
+                }
+                n += result;
+            });
+
+            if (isRoot)
+            {
+                PerftTimer.Stop();
+                Log("\r\nNodes searched:  " + n + " in " + PerftTimer.Elapsed.TotalSeconds + " s (" + ((int)(n / PerftTimer.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+                PerftTimer.Reset();
+            }
+
+            return n;
+        }
+
         /// <summary>
         /// Same as perft but returns the evaluation at each of the leaves. 
         /// Only for benchmarking/debugging.
@@ -1139,37 +1182,6 @@ namespace LTChess.Logic.Core
         }
 
 
-        /// <summary>
-        /// Same as PerftDivide, but uses Parallel.For rather than a regular for loop.
-        /// This ran 5-6x faster for me on a Core i5-12500H.
-        /// </summary>
-        public List<PerftNode> PerftDivideParallel(int depth)
-        {
-            if (depth <= 0)
-            {
-                return new List<PerftNode>();
-            }
-
-            string rootFEN = this.GetFEN();
-
-            Move* mlist = stackalloc Move[NormalListCapacity];
-            int size = GenAllLegalMovesTogether(mlist);
-
-            List<PerftNode> list = new List<PerftNode>(size);
-
-            Parallel.For(0, size, i =>
-            {
-                PerftNode pn = new PerftNode();
-                Position threadPosition = new Position(rootFEN, false, null);
-                pn.root = mlist[i].ToString();
-                threadPosition.MakeMove(mlist[i]);
-                pn.number = threadPosition.Perft(depth - 1);
-
-                list.Add(pn);
-            });
-
-            return list;
-        }
 
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
