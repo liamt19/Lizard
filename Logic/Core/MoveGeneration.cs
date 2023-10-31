@@ -548,7 +548,14 @@ namespace LTChess.Logic.Core
                         m.CausesCheck = true;
                     }
 
-                    Debug.Assert((State->Xrays[ourColor] & XrayBB[theirKing][moveFrom]) != 0);
+                    if (EnableAssertions)
+                    {
+                        Assert((State->Xrays[ourColor] & XrayBB[theirKing][moveFrom]) != 0,
+                            "The piece causing a discovered check should be aligned on the XrayBB between "
+                            + theirKing + " and " + moveFrom + " (which is " + XrayBB[theirKing][moveFrom] + ")."
+                            + "This ray should have shared a bit with something in State->Xrays[" + ColorToString(ourColor) + "] (which is " + State->Xrays[ourColor] + "),"
+                            + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == LSBEmpty)");
+                    }
 
                     //  The piece causing the discovery is the xrayer of our color 
                     //  that is on the same ray that the piece we were moving shared with the king.

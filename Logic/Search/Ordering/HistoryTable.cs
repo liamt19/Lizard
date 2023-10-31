@@ -97,6 +97,13 @@ namespace LTChess.Logic.Search.Ordering
             int y = (toSquare);
             int z = (capturedPt);
 
+            if (EnableAssertions)
+            {
+                int idx = ((z * xMax * yMax) + (y * xMax) + x);
+                Assert(idx is >= 0 and < CaptureHistoryElements, 
+                    "CapIndex(" + pt + ", " + pc + ", " + toSquare + ", " + capturedPt + ") == " + idx + " is OOB! (should be 0 <= idx < " + CaptureHistoryElements + ")");
+            }
+
             return (z * xMax * yMax) + (y * xMax) + x;
         }
     }
@@ -175,6 +182,12 @@ namespace LTChess.Logic.Search.Ordering
         [MethodImpl(Inline)]
         public static int GetIndex(int pc, int pt, int sq)
         {
+            if (EnableAssertions)
+            {
+                Assert((((pt + (PieceNB * pc)) * DimX) + sq) is >= 0 and < (int)Length, 
+                    "GetIndex(" + pc + ", " + pt + ", " + sq + ") is OOB! (should be 0 <= idx < " + Length + ")");
+            }
+            
             return (((pt + (PieceNB * pc)) * DimX) + sq);
         }
 

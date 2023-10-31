@@ -11,6 +11,8 @@ namespace LTChess.Logic.Transposition
         public const int TT_AGE_INC    = (0x8             );
         public const int TT_AGE_CYCLE  = (255 + TT_AGE_INC);
 
+        private const int MinTTClusters = 1000;
+
         public const int EntriesPerCluster = 3;
         private static TTCluster* Clusters;
         private static ulong ClusterCount;
@@ -23,6 +25,13 @@ namespace LTChess.Logic.Transposition
             if (!Initialized)
             {
                 Initialize();
+
+                if (EnableAssertions)
+                {
+                    Assert(ClusterCount > MinTTClusters,
+                        "The Transposition Table is undersized! It must have space for at least " + MinTTClusters + " clusters, " +
+                        "but it currently can only fit " + ClusterCount);
+                }
             }
         }
 
@@ -148,7 +157,6 @@ namespace LTChess.Logic.Transposition
         public static int GetHashFull()
         {
             int entries = 0;
-            Debug.Assert(ClusterCount > 1000, "Hash is undersized!");
 
             if (true)
             {

@@ -421,12 +421,17 @@ namespace LTChess.Logic.Threads
 
             if (disposing)
             {
-                Debug.Assert(Searching == false);
+                if (EnableAssertions)
+                {
+                    Assert(Searching == false, 
+                        "The search thread '" + ToString() + "' had its Dispose(" + disposing + ") method called " +
+                        "while the thread's Searching field was " + Searching + "! " +
+                        "A thread may only be disposed if it isn't currently in a search.");
+                }
 
                 //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
                 Quit = true;
 
-                Debug.WriteLine("Set Quit to " + Quit + " for " + FriendlyName);
                 PrepareToSearch();
             }
 
@@ -434,7 +439,6 @@ namespace LTChess.Logic.Threads
             //  And free up the memory we allocated for this thread.
             History.Dispose();
 
-            Debug.WriteLine("Joining " + FriendlyName);
             //  Destroy the underlying system thread
             _SysThread.Join();
 

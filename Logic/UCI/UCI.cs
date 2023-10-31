@@ -216,7 +216,13 @@ namespace LTChess.Logic.Core
                     }
                     else
                     {
-                        Debug.Assert(param[0] == "fen");
+                        if (EnableAssertions)
+                        {
+                            Assert(param[0] == "fen", 
+                                "The first parameter for a 'position' UCI command was '" + param[0] + "', but it should have been 'fen'! " +
+                                "A 'position' command must either be followed by 'startpos' for the initial position, or by 'fen ...' for an arbitrary FEN.");
+                        }
+
                         string fen = param[1];
 
                         bool hasExtraMoves = false;
@@ -411,11 +417,17 @@ namespace LTChess.Logic.Core
                 }
                 else if (param[i] == "infinite")
                 {
-                    //  TODO: These are to make sure that a plain "go" command is treated the same as a "go infinite",
-                    //  and that a "go infinite" shouldn't actually have to change any of the constraints.
-                    Debug.Assert(info.MaxNodes == ulong.MaxValue - 1);
-                    Debug.Assert(info.TimeManager.MaxSearchTime == MaxSearchTime);
-                    Debug.Assert(info.MaxDepth == MaxDepth);
+                    if (EnableAssertions)
+                    {
+                        Assert(info.MaxNodes == MaxSearchNodes,
+                            "An infinite search command should have MaxNodes == " + MaxSearchNodes + ", but it was " + info.MaxNodes);
+                        
+                        Assert(info.TimeManager.MaxSearchTime == MaxSearchTime,
+                            "An infinite search command should have MaxSearchTime == " + MaxSearchTime + ", but it was " + info.TimeManager.MaxSearchTime);
+                        
+                        Assert(info.MaxDepth == MaxDepth,
+                            "An infinite search command should have MaxDepth == " + MaxDepth + ", but it was " + info.MaxDepth);
+                    }
 
                     info.MaxNodes = MaxSearchNodes;
                     info.TimeManager.MaxSearchTime = MaxSearchTime;

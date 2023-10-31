@@ -368,6 +368,13 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             ulong us = bb.Colors[perspective];
             ulong them = bb.Colors[Not(perspective)];
+
+            if (EnableAssertions)
+            {
+                Assert(popcount(us) <= 16, "popcount(bb.Colors[" + ColorToString(perspective) + "] was " + popcount(us) + "! (should be <= 16)");
+                Assert(popcount(them) <= 16, "popcount(bb.Colors[" + ColorToString(Not(perspective)) + "] was " + popcount(them) + "! (should be <= 16)");
+            }
+
             int ourKing = pos.State->KingSquares[perspective];
 
             while (us != 0)

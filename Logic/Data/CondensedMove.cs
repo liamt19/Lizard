@@ -123,7 +123,6 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public bool Equals(CondensedMove other)
         {
-            Debug.Assert((other.GetToFromPromotion == GetToFromPromotion) == (other.From == this.From && other.To == this.To && other.Castle == this.Castle && other.PromotionTo == this.PromotionTo));
             return (other.GetToFromPromotion == GetToFromPromotion);
         }
 

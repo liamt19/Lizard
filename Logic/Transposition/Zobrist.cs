@@ -114,7 +114,15 @@
         [MethodImpl(Inline)]
         public static ulong ZobristMove(this ulong hash, int from, int to, int color, int pt)
         {
-            return hash ^ (ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to]);
+            if (EnableAssertions)
+            {
+                Assert(from is >= A1 and <= H8, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid From square! (should be 0 <= idx <= 63)");
+                Assert(to is >= A1 and <= H8, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid To square! (should be 0 <= idx <= 63)");
+                Assert(color is White or Black, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid piece color! (should be 0 or 1)");
+                Assert(pt is >= Pawn and <= King, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid piece type! (should be 0 <= pt <= 5)");
+            }
+
+            return hash ^ ZobristToggleSquare(hash, color, pt, from) ^ ZobristToggleSquare(hash, color, pt, to);
         }
 
         /// <summary>
@@ -123,6 +131,13 @@
         [MethodImpl(Inline)]
         public static ulong ZobristToggleSquare(this ulong hash, int color, int pt, int idx)
         {
+            if (EnableAssertions)
+            {
+                Assert(color is White or Black, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid piece color! (should be 0 or 1)");
+                Assert(pt is >= Pawn and <= King, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid piece type! (should be 0 <= pt <= 5)");
+                Assert(idx is >= A1 and <= H8, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid square! (should be 0 <= idx <= 63)");
+            }
+
             return hash ^ ColorPieceSquareHashes[color][pt][idx];
         }
 

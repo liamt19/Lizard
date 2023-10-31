@@ -123,6 +123,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             int activeCount = HalfKA_HM.AppendActiveIndices(pos, active, perspective);
 
+            if (EnableAssertions)
+            {
+                Assert(activeCount <= MaxActiveDimensions, "AppendActiveIndices returned " + activeCount + " features! (should be <= 32)");
+            }
+
             var accumulation = accumulator[perspective];
             var PSQTaccumulation = accumulator.PSQ(perspective);
 

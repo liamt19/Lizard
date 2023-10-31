@@ -303,9 +303,7 @@ namespace LTChess.Logic.Data
             //  This meant that every time we did move.Equals(other) the generated IL had ~8 extra instructions,
             //  plus a pair of lengthy "box/unbox" instructions since a Move is a value type being passes as an object.
 
-            Debug.Assert(((move._data & Mask_EQ) == (_data & Mask_EQ)) == (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo));
-
-            return ((move._data & Mask_EQ) == (_data & Mask_EQ));
+            return ((move.Data & Mask_EQ) == (Data & Mask_EQ));
         }
 
         /// <summary>
@@ -314,7 +312,8 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public bool Equals(CondensedMove move)
         {
-            Debug.Assert((((move.GetToFromPromotion) == (_data & Mask_Condensed_EQ)) && move.Castle == Castle) == (move.From == this.From && move.To == this.To && move.Castle == this.Castle && move.PromotionTo == this.PromotionTo));
+            return ((move.GetToFromPromotion) == (Data & Mask_Condensed_EQ)) && move.Castle == Castle;
+        }
 
             return ((move.GetToFromPromotion) == (_data & Mask_Condensed_EQ)) && move.Castle == Castle;
         }

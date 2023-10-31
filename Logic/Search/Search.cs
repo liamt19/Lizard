@@ -313,11 +313,19 @@ namespace LTChess.Logic.Search
                     continue;
                 }
 
-                legalMoves++;
+                if (EnableAssertions)
+                {
+                    Assert(pos.IsPseudoLegal(m),
+                        "The move " + m + " = " + m.ToString(pos) + " was legal for FEN " + pos.GetFEN() + ", " +
+                        "but it isn't pseudo-legal!");
+                }
+
+
                 bool isCapture = m.Capture;
                 int toSquare = m.To;
                 int thisPieceType = bb.GetPieceAtIndex(m.From);
 
+                legalMoves++;
                 int extend = 0;
 
                 if (!isCapture)
@@ -727,6 +735,13 @@ namespace LTChess.Logic.Search
                     continue;
                 }
 
+                if (EnableAssertions)
+                {
+                    Assert(pos.IsPseudoLegal(m),
+                        "The move " + m + " = " + m.ToString(pos) + " was legal for FEN " + pos.GetFEN() + ", " +
+                        "but it isn't pseudo-legal!");
+                }
+
                 legalMoves++;
 
                 bool isCapture = m.Capture;
@@ -830,7 +845,14 @@ namespace LTChess.Logic.Search
             TTNodeType nodeType = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
             tte->Update(posHash, MakeTTScore(bestScore, ss->Ply), nodeType, ttDepth, bestMove, ss->StaticEval, ttPV);
 
-            Debug.Assert(bestScore > -ScoreInfinite && bestScore < ScoreInfinite);
+            if (EnableAssertions)
+            {
+                Assert(bestScore is > -ScoreInfinite and < ScoreInfinite, 
+                    "A call to QSearch is returning a bestScore of " + bestScore + ", which is OOB! " + 
+                    "QSearch's return values should always be in the range (" + -ScoreInfinite + " < " + bestScore + " < " + ScoreInfinite + "). " +
+                    "bestValue is only initialized to " + -ScoreInfinite + " when ss->InCheck is true, which it currently " + (ss->InCheck ? "is" : "isn't") + ".");
+            }
+
             return bestScore;
         }
 

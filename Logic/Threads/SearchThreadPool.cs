@@ -116,14 +116,54 @@ namespace LTChess.Logic.Threads
 
                 td.RootPosition.LoadFromFEN(rootFEN);
 
-                Debug.Assert(td.RootPosition.Owner == td);
+                if (EnableAssertions)
+                {
+                    Assert(td.RootPosition.Owner == td, 
+                        "The RootPosition for the thread " + td.ToString() + " had an owner of " + td.RootPosition.Owner.ToString() + "! " + 
+                        "All search threads must be the owner of their RootPosition objects. " +
+                        "This can only happen when a SearchThread's RootPosition object is overwritten with a different position, " +
+                        "and if the RootPosition field is readonly (which it should be) this means there is UB.");
+                }
                 
                 foreach (var move in setup.SetupMoves)
                 {
                     td.RootPosition.MakeMove(move);
                 }
 
-                Debug.Assert((td.RootPosition.State->Hash) == (rootPosition.State->Hash));
+                if (EnableAssertions)
+                {
+                    if ((td.RootPosition.State->Hash) != (rootPosition.State->Hash))
+                    {
+                        StringBuilder threadHashes = new StringBuilder();
+                        var temp = td.RootPosition.StartingState;
+                        while (temp != td.RootPosition.State)
+                        {
+                            threadHashes.Append(temp->Hash + ", ");
+                            temp++;
+                        }
+
+                        if (threadHashes.Length > 3)
+                            threadHashes.Remove(threadHashes.Length - 2, 2);
+
+
+                        StringBuilder searchHashes = new StringBuilder();
+                        temp = td.RootPosition.StartingState;
+                        while (temp != td.RootPosition.State)
+                        {
+                            searchHashes.Append(temp->Hash + ", ");
+                            temp++;
+                        }
+
+                        if (searchHashes.Length > 3)
+                            searchHashes.Remove(searchHashes.Length - 2, 2);
+
+                        Assert((td.RootPosition.State->Hash) == (rootPosition.State->Hash),
+                            "The RootPosition for the thread " + td.ToString() + " had a hash of " + (td.RootPosition.State->Hash) + 
+                            ", but it should have been " + (rootPosition.State->Hash) + ". " +
+                            "The previous hashes of the thread RootPosition are as follows: [" + threadHashes.ToString() + "]. " +
+                            "The previous hashes of the should have looked like this: [" + searchHashes.ToString() + "].");
+                    }
+                }
             }
 
             SharedInfo.TimeManager.StartTimer();

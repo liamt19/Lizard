@@ -323,20 +323,21 @@ namespace LTChess.Logic.Core
             int theirPiece = bb.GetPieceAtIndex(moveTo);
             int theirColor = Not(ourColor);
 
-#if DEBUG
-            if (ourPiece == Piece.None)
+            if (EnableAssertions)
             {
-                Debug.Assert(false, "Move " + move.ToString() + " doesn't have a piece on the From square!");
+                Assert(ourPiece != Piece.None, 
+                    "Move " + move.ToString() + " in FEN '" + GetFEN() + "' doesn't have a piece on the From square!");
+
+                Assert((theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo)), 
+                    "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
+                
+                Assert(theirPiece != King, 
+                    "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to capture " + ColorToString(bb.GetColorAtIndex(moveTo)) + "'s king on " + IndexToString(moveTo));
+
+                Assert(ourColor == ToMove,
+                    "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to move a " + ColorToString(ourColor) +
+                    " piece when it is " + ColorToString(ToMove) + "'s turn to move!");
             }
-            if (theirPiece != Piece.None && ourColor == bb.GetColorAtIndex(moveTo))
-            {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
-            }
-            if (theirPiece == Piece.King)
-            {
-                Debug.Assert(false, "Move " + move.ToString(this) + " is trying to capture " + ColorToString(bb.GetColorAtIndex(moveTo)) + "'s king on " + IndexToString(moveTo));
-            }
-#endif
 
             if (ourPiece == Piece.King)
             {
@@ -464,7 +465,14 @@ namespace LTChess.Logic.Core
             {
                 if (move.EnPassant)
                 {
-                    Debug.Assert(tempEPSquare != EPNone);
+                    if (EnableAssertions)
+                    {
+                        Assert(tempEPSquare != EPNone, 
+                            "MakeMove(" + move.ToString(this) + ") is an en passant move, " +
+                            "but the current position doesn't have a pawn that can be captured via en passant!" +
+                            "(State->EPSquare was " + EPNone + ", should be A3 <= EpSquare <= H6)");
+                    }
+
                     int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Piece.Pawn);
                     Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
@@ -501,6 +509,14 @@ namespace LTChess.Logic.Core
             bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
             Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
 
+            if (EnableAssertions)
+            {
+                Assert(popcount(bb.Colors[ourColor]) <= 16,
+                    "MakeMove(" + move + ") caused " + ColorToString(ourColor) + " to have " + popcount(bb.Colors[ourColor]) + " > 16 pieces!");
+
+                Assert(popcount(bb.Colors[theirColor]) <= 16,
+                    "MakeMove(" + move + ") caused " + ColorToString(theirColor) + " to have " + popcount(bb.Colors[ourColor]) + " > 16 pieces!");
+            }
 
             if (move.Promotion)
             {
@@ -518,6 +534,12 @@ namespace LTChess.Logic.Core
                 MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
 
+            if (EnableAssertions && move.Checks)
+            {
+                Assert((bb.AttackersTo(State->KingSquares[Not(ToMove)], bb.Occupancy) & bb.Colors[ToMove]) != 0,
+                    "The move " + move + " is marked as causing " + (move.CausesDoubleCheck ? "double" : string.Empty) + " check, " + 
+                    "but there are no attackers to their king's square after the move was made!");
+            }
 
             if (move.CausesCheck)
             {
@@ -771,8 +793,21 @@ namespace LTChess.Logic.Core
 
             if (m.Capture)
             {
+                if (EnableAssertions)
+                {
+                    Assert(bb.GetPieceAtIndex(to) != None,
+                        "HashAfter(" + m + ") in FEN '" + GetFEN() + "' is a capture move, " +
+                        "but there isn't a piece on " + IndexToString(to) + " to be captured!");
+                }
                 hash = hash.ZobristToggleSquare(Not(us), bb.GetPieceAtIndex(to), to);
             }
+
+            if (EnableAssertions)
+            {
+                Assert(ourPiece != None,
+                    "HashAfter(" + m + ") in FEN '" + GetFEN() + "' doesn't have a piece on its From square!");
+            }
+
             hash = hash.ZobristMove(from, to, us, ourPiece);
 
             return hash;
@@ -801,8 +836,11 @@ namespace LTChess.Logic.Core
                 return false;
             }
 
-            Debug.Assert(move.Capture == false || (move.Capture == true && bb.GetPieceAtIndex(moveTo) != Piece.None),
-                "ERROR IsLegal(" + move.ToString() + " = " + move.ToString(this) + ") is trying to capture a piece on an empty square!");
+            if (EnableAssertions)
+            {
+                Assert(move.Capture == false || bb.GetPieceAtIndex(moveTo) != Piece.None,
+                    "IsLegal(" + move.ToString() + " = " + move.ToString(this) + ") is trying to capture a piece on an empty square!");
+            }
 
             int ourColor = bb.GetColorAtIndex(moveFrom);
             int theirColor = Not(ourColor);
