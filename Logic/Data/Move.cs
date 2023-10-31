@@ -9,22 +9,27 @@ namespace LTChess.Logic.Data
     {
         public static readonly Move Null = new Move();
 
-        //  6 bits for: From, To, SqChecker, and SqDoubleChecker
+        //  6 bits for: From, To, SqChecker
         //  
         //  2 bits for PromotionTo, which defaults to a knight (1), so the "Promotion" flag MUST be looked at before "PromotionTo" is.
         //  (Otherwise every move would show up as a promotion to a knight, woohoo for horses!).
         //  
         //  6 bits for the 6 move flags.
         //  
-        //  Total of 32.
+        //  Total of 26, padded to 32.
         private int _data;
+        public int Data
+        {
+            get => _data;
+            set => _data = value;
+        }
 
-        private const int FlagCapture =     0b000001 << 26;
-        private const int FlagEnPassant =   0b000010 << 26;
-        private const int FlagCastle =      0b000100 << 26;
-        private const int FlagCheck =       0b001000 << 26;
-        private const int FlagDoubleCheck = 0b010000 << 26;
-        private const int FlagPromotion =   0b100000 << 26;
+        public const int FlagCapture =     0b000001 << 26;
+        public const int FlagEnPassant =   0b000010 << 26;
+        public const int FlagCastle =      0b000100 << 26;
+        public const int FlagCheck =       0b001000 << 26;
+        public const int FlagDoubleCheck = 0b010000 << 26;
+        public const int FlagPromotion =   0b100000 << 26;
 
         /// <summary>
         /// A mask of <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>
@@ -97,6 +102,9 @@ namespace LTChess.Logic.Data
 
         /// <summary>
         /// Gets or sets whether this move is a capture or not.
+        /// <br></br>
+        /// Note that <see cref="EnPassant"/> and <see cref="Capture"/> are mutually exclusive, so en passant moves intentionally do not show up as captures.
+        /// I'm defining captures as only moves that take an opponent's piece on the <see cref="To"/> square, and en passant moves don't do that.
         /// </summary>
         public bool Capture
         {
@@ -128,7 +136,7 @@ namespace LTChess.Logic.Data
         public bool CausesCheck
         {
             get => ((_data & FlagCheck) != 0);
-            set => _data ^= FlagCheck;
+            set => _data = (value ? (_data | FlagCheck) : (_data & ~FlagCheck));
         }
 
         /// <summary>
@@ -151,9 +159,39 @@ namespace LTChess.Logic.Data
 
         /// <summary>
         /// Returns true if this move causes check or double check.
+        /// <br></br>
+        /// The setter will only clear the <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>, 
+        /// so doing <see cref="Checks"/> = <see langword="true"/> will change nothing.
         /// </summary>
-        public bool Checks => ((_data & Mask_Check) != 0);
+        public bool Checks {
+            get => ((_data & Mask_Check) != 0);
+            set => _data &= ~Mask_Check;
+        }
 
+
+
+        public Move(CondensedMove cm)
+        {
+            ushort condData = cm.Data;
+            _data = (condData & Mask_ToFrom);
+
+            int rank = GetIndexRank(cm.To);
+            if ((rank == 0 || rank == 7) && cm.PromotionTo != 0)
+            {
+                this.PromotionTo = cm.PromotionTo;
+                this.Promotion = true;
+            }
+
+            if (cm.EnPassant)
+            {
+                this.EnPassant = true;
+            }
+
+            if (cm.Castle)
+            {
+                this.Castle = true;
+            }
+        }
 
         public Move(int from, int to)
         {
@@ -164,6 +202,13 @@ namespace LTChess.Logic.Data
         {
             _data = to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion;
         }
+
+
+        public void SetNew(int from, int to) => _data = to | (from << 6);
+
+        public void SetNew(int from, int to, bool capture = false) => _data = to | (from << 6) | (capture ? FlagCapture : 0);
+
+        public void SetNew(int from, int to, int promotionTo) => _data = to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion;
 
 
         [MethodImpl(Inline)]
@@ -315,7 +360,10 @@ namespace LTChess.Logic.Data
             return ((move.GetToFromPromotion) == (Data & Mask_Condensed_EQ)) && move.Castle == Castle;
         }
 
-            return ((move.GetToFromPromotion) == (_data & Mask_Condensed_EQ)) && move.Castle == Castle;
+        [MethodImpl(Inline)]
+        public bool Equals(ScoredMove move)
+        {
+            return move.Move.Equals(this);
         }
 
 
@@ -327,6 +375,18 @@ namespace LTChess.Logic.Data
 
         [MethodImpl(Inline)]
         public static bool operator !=(Move left, Move right)
+        {
+            return !left.Equals(right);
+        }
+
+        [MethodImpl(Inline)]
+        public static bool operator ==(Move left, ScoredMove right)
+        {
+            return left.Equals(right);
+        }
+
+        [MethodImpl(Inline)]
+        public static bool operator !=(Move left, ScoredMove right)
         {
             return !left.Equals(right);
         }

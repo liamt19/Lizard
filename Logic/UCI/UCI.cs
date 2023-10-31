@@ -540,11 +540,11 @@ namespace LTChess.Logic.Core
                     {
                         //  If the bestmove is null, and our search time was too low to give a reasonable time to search,
                         //  then just pick the first legal move we can make and send that instead.
-                        Move* legal = stackalloc Move[NormalListCapacity];
-                        int size = info.Position.GenAllLegalMovesTogether(legal);
+                        ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+                        int size = info.Position.GenLegal(legal);
 
-                        LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0]);
-                        info.BestMove = legal[0];
+                        LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
+                        info.BestMove = legal[0].Move;
                     }
                     else
                     {

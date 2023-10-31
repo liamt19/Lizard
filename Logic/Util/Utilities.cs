@@ -505,9 +505,9 @@ namespace LTChess.Logic.Util
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// This would return something similar to "g1f3, e2e4, d2d4".
         /// </summary>
-        public static unsafe string Stringify(Move* list, int listSize = 0) => Stringify(new Span<Move>(list, listSize), listSize);
+        public static unsafe string Stringify(Move* list, int listSize = 0) => Stringify(new Span<Move>(list, MoveListSize), listSize);
 
-        public static string Stringify(this Span<Move> list, int listSize = 0)
+        public static string Stringify(Span<Move> list, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -532,9 +532,9 @@ namespace LTChess.Logic.Util
         /// Returns a string containing a ToString() version of a list of moves in human readable format.
         /// So instead of seeing "g1f3, e2e4, d2d4" it would show "Nf3, e4, d4".
         /// </summary>
-        public static unsafe string Stringify(Move* list, Position position, int listSize = 0) => Stringify(new Span<Move>(list, listSize), position, listSize);
+        public static unsafe string Stringify(Move* list, Position position, int listSize = 0) => Stringify(new Span<Move>(list, MoveListSize), position, listSize);
 
-        public static string Stringify(this Span<Move> list, Position position, int listSize = 0)
+        public static string Stringify(Span<Move> list, Position position, int listSize = 0)
         {
             StringBuilder sb = new StringBuilder();
             int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
@@ -555,6 +555,54 @@ namespace LTChess.Logic.Util
             return sb.ToString();
         }
 
+
+
+        public static unsafe string Stringify(ScoredMove* list, int listSize = 0) => Stringify(new Span<ScoredMove>(list, MoveListSize), listSize);
+
+        public static string Stringify(Span<ScoredMove> list, int listSize = 0)
+        {
+            StringBuilder sb = new StringBuilder();
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
+            {
+                if (list[i].Move.Equals(Move.Null))
+                {
+                    break;
+                }
+                string s = list[i].Move.ToString();
+                sb.Append(s + ", ");
+            }
+
+            if (sb.Length > 3)
+            {
+                sb.Remove(sb.Length - 2, 2);
+            }
+            return sb.ToString();
+        }
+
+
+        public static unsafe string Stringify(ScoredMove* list, Position position, int listSize = 0) => Stringify(new Span<ScoredMove>(list, MoveListSize), position, listSize);
+
+        public static string Stringify(Span<ScoredMove> list, Position position, int listSize = 0)
+        {
+            StringBuilder sb = new StringBuilder();
+            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
+            for (int i = 0; i < loopMax; i++)
+            {
+                if (list[i].Move.Equals(Move.Null))
+                {
+                    break;
+                }
+                string s = list[i].Move.ToString(position);
+                sb.Append(s + ", ");
+            }
+
+            if (sb.Length > 3)
+            {
+                sb.Remove(sb.Length - 2, 2);
+            }
+            return sb.ToString();
+        }
 
 
         //  https://stackoverflow.com/questions/18573004/how-to-center-align-arguments-in-a-format-string

@@ -87,8 +87,8 @@ namespace LTChess.Logic.Threads
             SharedInfo = rootInfo;          //  Initialize the shared SearchInformation
             SharedInfo.SearchActive = true; //  And mark this search as having started
 
-            Move* moves = stackalloc Move[NormalListCapacity];
-            int size = rootPosition.GenAllLegalMovesTogether(moves);
+            ScoredMove* moves = stackalloc ScoredMove[MoveListSize];
+            int size = rootPosition.GenLegal(moves);
 
             var rootFEN = setup.StartFEN;
             if (rootFEN == InitialFEN && setup.SetupMoves.Count == 0)
@@ -111,7 +111,7 @@ namespace LTChess.Logic.Threads
                 td.RootMoves = new List<RootMove>(size);
                 for (int j = 0; j < size; j++)
                 {
-                    td.RootMoves.Add(new RootMove(moves[j]));
+                    td.RootMoves.Add(new RootMove(moves[j].Move));
                 }
 
                 td.RootPosition.LoadFromFEN(rootFEN);

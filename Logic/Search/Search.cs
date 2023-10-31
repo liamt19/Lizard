@@ -275,11 +275,6 @@ namespace LTChess.Logic.Search
                                             null                        , (ss - 4)->ContinuationHistory,
                                             null                        , (ss - 6)->ContinuationHistory };
 
-            Move* list = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllPseudoLegalMovesTogether(list);
-
-            Span<int> scores = stackalloc int[size];
-            AssignScores(ref bb, ss, history, contHist, list, scores, size, ttMove);
 
             int legalMoves = 0;     //  Number of moves that have been encountered so far in the loop.
             int lmpMoves = 0;       //  Number of non-captures that have been encountered so far.
@@ -294,13 +289,17 @@ namespace LTChess.Logic.Search
             Move* captureMoves = stackalloc Move[32];
             Move* quietMoves = stackalloc Move[64];
 
-            int lmpCutoff = LMPTable[improving ? 1 : 0][depth];
+            bool skipQuiets = false;
+
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            int size = pos.GenPseudoLegal(list);
+            AssignScores(ref bb, ss, history, contHist, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
-                OrderNextMove(list, scores, size, i);
+                OrderNextMove(list, size, i);
 
-                Move m = list[i];
+                Move m = list[i].Move;
 
                 if (m == ss->Skip)
                 {
@@ -733,22 +732,20 @@ namespace LTChess.Logic.Search
                                             null                        , (ss - 4)->ContinuationHistory,
                                             null                        , (ss - 6)->ContinuationHistory };
 
-            Move* list = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllPseudoLegalMovesTogether(list);
-
-            Span<int> scores = stackalloc int[size];
-
-            AssignScores(ref pos.bb, ss, history, contHist, list, scores, size, ttMove);
 
             int prevSquare = ((ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To);
             int legalMoves = 0;
             int movesMade = 0;
             int quietCheckEvasions = 0;
 
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            int size = pos.GenPseudoLegal(list);
+            AssignScores(ref pos.bb, ss, history, contHist, list, size, ttMove, false);
+
             for (int i = 0; i < size; i++)
             {
-                OrderNextMove(list, scores, size, i);
-                Move m = list[i];
+                OrderNextMove(list, size, i);
+                Move m = list[i].Move;
 
                 if (!pos.IsLegal(m))
                 {
@@ -770,8 +767,7 @@ namespace LTChess.Logic.Search
 
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
-                
-                //  if (!(isCapture || ss->InCheck || (givesCheck && depth > DepthQNoChecks)))
+
                 if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
                 {
                     continue;

@@ -329,19 +329,21 @@ namespace LTChess
 
             Stopwatch sw = Stopwatch.StartNew();
 
-            Move* mlist = stackalloc Move[NormalListCapacity];
-            int size = pos.GenAllLegalMovesTogether(mlist);
+            Span<ScoredMove> list = stackalloc ScoredMove[MoveListSize];
+            int size = pos.GenLegal(list);
+
             for (int i = 0; i < size; i++)
             {
-                pos.MakeMove(mlist[i]);
-                ulong result = pos.Perft(depth - 1);
-                pos.UnmakeMove(mlist[i]);
-                Log(mlist[i].ToString() + ": " + result);
+                Move m = list[i].Move;
+                pos.MakeMove(m);
+                ulong result = (depth > 1 ? pos.Perft(depth - 1) : 1);
+                pos.UnmakeMove(m);
+                Log(m.ToString() + ": " + result);
                 total += result;
             }
             sw.Stop();
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int) (total / sw.Elapsed.TotalSeconds)).ToString("N0") + ") nps" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int) (total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
 
         public static void DoPerftDivideParallel(int depth)
@@ -403,13 +405,13 @@ namespace LTChess
 
             Log("\r\nMove evaluations (White's perspective):");
 
-            Move* list = stackalloc Move[NormalListCapacity];
-            int size = p.GenAllLegalMovesTogether(list);
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            int size = p.GenLegal(list);
             List<(Move mv, int eval)> scoreList = new();
 
             for (int i = 0; i < size; i++)
             {
-                Move m = list[i];
+                Move m = list[i].Move;
                 p.MakeMove(m);
                 int moveEval = 0;
 
@@ -438,17 +440,49 @@ namespace LTChess
         }
 
 
-        private static void PrintMoves()
+        private static void PrintMoves(bool full = false)
         {
-            Move* pseudo = stackalloc Move[NormalListCapacity];
-            int pseudoCnt = p.GenAllPseudoLegalMovesTogether(pseudo);
+            ScoredMove* pseudo = stackalloc ScoredMove[MoveListSize];
+            int pseudoCnt = p.GenPseudoLegal(pseudo);
 
             Log("Pseudo: [" + Stringify(pseudo, p, pseudoCnt) + "]");
 
-            Move* legal = stackalloc Move[NormalListCapacity];
-            int legalCnt = p.GenAllLegalMovesTogether(legal);
+            ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+            int legalCnt = p.GenLegal(legal);
 
             Log("Legal: [" + Stringify(legal, p, legalCnt) + "]");
+
+
+            if (full)
+            {
+                Log("\n");
+
+                if (p.Checked)
+                {
+                    ScoredMove* evasions = stackalloc ScoredMove[MoveListSize];
+                    int evasionsSize = p.GenAll<GenEvasions>(evasions);
+                    Log("Evasions: [" + Stringify(evasions, p, evasionsSize) + "]");
+                }
+                else
+                {
+                    ScoredMove* nonEvasions = stackalloc ScoredMove[MoveListSize];
+                    int nonEvasionsSize = p.GenAll<GenNonEvasions>(nonEvasions);
+                    Log("Non-Evasions: [" + Stringify(nonEvasions, p, nonEvasionsSize) + "]");
+                }
+
+                ScoredMove* captures = stackalloc ScoredMove[MoveListSize];
+                int capturesSize = p.GenAll<GenLoud>(captures);
+                Log("Captures: [" + Stringify(captures, p, capturesSize) + "]");
+
+                ScoredMove* quiets = stackalloc ScoredMove[MoveListSize];
+                int quietsSize = p.GenAll<GenQuiets>(quiets);
+                Log("Quiets: [" + Stringify(quiets, p, quietsSize) + "]");
+
+                ScoredMove* checks = stackalloc ScoredMove[MoveListSize];
+                int checksSize = p.GenAll<GenQChecks>(checks);
+                Log("Checks: [" + Stringify(checks, p, checksSize) + "]");
+                Log("\n\n");
+            }
         }
 
         public static void DotTraceProfile(int depth = 24)
