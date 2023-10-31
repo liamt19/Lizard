@@ -14,64 +14,66 @@ namespace LTChess.Logic.Search
         public static SearchStackEntry NullEntry = new SearchStackEntry();
 
         [FieldOffset(0)]
-        public Move Killer0;
-
-        [FieldOffset(4)]
-        public Move Killer1;
-
-        [FieldOffset(8)]
         public Move CurrentMove;
 
-        [FieldOffset(12)]
+        [FieldOffset(4)]
         public Move Skip;
-
 
         /// <summary>
         /// A pointer to a 2D array of scores (short[12][64]) for a particular move.
         /// <br></br>
         /// This should be updated after a move is made, and before a recursive call to Negamax/QSearch.
         /// </summary>
-        [FieldOffset(16)]
+        [FieldOffset(8)]
         public PieceToHistory* ContinuationHistory;
 
-        [FieldOffset(24)]
+
+
+        [FieldOffset(16)]
         public int StatScore;
 
-        [FieldOffset(28)]
+        [FieldOffset(20)]
         public int Ply;
+
+        [FieldOffset(24)]
+        public int Extensions;
+
+        [FieldOffset(28)]
+        public short StaticEval;
+
+        [FieldOffset(30)]
+        private fixed byte _pad0[2];
 
 
 
         [FieldOffset(32)]
-        public int MoveCount;
+        public bool InCheck;
 
-        [FieldOffset(36)]
-        public int Extensions;
+        [FieldOffset(33)]
+        public bool TTPV;
+
+        [FieldOffset(34)]
+        public bool TTHit;
+
+        [FieldOffset(35)]
+        private fixed byte _pad1[5];
 
         [FieldOffset(40)]
-        public int Cutoffs;
+        public Move* PV;
 
-        [FieldOffset(44)]
-        public short StaticEval;
-
-        [FieldOffset(46)]
-        private fixed byte _pad0[2];
 
 
         [FieldOffset(48)]
-        public bool InCheck;
+        public Move Killer0;
 
-        [FieldOffset(49)]
-        public bool TTPV;
-
-        [FieldOffset(50)]
-        public bool TTHit;
-
-        [FieldOffset(51)]
-        private fixed byte _pad1[5];
+        [FieldOffset(52)]
+        private fixed byte _pad3[4];
 
         [FieldOffset(56)]
-        public Move* PV;
+        public Move Killer1;
+
+        [FieldOffset(60)]
+        private fixed byte _pad4[4];
 
 
         public SearchStackEntry()
@@ -85,25 +87,21 @@ namespace LTChess.Logic.Search
         public void Clear()
         {
             CurrentMove = Move.Null;
-            Killer0 = Move.Null;
-            Killer1 = Move.Null;
             Skip = Move.Null;
-
             ContinuationHistory = null;
+
             StatScore = 0;
             Ply = 0;
-
-
-            MoveCount = 0;
             Extensions = 0;
-            Cutoffs = 0;
             StaticEval = ScoreNone;
 
             InCheck = false;
             TTPV = false;
             TTHit = false;
-
             PV = null;
+
+            Killer0 = Move.Null;
+            Killer1 = Move.Null;
         }
 
         public static string GetMovesPlayed(SearchStackEntry* curr)
