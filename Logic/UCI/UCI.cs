@@ -373,9 +373,6 @@ namespace LTChess.Logic.Core
             bool hasWhiteTime = false;
             bool hasBlackTime = false;
 
-            bool hasDepthCommand = false;
-            bool isInfinite = false;
-
             int whiteTime = 0;
             int blackTime = 0;
 
@@ -397,7 +394,6 @@ namespace LTChess.Logic.Core
                     }
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
-                        hasDepthCommand = true;
                         info.MaxDepth = reqDepth;
                         LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
                     }
@@ -432,7 +428,6 @@ namespace LTChess.Logic.Core
                     info.MaxNodes = MaxSearchNodes;
                     info.TimeManager.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
-                    isInfinite = true;
                 }
                 else if (param[i] == "wtime")
                 {

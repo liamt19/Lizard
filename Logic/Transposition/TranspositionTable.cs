@@ -36,7 +36,9 @@ namespace LTChess.Logic.Transposition
         }
 
         /// <summary>
-        /// 1 mb is enough for 65,536 entries. 
+        /// Allocates <paramref name="mb"/> megabytes of memory for the Transposition Table, and zeroes out each entry.
+        /// <para></para>
+        /// 1 mb fits 32,768 clusters, which is 98,304 TTEntry's.
         /// </summary>
         public static unsafe void Initialize(int mb = 32)
         {
@@ -158,22 +160,17 @@ namespace LTChess.Logic.Transposition
         {
             int entries = 0;
 
-            if (true)
+            for (int i = 0; i < MinTTClusters; i++)
             {
-                for (int i = 0; i < 1000; i++)
+                for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    for (int j = 0; j < EntriesPerCluster; j++)
+                    if ((Clusters[i][j].AgePVType & TT_AGE_MASK) == Age)
                     {
-                        if ((Clusters[i][j].AgePVType & TT_AGE_MASK) == Age)
-                        {
-                            entries++;
-                        }
+                        entries++;
                     }
                 }
-                return entries / EntriesPerCluster;
             }
-
-            return entries;
+            return entries / EntriesPerCluster;
         }
 
 

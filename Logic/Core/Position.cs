@@ -25,12 +25,6 @@ namespace LTChess.Logic.Core
         private readonly nint _bbBlock;
 
         /// <summary>
-        /// The first number in the FEN, which starts at 0 and resets to 0 every time a pawn moves or a piece is captured.
-        /// If this reaches 100, the game is a draw by the 50-move rule.
-        /// </summary>
-        public int HalfMoves = 0;
-
-        /// <summary>
         /// The second number in the FEN, which starts at 1 and increases every time black moves.
         /// </summary>
         public int FullMoves = 1;
@@ -186,8 +180,6 @@ namespace LTChess.Logic.Core
                 Owner = SearchPool.MainThread;
             }
 
-            Debug.WriteLine("Position owner is " + (Owner != null ? Owner.ToString() : "NULL?"));
-
             LoadFromFEN(fen);
 
             if (UseSimple768 && createAccumulators)
@@ -291,7 +283,7 @@ namespace LTChess.Logic.Core
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*)));
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint) StateInfo.StateCopySize);
 
             if (UseHalfKA && UpdateNN)
             {
@@ -703,7 +695,7 @@ namespace LTChess.Logic.Core
         public void MakeNullMove()
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*)));
+            Unsafe.CopyBlockUnaligned((State + 1), State, (uint) StateInfo.StateCopySize);
             State->Accumulator->CopyTo(NextState->Accumulator);
 
             State++;
@@ -1190,10 +1182,10 @@ namespace LTChess.Logic.Core
                 string[] splits = fen.Split(new char[] { '/', ' ' });
 
                 bb.Reset();
-                HalfMoves = 0;
                 FullMoves = 1;
 
                 State = StartingState;
+                NativeMemory.Clear(State, StateInfo.StateCopySize);
                 State->CastleStatus = CastlingStatus.None;
                 State->HalfmoveClock = 0;
 
@@ -1269,20 +1261,23 @@ namespace LTChess.Logic.Core
                             {
                                 State->EPSquare = StringToIndex(splits[i]);
                             }
-
-                            
                         }
                     }
                     //	halfmove number
                     else if (i == 11)
                     {
-                        HalfMoves = int.Parse(splits[i]);
-                        State->HalfmoveClock = int.Parse(splits[i]);
+                        if (int.TryParse(splits[i], out int halfMoves))
+                        {
+                            State->HalfmoveClock = halfMoves;
+                        }
                     }
                     //	fullmove number
                     else if (i == 12)
                     {
-                        FullMoves = int.Parse(splits[i]);
+                        if (int.TryParse(splits[i], out int fullMoves))
+                        {
+                            FullMoves = fullMoves;
+                        }
                     }
                 }
             }
@@ -1351,6 +1346,10 @@ namespace LTChess.Logic.Core
                             char c = PieceToFENChar(pt);
                             fen.Append(char.ToUpper(c));
                         }
+                        else
+                        {
+                            Log("WARN in GetFEN(), Whites's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
+                        }
 
                         continue;
                     }
@@ -1368,6 +1367,11 @@ namespace LTChess.Logic.Core
                             char c = PieceToFENChar(pt);
                             fen.Append(char.ToLower(c));
                         }
+                        else
+                        {
+                            Log("WARN in GetFEN(), Black's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
+                        }
+
 
                         continue;
                     }

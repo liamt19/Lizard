@@ -9,7 +9,7 @@ namespace LTChess.Logic.Data
     /// A <see cref="CondensedMove"/> only has enough information to differentiate it from any other possible move,
     /// so it can't be "Made" with <see cref="Position.MakeMove"/>. 
     /// <br></br>
-    /// The point of this is to compare if a move generated with <see cref="Position.GenAllPseudoLegalMovesTogether"/>
+    /// The point of this is to compare if a move generated with <see cref="Position.GenPseudoLegal"/>
     /// is the same as the move stored in a TTEntry.
     /// </summary>
     [StructLayout(LayoutKind.Auto)]
@@ -19,12 +19,22 @@ namespace LTChess.Logic.Data
 
         //  6 bits for: From, To
         //  2 bits for: PromotionTo
+        //  2 bits for the Castle and EP flags.
+
         //  Total of 16.
-        public ushort _data;
+        private ushort _data;
+        public ushort Data
+        {
+            get => _data;
+            set => _data = value;
+        }
 
         private const int FlagEnPassant = 0b000001 << 14;
         private const int FlagCastle = 0b000010 << 14;
 
+        /// <summary>
+        /// This is (0x3F | (0x3F &lt;&lt; 6) | (0x3 &lt;&lt; 12))
+        /// </summary>
         private const int Mask_Condensed_EQ = 0x3FFF;
 
         public int GetToFromPromotion => (_data & Mask_Condensed_EQ);
@@ -67,8 +77,6 @@ namespace LTChess.Logic.Data
         public CondensedMove(int from, int to)
         {
             _data = (ushort) (to | (from << 6));
-            //_data |= (ushort) (to);
-            //_data |= (ushort) (from << 6);
         }
 
         public CondensedMove(int from, int to, int promotionTo) : this(from, to)

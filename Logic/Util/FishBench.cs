@@ -89,8 +89,9 @@ namespace LTChess.Logic.Util
         /// Runs a perft command on each of the positions in BenchFENs, and verifies that the number of nodes
 		/// returned by our perft command is the same as the number that Stockfish 14 reported.
         /// </summary>
-        public static double Go(int Depth = 4)
+        public static bool Go(int Depth = 4)
         {
+            bool nodesCorrect = true;
             Dictionary<string, ulong> dict = FENDepths4;
 
             if (Depth == 5)
@@ -112,11 +113,12 @@ namespace LTChess.Logic.Util
                 if (ourNodes != correctNodes)
                 {
                     Log('[' + fen + ']' + ": Expected " + correctNodes + " nodes but got " + ourNodes + " nodes instead!");
+                    nodesCorrect = false;
                 }
             }
 
             Log("Done in " + sw.Elapsed.TotalSeconds + " s!");
-            return sw.Elapsed.TotalSeconds;
+            return nodesCorrect;
         }
 
         public static double Simple(int Depth)

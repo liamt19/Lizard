@@ -22,6 +22,7 @@ namespace LTChess.Logic.Util
         public const int MaxListCapacity = 512;
         public const int ExtendedListCapacity = 256;
         public const int NormalListCapacity = 128;
+        public const int MoveListSize = 256;
         public const int LSBEmpty = 64;
         public const int MaxDepth = 64;
 
@@ -786,7 +787,6 @@ namespace LTChess.Logic.Util
 
                 if (best != i)
                 {
-                    Debug.WriteLine("StableSort is replacing items[" + i + "] = " + items[i] + " with items[" + best + "] = " + items[best]);
                     (items[i], items[best]) = (items[best], items[i]);
                 }
             }

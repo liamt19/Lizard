@@ -19,6 +19,7 @@ global using static LTChess.Logic.Data.PrecomputedData;
 global using static LTChess.Logic.Data.RunOptions;
 global using static LTChess.Logic.Data.Squares;
 global using static LTChess.Logic.Data.Color;
+global using Color = LTChess.Logic.Data.Color;
 global using static LTChess.Logic.Data.Piece;
 global using static LTChess.Logic.Data.Bound;
 global using static LTChess.Logic.Magic.MagicBitboards;
@@ -71,6 +72,9 @@ namespace LTChess
 
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
+                //  Introduces some unnecessary strings
+                if (type == typeof(FishBench)) continue;
+
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
             }
 
@@ -189,7 +193,7 @@ namespace LTChess
                 }
                 else if (input.Equals("listmoves"))
                 {
-                    PrintMoves();
+                    PrintMoves(true);
                 }
                 else if (input.StartsWithIgnoreCase("move "))
                 {

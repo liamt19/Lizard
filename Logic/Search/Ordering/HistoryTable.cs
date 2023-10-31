@@ -12,15 +12,15 @@ namespace LTChess.Logic.Search.Ordering
         /// <summary>
         /// Index using Color * <see cref="MainHistoryPCStride"/> + Move.MoveMask
         /// </summary>
-        public short* MainHistory;
+        public readonly short* MainHistory;
         public const int MainHistoryClamp = 7500;
         public const int MainHistoryPCStride = 4096;
         public const int MainHistoryElements = (ColorNB * SquareNB * SquareNB);
 
 
-        public short* CaptureHistory;
+        public readonly short* CaptureHistory;
         public const int CaptureClamp = 10000;
-        public const int CaptureHistoryElements = ((ColorNB * PieceNB) * SquareNB * PieceNB);
+        public const int CaptureHistoryElements = ((ColorNB * (PieceNB + 1)) * SquareNB * (PieceNB + 1));
 
 
         /// <summary>
@@ -30,7 +30,7 @@ namespace LTChess.Logic.Search.Ordering
         /// and that PieceToHistory[0, 1, 2] is the correct PieceToHistory for a white (0) knight (1) moving to C1 (2).
         /// This is then used by <see cref="MoveOrdering"/>.AssignScores
         /// </summary>
-        public ContinuationHistory** Continuations;
+        public readonly ContinuationHistory** Continuations;
 
         public HistoryTable()
         {
@@ -64,8 +64,6 @@ namespace LTChess.Logic.Search.Ordering
                 Continuations[i][1].Dispose();
             }
 
-            MainHistory = null;
-            CaptureHistory = null;
         }
 
 
@@ -100,11 +98,11 @@ namespace LTChess.Logic.Search.Ordering
         [MethodImpl(Inline)]
         public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
         {
-            const int xMax = (PieceNB * ColorNB);
+            const int xMax = ((PieceNB + 1) * ColorNB);
             const int yMax = (SquareNB);
             const int zMax = (PieceNB);
 
-            int x = (pt + (PieceNB * pc));
+            int x = (pt + ((PieceNB + 1) * pc));
             int y = (toSquare);
             int z = (capturedPt);
 
@@ -271,8 +269,6 @@ namespace LTChess.Logic.Search.Ordering
             get
             {
                 int idx = PieceToHistory.GetIndex(pc, pt, sq);
-
-                Debug.Assert(idx >= 0 && idx < (int)Length);
                 return &_History[idx];
             }
         }

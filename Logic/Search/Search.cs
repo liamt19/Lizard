@@ -1092,5 +1092,26 @@ namespace LTChess.Logic.Search
         }
 
 
+        /// <summary>
+        /// Returns a string with the CurrentMove for each state between the first one and the current one.
+        /// </summary>
+        public static string Debug_GetMovesPlayed(SearchStackEntry* ss)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            while (ss->Ply >= 0)
+            {
+                sb.Insert(0, ss->CurrentMove.ToString() + ", ");
+
+                ss--;
+            }
+
+            if (sb.Length >= 3)
+            {
+                sb.Remove(sb.Length - 2, 2);
+            }
+
+            return sb.ToString();
+        }
     }
 }

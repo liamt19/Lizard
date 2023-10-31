@@ -305,11 +305,12 @@
         {
             return pt switch
             {
-                Pawn =>    PawnAttackMasks[pc][idx],
+                Pawn =>   (PawnAttackMasks[pc][idx]),
                 Knight => (KnightMasks[idx]),
                 Bishop => (GetBishopMoves(occupied, idx)),
                 Rook =>   (GetRookMoves(occupied, idx)),
                 Queen =>  (GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx)),
+                King =>   (NeighborsMask[idx]),
                 _ => 0,
             };
         }

@@ -165,10 +165,6 @@ namespace LTChess.Logic.Threads
                 _SysThread.Name = "(MAIN)Thread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
             }
 
-            //  Each thread its own position object, which lasts the entire
-            //  lifetime of the thread.
-            RootPosition = new Position(InitialFEN, true, this);
-
             IdleLoop();
         }
 
@@ -448,9 +444,14 @@ namespace LTChess.Logic.Threads
             _Disposed = true;
         }
 
+        /// <summary>
+        /// Calls the class destructor, which will free up the memory that was allocated to this SearchThread.
+        /// </summary>
         public void Dispose()
         {
             Dispose(disposing: true);
+
+            //  We handled the finalization ourselves, so tell the GC not to worry about it.
             GC.SuppressFinalize(this);
         }
 
