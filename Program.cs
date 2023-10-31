@@ -27,6 +27,7 @@ global using static LTChess.Logic.Search.ThreadedEvaluation;
 global using static LTChess.Logic.Util.PositionUtilities;
 global using static LTChess.Logic.Util.Utilities;
 global using static LTChess.Logic.Util.Interop;
+global using static LTChess.Logic.Util.ExceptionHandling;
 global using static LTChess.Logic.NN.NNRunOptions;
 global using static LTChess.Logic.Threads.SearchThreadPool;
 
@@ -77,7 +78,7 @@ namespace LTChess
 
             if (!System.Diagnostics.Debugger.IsAttached) 
             {
-                AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+                AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
 
@@ -436,38 +437,6 @@ namespace LTChess
             }
         }
 
-
-
-
-        private static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs args)
-        {
-            Exception e = (Exception)args.ExceptionObject;
-            
-            Log("An UnhandledException occurred!\r\n" + e.ToString());
-            using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
-            {
-                using StreamWriter sw = new StreamWriter(fs);
-
-                sw.WriteLine("An UnhandledException occurred!\r\n" + e.ToString());
-
-                sw.Flush();
-            }
-
-            if (UCI.Active)
-            {
-                //  Try to tell the UCI what happened before this process terminates
-                UCI.SendString("info string I'm going to crash! Exception: ");
-
-                //  Send each exception line separately, in case the UCI doesn't like
-                //  newlines in the strings that it reads.
-                foreach (string s in e.ToString().Split(Environment.NewLine))
-                {
-                    UCI.SendString("info string " + s);
-                    Thread.Sleep(10);
-                }
-                
-            }
-        }
 
         private static void PrintMoves()
         {
