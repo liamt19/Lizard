@@ -315,34 +315,6 @@
         }
 
 
-        /// <summary>
-        /// Returns true if the move <paramref name="move"/> is pseudo-legal.
-        /// Only determines if there is a piece at move.From and the piece at move.To isn't the same color.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public bool IsPseudoLegal(in Move move)
-        {
-            if (GetPieceAtIndex(move.From) != Piece.None)
-            {
-                if (GetPieceAtIndex(move.To) != Piece.None)
-                {
-                    //  We can't capture our own color pieces
-                    return (move.Capture && GetColorAtIndex(move.From) != GetColorAtIndex(move.To));
-                }
-
-                if (move.Capture)
-                {
-                    //  This move is trying to capture a piece when the square is empty.
-                    return false;
-                }
-
-                //  This is a move to an empty square.
-                return true;
-            }
-
-            //  There isn't a piece on the move's "from" square.
-            return false;
-        }
 
         /// <summary>
         /// Sets <paramref name="info"/> according to the number of pieces that attack the king of color <paramref name="ourColor"/>

@@ -815,6 +815,66 @@ namespace LTChess.Logic.Core
 
 
         /// <summary>
+        /// Returns true if the move <paramref name="move"/> is pseudo-legal.
+        /// Only determines if there is a piece at move.From and the piece at move.To isn't the same color.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public bool IsPseudoLegal(in Move move)
+        {
+            int moveTo = move.To;
+            int moveFrom = move.From;
+
+            int pt = bb.GetPieceAtIndex(moveFrom);
+            if (pt == None)
+            {
+                //  There isn't a piece on the move's "from" square.
+                return false;
+            }
+
+            int pc = bb.GetColorAtIndex(moveFrom);
+            if (pc != ToMove)
+            {
+                return false;
+            }
+
+            if (bb.GetPieceAtIndex(moveTo) != None && (move.Capture == false || (pc == bb.GetColorAtIndex(moveTo))))
+            {
+                //  There is a piece on the square we are moving to, but this move wasn't generated as a capture
+                //  or the piece on the To square is the same color as the one that is moving.
+                return false;
+            }
+
+            if (pt == Pawn)
+            {
+                if (move.EnPassant)
+                {
+                    return (State->EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0);
+                }
+
+                ulong empty = ~bb.Occupancy;
+                if ((moveTo ^ moveFrom) != 16)
+                {
+                    //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
+                    return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 
+                        || (empty & SquareBB[moveTo]) != 0);
+                }
+                else
+                {
+                    //  This IS a pawn double move, so it can only go to a square it attacks,
+                    //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
+                    return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 
+                        || ((empty & SquareBB[moveTo - ShiftUpDir(pc)]) != 0 && (empty & SquareBB[moveTo]) != 0));
+                }
+
+            }
+
+            //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
+            //  Pieces can only move to squares that they attack, with the one exception of queenside castling
+            return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.Castle);
+        }
+
+
+        /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)]
