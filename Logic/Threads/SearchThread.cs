@@ -82,7 +82,7 @@ namespace LTChess.Logic.Threads
         /// <summary>
         /// A unique copy of the root position for the search.
         /// </summary>
-        public Position RootPosition;
+        public readonly Position RootPosition;
 
         /// <summary>
         /// A unique list of unique RootMoves (scored moves from the starting position) that this thread can search.
@@ -131,6 +131,9 @@ namespace LTChess.Logic.Threads
             _Mutex = "Mut" + ThreadIdx;
             _SearchCond = new ConditionVariable();
             Searching = true;
+
+            //  Each thread its own position object, which lasts the entire lifetime of the thread.
+            RootPosition = new Position(InitialFEN, true, this);
 
             _SysThread = new Thread(ThreadInit);
 
