@@ -890,6 +890,12 @@ namespace LTChess.Logic.Core
             int moveTo = move.To;
 
             int pt = bb.GetPieceAtIndex(moveFrom);
+
+            if (pt == None)
+            {
+                return false;
+            }
+
             if (CheckInfo.InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
@@ -944,6 +950,28 @@ namespace LTChess.Logic.Core
 
             if (pt == Piece.King)
             {
+                if (move.Castle)
+                {
+                    int rookSquare = moveTo switch
+                    {
+                        C1 => A1,
+                        G1 => H1,
+                        C8 => A8,
+                        G8 => H8,
+                        _ => moveFrom,
+                    };
+
+                    if (rookSquare == moveFrom)
+                    {
+                        Log("WARN IsLegal(" + move + ") is a castle, but the To square wasn't C1/G1 or C8/G8!");
+                    }
+
+                    if ((SquareBB[rookSquare] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
+                    {
+                        return false;
+                    }
+                }
+
                 //  We can move anywhere as long as it isn't attacked by them.
 
                 //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
