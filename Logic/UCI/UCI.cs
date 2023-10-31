@@ -353,7 +353,7 @@ namespace LTChess.Logic.Core
             }
 
             //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
-            info.MaxNodes = ulong.MaxValue - 1;
+            info.MaxNodes = MaxSearchNodes;
             info.TimeManager.MaxSearchTime = MaxSearchTime;
             info.MaxDepth = MaxDepth;
 
@@ -417,7 +417,7 @@ namespace LTChess.Logic.Core
                     Debug.Assert(info.TimeManager.MaxSearchTime == MaxSearchTime);
                     Debug.Assert(info.MaxDepth == MaxDepth);
 
-                    info.MaxNodes = ulong.MaxValue - 1;
+                    info.MaxNodes = MaxSearchNodes;
                     info.TimeManager.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
                     isInfinite = true;

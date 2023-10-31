@@ -26,7 +26,7 @@ namespace LTChess.Logic.Search
         /// <summary>
         /// The number of nodes the search should stop at.
         /// </summary>
-        public ulong MaxNodes = ulong.MaxValue - 1;
+        public ulong MaxNodes = MaxSearchNodes;
 
         /// <summary>
         /// The best move found. This may be modified at the end of any call to <c>SimpleSearch.FindBest</c>,
@@ -132,7 +132,7 @@ namespace LTChess.Logic.Search
         public static SearchInformation Infinite(Position p)
         {
             SearchInformation si = new SearchInformation(p, Utilities.MaxDepth, SearchConstants.MaxSearchTime);
-            si.MaxNodes = ulong.MaxValue - 1;
+            si.MaxNodes = MaxSearchNodes;
             return si;
         }
 

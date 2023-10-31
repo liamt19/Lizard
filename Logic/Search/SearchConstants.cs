@@ -15,6 +15,8 @@
         /// </summary>
         public const int MaxSearchTime = int.MaxValue - 1;
 
+        public const ulong MaxSearchNodes = ulong.MaxValue - 1;
+
         /// <summary>
         /// If we have fewer than this amount of milliseconds on our clock, we are in "low time".
         /// Our search times will be reduced if we would enter low time.
