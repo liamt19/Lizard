@@ -868,7 +868,7 @@ namespace LTChess.Logic.Search
 
             if (bestMove.Capture)
             {
-                int idx = HistoryTable.CapIndex(thisPiece, thisColor, moveTo, capturedPiece);
+                int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
                 history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
             }
             else
@@ -894,7 +894,7 @@ namespace LTChess.Logic.Search
 
             for (int i = 0; i < captureCount; i++)
             {
-                int idx = HistoryTable.CapIndex(pos.bb.GetPieceAtIndex(captureMoves[i].From), thisColor, captureMoves[i].To, pos.bb.GetPieceAtIndex(captureMoves[i].To));
+                int idx = HistoryTable.CapIndex(thisColor, pos.bb.GetPieceAtIndex(captureMoves[i].From), captureMoves[i].To, pos.bb.GetPieceAtIndex(captureMoves[i].To));
                 history.ApplyBonus(history.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
             }
         }

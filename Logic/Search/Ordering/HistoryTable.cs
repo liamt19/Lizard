@@ -87,7 +87,7 @@ namespace LTChess.Logic.Search.Ordering
         /// <see cref="CaptureHistory"/>[<paramref name="pt"/> + <paramref name="pc"/>][<paramref name="toSquare"/>][<paramref name="capturedPt"/>].
         /// </summary>
         [MethodImpl(Inline)]
-        public static int CapIndex(int pt, int pc, int toSquare, int capturedPt)
+        public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
         {
             const int xMax = (PieceNB * ColorNB);
             const int yMax = (SquareNB);

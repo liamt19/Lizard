@@ -232,12 +232,12 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 //  This saves us a bit of time later since we won't need to refresh both sides for every king move.
                 accumulator->RefreshPerspective[us] = true;
 
-                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing));
-                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing));
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(us, ourPiece), theirKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(us, ourPiece), theirKing));
 
                 if (m.Capture)
                 {
-                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing));
+                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(Not(us), theirPiece), theirKing));
                 }
                 else if (m.Castle)
                 {
@@ -259,8 +259,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         _ => F8,    //  G8 => F8
                     };
 
-                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookFrom, FishPiece(Piece.Rook, us), theirKing));
-                    AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookTo, FishPiece(Piece.Rook, us), theirKing));
+                    RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookFrom, FishPiece(us, Piece.Rook), theirKing));
+                    AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, rookTo, FishPiece(us, Piece.Rook), theirKing));
                 }
 
                 return;
@@ -269,28 +269,28 @@ namespace LTChess.Logic.NN.HalfKA_HM
             //  Otherwise, we only need to remove the features that are no longer there (move.From) and the piece that was on
             //  move.To before it was captured, and add the new features (move.To).
 
-            RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveFrom, FishPiece(ourPiece, us), ourKing));
-            RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(ourPiece, us), theirKing));
+            RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveFrom, FishPiece(us, ourPiece), ourKing));
+            RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveFrom, FishPiece(us, ourPiece), theirKing));
 
             if (m.Promotion)
             {
                 //  Add the promotion piece instead.
 
-                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(m.PromotionTo, us), ourKing));
-                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(m.PromotionTo, us), theirKing));
+                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(us, m.PromotionTo), ourKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(us, m.PromotionTo), theirKing));
             }
             else
             {
-                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(ourPiece, us), ourKing));
-                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(ourPiece, us), theirKing));
+                AddFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(us, ourPiece), ourKing));
+                AddFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(us, ourPiece), theirKing));
             }
 
             if (m.Capture)
             {
                 //  A captured piece needs to be removed from both perspectives as well.
 
-                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(theirPiece, Not(us)), ourKing));
-                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(theirPiece, Not(us)), theirKing));
+                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, moveTo, FishPiece(Not(us), theirPiece), ourKing));
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, moveTo, FishPiece(Not(us), theirPiece), theirKing));
             }
 
             if (m.EnPassant)
@@ -298,8 +298,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
                 int idxPawn = moveTo + ShiftDownDir(us);
 
-                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, idxPawn, FishPiece(Piece.Pawn, Not(us)), ourKing));
-                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, idxPawn, FishPiece(Piece.Pawn, Not(us)), theirKing));
+                RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, idxPawn, FishPiece(Not(us), Piece.Pawn), ourKing));
+                RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, idxPawn, FishPiece(Not(us), Piece.Pawn), theirKing));
             }
         }
 
@@ -375,7 +375,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 int idx = poplsb(&us);
 
                 int pt = bb.GetPieceAtIndex(idx);
-                int fishPT = FishPiece(pt, perspective);
+                int fishPT = FishPiece(perspective, pt);
                 int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                 active[spanIndex++] = kpIdx;
             }
@@ -385,7 +385,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 int idx = poplsb(&them);
 
                 int pt = bb.GetPieceAtIndex(idx);
-                int fishPT = FishPiece(pt, Not(perspective));
+                int fishPT = FishPiece(Not(perspective), pt);
                 int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                 active[spanIndex++] = kpIdx;
             }
@@ -425,7 +425,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// PS_NONE = 0, W_PAWN = 1, W_KNIGHT = 2, ... B_PAWN = 9, ... PIECE_NB = 16
         /// </summary>
         [MethodImpl(Inline)]
-        public static int FishPiece(int pt, int pc)
+        public static int FishPiece(int pc, int pt)
         {
             return ((pt + 1) + (pc * 8));
         }
@@ -452,7 +452,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     int idx = poplsb(&us);
 
                     int pt = bb.GetPieceAtIndex(idx);
-                    int fishPT = FishPiece(pt, perspective);
+                    int fishPT = FishPiece(perspective, pt);
                     int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                     Log("\t" + kpIdx + "\t = " + bb.SquareToString(idx));
                 }
@@ -462,7 +462,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     int idx = poplsb(&them);
 
                     int pt = bb.GetPieceAtIndex(idx);
-                    int fishPT = FishPiece(pt, Not(perspective));
+                    int fishPT = FishPiece(Not(perspective), pt);
                     int kpIdx = HalfKAIndex(perspective, idx, fishPT, ourKing);
                     Log("\t" + kpIdx + "\t = " + bb.SquareToString(idx));
                 }
@@ -544,7 +544,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     int idx = CoordToIndex(f, r);
                     int pt = bb.GetPieceAtIndex(idx);
                     int pc = bb.GetColorAtIndex(idx);
-                    int fishPc = FishPiece(pt, pc);
+                    int fishPc = FishPiece(pc, pt);
                     int v = ScoreMate;
 
                     if (pt != None && bb.GetPieceAtIndex(idx) != King)
@@ -661,7 +661,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             {
                 if (bb.GetPieceAtIndex(i) != None)
                 {
-                    writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(bb.GetPieceAtIndex(i), bb.GetColorAtIndex(i)), ScoreMate);
+                    writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(bb.GetColorAtIndex(i), bb.GetPieceAtIndex(i)), ScoreMate);
                     continue;
                 }
 
@@ -673,7 +673,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                 bb.RemovePiece(i, pieceColor, pieceType);
 
-                writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(pieceType, pieceColor), eval);
+                writeSquare(GetIndexFile(i), GetIndexRank(i), FishPiece(pieceColor, pieceType), eval);
             }
 
             Log("NNUE derived piece values:\n");
