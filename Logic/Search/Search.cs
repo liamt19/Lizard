@@ -449,7 +449,11 @@ namespace LTChess.Logic.Search
                     int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth + 1);
 
                     score = -Negamax<NonPVNode>(ref info, (ss + 1), -alpha - 1, -alpha, reducedDepth, true);
-                    Debug.Assert(score > -ScoreInfinite && score < ScoreInfinite);
+                    if (EnableAssertions)
+                    {
+                        Assert(score is > -ScoreInfinite and < ScoreInfinite, 
+                            "The returned score = " + score + " from a LMR search was OOB! (should be " + (-ScoreInfinite) + " < score < " + ScoreInfinite);
+                    }
 
                     if (score > alpha && newDepth > reducedDepth)
                     {
@@ -494,7 +498,11 @@ namespace LTChess.Logic.Search
 
                 pos.UnmakeMove(m);
 
-                Debug.Assert(score > -ScoreInfinite && score < ScoreInfinite);
+                if (EnableAssertions)
+                {
+                    Assert(score is > -ScoreInfinite and < ScoreInfinite,
+                        "The returned score = " + score + " from a recursive call to Negamax was OOB! (should be " + (-ScoreInfinite) + " < score < " + ScoreInfinite);
+                }
 
                 if (SearchPool.StopThreads)
                 {
@@ -513,7 +521,13 @@ namespace LTChess.Logic.Search
                         }
                     }
 
-                    Debug.Assert(rmIndex != -1, "Move " + m + " wasn't in this thread's RootMoves!");
+                    if (EnableAssertions)
+                    {
+                        Assert(rmIndex != -1, 
+                            "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves!" +
+                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
+                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
+                    }
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
 
@@ -611,7 +625,13 @@ namespace LTChess.Logic.Search
         public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
-            Debug.Assert(typeof(NodeType) != typeof(RootNode), "QSearch shouldn't be called from a root node!");
+            if (EnableAssertions)
+            {
+                Assert(typeof(NodeType) != typeof(RootNode),
+                "QSearch(..., depth = " + depth + ") got a NodeType of RootNode, but RootNodes should never enter a QSearch!" +
+                (depth < 1 ? " If the depth is 0, this might have been caused by razoring pruning. " +
+                             "Otherwise, Negamax was called with probably called a negative depth." : string.Empty));
+            }
 
             Position pos = info.Position;
             SearchThread thisThread = pos.Owner;
