@@ -314,7 +314,21 @@
             };
         }
 
-
+        /// <summary>
+        /// Returns a mask of all of the squares that pieces of type <paramref name="pt"/> and color <paramref name="pc"/> attack.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong AttackMask(int pc, int pt)
+        {
+            ulong mask = 0;
+            ulong occ = Occupancy;
+            ulong pieces = Colors[pc] & Pieces[pt];
+            while (pieces != 0)
+            {
+                mask |= AttackMask(poplsb(&pieces), pc, pt, occ);
+            }
+            return mask;
+        }
 
         /// <summary>
         /// Sets <paramref name="info"/> according to the number of pieces that attack the king of color <paramref name="ourColor"/>
