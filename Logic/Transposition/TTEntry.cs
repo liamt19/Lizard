@@ -11,7 +11,7 @@ namespace LTChess.Logic.Transposition
     /// Setting Pack=1/2 causes the struct to NOT pad itself with an extra 2 bytes, so its size would increase from 10 -> 12. 
     /// Each TTCluster contains 3 TTEntry, and TTClusters are meant to align on 32 byte boundaries, so we need this to be 10 bytes max.
     /// </summary>
-    [StructLayout(LayoutKind.Sequential, Pack=2, Size=10)]
+    [StructLayout(LayoutKind.Explicit, Pack=2, Size=10)]
     public struct TTEntry
     {
         public static readonly TTEntry Null = new TTEntry(0, 0, TTNodeType.Invalid, 0, Move.Null);
@@ -21,10 +21,19 @@ namespace LTChess.Logic.Transposition
         public const int DepthOffset = 7;
         public const int DepthNone = -6;
 
+        [FieldOffset(0)]
         public int _ScoreStatEval;      //  4 = 16 bits + 16 bits
+
+        [FieldOffset(4)]
         public CondensedMove BestMove;  //  2 = 16 bits
+
+        [FieldOffset(6)]
         public ushort Key;              //  2 = 16 bits
+
+        [FieldOffset(8)]
         public sbyte AgePVType;         //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
+
+        [FieldOffset(9)]
         public sbyte _depth;            //  1 =  8 bits
 
 
