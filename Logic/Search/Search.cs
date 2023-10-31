@@ -438,7 +438,7 @@ namespace LTChess.Logic.Search
                         R--;
 
 
-                    ss->StatScore = 2 * history.MainHistory[(ourColor * HistoryTable.MainHistoryPCStride) + m.MoveMask] +
+                    ss->StatScore = 2 * history.MainHistory[HistoryTable.HistoryIndex(ourColor, m)] +
                                         (*contHist[0])[histIdx] +
                                         (*contHist[1])[histIdx] +
                                         (*contHist[3])[histIdx];
@@ -904,12 +904,12 @@ namespace LTChess.Logic.Search
                     ss->Killer0 = bestMove;
                 }
 
-                history.ApplyBonus(history.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + bestMove.MoveMask), captureBonus, HistoryTable.MainHistoryClamp);
+                history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), captureBonus, HistoryTable.MainHistoryClamp);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    history.ApplyBonus(history.MainHistory, ((thisColor * HistoryTable.MainHistoryPCStride) + m.MoveMask), -captureBonus, HistoryTable.MainHistoryClamp);
+                    history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, m), -captureBonus, HistoryTable.MainHistoryClamp);
                     UpdateContinuations(ss, thisColor, pos.bb.GetPieceAtIndex(m.From), m.To, -captureBonus);
                 }
             }

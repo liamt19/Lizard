@@ -79,6 +79,17 @@ namespace LTChess.Logic.Search.Ordering
             field[index] += (short)(bonus - (field[index] * Math.Abs(bonus) / clamp));
         }
 
+        [MethodImpl(Inline)]
+        public static int HistoryIndex(int pc, Move m)
+        {
+            if (EnableAssertions)
+            {
+                Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements, 
+                    "HistoryIndex(" + pc + ", " + m.MoveMask + ") is OOB! (should be 0 <= idx < " + MainHistoryElements + ")");
+            }
+            return ((pc * MainHistoryPCStride) + m.MoveMask);
+        }
+
         /// <summary>
         /// Returns the index of the score that should be applied to a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
         /// capturing a piece of type <paramref name="capturedPt"/> on the square <paramref name="toSquare"/>.

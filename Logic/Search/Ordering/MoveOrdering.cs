@@ -49,7 +49,7 @@ namespace LTChess.Logic.Search.Ordering
                 {
                     int contIdx = PieceToHistory.GetIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo);
 
-                    scores[i] =  2 *  (history.MainHistory[((pc * HistoryTable.MainHistoryPCStride) + m.MoveMask)]);
+                    scores[i] =  2 *  (history.MainHistory[HistoryTable.HistoryIndex(pc, m)]);
                     scores[i] += 2 *  (*continuationHistory[0])[contIdx];
                     scores[i] +=      (*continuationHistory[1])[contIdx];
                     scores[i] +=      (*continuationHistory[3])[contIdx];
