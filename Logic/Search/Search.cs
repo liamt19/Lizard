@@ -346,20 +346,16 @@ namespace LTChess.Logic.Search
                 legalMoves++;
                 int extend = 0;
 
-                if (!isCapture)
+                if (!isRoot && bestScore > ScoreMatedMax && pos.MaterialCountNonPawn[pos.ToMove] > 0)
                 {
-                    lmpMoves++;
-
-                    if (bestScore > -ScoreMateMax 
-                        && !isRoot 
-                        && playedMoves > 0 
-                        && lmpMoves >= lmpCutoff)
+                    if (skipQuiets == false)
                     {
-                        int lmrDepth = depth - LogarithmicReductionTable[depth][legalMoves];
-                        lmrDepth = Math.Max(1, lmrDepth);
+                        skipQuiets = (legalMoves >= LMPTable[improving ? 1 : 0][depth]);
+                    }
 
-                        int seeVal = -40 * (lmrDepth * lmrDepth);
-                        if (eval + (SearchConstants.FutilityPruningMarginPerDepth * depth) < alpha && !SEE_GE(pos, m, seeVal))
+                    if (m.CausesCheck || isCapture || (!isCapture && skipQuiets))
+                    {
+                        if (!SEE_GE(pos, m, -ExchangeBase * depth))
                         {
                             continue;
                         }
@@ -889,9 +885,9 @@ namespace LTChess.Logic.Search
                 }
             }
 
-            if (legalMoves == 0)
+            if (ss->InCheck && legalMoves == 0)
             {
-                return (ss->InCheck ? MakeMateScore(ss->Ply) : ScoreDraw);
+                return MakeMateScore(ss->Ply);
             }
 
             TTNodeType nodeType = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
