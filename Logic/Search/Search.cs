@@ -297,9 +297,8 @@ namespace LTChess.Logic.Search
 
             for (int i = 0; i < size; i++)
             {
-                OrderNextMove(list, size, i);
+                Move m = OrderNextMove(list, size, i);
 
-                Move m = list[i].Move;
 
                 if (m == ss->Skip)
                 {
@@ -744,8 +743,7 @@ namespace LTChess.Logic.Search
 
             for (int i = 0; i < size; i++)
             {
-                OrderNextMove(list, size, i);
-                Move m = list[i].Move;
+                Move m = OrderNextMove(list, size, i);
 
                 if (!pos.IsLegal(m))
                 {

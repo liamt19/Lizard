@@ -65,11 +65,11 @@ namespace LTChess.Logic.Search.Ordering
         }
 
 
-        public static void OrderNextMove(ScoredMove* moves, int size, int listIndex)
+        public static Move OrderNextMove(ScoredMove* moves, int size, int listIndex)
         {
             if (size < 2)
             {
-                return;
+                return moves[listIndex].Move;
             }
 
             int max = int.MinValue;
@@ -85,6 +85,8 @@ namespace LTChess.Logic.Search.Ordering
             }
 
             (moves[maxIndex], moves[listIndex]) = (moves[listIndex], moves[maxIndex]);
+
+            return moves[listIndex].Move;
         }
 
 
@@ -99,11 +101,11 @@ namespace LTChess.Logic.Search.Ordering
         }
 
 
-        public static void OrderNextMove(Span<ScoredMove> moves, int size, int listIndex)
+        public static Move OrderNextMove(Span<ScoredMove> moves, int size, int listIndex)
         {
             fixed (ScoredMove* ptr = moves)
             {
-                OrderNextMove(ptr, size, listIndex);
+                return OrderNextMove(ptr, size, listIndex);
             }
         }
 
