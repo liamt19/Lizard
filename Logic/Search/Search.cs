@@ -1,8 +1,13 @@
 ﻿
-#define SHOW_STATS
+#define MP_NM
+#undef MP_NM
+
+#define MP_QS
+#undef MP_QS
 
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 
 using LTChess.Logic.Core;
 using LTChess.Logic.Data;
@@ -25,12 +30,12 @@ namespace LTChess.Logic.Search
         /// <summary>
         /// If the depth is at or above this, then QSearch will allow non-capture, non-evasion moves that GIVE check.
         /// </summary>
-        private const int DepthQChecks = 0;
+        public const int DepthQChecks = 0;
 
         /// <summary>
         /// If the depth is at or below this, then QSearch will ignore non-capture, non-evasion moves that GIVE check.
         /// </summary>
-        private const int DepthQNoChecks = -1;
+        public const int DepthQNoChecks = -1;
 
 
 
@@ -292,6 +297,20 @@ namespace LTChess.Logic.Search
             bool skipQuiets = false;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+#if MP_NM
+            //  Killer0's 4 byte move is followed by a 4 byte buffer, and Killer1's move and buffer immediately follows that.
+            //  This is less of a headache to deal with constantly converting ScoredMove's to Move's and vice versa,
+            //  but we also need to be much more careful about accessing this pointer (since the Move*[1] is the junk data in Killer0's buffer)
+            Move* killers = &ss->Killer0;
+
+            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, SquareNB);
+
+            Move m;
+            while ((m = mp.NextMove(skipQuiets)) != Move.Null)
+            {
+#else
+
+
             int size = pos.GenPseudoLegal(list);
             AssignScores(ref bb, ss, history, contHist, list, size, ttMove);
 
@@ -299,6 +318,7 @@ namespace LTChess.Logic.Search
             {
                 Move m = OrderNextMove(list, size, i);
 
+#endif
 
                 if (m == ss->Skip)
                 {
@@ -737,6 +757,20 @@ namespace LTChess.Logic.Search
             int movesMade = 0;
             int quietCheckEvasions = 0;
 
+#if MP_QS
+            //  Killer0's 4 byte move is followed by a 4 byte buffer, and Killer1's move and buffer immediately follows that.
+            //  This is less of a headache to deal with constantly converting ScoredMove's to Move's and vice versa,
+            //  but we also need to be much more careful about accessing this pointer (since the Move*[1] is the junk data in Killer0's buffer)
+            Move* killers = &ss->Killer0;
+
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, prevSquare);
+            Move m;
+            while ((m = mp.NextMove()) != Move.Null) 
+            {
+
+#else
+
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
             AssignScores(ref pos.bb, ss, history, contHist, list, size, ttMove, false);
@@ -744,6 +778,8 @@ namespace LTChess.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
+
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -763,6 +799,7 @@ namespace LTChess.Logic.Search
                 bool isPromotion = m.Promotion;
                 bool givesCheck = m.Checks;
 
+#if !MP_QS
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
 
@@ -770,6 +807,7 @@ namespace LTChess.Logic.Search
                 {
                     continue;
                 }
+#endif
 
                 movesMade++;
 
