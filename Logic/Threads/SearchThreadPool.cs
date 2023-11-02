@@ -48,16 +48,13 @@ namespace LTChess.Logic.Threads
             {
                 MainThread.WaitForThreadFinished();
 
-                int joins = 0;
                 for (int i = 0; i < ThreadCount; i++)
                 {
                     if (Threads[i] != null)
                     {
                         Threads[i].Dispose();
-                        joins++;
                     }
                 }
-                Debug.WriteLine("Joined " + joins + " existing threads");
             }
 
             this.ThreadCount = newThreadCount;
@@ -70,7 +67,6 @@ namespace LTChess.Logic.Threads
             }
 
             MainThread.WaitForThreadFinished();
-            Debug.WriteLine("Spawned " + ThreadCount + " new threads");
         }
 
 
