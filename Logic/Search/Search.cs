@@ -408,7 +408,7 @@ namespace LTChess.Logic.Search
 
                 ss->Extensions = (ss - 1)->Extensions + (extend == 2 ? 1 : 0);
 
-                prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
+                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
                 pos.MakeMove(m);
@@ -851,7 +851,7 @@ namespace LTChess.Logic.Search
 
                 int histIdx = PieceToHistory.GetIndex(ourColor, pos.bb.GetPieceAtIndex(m.From), m.To);
 
-                prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(pos.HashAfter(m))));
+                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
                 thisThread.Nodes++;

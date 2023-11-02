@@ -89,6 +89,7 @@ namespace LTChess.Logic.Transposition
             set => _depth = (sbyte)(value + DepthOffset);
         }
 
+        public bool IsEmpty => (Depth == 0);
 
         public TTEntry(ulong key, short score, TTNodeType nodeType, int depth, Move move)
         {

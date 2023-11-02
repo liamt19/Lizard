@@ -7,6 +7,12 @@ using System.Threading.Tasks;
 
 namespace LTChess.Logic.Transposition
 {
+    /// <summary>
+    /// Contains 3 TTEntry's, all of which map to a particular index within the Transposition Table.
+    /// <br></br>
+    /// A pointer to this (TTCluster*) can be casted to a TTEntry* and indexed from 0 to 2 to access
+    /// the individual TTEntry's since the offsets of the entries do not change.
+    /// </summary>
     [StructLayout(LayoutKind.Explicit, Size=32)]
     public unsafe struct TTCluster
     {
@@ -22,6 +28,11 @@ namespace LTChess.Logic.Transposition
         [FieldOffset(30)]
         private fixed byte _pad[2];
 
+        /// <summary>
+        /// Initializes the memory for this TTCluster instance.
+        /// <para></para>
+        /// This constructor should ONLY be called on TTCluster's created with <see cref="NativeMemory"/>!
+        /// </summary>
         public TTCluster() 
         {
             _elem0 = new TTEntry();
@@ -32,28 +43,15 @@ namespace LTChess.Logic.Transposition
             _pad[1] = (byte) ')';
         }
 
+        /// <summary>
+        /// Zeroes the memory for each of the three TTEntry's in this cluster.
+        /// </summary>
         public void Clear()
         {
             fixed(void* ptr = &_elem0)
             {
                 //  Clear all 3 here.
                 NativeMemory.Clear((void*)ptr, (nuint)sizeof(TTEntry) * 3);
-            }
-        }
-
-        public ref TTEntry this[int index]
-        {
-            get
-            {
-                switch (index)
-                {
-                    default:
-                        return ref _elem0;
-                    case 1:
-                        return ref _elem1;
-                    case 2:
-                        return ref _elem2;
-                }
             }
         }
     }

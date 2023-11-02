@@ -61,7 +61,8 @@ namespace LTChess.Logic.Transposition
 
             for (ulong i = 0; i < ClusterCount; i++)
             {
-                var cluster = Clusters[i];
+                TTEntry* cluster = (TTEntry*) &Clusters[i];
+
                 if (cluster[0].Key != 0 || cluster[1].Key != 0 || cluster[2].Key != 0)
                 {
                     Clusters[i].Clear();
@@ -70,13 +71,14 @@ namespace LTChess.Logic.Transposition
         }
 
         /// <summary>
-        /// Returns a reference to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
+        /// Returns a pointer to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
         /// </summary>
         [MethodImpl(Inline)]
-        public static ref TTCluster GetCluster(ulong hash)
+        public static TTCluster* GetCluster(ulong hash)
         {
-            return ref Clusters[ClusterIndex(hash, ClusterCount)];
+            return (Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64)));
         }
+
 
         /// <summary>
         /// Sets <paramref name="tte"/> to the address of a <see cref="TTEntry"/>.
@@ -87,58 +89,47 @@ namespace LTChess.Logic.Transposition
         /// Otherwise, this method sets <paramref name="tte"/> to the address of the <see cref="TTEntry"/> within the cluster that should
         /// be overwritten with new information, and this method returns false.
         /// </summary>
-        [MethodImpl(Inline)]
         public static bool Probe(ulong hash, out TTEntry* tte)
         {
-            ref TTCluster cluster = ref GetCluster(hash);
-            var key = (ushort)hash;
+            TTCluster* cluster = GetCluster(hash);
+            tte = (TTEntry*) cluster;
+
+            var key = (ushort) hash;
 
             for (int i = 0; i < EntriesPerCluster; i++)
             {
-                if (cluster[i].Key == key || cluster[i].Depth == 0)
+                //  If the entry's key matches, or the entry is empty, then pick this one.
+                if (tte[i].Key == key || tte[i].IsEmpty)
                 {
-                    cluster[i].AgePVType = (sbyte)(Age | (cluster[i].AgePVType & (TT_AGE_INC - 1)));
-                    fixed (TTEntry* addr = &cluster[i])
-                    {
-                        tte = addr;
-                    }
-                    return (cluster[i].Depth != 0);
+                    tte[i].AgePVType = (sbyte)(Age | (tte[i].AgePVType & (TT_AGE_INC - 1)));
+
+                    tte = &tte[i];
+
+                    //  We return true if the entry isn't empty, which means that tte is valid.
+                    //  Check tte[0] here, not tte[i].
+                    return !tte[0].IsEmpty;
                 }
             }
 
-            fixed (TTEntry* addr = &cluster[0])
-            {
-                tte = addr;
-            }
+            //  We didn't find an entry for this hash, so instead we will choose one of the 
+            //  non-working entries in this cluster to possibly be overwritten / updated, and return false.
 
-            ref TTEntry replace = ref cluster[0];
+            //  Replace the first entry, unless the 2nd or 3rd is a better option.
+            TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((   replace.Depth - (TT_AGE_CYCLE + Age -    replace.AgePVType) & TT_AGE_MASK) >
-                    (cluster[i].Depth - (TT_AGE_CYCLE + Age - cluster[i].AgePVType) & TT_AGE_MASK))
+                if ((replace->Depth - (TT_AGE_CYCLE + Age - replace->AgePVType) & TT_AGE_MASK) >
+                    (  tte[i].Depth - (TT_AGE_CYCLE + Age -   tte[i].AgePVType) & TT_AGE_MASK))
                 {
-                    replace = cluster[i];
-                    fixed (TTEntry* addr = &cluster[i])
-                    {
-                        tte = addr;
-                    }
+                    replace = &tte[i];
                 }
             }
 
+            tte = replace;
             return false;
         }
 
 
-        [MethodImpl(Inline)]
-        private static ulong ClusterIndex(ulong a, ulong b)
-        {
-            ulong aL = (uint)a, aH = a >> 32;
-            ulong bL = (uint)b, bH = b >> 32;
-            ulong c1 = (aL * bL) >> 32;
-            ulong c2 = aH * bL + c1;
-            ulong c3 = aL * bH + (uint)c2;
-            return aH * bH + (c2 >> 32) + (c3 >> 32);
-        }
 
 
         /// <summary>
@@ -162,9 +153,11 @@ namespace LTChess.Logic.Transposition
 
             for (int i = 0; i < MinTTClusters; i++)
             {
+                TTEntry* cluster = (TTEntry*) &Clusters[i];
+
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    if ((Clusters[i][j].AgePVType & TT_AGE_MASK) == Age)
+                    if ((cluster[j].AgePVType & TT_AGE_MASK) == Age)
                     {
                         entries++;
                     }
@@ -188,10 +181,10 @@ namespace LTChess.Logic.Transposition
 
             for (ulong i = 0; i < ClusterCount; i++)
             {
-                ref var cluster = ref Clusters[i];
+                TTEntry* cluster = (TTEntry*)&Clusters[i];
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    ref var tt = ref cluster[j];
+                    var tt = cluster[j];
                     if (tt.NodeType == TTNodeType.Beta)
                     {
                         Beta++;

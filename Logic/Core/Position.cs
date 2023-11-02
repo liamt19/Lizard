@@ -715,7 +715,7 @@ namespace LTChess.Logic.Core
 
             SetCheckInfo();
 
-            prefetch(Unsafe.AsPointer(ref TranspositionTable.GetCluster(Hash)));
+            prefetch(TranspositionTable.GetCluster(Hash));
 
         }
 
