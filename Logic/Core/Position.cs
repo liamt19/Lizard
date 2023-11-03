@@ -1213,19 +1213,12 @@ namespace LTChess.Logic.Core
                         {
                             if (char.IsLetter(splits[i][x]))
                             {
-                                int pt = FENToPiece(splits[i][x]);
                                 int idx = CoordToIndex(pieceX, 7 - i);
-                                bb.Pieces[pt] |= SquareBB[idx];
-                                bb.PieceTypes[idx] = pt;
-                                if (char.IsUpper(splits[i][x]))
-                                {
-                                    bb.Colors[Color.White] |= SquareBB[idx];
-                                }
-                                else
-                                {
-                                    bb.Colors[Color.Black] |= SquareBB[idx];
-                                }
+                                int pc = (char.IsUpper(splits[i][x]) ? White : Black);
+                                int pt = FENToPiece(splits[i][x]);
 
+                                bb.AddPiece(idx, pc, pt);
+                                
                                 pieceX++;
                             }
                             else if (char.IsDigit(splits[i][x]))
