@@ -72,7 +72,7 @@ namespace LTChess.Logic.NN.Simple768
 
         public NNUE768()
         {
-            if (SearchConstants.Threads != 0)
+            if (SearchConstants.Threads != 1)
             {
                 Log("WARN This network architecture currently only works for single-thread access!");
                 Log("The output will almost certainly be incorrect.\n");
