@@ -29,12 +29,6 @@ namespace LTChess.Logic.Search
         public ulong MaxNodes = MaxSearchNodes;
 
         /// <summary>
-        /// The best move found. This may be modified at the end of any call to <c>SimpleSearch.FindBest</c>,
-        /// but <c>SimpleSearch.LastBestMove</c> is kept correct at all times.
-        /// </summary>
-        public Move BestMove = Move.Null;
-
-        /// <summary>
         /// If true, then the search will stop
         /// </summary>
         public bool StopSearching = false;
@@ -60,11 +54,6 @@ namespace LTChess.Logic.Search
         /// PV[0] is the best move that we found, PV[1] is the best response that we think they have, etc.
         /// </summary>
         public Move[] PV;
-
-        /// <summary>
-        /// The evaluation of the best move.
-        /// </summary>
-        public int BestScore = 0;
 
         /// <summary>
         /// The number of nodes/positions evaluated during the search.
@@ -205,7 +194,7 @@ namespace LTChess.Logic.Search
         public override string ToString()
         {
             return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                + "BestMove: " + BestMove.ToString() + ", " + "BestScore: " + BestScore + ", " + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime()) + ", "
+                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime()) + ", "
                 + "NodeCount: " + NodeCount + ", " + "StopSearching: " + StopSearching;
         }
     }

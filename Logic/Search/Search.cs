@@ -629,9 +629,6 @@ namespace LTChess.Logic.Search
                 tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), nodeTypeToSave, depth, bestMove, ss->StaticEval, ss->TTPV);
             }
 
-            info.BestMove = bestMove;
-            info.BestScore = bestScore;
-
             return bestScore;
         }
 

@@ -520,16 +520,14 @@ namespace LTChess.Logic.Core
                 info.SearchFinishedCalled = true;
 
                 Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
-                info.BestMove = bestThreadMove;
 
-#if DEBUG
-                if (SearchPool.MainThread.RootMoves[0].Move != bestThreadMove)
+                if (EnableAssertions)
                 {
-                    Log("WARN MainThread best move = " + SearchPool.MainThread.RootMoves[0].Move + " was different than BestThread's = " + bestThreadMove);
+                    Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove, 
+                        "MainThread's best move = " + SearchPool.MainThread.RootMoves[0].Move + " was different than the BestThread's = " + bestThreadMove + "!");
                 }
-#endif
 
-                if (info.BestMove.IsNull())
+                if (bestThreadMove.IsNull())
                 {
                     if (StopLosingOnTimeFromVerizon && info.TimeManager.PlayerTime[info.Position.ToMove] <= 1)
                     {
@@ -538,8 +536,8 @@ namespace LTChess.Logic.Core
                         ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
                         int size = info.Position.GenLegal(legal);
 
-                        LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
-                        info.BestMove = legal[0].Move;
+                        LogString("[ERROR]: bestThreadMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
+                        bestThreadMove = legal[0].Move;
                     }
                     else
                     {
@@ -548,15 +546,15 @@ namespace LTChess.Logic.Core
 
                     LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
                 }
-                else if (!info.Position.IsLegal(info.BestMove))
+                else if (!info.Position.IsLegal(bestThreadMove))
                 {
-                    LogString("[ERROR]: info.BestMove (" + info.BestMove.ToString() + ") in OnSearchDone isn't legal!");
+                    LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal!");
                     LogString("[INFO]: FEN = '" + info.Position.GetFEN() + "'");
                     LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
                 }
 
-                SendString("bestmove " + info.BestMove.ToString());
-                LogString("[INFO]: sent 'bestmove " + info.BestMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+                SendString("bestmove " + bestThreadMove.ToString());
+                LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
             }
             else
             {
