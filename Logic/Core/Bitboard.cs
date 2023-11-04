@@ -23,12 +23,28 @@
         /// </summary>
         public fixed int PieceTypes[64];
 
+        /// <summary>
+        /// Mask of occupied squares, which is always equal to <c>Colors[White] | Colors[Black]</c>
+        /// </summary>
+        public ulong Occupancy = 0;
+
         public Bitboard()
         {
             Reset();
         }
 
-        public ulong Occupancy => Colors[Color.White] | Colors[Color.Black];
+        public ulong GetPieces(int pc, (int, int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6]);
+        public ulong GetPieces(int pc, (int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5]);
+        public ulong GetPieces(int pc, (int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4]);
+        public ulong GetPieces(int pc, (int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3]);
+        public ulong GetPieces(int pc, (int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2]);
+        public ulong GetPieces(int pc, int type) => Colors[pc] & (Pieces[type]);
+        public ulong GetPieces((int, int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6];
+        public ulong GetPieces((int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5];
+        public ulong GetPieces((int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4];
+        public ulong GetPieces((int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3];
+        public ulong GetPieces((int, int) types) => Pieces[types.Item1] | Pieces[types.Item2];
+        public ulong GetPieces(int type) => Pieces[type];
 
         public string SquareToString(int idx)
         {
@@ -51,6 +67,8 @@
             {
                 Colors[i] = 0UL;
             }
+
+            Occupancy = 0UL;
 
             for (int i = 0; i < SquareNB; i++)
             {
@@ -83,6 +101,8 @@
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
+
+            Occupancy |= SquareBB[idx];
         }
 
         /// <summary>
@@ -101,6 +121,8 @@
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
+
+            Occupancy ^= SquareBB[idx];
         }
 
         /// <summary>
@@ -113,12 +135,8 @@
         [MethodImpl(Inline)]
         public void MoveSimple(int from, int to, int pieceColor, int pieceType)
         {
-            ulong moveMask = (SquareBB[from] | SquareBB[to]);
-            Pieces[pieceType] ^= moveMask;
-            Colors[pieceColor] ^= moveMask;
-
-            PieceTypes[from] = Piece.None;
-            PieceTypes[to] = pieceType;
+            RemovePiece(from, pieceColor, pieceType);
+            AddPiece(to, pieceColor, pieceType);
         }
 
         /// <summary>
@@ -294,6 +312,18 @@
                   | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
                   | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
 
+        }
+
+        /// <summary>
+        /// Returns a ulong with bits set at the positions of every Knight, Bishop, Rook, and Queen that can attack the square <paramref name="idx"/>, 
+        /// given the board occupancy <paramref name="occupied"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public ulong AttackersToMajors(int idx, ulong occupied)
+        {
+            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
+                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
+                  | (Pieces[Piece.Knight] & KnightMasks[idx]));
         }
 
         /// <summary>
