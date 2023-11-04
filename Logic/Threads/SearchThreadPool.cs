@@ -250,17 +250,36 @@ namespace LTChess.Logic.Threads
         /// </summary>
         public void BlockCallerUntilFinished()
         {
-            if (Blocker.ParticipantCount == 1)
+            if (EnableAssertions)
             {
-                Blocker.AddParticipant();
-                Blocker.SignalAndWait();
-                Blocker.RemoveParticipant();
+                Assert(Blocker.ParticipantCount == 1,
+                    "BlockCallerUntilFinished was called, but the barrier had " + Blocker.ParticipantCount + " participants (should have been 1)! " +
+                    "This can happen if any thread other than the main thread calls this method.");
             }
-            else
+
+            if (SharedInfo.SearchActive == false)
             {
-                Debug.WriteLine("WARN BlockCallerUntilFinished was called, but the barrier had " + Blocker.ParticipantCount + " participants (should have been 1)");
+                //  Don't block if we aren't searching.
+                return;
             }
-            
+
+            if (Blocker.ParticipantCount != 1)
+            {
+                //  This should never happen, but just in case we can signal once to try and unblock Blocker.
+                Blocker.SignalAndWait(1);
+                return;
+            }
+
+            //  The MainSearchThread is always a participant, and the calling thread is a temporary participant.
+            //  The MainSearchThread will only signal if there are 2 participants, so add the calling thread.
+            Blocker.AddParticipant();
+
+            //  The MainSearchThread will signal Blocker once it has finished, so wait here until it does so.
+            Blocker.SignalAndWait();
+
+            //  We are done waiting, so remove the calling thread as a participant (now Blocker.ParticipantCount == 1)
+            Blocker.RemoveParticipant();
+
         }
 
 
