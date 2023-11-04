@@ -509,7 +509,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int GenNormal(ScoredMove* list, int pt, bool checks, ulong targets, int size)
         {
-            // TODO: JIT seems to prefer having seperate methods for each piece type, instead of a 'pt' parameter
+            // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
 
             ulong us = bb.Colors[ToMove];
@@ -549,7 +549,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public int GenLegal(Span<ScoredMove> legal)
         {
-            //  The Span that this method recieves is almost certainly already pinned (created via 'stackalloc'),
+            //  The Span that this method receives is almost certainly already pinned (created via 'stackalloc'),
             //  but fixing it here is essentially free performance-wise and lets us use Span's when possible.
             fixed (ScoredMove* ptr = legal)
             {

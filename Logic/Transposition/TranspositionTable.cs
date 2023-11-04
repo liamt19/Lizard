@@ -11,11 +11,22 @@ namespace LTChess.Logic.Transposition
         public const int TT_AGE_INC    = (0x8             );
         public const int TT_AGE_CYCLE  = (255 + TT_AGE_INC);
 
+        /// <summary>
+        /// The minimum number of TTClusters for hashfull to work properly.
+        /// </summary>
         private const int MinTTClusters = 1000;
 
+        /// <summary>
+        /// The minimum number of TTEntry's within a TTCluster.
+        /// </summary>
         public const int EntriesPerCluster = 3;
+
         private static TTCluster* Clusters;
         private static ulong ClusterCount;
+
+        /// <summary>
+        /// The age of the TT, which is increased for every call to <see cref="Threads.SearchThread.MainThreadSearch"/>.
+        /// </summary>
         public static ushort Age = 0;
 
         private static bool Initialized = false;
@@ -145,7 +156,15 @@ namespace LTChess.Logic.Transposition
         }
 
 
-
+        /// <summary>
+        /// Returns the "hashfull" for the TT, which is an estimation of how many valid entries are present.
+        /// <br></br>
+        /// This returns the number of recent entries (which have a <see cref="TTEntry.Age"/> == <see cref="TranspositionTable.Age"/>)
+        /// present in the first thousand TTClusters.
+        /// <para></para>
+        /// A hashfull of 400 means that there were 1200 TTEntry's with the correct age out of the first 3000, so we can estimate that 
+        /// about 40% of the entire TT has valid entries in it.
+        /// </summary>
         [MethodImpl(Inline)]
         public static int GetHashFull()
         {
@@ -166,7 +185,9 @@ namespace LTChess.Logic.Transposition
             return entries / EntriesPerCluster;
         }
 
-
+        /// <summary>
+        /// Prints statistics about the state of the TT, such as how many nodes of each type are present.
+        /// </summary>
         public static void PrintClusterStatus()
         {
             int recentEntries = 0;

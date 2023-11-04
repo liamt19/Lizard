@@ -14,6 +14,9 @@ namespace LTChess.Logic.Threads
 {
     public unsafe class SearchThreadPool
     {
+        /// <summary>
+        /// Global ThreadPool.
+        /// </summary>
         public static SearchThreadPool SearchPool;
 
         public int ThreadCount = SearchConstants.Threads;
@@ -23,7 +26,7 @@ namespace LTChess.Logic.Threads
         public SearchThread MainThread => Threads[0];
 
         /// <summary>
-        /// Set to true when the main thread when we are nearing the maximum search time / maximum node count,
+        /// Set to true by the main thread when we are nearing the maximum search time / maximum node count,
         /// or when the UCI receives a "stop" command
         /// </summary>
         public volatile bool StopThreads;
@@ -42,6 +45,9 @@ namespace LTChess.Logic.Threads
             Resize(threadCount);
         }
 
+        /// <summary>
+        /// Joins any existing threads and spawns <paramref name="newThreadCount"/> new ones.
+        /// </summary>
         public void Resize(int newThreadCount)
         {
             if (Threads != null)
@@ -69,12 +75,26 @@ namespace LTChess.Logic.Threads
             MainThread.WaitForThreadFinished();
         }
 
-
+        /// <summary>
+        /// Prepares each thread in the SearchThreadPool for a new search, and wakes the MainSearchThread up.
+        /// <br></br>
+        /// This is called by the main program thread (or UCI) after the search parameters have been set in <paramref name="rootInfo"/>.
+        /// <para></para>
+        /// <paramref name="rootPosition"/> should be set to the position to create the <see cref="SearchThread.RootMoves"/> from, 
+        /// which should be the same as <paramref name="rootInfo"/>'s Position.
+        /// </summary>
         public void StartSearch(Position rootPosition, ref SearchInformation rootInfo)
         {
             StartSearch(rootPosition, ref rootInfo, new ThreadSetup(rootPosition.GetFEN(), new List<Move>()));
         }
 
+
+        /// <summary>
+        /// <inheritdoc cref="StartSearch(Position, ref SearchInformation)"/>
+        /// <para></para>
+        /// Thread positions are first set to the FEN specified by <paramref name="setup"/>, 
+        /// and each move in <see cref="ThreadSetup.SetupMoves"/> (if any) is made for each position.
+        /// </summary>
         public void StartSearch(Position rootPosition, ref SearchInformation rootInfo, ThreadSetup setup)
         {
             MainThread.WaitForThreadFinished();
@@ -197,7 +217,7 @@ namespace LTChess.Logic.Threads
 
         /// <summary>
         /// Unblocks each thread waiting in IdleLoop by setting their <see cref="SearchThread.Searching"/> variable to true
-        /// and signalling the condition variable.
+        /// and signaling the condition variable.
         /// </summary>
         public void StartThreads()
         {
@@ -223,6 +243,11 @@ namespace LTChess.Logic.Threads
         }
 
 
+        /// <summary>
+        /// Blocks the calling thread until the MainSearchThread has finished searching.
+        /// <br></br>
+        /// This should only be used after calling <see cref="StartSearch"/>, and only blocks if a search is currently active.
+        /// </summary>
         public void BlockCallerUntilFinished()
         {
             if (Blocker.ParticipantCount == 1)

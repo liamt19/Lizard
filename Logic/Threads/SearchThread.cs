@@ -409,7 +409,7 @@ namespace LTChess.Logic.Threads
         }
 
         /// <summary>
-        /// To be called when the SearchThreadPool can be resized...
+        /// Frees up the memory that was allocated to this SearchThread.
         /// </summary>
         protected virtual void Dispose(bool disposing)
         {

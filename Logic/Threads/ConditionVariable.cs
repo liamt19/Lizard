@@ -23,6 +23,11 @@ namespace LTChess.Logic.Threads
         {
         }
 
+        /// <summary>
+        /// Releases the semaphore once if any threads are waiting on it.
+        /// <para></para>
+        /// This is similar to pthread_cond_signal for the Linux inclined
+        /// </summary>
         public void Pulse()
         {
             bool release;
@@ -38,14 +43,22 @@ namespace LTChess.Logic.Threads
             }
         }
 
-        public void Wait(object cs)
+        /// <summary>
+        /// Releases the lock on <paramref name="mutex"/>, blocks on the condition, 
+        /// and finally reacquires the lock on <paramref name="mutex"/> before returning.
+        /// <para></para>
+        /// <paramref name="mutex"/> must be locked before it is waited on or an exception will be thrown.
+        /// <para></para>
+        /// This is similar to pthread_cond_wait for the Linux inclined
+        /// </summary>
+        public void Wait(object mutex)
         {
             lock (waitersLock)
             {
                 ++waiters;
             }
 
-            Monitor.Exit(cs);
+            Monitor.Exit(mutex);
 
             sema.Wait();
 
@@ -54,7 +67,7 @@ namespace LTChess.Logic.Threads
                 --waiters;
             }
 
-            Monitor.Enter(cs);
+            Monitor.Enter(mutex);
         }
     }
 
