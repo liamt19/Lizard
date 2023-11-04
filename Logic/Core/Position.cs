@@ -909,20 +909,10 @@ namespace LTChess.Logic.Core
 
                 if (pt == Piece.King)
                 {
-                    //  Either move out or capture the piece
-                    ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
-                    bb.Pieces[Piece.King] ^= moveMask;
-                    bb.Colors[ourColor] ^= moveMask;
-                    if (((bb.AttackersTo(moveTo, bb.Occupancy) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) != 0)
-                    {
-                        bb.Pieces[Piece.King] ^= moveMask;
-                        bb.Colors[ourColor] ^= moveMask;
-                        return false;
-                    }
-
-                    bb.Pieces[Piece.King] ^= moveMask;
-                    bb.Colors[ourColor] ^= moveMask;
-                    return true;
+                    //  We need to move to a square that they don't attack.
+                    //  We also need to consider (NeighborsMask[moveTo] & SquareBB[theirKing]), because bb.AttackersTo does NOT include king attacks
+                    //  and we can't move to a square that their king attacks.
+                    return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[moveFrom]) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
                 }
 
                 int checker = CheckInfo.idxChecker;
@@ -977,23 +967,10 @@ namespace LTChess.Logic.Core
                 //  to make sure it is still legal
 
                 int idxPawn = moveTo - ShiftUpDir(ourColor);
-
                 ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
-                bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
-                bb.Colors[ourColor] ^= moveMask;
-                bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
 
-                if ((bb.AttackersTo(ourKing, bb.Occupancy) & bb.Colors[Not(ourColor)]) != 0)
-                {
-                    bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
-                    bb.Colors[ourColor] ^= moveMask;
-                    bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
-                    return false;
-                }
-
-                bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[idxPawn]);
-                bb.Colors[ourColor] ^= moveMask;
-                bb.Colors[theirColor] ^= (SquareBB[idxPawn]);
+                //  This is only legal if our king is NOT attacked after the EP is made
+                return (bb.AttackersTo(ourKing, (bb.Occupancy ^ (moveMask | SquareBB[idxPawn]))) & bb.Colors[Not(ourColor)]) == 0;
             }
 
             //  Otherwise, this move is legal if:

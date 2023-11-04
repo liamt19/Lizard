@@ -171,11 +171,10 @@ namespace LTChess.Logic.Core
                         m.EnPassant = true;
 
                         ulong moveMask = SquareBB[from] | SquareBB[State->EPSquare];
-                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
-                        bb.Colors[ToMove] ^= moveMask;
-                        bb.Colors[theirColor] ^= (SquareBB[State->EPSquare - up]);
-
-                        ulong attacks = bb.AttackersTo(theirKing, bb.Occupancy) & bb.Colors[ToMove];
+                        ulong occ = (bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up]);
+                        ulong pawnAttacks = PawnAttackMasks[Not(ToMove)][theirKing] & (bb.Pieces[Pawn] ^ moveMask);
+                        ulong colorMask = (bb.Colors[ToMove] ^ moveMask);
+                        ulong attacks = (bb.AttackersToMajors(theirKing, occ) | pawnAttacks) & colorMask;
 
                         switch (popcount(attacks))
                         {
@@ -190,10 +189,6 @@ namespace LTChess.Logic.Core
                                 m.SqChecker = lsb(attacks);
                                 break;
                         }
-
-                        bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
-                        bb.Colors[ToMove] ^= moveMask;
-                        bb.Colors[theirColor] ^= (SquareBB[State->EPSquare - up]);
                     }
                 }
             }
