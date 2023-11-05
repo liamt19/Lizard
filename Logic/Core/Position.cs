@@ -37,11 +37,6 @@ namespace LTChess.Logic.Core
         public int ToMove;
 
         /// <summary>
-        /// Current zobrist hash of the position.
-        /// </summary>
-        public ulong Hash;
-
-        /// <summary>
         /// The sum of all material in the position, indexed by piece color.
         /// </summary>
         public int[] MaterialCount;
@@ -342,19 +337,19 @@ namespace LTChess.Logic.Core
                     {
                         case C1:
                             bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
-                            Hash = Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
+                            State->Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
                             break;
                         case G1:
                             bb.MoveSimple(H1, F1, ourColor, Piece.Rook);
-                            Hash = Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
+                            State->Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
                             break;
                         case C8:
                             bb.MoveSimple(A8, D8, ourColor, Piece.Rook);
-                            Hash = Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
+                            State->Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
                             break;
                         default:
                             bb.MoveSimple(H8, F8, ourColor, Piece.Rook);
-                            Hash = Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
+                            State->Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
                             break;
                     }
                 }
@@ -362,12 +357,12 @@ namespace LTChess.Logic.Core
                 //  Remove all of our castling rights
                 if (ourColor == Color.White)
                 {
-                    Hash = Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.WK | CastlingStatus.WQ));
+                    State->Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.WK | CastlingStatus.WQ));
                     State->CastleStatus &= ~(CastlingStatus.WK | CastlingStatus.WQ);
                 }
                 else
                 {
-                    Hash = Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.BK | CastlingStatus.BQ));
+                    State->Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.BK | CastlingStatus.BQ));
                     State->CastleStatus &= ~(CastlingStatus.BK | CastlingStatus.BQ);
                 }
             }
@@ -377,19 +372,19 @@ namespace LTChess.Logic.Core
                 switch (moveFrom)
                 {
                     case A1:
-                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
                         State->CastleStatus &= ~CastlingStatus.WQ;
                         break;
                     case H1:
-                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
                         State->CastleStatus &= ~CastlingStatus.WK;
                         break;
                     case A8:
-                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
                         State->CastleStatus &= ~CastlingStatus.BQ;
                         break;
                     case H8:
-                        Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
                         State->CastleStatus &= ~CastlingStatus.BK;
                         break;
                 }
@@ -399,7 +394,7 @@ namespace LTChess.Logic.Core
             {
                 //  Remove their piece, and update the hash
                 bb.RemovePiece(moveTo, theirColor, theirPiece);
-                Hash = Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
+                State->Hash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
 
                 if (theirPiece == Piece.Rook)
                 {
@@ -407,19 +402,19 @@ namespace LTChess.Logic.Core
                     switch (moveTo)
                     {
                         case A1:
-                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
                             State->CastleStatus &= ~CastlingStatus.WQ;
                             break;
                         case H1:
-                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
                             State->CastleStatus &= ~CastlingStatus.WK;
                             break;
                         case A8:
-                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
                             State->CastleStatus &= ~CastlingStatus.BQ;
                             break;
                         case H8:
-                            Hash = Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
                             State->CastleStatus &= ~CastlingStatus.BK;
                             break;
                     }
@@ -449,7 +444,7 @@ namespace LTChess.Logic.Core
             {
                 //  Set st->EPSquare to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-                Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
                 State->EPSquare = EPNone;
             }
 
@@ -467,7 +462,7 @@ namespace LTChess.Logic.Core
 
                     int idxPawn = ((bb.Pieces[Piece.Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Piece.Pawn);
-                    Hash = Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
+                    State->Hash.ZobristToggleSquare(theirColor, Piece.Pawn, idxPawn);
 
                     //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
                     State->CapturedPiece = Piece.Pawn;
@@ -489,7 +484,7 @@ namespace LTChess.Logic.Core
                     if (State->EPSquare != EPNone)
                     {
                         //  Update the En Passant file if we just changed st->EPSquare
-                        Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                        State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
                     }
                 }
 
@@ -499,7 +494,7 @@ namespace LTChess.Logic.Core
 
 
             bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
-            Hash = Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
+            State->Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
 
             if (EnableAssertions)
             {
@@ -518,8 +513,8 @@ namespace LTChess.Logic.Core
                 //  And replace it with the promotion piece
                 bb.AddPiece(moveTo, ourColor, move.PromotionTo);
 
-                Hash = Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
-                Hash = Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
+                State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
+                State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
                 MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
                 MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
@@ -553,10 +548,9 @@ namespace LTChess.Logic.Core
                 CheckInfo.InDoubleCheck = false;
             }
 
-            Hash = Hash.ZobristChangeToMove();
+            State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Hash = Hash;
             if (move.Checks)
             {
                 State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
@@ -569,7 +563,6 @@ namespace LTChess.Logic.Core
             SetCheckInfo();
         }
 
-        
         [MethodImpl(Inline)]
         public void UnmakeMove(Move move)
         {
@@ -655,7 +648,6 @@ namespace LTChess.Logic.Core
             }
 
             State--;
-            this.Hash = State->Hash;
 
             switch (popcount(State->Checkers))
             {
@@ -704,18 +696,17 @@ namespace LTChess.Logic.Core
             {
                 //  Set EnPassantTarget to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-                Hash = Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
                 State->EPSquare = EPNone;
             }
 
-            Hash = Hash.ZobristChangeToMove();
+            State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
-            State->Hash = Hash;
             State->HalfmoveClock++;
 
             SetCheckInfo();
 
-            prefetch(TranspositionTable.GetCluster(Hash));
+            prefetch(TranspositionTable.GetCluster(State->Hash));
 
         }
 
@@ -727,9 +718,7 @@ namespace LTChess.Logic.Core
         {
             State--;
 
-            Hash = State->Hash;
             ToMove = Not(ToMove);
-
         }
 
 
@@ -777,7 +766,8 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public ulong HashAfter(Move m)
         {
-            ulong hash = Hash.ZobristChangeToMove();
+            ulong hash = State->Hash;
+            
             int from = m.From;
             int to = m.To;
             int us = bb.GetColorAtIndex(from);
@@ -791,7 +781,7 @@ namespace LTChess.Logic.Core
                         "HashAfter(" + m + ") in FEN '" + GetFEN() + "' is a capture move, " +
                         "but there isn't a piece on " + IndexToString(to) + " to be captured!");
                 }
-                hash = hash.ZobristToggleSquare(Not(us), bb.GetPieceAtIndex(to), to);
+                hash.ZobristToggleSquare(Not(us), bb.GetPieceAtIndex(to), to);
             }
 
             if (EnableAssertions)
@@ -800,7 +790,8 @@ namespace LTChess.Logic.Core
                     "HashAfter(" + m + ") in FEN '" + GetFEN() + "' doesn't have a piece on its From square!");
             }
 
-            hash = hash.ZobristMove(from, to, us, ourPiece);
+            hash.ZobristMove(from, to, us, ourPiece);
+            hash.ZobristChangeToMove();
 
             return hash;
         }
@@ -1275,7 +1266,7 @@ namespace LTChess.Logic.Core
             State->KingSquares[Black] = bb.KingIndex(Black);
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
-            Hash = Zobrist.GetHash(this);
+            State->Hash = Zobrist.GetHash(this);
 
             SetState();
 

@@ -112,7 +112,7 @@
         /// If the move is a capture, ZobristToggleSquare needs to be done as well.
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristMove(this ulong hash, int from, int to, int color, int pt)
+        public static void ZobristMove(this ref ulong hash, int from, int to, int color, int pt)
         {
             if (EnableAssertions)
             {
@@ -122,14 +122,14 @@
                 Assert(pt is >= Pawn and <= King, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid piece type! (should be 0 <= pt <= 5)");
             }
 
-            return hash ^ ZobristToggleSquare(hash, color, pt, from) ^ ZobristToggleSquare(hash, color, pt, to);
+            hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
         }
 
         /// <summary>
         /// Adds or removes the piece of type <paramref name="pt"/> and color <paramref name="color"/> at index <paramref name="idx"/>
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristToggleSquare(this ulong hash, int color, int pt, int idx)
+        public static void ZobristToggleSquare(this ref ulong hash, int color, int pt, int idx)
         {
             if (EnableAssertions)
             {
@@ -138,39 +138,38 @@
                 Assert(idx is >= A1 and <= H8, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid square! (should be 0 <= idx <= 63)");
             }
 
-            return hash ^ ColorPieceSquareHashes[color][pt][idx];
+            hash ^= ColorPieceSquareHashes[color][pt][idx];
         }
 
         /// <summary>
         /// Updates the castling status of the hash, and doesn't change anything if the castling status hasn't changed
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristCastle(this ulong hash, CastlingStatus prev, CastlingStatus toRemove)
+        public static void ZobristCastle(this ref ulong hash, CastlingStatus prev, CastlingStatus toRemove)
         {
             ulong change = (ulong) (prev & toRemove);
             while (change != 0)
             {
                 hash ^= CastlingRightsHashes[poplsb(&change)];
             }
-            return hash;
         }
 
         /// <summary>
         /// Sets the En Passant status of the hash, which is set to the <paramref name="file"/> of the pawn that moved two squares previously
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristEnPassant(this ulong hash, int file)
+        public static void ZobristEnPassant(this ref ulong hash, int file)
         {
-            return hash ^ EnPassantFileHashes[file];
+            hash ^= EnPassantFileHashes[file];
         }
 
         /// <summary>
         /// Called each time White makes a move, which updates the hash to show that it's black to move now
         /// </summary>
         [MethodImpl(Inline)]
-        public static ulong ZobristChangeToMove(this ulong hash)
+        public static void ZobristChangeToMove(this ref ulong hash)
         {
-            return hash ^ BlackHash;
+            hash ^= BlackHash;
         }
     }
 }
