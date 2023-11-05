@@ -324,7 +324,7 @@ namespace LTChess.Logic.Data
 
             if (CausesCheck || CausesDoubleCheck)
             {
-                sb.Append("+");
+                sb.Append('+');
             }
 
 

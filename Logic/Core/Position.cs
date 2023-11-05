@@ -1217,22 +1217,22 @@ namespace LTChess.Logic.Core
                     //	castling availability
                     else if (i == 9)
                     {
-                        if (splits[i].Contains("-"))
+                        if (splits[i].Contains('-'))
                         {
                             State->CastleStatus = CastlingStatus.None;
                         }
                         else
                         {
-                            State->CastleStatus |= splits[i].Contains("K") ? CastlingStatus.WK : 0;
-                            State->CastleStatus |= splits[i].Contains("Q") ? CastlingStatus.WQ : 0;
-                            State->CastleStatus |= splits[i].Contains("k") ? CastlingStatus.BK : 0;
-                            State->CastleStatus |= splits[i].Contains("q") ? CastlingStatus.BQ : 0;
+                            State->CastleStatus |= splits[i].Contains('K') ? CastlingStatus.WK : 0;
+                            State->CastleStatus |= splits[i].Contains('Q') ? CastlingStatus.WQ : 0;
+                            State->CastleStatus |= splits[i].Contains('k') ? CastlingStatus.BK : 0;
+                            State->CastleStatus |= splits[i].Contains('q') ? CastlingStatus.BQ : 0;
                         }
                     }
                     //	en passant target or last double pawn move
                     else if (i == 10)
                     {
-                        if (!splits[i].Contains("-"))
+                        if (!splits[i].Contains('-'))
                         {
                             //	White moved a pawn last
                             if (splits[i][1].Equals('3'))
@@ -1318,7 +1318,7 @@ namespace LTChess.Logic.Core
                     {
                         if (i != 0)
                         {
-                            fen.Append(i.ToString());
+                            fen.Append(i);
                             i = 0;
                         }
 
@@ -1339,7 +1339,7 @@ namespace LTChess.Logic.Core
                     {
                         if (i != 0)
                         {
-                            fen.Append(i.ToString());
+                            fen.Append(i);
                             i = 0;
                         }
 
@@ -1368,7 +1368,7 @@ namespace LTChess.Logic.Core
                 }
                 if (y != 0)
                 {
-                    fen.Append("/");
+                    fen.Append('/');
                 }
             }
 
@@ -1377,27 +1377,27 @@ namespace LTChess.Logic.Core
             bool CanC = false;
             if (State->CastleStatus.HasFlag(CastlingStatus.WK))
             {
-                fen.Append("K");
+                fen.Append('K');
                 CanC = true;
             }
             if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
             {
-                fen.Append("Q");
+                fen.Append('Q');
                 CanC = true;
             }
             if (State->CastleStatus.HasFlag(CastlingStatus.BK))
             {
-                fen.Append("k");
+                fen.Append('k');
                 CanC = true;
             }
             if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
             {
-                fen.Append("q");
+                fen.Append('q');
                 CanC = true;
             }
             if (!CanC)
             {
-                fen.Append("-");
+                fen.Append('-');
             }
             if (State->EPSquare != EPNone)
             {
