@@ -1,28 +1,31 @@
 ﻿
 
-#define INLINE
-//#undef INLINE
-
-
-
-
-#define ENABLE_ASSERTIONS
-#undef ENABLE_ASSERTIONS
-
-
-
+#define USE_AGGRESSIVE_INLINING
 
 #define USE_SKIP_INIT
-//#undef USE_SKIP_INIT
+
+//#define SKIP_INIT_IN_DEBUG
+
+//#define ENABLE_ASSERTIONS
+
 
 #if (USE_SKIP_INIT)
 
-//  Using this will cause methods to be generated without a ".locals init" flag,
-//  meaning that local variables aren't initialized to 0 when they are created.
+//  Using SkipInit will cause methods to be generated without a ".locals init" flag,
+//  meaning that local variables aren't automatically initialized to 0 when they are created.
 
-//  Using SkipInit does seem to make things run 2-3% faster, but this can actually be dangerous
+//  This does seem to make things run 2-3% faster, but it can be dangerous
 //  since stackalloc'd arrays will have junk data in them in the indices that haven't been written to.
+
+//  So long as the code is written properly (which is the kicker...), there won't be any runtime differences
+//  besides the slight performance improvement.
+
+
+//  I prefer to have SkipInit off while debugging since the values that you mouse over can have confusing values
+#if (RELEASE || SKIP_INIT_IN_DEBUG)
 [module: System.Runtime.CompilerServices.SkipLocalsInit]
+#endif
+
 #endif
 
 namespace LTChess.Logic.Data
@@ -32,7 +35,7 @@ namespace LTChess.Logic.Data
 
         //  PreserveSig shouldn't have any meaningful impact on performance... I hope.
 
-#if (INLINE)
+#if (USE_AGGRESSIVE_INLINING)
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 #else
         public const MethodImplOptions Inline = MethodImplOptions.PreserveSig;
