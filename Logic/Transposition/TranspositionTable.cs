@@ -129,8 +129,8 @@ namespace LTChess.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((replace->Depth - (TT_AGE_CYCLE + Age - replace->AgePVType) & TT_AGE_MASK) >
-                    (  tte[i].Depth - (TT_AGE_CYCLE + Age -   tte[i].AgePVType) & TT_AGE_MASK))
+                if ((replace->_depth - (TT_AGE_CYCLE + Age - replace->AgePVType) & TT_AGE_MASK) >
+                    (  tte[i]._depth - (TT_AGE_CYCLE + Age -   tte[i].AgePVType) & TT_AGE_MASK))
                 {
                     replace = &tte[i];
                 }

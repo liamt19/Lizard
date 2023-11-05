@@ -85,11 +85,10 @@ namespace LTChess.Logic.Transposition
         public sbyte Depth
         {
             get => (sbyte)(_depth - DepthOffset);
-            //set => _depth = value;
             set => _depth = (sbyte)(value + DepthOffset);
         }
 
-        public bool IsEmpty => (Depth == 0);
+        public bool IsEmpty => (_depth == 0);
 
         public TTEntry(ulong key, short score, TTNodeType nodeType, int depth, Move move)
         {
@@ -97,7 +96,6 @@ namespace LTChess.Logic.Transposition
             this.Score = score;
             this.NodeType = nodeType;
             this.AgePVType = 0;
-            //this.Depth = (sbyte)(depth + DepthOffset);
             this.Depth = (sbyte)depth;
 
             this.BestMove = new CondensedMove(move);
@@ -119,12 +117,11 @@ namespace LTChess.Logic.Transposition
 
             if (nodeType == TTNodeType.Exact
                 || (ushort)key != this.Key
-                || depth + 2 * (isPV ? 1 : 0) > this._depth - 11)
+                || depth + (isPV ? 2 : 0) > this._depth - 11)
             {
                 this.Key = (ushort)key;
                 this.Score = score;
                 this.StatEval = statEval;
-                //this.Depth = (sbyte)(depth + DepthOffset);
                 this.Depth = (sbyte)depth;
                 this.AgePVType = (sbyte)(TranspositionTable.Age | (isPV ? 1 : 0) << 2 | (int)nodeType);
 
