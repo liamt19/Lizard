@@ -943,9 +943,9 @@ namespace LTChess.Logic.Core
                         _ => moveFrom,
                     };
 
-                    if (rookSquare == moveFrom)
+                    if (EnableAssertions)
                     {
-                        Log("WARN IsLegal(" + move + ") is a castle, but the To square wasn't C1/G1 or C8/G8!");
+                        Assert(rookSquare != moveFrom, "IsLegal(" + move + ") is a castle, but the To square wasn't C1/G1 or C8/G8!");
                     }
 
                     if ((SquareBB[rookSquare] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
@@ -1330,7 +1330,7 @@ namespace LTChess.Logic.Core
                         }
                         else
                         {
-                            Log("WARN in GetFEN(), Whites's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
+                            Log("WARN in GetFEN(), White's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
                         }
 
                         continue;

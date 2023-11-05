@@ -633,6 +633,13 @@ namespace LTChess.Logic.Search
         }
 
 
+
+        /// <summary>
+        /// Searches the available checks, captures, and evasions in the position.
+        /// <para></para>
+        /// This is similar to Negamax, but there is far less pruning going on here, and we are only interested in ensuring that
+        /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
+        /// </summary>
         public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
@@ -641,7 +648,7 @@ namespace LTChess.Logic.Search
                 Assert(typeof(NodeType) != typeof(RootNode),
                 "QSearch(..., depth = " + depth + ") got a NodeType of RootNode, but RootNodes should never enter a QSearch!" +
                 (depth < 1 ? " If the depth is 0, this might have been caused by razoring pruning. " +
-                             "Otherwise, Negamax was called with probably called a negative depth." : string.Empty));
+                             "Otherwise, Negamax was called with probably called with a negative depth." : string.Empty));
             }
 
             Position pos = info.Position;

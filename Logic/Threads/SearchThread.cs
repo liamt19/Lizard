@@ -335,13 +335,6 @@ namespace LTChess.Logic.Threads
                 if (SearchPool.StopThreads)
                     break;
 
-#if DEBUG
-                if (RootDepth > MaxDepth)
-                {
-                    Log("WARN thread " + this.FriendlyName + " is still in while loop with RootDepth = " + RootDepth);
-                }
-#endif
-
                 foreach (RootMove rm in RootMoves)
                 {
                     rm.PreviousScore = rm.Score;

@@ -128,12 +128,11 @@ namespace LTChess.Logic.Transposition
                 this.Depth = (sbyte)depth;
                 this.AgePVType = (sbyte)(TranspositionTable.Age | (isPV ? 1 : 0) << 2 | (int)nodeType);
 
-#if DEBUG
-                if (score != ScoreNone && (score >= ScoreTTWin || score <= ScoreTTLoss))
+                if (EnableAssertions)
                 {
-                    //Debug.WriteLine("WARN the score " + score + " is outside of bounds for normal TT entries!");
+                    Assert((score == ScoreNone || (score <= ScoreTTWin && score >= ScoreTTLoss)),
+                        "WARN the score " + score + " is outside of bounds for normal TT entries!");
                 }
-#endif
             }
         }
 
