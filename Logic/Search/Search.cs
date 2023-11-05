@@ -249,8 +249,8 @@ namespace LTChess.Logic.Search
 
                 if (score >= beta)
                 {
-                    //  Null moves are not allowed to return mate scores, so ensure the score is below that.
-                    return Math.Min(score, ScoreMateMax - 1);
+                    //  Null moves are not allowed to return mate or TT win scores, so ensure the score is below that.
+                    return (score < ScoreTTWin ? score : beta);
                 }
             }
 
