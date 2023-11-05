@@ -83,8 +83,11 @@
     <!-- If true, GC collections will be less frequent but more intensive and can take place on multiple threads (like an additional 12).
          The process RAM usage will greatly increase before dropping sharply, as opposed to workstation GC which remains fairly constant.
          This can help prevent some of the otherwise frequent ~10-15 ms pauses and defer them until a good time.
+         
+         At the time of writing, a 2-threaded search uses ~180MB of ram with normal GC and ~360MB with server GC, 
+         so if you have plenty of RAM available, this may improve performance.
     -->
-    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ServerGarbageCollection>false</ServerGarbageCollection>
 
     
     
