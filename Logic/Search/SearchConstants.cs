@@ -2,8 +2,8 @@
 {
     public static class SearchConstants
     {
-        public const int AlphaStart = -ScoreInfinite;
-        public const int BetaStart = ScoreInfinite;
+        public const int AlphaStart = -ScoreMate;
+        public const int BetaStart = ScoreMate;
 
         /// <summary>
         /// The halfmove clock needs to be at least 8 before a draw by threefold repetition can occur.

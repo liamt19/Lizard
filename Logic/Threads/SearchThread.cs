@@ -353,9 +353,9 @@ namespace LTChess.Logic.Threads
 
                     if (RootDepth >= 5)
                     {
+                        window = 10;
                         alpha = Math.Max(AlphaStart, score - window);
                         beta = Math.Min(BetaStart, score + window);
-                        window = 10;
                     }
 
                     int fails = 0;
