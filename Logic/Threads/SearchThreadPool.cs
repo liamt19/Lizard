@@ -182,6 +182,13 @@ namespace LTChess.Logic.Threads
                 }
             }
 
+            if (size == 1 && UCI.Active && OneLegalMoveMode)
+            {
+                //  If we only have one legal move while running in UCI mode, set the search time to be at most 100 ms.
+                //  There is no point in searching this node longer, since the TT will be cleared anyways.
+                SharedInfo.TimeManager.MaxSearchTime = Math.Min(SharedInfo.TimeManager.MaxSearchTime, OneLegalMoveTime);
+            }
+
             SharedInfo.TimeManager.StartTimer();
             MainThread.PrepareToSearch();
         }

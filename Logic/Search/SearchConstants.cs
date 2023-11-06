@@ -142,6 +142,18 @@
         public const int ExtraCutNodeReductionMinDepth = 6;
 
         /// <summary>
+        /// Whether or not to adjust UCI search times if there is only one legal move in the position.
+        /// <br></br>
+        /// Using this will save time since we the best move is the only one we can make and we don't need to spend time to confirm that.
+        /// </summary>
+        public const bool OneLegalMoveMode = true;
+
+        /// <summary>
+        /// The max time in milliseconds that will be searched if <see cref="OneLegalMoveMode"/> is <see langword="true"/>.
+        /// </summary>
+        public const int OneLegalMoveTime = 100;
+
+        /// <summary>
         /// Whether to use the included (small) Polyglot opening book file.
         /// Most UCI's will handle this automatically, but using a book can add some variety to the 
         /// first couple moves that engines make.
