@@ -100,9 +100,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         public bool ReadParameters(BinaryReader br)
         {
             if (!fc_0.ReadParameters(br)) return false;
-            if (!ac_0.ReadParameters(br)) return false;
             if (!fc_1.ReadParameters(br)) return false;
-            if (!ac_1.ReadParameters(br)) return false;
             if (!fc_2.ReadParameters(br)) return false;
             return true;
         }

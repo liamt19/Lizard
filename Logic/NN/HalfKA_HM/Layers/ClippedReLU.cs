@@ -77,12 +77,6 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             }
         }
 
-
-        public bool ReadParameters(BinaryReader br)
-        {
-            return true;
-        }
-
         public uint GetHashValue(uint prevHash)
         {
             uint hashValue = 0x538D24C7u;
