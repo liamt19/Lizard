@@ -136,6 +136,9 @@ namespace LTChess.Logic.Search
 
                 }
 
+                //  https://www.chessprogramming.org/Mate_Distance_Pruning
+                //  Adjust alpha and beta depending the distance to mate:
+                //  If we have a mate in 3, there is not point in searching nodes that can at best lead to a mate in 4, etc.
                 alpha = Math.Max(MakeMateScore(ss->Ply), alpha);
                 beta = Math.Min(ScoreMate - (ss->Ply + 1), beta);
                 if (alpha >= beta)
@@ -159,21 +162,31 @@ namespace LTChess.Logic.Search
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
             }
 
+
             short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
+
+            //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
+            //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
             CondensedMove ttMove = (isRoot ? thisThread.RootMoves[thisThread.PVIndex].CondMove : (ss->TTHit ? tte->BestMove : CondensedMove.Null));
 
+            //  For TT hits, we can accept and return the TT score if:
+            //  We aren't in a PV node,
+            //  we aren't in a singular extension search,
+            //  the TT hit's depth is above the current depth,
+            //  the ttScore isn't invalid,
+            //  the ttScore is below alpha or we thought this node would fail high,
+            //  and the tt entry's bound fits the criteria.
             if (!isPV 
                 && !doSkip 
                 && tte->Depth > depth 
-                && ttScore != ScoreNone 
-                && (ttScore < alpha || cutNode))
+                && ttScore != ScoreNone
+                && (ttScore < alpha || cutNode)
+                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
-                if ((tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
-                {
-                    return ttScore;
-                }
+                return ttScore;
             }
 
+            //  If we are in check, don't bother getting a static evaluation or pruning.
             if (ss->InCheck)
             {
                 ss->StaticEval = eval = ScoreNone;
@@ -182,16 +195,21 @@ namespace LTChess.Logic.Search
             
             if (doSkip)
             {
+                //  Use the static evaluation from the previous call to Negamax,
+                //  which has the same position as this one.
                 eval = ss->StaticEval;
             }
             else if (ss->TTHit)
             {
+                //  Use the static evaluation from the TT
                 ss->StaticEval = eval = tte->StatEval;
                 if (ss->StaticEval == ScoreNone)
                 {
+                    //  But get the actual evaluation if the TT had an invalid score.
                     ss->StaticEval = eval = info.GetEvaluation(pos);
                 }
 
+                //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
                 {
                     eval = ttScore;
@@ -199,19 +217,29 @@ namespace LTChess.Logic.Search
             }
             else
             {
+                //  Get the static evaluation and store it in the empty TT slot.
                 ss->StaticEval = eval = info.GetEvaluation(pos);
                 tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
             {
+                //  We are improving if the static evaluation at this ply is better than what it was
+                //  when it was our turn 2 plies ago, (or 4 plies if we were in check).
                 improving = ss->StaticEval > ((ss - 2)->StaticEval != ScoreNone ? (ss - 2)->StaticEval :
                                              ((ss - 4)->StaticEval != ScoreNone ? (ss - 4)->StaticEval : 173));
             }
 
 
 
-
+            //  We accept Reverse Futility Pruning for:
+            //  non-PV nodes
+            //  at a depth at or below the max (currently 8)
+            //  which don't have a TT move,
+            //  so long as:
+            //  The static evaluation (eval) is below a TT win or a mate score,
+            //  the eval would cause a beta cutoff,
+            //  and the eval is significantly above beta.
             if (!ss->TTPV
                 && depth <= ReverseFutilityPruningMaxDepth
                 && (ttMove.Equals(CondensedMove.Null))
@@ -223,15 +251,30 @@ namespace LTChess.Logic.Search
             }
 
 
+            //  Try razoring if the depth is at or below the max (currently 6),
+            //  and the static evaluation (eval) is extremely bad (far lower than alpha).
+            //  This can prevent moves which just straight up hang a piece from being searched at full depth.
             if (depth <= RazoringMaxDepth && (eval + (RazoringMargin * (depth + 1)) <= alpha))
             {
+                //  Try only forcing moves and see if any of them raise alpha.
                 score = QSearch<NodeType>(ref info, ss, alpha, beta, 0);
                 if (score < alpha)
                 {
+                    //  If none did, then this node is certainly bad.
                     return score;
                 }
             }
 
+
+            //  We accept Null Move Pruning for:
+            //  non-PV nodes
+            //  at a depth at or above the min (currently 3)
+            //  which have a static eval or TT score equal to or above beta
+            //  (ditto for ss->StaticEval),
+            //  so long as:
+            //  The previous node didn't start a singular extension search,
+            //  the previous node didn't start a null move search,
+            //  and we have non-pawn material (important for Zugzwang).
             if (!isPV
                 && depth >= NullMovePruningMinDepth
                 && eval >= beta
@@ -244,6 +287,7 @@ namespace LTChess.Logic.Search
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
+                //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 info.Position.MakeNullMove();
                 score = -Negamax<NonPVNode>(ref info, (ss + 1), -beta, -beta + 1, depth - reduction, !cutNode);
                 info.Position.UnmakeNullMove();
@@ -260,14 +304,19 @@ namespace LTChess.Logic.Search
             {
                 if (isPV)
                 {
+                    //  PV searches are more heavily scrutinized, so if we didn't get a TT move in this node
+                    //  it may not be worth looking as deeply in it.
                     depth -= 2;
 
                     if (depth <= 0)
                     {
+                        //  If we just reduced the depth below 1, go to QSearch instead.
                         return QSearch<PVNode>(ref info, ss, alpha, beta, 0);
                     }
                 }
 
+                //  We expected this node to be a bad one, so give it an extra depth reduction
+                //  if the depth is at or above a threshold (currently 6).
                 if (cutNode && depth >= ExtraCutNodeReductionMinDepth)
                 {
                     depth--;
@@ -310,15 +359,12 @@ namespace LTChess.Logic.Search
             while ((m = mp.NextMove(skipQuiets)) != Move.Null)
             {
 #else
-
-
             int size = pos.GenPseudoLegal(list);
             AssignScores(ref bb, ss, history, contHist, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
-
 #endif
 
                 if (m == ss->Skip)
@@ -347,7 +393,13 @@ namespace LTChess.Logic.Search
                 legalMoves++;
                 int extend = 0;
 
-                if (!isRoot && bestScore > ScoreMatedMax && pos.MaterialCountNonPawn[pos.ToMove] > 0)
+                //  If this isn't a root node,
+                //  we have a non-mate score for at least one move,
+                //  and we have non-pawn material:
+                //  We can start skipping quiet moves if we have already seen enough of them at this depth.
+                if (!isRoot 
+                    && bestScore > ScoreMatedMax 
+                    && pos.MaterialCountNonPawn[pos.ToMove] > 0)
                 {
                     if (skipQuiets == false)
                     {
@@ -363,12 +415,22 @@ namespace LTChess.Logic.Search
                     }
                 }
 
+                //  Try Singular Extensions for:
+                //  non-root nodes
+                //  which aren't a response to a previous singular extension search,
+                //  haven't already been extended significantly,
+                //  and have a depth at or above 5 (or 6 for PV searches + PV TT entry hits),
+                //  so long as:
+                //  The current move is the TT hit's move,
+                //  the TT hit's score isn't a definitive win/loss,
+                //  the TT hit is an alpha node,
+                //  and the TT depth is close to or above the current depth.
                 if (UseSingularExtensions 
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
                     && depth >= (5 + (isPV && tte->PV ? 1 : 0))
-                    && m.Equals(ttMove) 
+                    && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin 
                     && ((tte->Bound & BoundLower) != 0) 
                     && tte->Depth >= depth - 3)
@@ -521,11 +583,13 @@ namespace LTChess.Logic.Search
 
                 if (SearchPool.StopThreads)
                 {
+                    //  Check if we should stop before modifying the root moves or TT.
                     return ScoreDraw;
                 }
 
                 if (isRoot)
                 {
+                    //  Find the corresponding RootMove for the current move.
                     int rmIndex = -1;
                     for (int j = 0; j < thisThread.RootMoves.Count; j++)
                     {
@@ -546,10 +610,15 @@ namespace LTChess.Logic.Search
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
 
+                    //  If AverageScore hasn't been set yet, give it the current score.
+                    //  Otherwise, adjust the average up or down slightly.
                     rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
 
                     if (playedMoves == 1 || score > alpha)
                     {
+                        //  Update the information for the first move,
+                        //  and for any other move that has a higher score than the highest score so far.
+
                         rm.Score = score;
                         rm.Depth = thisThread.SelDepth;
 
@@ -562,10 +631,9 @@ namespace LTChess.Logic.Search
                     }
                     else
                     {
+                        //  Assign an "unset" score, which is treated differently.
                         rm.Score = -ScoreInfinite;
                     }
-
-
                 }
 
                 if (score > bestScore)
@@ -579,11 +647,13 @@ namespace LTChess.Logic.Search
 
                         if (isPV && !isRoot)
                         {
+                            //  Add the current move to the PV, and append the PV from the child node if one exists.
                             UpdatePV(ss->PV, m, (ss + 1)->PV);
                         }
 
                         if (score >= beta)
                         {
+                            //  This is a beta cutoff: Don't bother searching other moves because the current one is already too good.
                             break;
                         }
 
@@ -606,14 +676,19 @@ namespace LTChess.Logic.Search
 
             if (legalMoves == 0)
             {
+                //  We have no legal moves, so we were either checkmated or stalemated.
                 bestScore = (ss->InCheck ? MakeMateScore(ss->Ply) : ScoreDraw);
+
                 if (didSkip)
                 {
+                    //  Special case:
+                    //  If we skipped the only legal move we had, return alpha instead of an erroneous mate/draw score.
                     bestScore = alpha;
                 }
             }
             else if (bestMove != Move.Null)
             {
+                //  We found at least one move that was better than alpha, so update the history tables.
                 UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
             }
 
@@ -627,6 +702,9 @@ namespace LTChess.Logic.Search
 
             if (!doSkip && !(isRoot && thisThread.PVIndex > 0))
             {
+                //  Don't update the TT if:
+                //  This is a singular extensions search (since the a/b bounds were modified and we skipped a move),
+                //  This is one of the root nodes in a MultiPV search.
                 tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), nodeTypeToSave, depth, bestMove, ss->StaticEval, ss->TTPV);
             }
 
@@ -692,12 +770,10 @@ namespace LTChess.Logic.Search
 
             if (!isPV 
                 && tte->Depth >= ttDepth 
-                && ttScore != ScoreNone)
+                && ttScore != ScoreNone
+                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
-                if ((tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
-                {
-                    return ttScore;
-                }
+                return ttScore;
             }
 
             if (ss->InCheck)

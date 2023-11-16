@@ -68,10 +68,13 @@ namespace LTChess.Logic.Util
             }
         }
 
+        /// <summary>
+        /// Returns true if <paramref name="value"/> has more than one bit set.
+        /// </summary>
         [MethodImpl(Inline)]
-        public static bool MoreThanOne(ulong u)
+        public static bool MoreThanOne(ulong value)
         {
-            return (poplsb(u) != 0);
+            return (poplsb(value) != 0);
         }
 
         /// <summary>
@@ -147,8 +150,7 @@ namespace LTChess.Logic.Util
         }
 
         /// <summary>
-        /// Sets the most significant bit to 0. 
-        /// So popmsb(10110_2) returns 00110_2.
+        /// Returns <paramref name="value"/> with the most significant bit set to 0.
         /// </summary>
         [MethodImpl(Inline)]
         public static ulong popmsb(ulong value)
@@ -157,20 +159,28 @@ namespace LTChess.Logic.Util
         }
 
 
-
+        /// <summary>
+        /// Extracts the bits from <paramref name="value"/> that are set in <paramref name="mask"/>, 
+        /// and places them in the least significant bits of the result.
+        /// <br></br>
+        /// The output will be somewhat similar to a bitwise AND operation, just shifted and condensed to the right.
+        /// <para></para>
+        /// So <c>pext("ABCD EFGH", 1011 0001)</c> would return <c>"0000 ACDH"</c>,
+        /// where ACDH could each be 0 or 1 depending on if they were set in <paramref name="value"/>
+        /// </summary>
         [MethodImpl(Inline)]
-        public static ulong pext(ulong b, ulong mask)
+        public static ulong pext(ulong value, ulong mask)
         {
             if (Bmi2.X64.IsSupported)
             {
-                return Bmi2.X64.ParallelBitExtract(b, mask);
+                return Bmi2.X64.ParallelBitExtract(value, mask);
             }
             else
             {
                 ulong res = 0;
                 for (ulong bb = 1; mask != 0; bb += bb)
                 {
-                    if ((b & mask & (0UL - mask)) != 0)
+                    if ((value & mask & (0UL - mask)) != 0)
                     {
                         res |= bb;
                     }

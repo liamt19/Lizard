@@ -43,7 +43,7 @@ namespace LTChess.Logic.Search
         public int MovesToGo = -1;
 
         /// <summary>
-        /// Set to the value of winc/binv if one was provided during a UCI "go" command.
+        /// Set to the value of winc/binc if one was provided during a UCI "go" command.
         /// Only used
         /// </summary>
         public int[] PlayerIncrement;
