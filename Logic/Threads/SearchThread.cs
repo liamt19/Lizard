@@ -304,7 +304,7 @@ namespace LTChess.Logic.Threads
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
                 (ss + i)->Clear();
-                (ss + i)->Ply = i;
+                (ss + i)->Ply = (short) i;
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
 

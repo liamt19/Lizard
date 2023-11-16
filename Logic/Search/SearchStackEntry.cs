@@ -33,33 +33,32 @@ namespace LTChess.Logic.Search
         public int StatScore;
 
         [FieldOffset(20)]
-        public int Ply;
-
-        [FieldOffset(24)]
         public int Extensions;
 
-        [FieldOffset(28)]
+        [FieldOffset(24)]
+        public short Ply;
+
+        [FieldOffset(26)]
         public short StaticEval;
 
-        [FieldOffset(30)]
-        private fixed byte _pad0[2];
+        [FieldOffset(28)]
+        public bool InCheck;
 
+        [FieldOffset(29)]
+        public bool TTPV;
+
+        [FieldOffset(30)]
+        public bool TTHit;
+
+        [FieldOffset(31)]
+        private fixed byte _pad0[1];
 
 
         [FieldOffset(32)]
-        public bool InCheck;
-
-        [FieldOffset(33)]
-        public bool TTPV;
-
-        [FieldOffset(34)]
-        public bool TTHit;
-
-        [FieldOffset(35)]
-        private fixed byte _pad1[5];
+        public Move* PV;
 
         [FieldOffset(40)]
-        public Move* PV;
+        private fixed byte _pad1[8];
 
 
 
