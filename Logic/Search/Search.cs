@@ -242,6 +242,7 @@ namespace LTChess.Logic.Search
             {
                 int reduction = SearchConstants.NullMovePruningMinDepth + (depth / SearchConstants.NullMovePruningMinDepth);
                 ss->CurrentMove = Move.Null;
+                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
                 info.Position.MakeNullMove();
                 score = -Negamax<NonPVNode>(ref info, (ss + 1), -beta, -beta + 1, depth - reduction, !cutNode);
