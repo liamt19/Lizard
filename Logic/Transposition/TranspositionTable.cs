@@ -51,8 +51,16 @@ namespace LTChess.Logic.Transposition
         /// <para></para>
         /// 1 mb fits 32,768 clusters, which is 98,304 TTEntry's.
         /// </summary>
-        public static unsafe void Initialize(int mb = 32)
+        public static unsafe void Initialize(int mb)
         {
+            if (Clusters != null)
+            {
+                SearchPool.MainThread.WaitForThreadFinished();
+
+                //  We could also use AlignedRealloc here, but since we don't need the current data to be copied over
+                //  doing a free + alloc instead is easier.
+                NativeMemory.AlignedFree(Clusters);
+            }
 
             ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
             Clusters = (TTCluster*) AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
