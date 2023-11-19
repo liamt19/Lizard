@@ -1,7 +1,4 @@
-﻿
-//#define TUNE
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
@@ -579,133 +576,100 @@ namespace LTChess.Logic.Core
 
         private void HandleSetOption(string optName, string optValue)
         {
-
-            //  Currently only "Threads", "MultiPV", and "UseSingularExtensions" can be changed at runtime.
-            if (optName.EqualsIgnoreCase("Threads"))
+            foreach (var key in Options.Keys)
             {
-                if (int.TryParse(optValue, out int newVal))
+                if (key.Replace(" ", string.Empty).EqualsIgnoreCase(optName.Replace(" ", string.Empty)))
                 {
-                    SearchPool.Resize(newVal);
-                    LogString("[INFO]: Set SearchPool's ThreadCount to " + SearchPool.ThreadCount);
-                }
-                else
-                {
-                    LogString("[ERROR]: Failed setting SearchPool Threads to '" + optValue + "', couldn't parse the number");
-                }
-            }
-            else if (optName.EqualsIgnoreCase("MultiPV"))
-            {
-                if (int.TryParse(optValue, out int newVal))
-                {
-                    MultiPV = newVal;
-                    LogString("[INFO]: Set MultiPV to " + MultiPV);
-                }
-                else
-                {
-                    LogString("[ERROR]: Failed setting MultiPV to '" + optValue + "', couldn't parse the number");
-                }
-            }
-            else if (optName.Replace(" ", string.Empty).EqualsIgnoreCase("UseSingularExtensions"))
-            {
-                if (optValue.EqualsIgnoreCase("true") || optValue.Equals("1"))
-                {
-                    UseSingularExtensions = true;
-                    LogString("[INFO]: Enabled Singular Extensions");
-                }
-                else if (optValue.EqualsIgnoreCase("false") || optValue.Equals("0"))
-                {
-                    UseSingularExtensions = false;
-                    LogString("[INFO]: Disabled Singular Extensions");
-                }
-                else
-                {
-                    LogString("[ERROR]: Failed setting UseSingularExtensions to '" + optValue + "', should be true/false or 1/0");
-                }
-            }
-            else
-            {
-                LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
-            }
-
-            return;
-
-
-            //  This checks if optName was sent in it's "friendly format" (Use Quiescence SEE), or sent regularly (UseQuiescenceSEE)
-            if (!Options.ContainsKey(optName))
-            {
-                string noSpaces = optName.Replace(" ", string.Empty);
-                string addedSpaces = Regex.Replace(optName, "([A-Z]+)", (match) => { return " " + match; }).Trim();
-
-                bool fixedName = false;
-                foreach (var key in Options.Keys)
-                {
-                    if (key == noSpaces || key == addedSpaces)
+                    try
                     {
-                        LogString("[WARN]: Fixed name for setoption command '" + optName + "' -> '" + key + "'");
-                        optName = key;
-                        fixedName = true;
-                        break;
-                    }
-                }
+                        UCIOption opt = Options[key];
+                        object prevValue = opt.FieldHandle.GetValue(null);
 
-                if (!fixedName)
-                {
-                    LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
+                        if (opt.FieldHandle.FieldType == typeof(bool))
+                        {
+                            bool newValue = true;
+                            if (bool.TryParse(optValue, out bool tf))
+                            {
+                                newValue = tf;
+                            }
+                            else if (optValue == "1")
+                            {
+                                newValue = true;
+                            }
+                            else if (optValue == "0")
+                            {
+                                newValue = false;
+                            }
+                            else
+                            {
+                                LogString("[ERROR]: setoption commands for booleans need to have a \"value\" of 'True/False' or '1/0', " +
+                                    "and '" + optValue + "' wasn't one of those!");
+                                return;
+                            }
+
+                            opt.FieldHandle.SetValue(null, newValue);
+                        }
+                        else if (opt.FieldHandle.FieldType == typeof(int))
+                        {
+                            if (int.TryParse(optValue, out int newValue))
+                            {
+                                if (newValue >= opt.MinValue && newValue <= opt.MaxValue)
+                                {
+                                    if (opt.Name == nameof(Threads))
+                                    {
+                                        SearchPool.Resize(newValue);
+                                        LogString("Changed '" + key + "' from " + prevValue + " to " + SearchPool.ThreadCount);
+                                    }
+                                    else if (opt.Name == nameof(Hash))
+                                    {
+                                        TranspositionTable.Initialize(newValue);
+                                        LogString("Changed '" + key + "' from " + prevValue + " to " + newValue + " mb");
+                                    }
+                                    else
+                                    {
+                                        opt.FieldHandle.SetValue(null, newValue);
+                                        LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
+                                    }
+                                }
+                                else
+                                {
+                                    LogString("[ERROR]: '" + key + "' needs a value between [" + opt.MinValue + ", " + opt.MaxValue + "], " +
+                                        "and '" + optValue + "' isn't in that range!");
+                                    return;
+                                }
+                            }
+                            else
+                            {
+                                LogString("[ERROR]: setoption commands for integers need to have a numerical value, " +
+                                    "and '" + optValue + "' isn't!");
+                                return;
+                            }
+
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
+                        LogString(e.ToString());
+                    }
+
                     return;
                 }
-
             }
 
-            try
-            {
-                LogString("[INFO]: Changing '" + optName + "' from " + Options[optName].DefaultValue + " to " + optValue);
-                UCIOption opt = Options[optName];
-                if (opt.FieldHandle.FieldType == typeof(bool))
-                {
-                    opt.FieldHandle.SetValue(null, bool.Parse(optValue));
-                }
-                else if (opt.FieldHandle.FieldType == typeof(int))
-                {
-                    opt.FieldHandle.SetValue(null, int.Parse(optValue));
-                }
-                else if (opt.FieldHandle.FieldType == typeof(double[]))
-                {
-                    double[] arr = (double[]) opt.FieldHandle.GetValue(null);
-                    arr[opt.ValueArrayIndex] = double.Parse(optValue);
-                    opt.FieldHandle.SetValue(null, arr);
-                }
-
-#if TUNE
-                Tune.NormalizeTerms();
-#endif
-
-            }
-            catch (Exception e)
-            {
-                LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
-                LogString(e.ToString());
-            }
-
-
+            LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
         }
 
-        private void ProcessUCIOptions(bool friendly = false)
+        private void ProcessUCIOptions()
         {
             Options = new Dictionary<string, UCIOption>();
 
             //  Get all "public static" fields, and specifically exclude constant fields (which have field.IsLiteral == true)
-            List<FieldInfo>? fields = typeof(SearchConstants).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
+            List<FieldInfo>? fields = typeof(SearchOptions).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
 
             foreach (FieldInfo field in fields)
             {
                 string fieldName = field.Name;
-
-                if (friendly)
-                {
-                    //  Give that field a friendly name, which has spaces between capital letters.
-                    //  i.e. "UseQuiescenceSEE" is presented as "Use Quiescence SEE"
-                    fieldName = Regex.Replace(field.Name, "([A-Z]+)", (match) => { return " " + match; }).Trim();
-                }
 
                 //  Most options are numbers and are called "spin"
                 //  If they are true/false, they are called "check"
@@ -713,28 +677,22 @@ namespace LTChess.Logic.Core
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
                 UCIOption opt = new UCIOption(fieldName, fieldType, defaultValue, field);
+
                 Options.Add(fieldName, opt);
             }
 
-            //  Add some of the terms in EvaluationConstants as UCI options
-#if TUNE
-            fields = typeof(EvaluationConstants).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => (!x.IsLiteral && x.Name.StartsWith("Scale"))).ToList();
-
-            foreach (FieldInfo field in fields)
-            {
-                string fieldType = (field.FieldType == typeof(bool) ? "check" : "spin");
-
-                string defaultValueMG = ((double[])field.GetValue(null))[EvaluationConstants.GamePhaseNormal].ToString().ToLower();
-                UCIOption optMG = new UCIOption(field.Name + "MG", fieldType, defaultValueMG, field);
-                optMG.ValueArrayIndex = EvaluationConstants.GamePhaseNormal;
-                Options.Add(optMG.Name, optMG);
-
-                string defaultValueEG = ((double[])field.GetValue(null))[EvaluationConstants.GamePhaseEndgame].ToString().ToLower();
-                UCIOption optEG = new UCIOption(field.Name + "EG", fieldType, defaultValueEG, field);
-                optEG.ValueArrayIndex = EvaluationConstants.GamePhaseEndgame;
-                Options.Add(optEG.Name, optEG);
-            }
-#endif
+            Options[nameof(Threads)].SetMinMax(1, 8);
+            Options[nameof(MultiPV)].SetMinMax(1, 5);
+            Options[nameof(Hash)].SetMinMax(1, 2048);
+            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(1, 16);
+            Options[nameof(NullMovePruningMinDepth)].SetMinMax(1, 16);
+            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(1, 16);
+            Options[nameof(ReverseFutilityPruningPerDepth)].SetMinMax(1, 200);
+            Options[nameof(RazoringMaxDepth)].SetMinMax(1, 16);
+            Options[nameof(RazoringMargin)].SetMinMax(1, 500);
+            Options[nameof(ExchangeBase)].SetMinMax(1, 500);
+            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
+            Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);
 
         }
     }

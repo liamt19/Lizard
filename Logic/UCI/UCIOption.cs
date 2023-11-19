@@ -2,13 +2,13 @@
 
 namespace LTChess.Logic.Core
 {
-    public struct UCIOption
+    public class UCIOption
     {
         public string Name;
         public string Type;
         public string DefaultValue;
-        public string MinValue;
-        public string MaxValue;
+        public int MinValue;
+        public int MaxValue;
         public int ValueArrayIndex = -1;
 
         public FieldInfo FieldHandle;
@@ -21,9 +21,15 @@ namespace LTChess.Logic.Core
             FieldHandle = fieldHandle;
         }
 
+        public void SetMinMax(int min, int max)
+        {
+            MinValue = min;
+            MaxValue = max;
+        }
+
         public override string ToString()
         {
-            return "option name " + Name + " type " + Type + " default " + DefaultValue + ((MinValue == null || MinValue.Length == 0) ? string.Empty : (" min " + MinValue + " max " + MaxValue));
+            return "option name " + Name + " type " + Type + " default " + DefaultValue + (FieldHandle.FieldType == typeof(int) ? (" min " + MinValue + " max " + MaxValue) : string.Empty);
         }
     }
 }
