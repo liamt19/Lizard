@@ -90,14 +90,37 @@ namespace LTChess.Logic.Util
         public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
 
 
+
+        /// <summary>
+        /// Set to true if the GC is running in server mode instead of workstation mode.
+        /// </summary>
         public static readonly bool ServerGC = System.Runtime.GCSettings.IsServerGC;
 
+        /// <summary>
+        /// If true, will block all output to the console and log file.
+        /// </summary>
         public static bool BlockOutputForJIT = false;
 
+
+
+        /// <summary>
+        /// Set to true if multiple instances of this engine are running, in which case the log file won't be written to.
+        /// </summary>
         public static bool IsRunningConcurrently = false;
+
+        /// <summary>
+        /// The total number of processes running, which will be > 1 if there are duplicates.
+        /// </summary>
         public static int ConcurrencyCount = 0;
 
-        public static long StartTimeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+
+        /// <summary>
+        /// The time in milliseconds that this engine instance was started.
+        /// </summary>
+        public static readonly long StartTimeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
+
+
 
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
@@ -149,14 +172,24 @@ namespace LTChess.Logic.Util
         {
             Process thisProc = Process.GetCurrentProcess();
             var selfProcs = Process.GetProcesses().Where(x => (x.ProcessName == thisProc.ProcessName)).ToList();
-
+            
             var thisTime = thisProc.StartTime.Ticks;
 
             for (int i = 0; i < selfProcs.Count; i++)
             {
                 try
                 {
-                    //  Ensure that the processes are exactly the same as this one
+                    //  Windows doesn't like you touching the "System Idle Process" (0) or "System" (4)
+                    //  and will throw an error if you try to get their MainModules,
+                    //  so in case you prefer to rename the engine binary to "Idle" this will hopefully avoid that issue :)
+                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && (selfProcs[i].Id == 0 || selfProcs[i].Id == 4))
+                    {
+                        continue;
+                    }
+
+                    //  Ensure that the processes are exactly the same as this one.
+                    //  This checks their entire path, since multiple engine instance concern is
+                    //  only if they are started from the same path.
                     if (selfProcs[i].MainModule.FileName != thisProc.MainModule.FileName)
                     {
                         continue;
@@ -171,10 +204,12 @@ namespace LTChess.Logic.Util
 
                 if (selfProcs[i].StartTime.Ticks < thisTime)
                 {
+                    //  This instance was launched after another, so increase this one's count
                     ConcurrencyCount++;
                 }
             }
 
+            //  If this is the only instance, this should be 1
             if (selfProcs.Count != 1)
             {
                 Log("Running concurrently! (" + ConcurrencyCount + " of " + (selfProcs.Count - 1) + " procs)");
@@ -198,13 +233,10 @@ namespace LTChess.Logic.Util
         }
 
         /// <summary>
-        /// Returns the <c>Direction</c> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
+        /// Returns the <see cref="Direction"/> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
         /// </summary>
         [MethodImpl(Inline)]
         public static int ShiftUpDir(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
-
-        [MethodImpl(Inline)]
-        public static int ShiftDownDir(int color) => (color == Color.Black) ? Direction.NORTH : Direction.SOUTH;
 
         /// <summary>
         /// Returns a bitboard with bits set 1 "above" the bits in <paramref name="b"/>.
@@ -233,6 +265,9 @@ namespace LTChess.Logic.Util
             return Shift(Direction.NORTH, b);
         }
 
+        /// <summary>
+        /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static ulong Shift(int dir, ulong b)
         {
@@ -272,53 +307,46 @@ namespace LTChess.Logic.Util
 
 
 
-
+        /// <summary>
+        /// Returns the opposite of <paramref name="color"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static int Not(int color)
         {
-            //return (color == Color.White) ? Color.Black : Color.White;
             return color ^ 1;
         }
 
 
-
+        /// <summary>
+        /// Returns the name of the <paramref name="color"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static string ColorToString(int color)
         {
-            if (color == Color.White)
+            return color switch
             {
-                return "White";
-            }
-            else if (color == Color.Black)
-            {
-                return "Black";
-            }
-            else
-            {
-                return "None";
-            }
+                Color.White => nameof(Color.White),
+                Color.Black => nameof(Color.Black),
+                _ => "None"
+            };
         }
 
+        /// <summary>
+        /// Returns the name of the piece of type <paramref name="n"/>.
+        /// </summary>
         [MethodImpl(Inline)]
         public static string PieceToString(int n)
         {
-            switch (n)
+            return n switch
             {
-                case Piece.Pawn:
-                    return "Pawn";
-                case Piece.Knight:
-                    return "Knight";
-                case Piece.Bishop:
-                    return "Bishop";
-                case Piece.Rook:
-                    return "Rook";
-                case Piece.Queen:
-                    return "Queen";
-                case Piece.King:
-                    return "King";
-            }
-
-            return "None";
+                Piece.Pawn => nameof(Piece.Pawn),
+                Piece.Knight => nameof(Piece.Knight),
+                Piece.Bishop => nameof(Piece.Bishop),
+                Piece.Rook => nameof(Piece.Rook),
+                Piece.Queen => nameof(Piece.Queen),
+                Piece.King => nameof(Piece.King),
+                _ => "None"
+            };
         }
 
         /// <summary>
@@ -327,23 +355,16 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static char PieceToFENChar(int pieceType)
         {
-            switch (pieceType)
+            return pieceType switch
             {
-                case Piece.Pawn:
-                    return 'P';
-                case Piece.Knight:
-                    return 'N';
-                case Piece.Bishop:
-                    return 'B';
-                case Piece.Rook:
-                    return 'R';
-                case Piece.Queen:
-                    return 'Q';
-                case Piece.King:
-                    return 'K';
-            }
-
-            return ' ';
+                Piece.Pawn => 'P',
+                Piece.Knight => 'N',
+                Piece.Bishop => 'B',
+                Piece.Rook => 'R',
+                Piece.Queen => 'Q',
+                Piece.King => 'K',
+                _ => ' '
+            };
         }
 
         /// <summary>
@@ -352,34 +373,16 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static int FENToPiece(char fenChar)
         {
-            fenChar = char.ToLower(fenChar);
-            if (fenChar == 'p')
+            return char.ToLower(fenChar) switch
             {
-                return Piece.Pawn;
-            }
-            if (fenChar == 'n')
-            {
-                return Piece.Knight;
-            }
-            if (fenChar == 'b')
-            {
-                return Piece.Bishop;
-            }
-            if (fenChar == 'r')
-            {
-                return Piece.Rook;
-            }
-            if (fenChar == 'q')
-            {
-                return Piece.Queen;
-            }
-            if (fenChar == 'k')
-            {
-                return Piece.King;
-            }
-
-            Log("ERROR Failed parsing FEN character '" + fenChar + "'");
-            return Piece.None;
+                'p' => Piece.Pawn,
+                'n' => Piece.Knight,
+                'b' => Piece.Bishop,
+                'r' => Piece.Rook,
+                'q' => Piece.Queen,
+                'k' => Piece.King,
+                _ => Piece.None
+            };
         }
 
 
@@ -709,9 +712,6 @@ namespace LTChess.Logic.Util
                 }
             }
 
-
-
-
             return sb.ToString();
         }
 
@@ -721,7 +721,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
-            if (ThreadedEvaluation.IsScoreMate(score, out int mateIn))
+            if (ThreadedEvaluation.IsScoreMate(score))
             {
                 //  "mateIn" is returned in plies, but we want it in actual moves
                 if (score > 0)
@@ -790,24 +790,6 @@ namespace LTChess.Logic.Util
                     (items[i], items[best]) = (items[best], items[i]);
                 }
             }
-        }
-
-        public static bool HasMove(this List<RootMove> rootMoves, Move m, int offset = 0, int end = -1)
-        {
-            if (end == -1)
-            {
-                end = rootMoves.Count;
-            }
-
-            for (int i = offset; i < end; i++)
-            {
-                if (rootMoves[i].Move == m)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
     }

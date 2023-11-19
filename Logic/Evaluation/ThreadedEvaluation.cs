@@ -82,7 +82,7 @@ namespace LTChess.Logic.Search
 
             for (int i = 0; i < 2; i++)
             {
-                ulong b = (bb.Pieces[Piece.Pawn] & bb.Colors[i]) & (Shift(ShiftDownDir(i), bb.Occupancy) | LowRanks[i]);
+                ulong b = (bb.Pieces[Piece.Pawn] & bb.Colors[i]) & (Shift(0 - ShiftUpDir(i), bb.Occupancy) | LowRanks[i]);
                 MobilityArea[i] = ~(b | ((bb.Pieces[Piece.King] | bb.Pieces[Piece.Queen]) & bb.Colors[i]));
             }
 
@@ -728,17 +728,9 @@ namespace LTChess.Logic.Search
         }
 
         [MethodImpl(Inline)]
-        public static bool IsScoreMate(int score, out int mateIn)
+        public static bool IsScoreMate(int score)
         {
-            int abs = Math.Abs(Math.Abs(score) - ScoreMate);
-            mateIn = abs;
-
-            if (abs < MaxDepth)
-            {
-                return true;
-            }
-
-            return false;
+            return (Math.Abs(Math.Abs(score) - ScoreMate) < MaxDepth);
         }
 
         [MethodImpl(Inline)]

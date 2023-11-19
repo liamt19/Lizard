@@ -296,7 +296,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             if (m.EnPassant)
             {
                 //  pos.EnPassantTarget isn't set yet for this move, so we have to calculate it this way
-                int idxPawn = moveTo + ShiftDownDir(us);
+                int idxPawn = moveTo - ShiftUpDir(us);
 
                 RemoveFeature(ourAccumulation, ourPsq, HalfKAIndex(us, idxPawn, FishPiece(Not(us), Piece.Pawn), ourKing));
                 RemoveFeature(theirAccumulation, theirPsq, HalfKAIndex(them, idxPawn, FishPiece(Not(us), Piece.Pawn), theirKing));
