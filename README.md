@@ -1,5 +1,10 @@
-# LTChess - A C# chess engine
+<h1 align="center">
+LTChess - A C# chess engine
+</h1>
 
+<h2 align="center">
+<img src="./Resources/logo.png" width="500">
+</h2>
 
 ## Info
 Creating this in my spare time, mainly using it to learn more about optimization and computer games. 
