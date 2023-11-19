@@ -319,7 +319,7 @@ namespace LTChess.Logic.Threads
             info.Position = RootPosition;
 
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
-            int multiPV = Math.Min(SearchConstants.MultiPV, RootMoves.Count);
+            int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
 
 
@@ -353,7 +353,7 @@ namespace LTChess.Logic.Threads
 
                     if (RootDepth >= 5)
                     {
-                        window = 10;
+                        window = AspirationWindowMargin;
                         alpha = Math.Max(AlphaStart, score - window);
                         beta = Math.Min(BetaStart, score + window);
                     }

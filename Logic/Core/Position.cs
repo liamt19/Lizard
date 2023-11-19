@@ -1012,7 +1012,7 @@ namespace LTChess.Logic.Core
         public bool IsThreefoldRepetition()
         {
             //  At least 8 moves must be made before a draw can occur.
-            if (GamePly < LowestRepetitionCount)
+            if (GamePly < 8)
             {
                 return false;
             }

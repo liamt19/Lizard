@@ -35,7 +35,7 @@ namespace LTChess.Logic.Transposition
         {
             if (!Initialized)
             {
-                Initialize();
+                Initialize(SearchOptions.Hash);
 
                 if (EnableAssertions)
                 {

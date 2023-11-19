@@ -240,7 +240,8 @@ namespace LTChess.Logic.Search
             //  The static evaluation (eval) is below a TT win or a mate score,
             //  the eval would cause a beta cutoff,
             //  and the eval is significantly above beta.
-            if (!ss->TTPV
+            if (UseReverseFutilityPruning
+                && !ss->TTPV
                 && depth <= ReverseFutilityPruningMaxDepth
                 && (ttMove.Equals(CondensedMove.Null))
                 && (eval < ScoreAssuredWin)
@@ -253,8 +254,9 @@ namespace LTChess.Logic.Search
 
             //  Try razoring if the depth is at or below the max (currently 6),
             //  and the static evaluation (eval) is extremely bad (far lower than alpha).
-            //  This can prevent moves which just straight up hang a piece from being searched at full depth.
-            if (depth <= RazoringMaxDepth && (eval + (RazoringMargin * (depth + 1)) <= alpha))
+            if (UseRazoring
+                && depth <= RazoringMaxDepth 
+                && (eval + (RazoringMargin * (depth + 1)) <= alpha))
             {
                 //  Try only forcing moves and see if any of them raise alpha.
                 score = QSearch<NodeType>(ref info, ss, alpha, beta, 0);
@@ -275,7 +277,8 @@ namespace LTChess.Logic.Search
             //  The previous node didn't start a singular extension search,
             //  the previous node didn't start a null move search,
             //  and we have non-pawn material (important for Zugzwang).
-            if (!isPV
+            if (UseNullMovePruning
+                && !isPV
                 && depth >= NullMovePruningMinDepth
                 && eval >= beta
                 && eval >= ss->StaticEval
@@ -283,7 +286,7 @@ namespace LTChess.Logic.Search
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.MaterialCountNonPawn[pos.ToMove] > 0)
             {
-                int reduction = SearchConstants.NullMovePruningMinDepth + (depth / SearchConstants.NullMovePruningMinDepth);
+                int reduction = NullMovePruningMinDepth + (depth / NullMovePruningMinDepth);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
 
@@ -429,7 +432,7 @@ namespace LTChess.Logic.Search
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (5 + (isPV && tte->PV ? 1 : 0))
+                    && depth >= (SingularExtensionsMinDepth + (isPV && tte->PV ? 1 : 0))
                     && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin 
                     && ((tte->Bound & BoundLower) != 0) 
@@ -1081,12 +1084,13 @@ namespace LTChess.Logic.Search
         }
 
         /// <summary>
-        /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our static evaluation is <paramref name="improving"/> or not.
+        /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
+        /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
         [MethodImpl(Inline)]
         public static int GetReverseFutilityMargin(int depth, bool improving)
         {
-            return (depth * SearchConstants.ReverseFutilityPruningPerDepth) - ((improving ? 1 : 0) * SearchConstants.ReverseFutilityPruningImproving);
+            return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;
         }
 
 

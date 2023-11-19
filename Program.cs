@@ -23,6 +23,7 @@ global using Color = LTChess.Logic.Data.Color;
 global using static LTChess.Logic.Data.Piece;
 global using static LTChess.Logic.Data.Bound;
 global using static LTChess.Logic.Magic.MagicBitboards;
+global using static LTChess.Logic.Search.SearchOptions;
 global using static LTChess.Logic.Search.SearchConstants;
 global using static LTChess.Logic.Search.ThreadedEvaluation;
 global using static LTChess.Logic.Util.PositionUtilities;
