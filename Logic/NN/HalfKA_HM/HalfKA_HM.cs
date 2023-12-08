@@ -18,20 +18,13 @@ using System.Runtime.InteropServices;
 namespace LTChess.Logic.NN.HalfKA_HM
 {
     /// <summary>
-    /// Uses SFNNv3 architecture, 
-    /// https://raw.githubusercontent.com/glinscott/nnue-pytorch/master/docs/img/SFNNv3_architecture_detailed_v2.svg
+    /// Uses SFNNv6/7/8 architectures.
+    /// https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/c15e33ccbe0bfe63d0aa4dbe69307afc7214b1d0/docs/img/SFNNv6_architecture_detailed_v2.svg
     /// 
-    /// 
+    /// To use a net from a different architecture, change <see cref="TransformedFeatureDimensions"/> to 1536/2048/2560 for 6/7/8.
     /// </summary>
     public static unsafe class HalfKA_HM
     {
-        /// <summary>
-        /// NNUE-PyTorch (https://github.com/glinscott/nnue-pytorch/tree/master) compresses networks using LEB128,
-        /// but older Stockfish networks didn't do this.
-        /// </summary>
-        public static bool IsLEB128;
-
-
         public const string NNV6_Sparse = @"nn-cd2ff4716c34.nnue";
         public const string NNV6_Sparse_LEB = @"nn-5af11540bbfe.nnue";
 
@@ -137,7 +130,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             uint hashValue = br.ReadUInt32();
             uint netHash = LayerStack[0].GetHashValue();
-            uint ftHash = FeatureTransformer.GetHashValue();
+            uint ftHash = FeatureTransformer.HashValue;
             uint finalHash = (netHash ^ ftHash);
 
             if (hashValue != finalHash)
@@ -152,10 +145,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             string arch = System.Text.Encoding.UTF8.GetString(archBuffer);
             Debug.WriteLine("Network architecture: '" + arch + "'");
-
-            IsLEB128 = LEB128.IsCompressed(br);
-
-
         }
 
         /// <summary>
@@ -241,7 +230,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 }
                 else if (m.Castle)
                 {
-                    //  The generated freaks out about these switch statements not covering all options (although in practice they did),
+                    //  The generated code freaks out about these switch statements not covering all options (although in practice they did),
                     //  so giving it these the default option of "G8" reduces the code size by about 5%.
                     int rookFrom = moveTo switch
                     {
@@ -595,7 +584,6 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 Log(bucket + "\t\t" + psqt + "\t\t" + output + "\t\t" + (psqt + output) +
                     (bucket == correctBucket ? "\t<-- this bucket is used" : string.Empty));
             }
-
         }
 
 

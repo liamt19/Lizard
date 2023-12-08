@@ -27,8 +27,8 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public const uint InputDimensions = HalfKA_HM.Dimensions;
         public const uint OutputDimensions = HalfDimensions;
-        public static uint GetHashValue() => HalfKA_HM.HashValue ^ (OutputDimensions * 2);
-        private static readonly Vector256<short> One;
+        public static uint HashValue => HalfKA_HM.HashValue ^ (OutputDimensions * 2);
+        private static readonly Vector256<short> One = Vector256.Create((short)127).AsInt16();
         private static readonly Vector256<short> Zero = Vector256<short>.Zero;
 
 
@@ -70,12 +70,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 RefreshAccumulatorPerspective(pos, ref accumulator, Black);
             }
 
-
             const int Control = 0b11011000;
 
             const uint OutputChunkSize = 256 / 8;
             const uint NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
-            const uint StrideOffset = AccumulatorPSQT.VectorCount / 2;
+            const uint StrideOffset = (HalfKA_HM.TransformedFeatureDimensions / VSize.Short) / 2;
 
             Span<int> perspectives = stackalloc int[2] { pos.ToMove, Not(pos.ToMove) };
 

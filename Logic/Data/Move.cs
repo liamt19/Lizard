@@ -4,10 +4,10 @@ using System.Text;
 
 namespace LTChess.Logic.Data
 {
-    [StructLayout(LayoutKind.Auto)]
+
     public unsafe struct Move
     {
-        public static readonly Move Null = new Move();
+        public static readonly Move Null = new Move(A1, A1);
 
         //  6 bits for: From, To, SqChecker
         //  
@@ -215,12 +215,6 @@ namespace LTChess.Logic.Data
         public bool IsNull()
         {
             return (_data & Mask_ToFrom) == 0;
-        }
-
-        [MethodImpl(Inline)]
-        public ulong GetMoveMask()
-        {
-            return (SquareBB[From] | SquareBB[To]);
         }
 
         /// <summary>

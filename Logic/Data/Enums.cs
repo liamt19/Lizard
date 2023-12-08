@@ -1,6 +1,6 @@
 ﻿namespace LTChess.Logic.Data
 {
-    public class Diagonal
+    public static class Diagonal
     {
         /// <summary>
         /// Diagonally up and to the right, from white's perspective. 
@@ -15,7 +15,7 @@
         public const int Diagonal_A8H1 = 1;
     }
 
-    public class Color
+    public static class Color
     {
         public const int White = 0;
         public const int Black = 1;
@@ -23,7 +23,7 @@
         public const int ColorNB = 2;
     }
 
-    public class Piece
+    public static class Piece
     {
         public const int Pawn = 0;
         public const int Knight = 1;
@@ -65,7 +65,7 @@
         Exact = Beta | Alpha
     };
 
-    public class Bound
+    public static class Bound
     {
         public const int BoundNone = (int)TTNodeType.Invalid;
         public const int BoundUpper = (int)TTNodeType.Beta;
@@ -79,7 +79,7 @@
     public struct RootNode : SearchNodeType { }
 
 
-    public class Files
+    public static class Files
     {
         public const int A = 0;
         public const int B = 1;
@@ -91,7 +91,7 @@
         public const int H = 7;
     }
 
-    public class Squares
+    public static class Squares
     {
         public const int A1 = 0;
         public const int B1 = 1;

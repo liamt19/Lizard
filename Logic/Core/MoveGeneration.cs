@@ -360,7 +360,7 @@ namespace LTChess.Logic.Core
                             C1 => D1,
                             G1 => F1,
                             C8 => D8,
-                            G8 => F8,
+                            _ => F8,    //  G8 => F8
                         };
 
                         ulong between = BetweenBB[rookTo][theirKing];
@@ -700,7 +700,7 @@ namespace LTChess.Logic.Core
                 C1 => D1,
                 G1 => F1,
                 C8 => D8,
-                G8 => F8,
+                _ => F8,    //  G8 => F8
             };
 
             int theirKing = State->KingSquares[Not(ToMove)];
