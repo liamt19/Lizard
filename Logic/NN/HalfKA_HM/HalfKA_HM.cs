@@ -72,36 +72,42 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
 
+            //  Try loading 'nn.nnue' from the working directory, or just use the default network otherwise.
             Stream kpFile;
-            byte[] buff;
 
             string networkToLoad = @"nn.nnue";
 
             if (File.Exists(networkToLoad))
             {
-                buff = File.ReadAllBytes(networkToLoad);
+                kpFile = File.OpenRead(networkToLoad);
                 Log("Using NNUE with HalfKA_v2_hm network " + networkToLoad);
+            }
+            else if (File.Exists(NNV6_Sparse_LEB))
+            {
+                kpFile = File.OpenRead(NNV6_Sparse_LEB);
+                Log("Using NNUE with HalfKA_v2_hm network " + NNV6_Sparse_LEB);
             }
             else
             {
                 //  Just load the default network
                 networkToLoad = NNV6_Sparse_LEB;
+
                 Log("Using embedded NNUE with HalfKA_v2_hm network " + networkToLoad);
-
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
-                try
-                {
-                    buff = (byte[])Resources.ResourceManager.GetObject(resourceName);
-                }
-                catch (Exception e)
-                {
-                    Log("Attempt to load '" + resourceName + "' from embedded resources failed!");
-                    throw;
-                }
-                
-            }
 
-            kpFile = new MemoryStream(buff);
+                object? o = Resources.ResourceManager.GetObject(resourceName);
+                if (o == null)
+                {
+                    Console.WriteLine("The UseHalfKA NNRunOption was set to true, but there isn't a valid HalfKA network to load!");
+                    Console.WriteLine("This program looks for a HalfKA network named " + "'nn.nnue' or '" + NNV6_Sparse_LEB + "' within the current directory.");
+                    Console.WriteLine("If neither can be found, then '" + NNV6_Sparse_LEB + "' needs to be a compiled as a resource as a fallback!");
+                    Console.ReadLine();
+                    Environment.Exit(-1);
+                }
+
+                byte[] data = (byte[])o;
+                kpFile = new MemoryStream(data);
+            }
 
             using BinaryReader br = new BinaryReader(kpFile);
             ReadHeader(br);
@@ -140,6 +146,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             uint size = br.ReadUInt32();
+
+            if (size > 1024)
+            {
+                Console.WriteLine("The network header is claiming that the architecture description string is " + size + " bytes long, which is probably wrong.");
+                Console.WriteLine("For reference, the headers of NNUE-Pytorch networks are generally under 256 bytes.");
+                Console.WriteLine("Press enter to continue loading...");
+                Console.ReadLine();
+            }
 
             byte[] archBuffer = new byte[size];
             br.Read(archBuffer);

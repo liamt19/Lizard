@@ -82,7 +82,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             var psqt = (accumulator.PSQ(perspectives[0])[0][bucket] -
                         accumulator.PSQ(perspectives[1])[0][bucket]) / 2;
 
-            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);            
+            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);
 
             for (int p = 0; p < 2; p++)
             {
@@ -217,6 +217,17 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
             else
             {
+                var stream = br.BaseStream;
+                long toRead = (sizeof(short) * (HalfDimensions + (HalfDimensions * InputDimensions))) + (sizeof(int) * (PSQTBuckets * InputDimensions));
+                if (stream.Position + toRead > stream.Length)
+                {
+                    Console.WriteLine("HalfKA FeatureTransformer's BinaryReader doesn't have enough data for all weights and biases to be read!");
+                    Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
+                    Console.WriteLine("The file being loaded is either not a valid HalfKA network, or has different layer sizes than the hardcoded ones.");
+                    Console.ReadLine();
+                    Environment.Exit(-1);
+                }
+
                 for (int i = 0; i < HalfDimensions; i += VSize.Short)
                 {
                     Biases[i / VSize.Short] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();

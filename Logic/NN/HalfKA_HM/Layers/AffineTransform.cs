@@ -117,6 +117,17 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public bool ReadParameters(BinaryReader br)
         {
+            var stream = br.BaseStream;
+            long toRead = (long)((sizeof(int) * (OutputDimensions)) + (sizeof(sbyte) * (OutputDimensions * PaddedInputDimensions)));
+            if (stream.Position + toRead > stream.Length)
+            {
+                Console.WriteLine("HalfKA AffineTransform's BinaryReader doesn't have enough data for all weights and biases to be read!");
+                Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
+                Console.WriteLine("The file being loaded is either not a valid HalfKA network, or has different layer sizes than the hardcoded ones.");
+                Console.WriteLine("You probably need to change HalfKA_HM.TransformedFeatureDimensions to the next larger value.");
+                Console.ReadLine();
+                Environment.Exit(-1);
+            }
 
             int[] _Biases = new int[OutputDimensions];
             sbyte[] _Weights = new sbyte[OutputDimensions * PaddedInputDimensions];
