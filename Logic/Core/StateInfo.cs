@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
-using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.NN;
 
 namespace LTChess.Logic.Core
 {
