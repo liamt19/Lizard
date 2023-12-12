@@ -23,6 +23,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// 
     /// To use a net from a different architecture, change <see cref="TransformedFeatureDimensions"/> to 1536/2048/2560 for 6/7/8.
     /// </summary>
+    [SkipStaticConstructor]
     public static unsafe class HalfKA_HM
     {
         public const string NNV6_Sparse = @"nn-cd2ff4716c34.nnue";

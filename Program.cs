@@ -73,8 +73,8 @@ namespace LTChess
 
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
-                //  Introduces some unnecessary strings
-                if (type == typeof(FishBench)) continue;
+                //  Don't run the constructors of NN classes.
+                if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
 
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
             }

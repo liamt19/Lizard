@@ -19,6 +19,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// 
     /// https://github.com/official-stockfish/Stockfish/blob/84f3e867903f62480c33243dd0ecbffd342796fc/src/nnue/nnue_feature_transformer.h
     /// </summary>
+    [SkipStaticConstructor]
     public static unsafe class FeatureTransformer
     {
 

@@ -4,6 +4,8 @@ using LTChess.Properties;
 
 namespace LTChess.Logic.Util
 {
+    //  SkipStaticConstructor since this introduces some unnecessary strings
+    [SkipStaticConstructor]
     public static class FishBench
     {
         private static Position p;
