@@ -27,5 +27,15 @@ namespace LTChess.Logic.NN
         /// than it does to update it incrementally with <see cref="HalfKA_HM.HalfKA_HM.MakeMove"/>
         /// </summary>
         public const bool UseHalfKA = true;
+
+        /// <summary>
+        /// If true, the HalfKP network will be used for static evaluation.
+        /// <para></para>
+        /// Can handle around 600,000 full refreshes per second, per thread.
+        /// </summary>
+        public const bool UseHalfKP = false;
+
+
+        
     }
 }

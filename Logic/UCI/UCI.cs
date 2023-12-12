@@ -264,7 +264,7 @@ namespace LTChess.Logic.Core
 
                     }
 
-                    if (UseHalfKA)
+                    if (UseHalfKA || UseHalfKP)
                     {
                         info.Position.State->Accumulator->RefreshPerspective[White] = true;
                         info.Position.State->Accumulator->RefreshPerspective[Black] = true;

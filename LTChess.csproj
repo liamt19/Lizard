@@ -130,11 +130,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Logic\NN\HalfKP\**" />
     <Compile Remove="Logic\Tablebase\**" />
-    <EmbeddedResource Remove="Logic\NN\HalfKP\**" />
     <EmbeddedResource Remove="Logic\Tablebase\**" />
-    <None Remove="Logic\NN\HalfKP\**" />
     <None Remove="Logic\Tablebase\**" />
   </ItemGroup>
 

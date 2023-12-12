@@ -40,6 +40,7 @@ using System.Reflection;
 using LTChess.Logic.NN;
 using System.Runtime.InteropServices;
 using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.Threads;
 
 namespace LTChess
@@ -216,19 +217,8 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    if (UseSimple768)
-                    {
-                        Log("NNUE Eval: " + NNUEEvaluation.GetEvaluation(p));
+                    Log((UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " Eval: " + Evaluation.GetEvaluation(p));
                     }
-                    else if (UseHalfKA)
-                    {
-                        Log("HalfKA Eval: " + HalfKA_HM.GetEvaluation(p));
-                    }
-                    else
-                    {
-                        info.GetEvaluation(p, true);
-                    }
-                }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
                     DoEvalAllMoves();
@@ -285,7 +275,7 @@ namespace LTChess
                         {
                             Log("Loaded fen");
 
-                            if (UseHalfKA)
+                            if (UseHalfKA || UseHalfKP || UseSimple768)
                             {
                                 p.State->Accumulator->RefreshPerspective[White] = true;
                                 p.State->Accumulator->RefreshPerspective[Black] = true;
@@ -370,19 +360,7 @@ namespace LTChess
         /// </summary>
         public static void DoEvalAllMoves()
         {
-            if (UseSimple768)
-            {
-                Log("Static evaluation: " + NNUEEvaluation.GetEvaluation(p));
-            }
-            else if (UseHalfKA)
-            {
-                Log("Static evaluation (White's perspective): " + HalfKA_HM.GetEvaluation(p));
-            }
-            else
-            {
-                Log("Static evaluation: " + info.GetEvaluation(p, true));
-            }
-
+            Log("Static evaluation (White's perspective): " + Evaluation.GetEvaluation(p));
             Log("\r\nMove evaluations (White's perspective):");
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -395,18 +373,7 @@ namespace LTChess
                 p.MakeMove(m);
                 int moveEval = 0;
 
-                if (UseSimple768)
-                {
-                    moveEval = NNUEEvaluation.GetEvaluation(p);
-                }
-                else if (UseHalfKA)
-                {
-                    moveEval = HalfKA_HM.GetEvaluation(p);
-                }
-                else
-                {
-                    moveEval = info.GetEvaluation(p, true);
-                }
+                moveEval = Evaluation.GetEvaluation(p);
 
                 p.UnmakeMove(m);
                 scoreList.Add((m, moveEval));

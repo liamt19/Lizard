@@ -7,6 +7,7 @@ using System.Text;
 using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.NN.HalfKP;
 using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Threads;
 
@@ -283,6 +284,11 @@ namespace LTChess.Logic.Core
             if (UseHalfKA && UpdateNN)
             {
                 HalfKA_HM.MakeMove(this, move);
+            }
+
+            if (UseHalfKP && UpdateNN)
+            {
+                HalfKP.MakeMoveNN(this, move);
             }
 
             //  Move onto the next state
