@@ -131,7 +131,7 @@ namespace LTChess.Logic.Search
                     else
                     {
                         //  If we aren't in check, then just return the static eval instead of a draw score for consistency.
-                        return info.GetEvaluation(pos);
+                        return Evaluation.GetEvaluation(pos);
                     }
 
                 }
@@ -206,7 +206,7 @@ namespace LTChess.Logic.Search
                 if (ss->StaticEval == ScoreNone)
                 {
                     //  But get the actual evaluation if the TT had an invalid score.
-                    ss->StaticEval = eval = info.GetEvaluation(pos);
+                    ss->StaticEval = eval = Evaluation.GetEvaluation(pos);
                 }
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
@@ -218,7 +218,7 @@ namespace LTChess.Logic.Search
             else
             {
                 //  Get the static evaluation and store it in the empty TT slot.
-                ss->StaticEval = eval = info.GetEvaluation(pos);
+                ss->StaticEval = eval = Evaluation.GetEvaluation(pos);
                 tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
             }
 
@@ -768,7 +768,7 @@ namespace LTChess.Logic.Search
 
             if (ss->Ply >= MaxSearchStackPly - 1)
             {
-                return ss->InCheck ? ScoreDraw : info.GetEvaluation(pos);
+                return ss->InCheck ? ScoreDraw : Evaluation.GetEvaluation(pos);
             }
 
             if (!isPV 
@@ -789,7 +789,7 @@ namespace LTChess.Logic.Search
                 {
                     if ((ss->StaticEval = bestScore = tte->StatEval) == ScoreNone)
                     {
-                        ss->StaticEval = bestScore = info.GetEvaluation(pos);
+                        ss->StaticEval = bestScore = Evaluation.GetEvaluation(pos);
                     }
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > bestScore ? BoundLower : BoundUpper)) != 0))
@@ -805,7 +805,7 @@ namespace LTChess.Logic.Search
                     }
                     else
                     {
-                        ss->StaticEval = bestScore = info.GetEvaluation(pos);
+                        ss->StaticEval = bestScore = Evaluation.GetEvaluation(pos);
                     }
                 }
 

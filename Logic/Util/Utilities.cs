@@ -721,7 +721,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
-            if (ThreadedEvaluation.IsScoreMate(score))
+            if (Evaluation.IsScoreMate(score))
             {
                 //  "mateIn" is returned in plies, but we want it in actual moves
                 if (score > 0)

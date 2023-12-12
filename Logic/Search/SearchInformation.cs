@@ -65,34 +65,9 @@ namespace LTChess.Logic.Search
         /// </summary>
         public int RootPlayerToMove = Color.White;
 
-        /// <summary>
-        /// A private reference to a ThreadedEvaluation instance, which is used by the thread to evaluate the positions
-        /// that it encounters during the search.
-        /// </summary>
-        private ThreadedEvaluation _ClassicalEval;
-
         public TimeManager TimeManager;
 
         public bool IsInfinite => (MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime);
-
-        /// <summary>
-        /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public short GetEvaluation(in Position position, bool Trace = false)
-        {
-            if (UseSimple768)
-            {
-                return (short) NNUEEvaluation.GetEvaluation(position);
-            }
-
-            if (UseHalfKA)
-            {
-                return (short) HalfKA_HM.GetEvaluation(position, FavorPositionalEval);
-            }
-
-            return (short) this._ClassicalEval.Evaluate(position, position.ToMove, Trace);
-        }
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {
@@ -114,8 +89,6 @@ namespace LTChess.Logic.Search
 
             this.OnDepthFinish = PrintSearchInfo;
             this.OnSearchFinish = PrintHumanReadableLine;
-
-            _ClassicalEval = new ThreadedEvaluation();
         }
 
         public static SearchInformation Infinite(Position p)

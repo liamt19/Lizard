@@ -1140,7 +1140,7 @@ namespace LTChess.Logic.Core
 
             if (depth == 0)
             {
-                return (ulong)HalfKA_HM.GetEvaluation(this);
+                return (ulong)Evaluation.GetEvaluation(this);
             }
 
             ulong n = 0;

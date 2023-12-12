@@ -25,7 +25,7 @@ global using static LTChess.Logic.Data.Bound;
 global using static LTChess.Logic.Magic.MagicBitboards;
 global using static LTChess.Logic.Search.SearchOptions;
 global using static LTChess.Logic.Search.SearchConstants;
-global using static LTChess.Logic.Search.ThreadedEvaluation;
+global using static LTChess.Logic.Search.Evaluation;
 global using static LTChess.Logic.Util.PositionUtilities;
 global using static LTChess.Logic.Util.Utilities;
 global using static LTChess.Logic.Util.Interop;
