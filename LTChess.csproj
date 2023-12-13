@@ -135,21 +135,6 @@
     <None Remove="Logic\Tablebase\**" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="Logic\Core\HashPerft.cs" />
-    <Compile Remove="Logic\Evaluation\Endgame.cs" />
-    <Compile Remove="Logic\Search\Mate.cs" />
-    <Compile Remove="Logic\Search\NegaMax.cs" />
-    <Compile Remove="Logic\Search\Quiescence.cs" />
-    <Compile Remove="Logic\Transposition\EvaluationTable.cs" />
-    <Compile Remove="Logic\Util\CommonFENs.cs" />
-    <Compile Remove="Logic\Util\Stockfish.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="Resources\baron30.bin" />
-  </ItemGroup>
-
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\baron30.bin" />

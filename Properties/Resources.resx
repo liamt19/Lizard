@@ -121,9 +121,6 @@
   <data name="baron30" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\baron30.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="network" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\network.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
   <data name="nn-5af11540bbfe" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\nn-5af11540bbfe.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
