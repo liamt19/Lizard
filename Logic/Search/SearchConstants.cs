@@ -20,7 +20,7 @@
         public const int SearchLowTimeThreshold = 3 * 1000;
 
 
-        public const bool StopLosingOnTimeFromVerizon = true;
+        public const bool StopLosingOnTimeFromVerizon = false;
         public const int VerizonDisconnectionBuffer = 10 * 1000;
 
 

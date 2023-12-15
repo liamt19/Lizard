@@ -96,8 +96,12 @@
         /// <summary>
         /// This amount is added to reverse futility pruning's margin per depth.
         /// </summary>
-        public static int ReverseFutilityPruningPerDepth = 70;
+        public static int ReverseFutilityPruningPerDepth = 65;
 
+        /// <summary>
+        /// This amount is removed from the reverse futility pruning margin if the side to move is improving.
+        /// </summary>
+        private static int ReverseFutilityPruningImproving = 55;
 
 
         /// <summary>
@@ -133,7 +137,7 @@
         public static int ExtraCutNodeReductionMinDepth = 6;
 
 
-
+        
         /// <summary>
         /// If the evaluation at the next depth is within this margin from the previous evaluation,
         /// we use the next depth's evaluation as the starting point for our Alpha/Beta values.

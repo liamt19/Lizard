@@ -138,7 +138,7 @@ namespace LTChess.Logic.Search
 
                 //  https://www.chessprogramming.org/Mate_Distance_Pruning
                 //  Adjust alpha and beta depending the distance to mate:
-                //  If we have a mate in 3, there is not point in searching nodes that can at best lead to a mate in 4, etc.
+                //  If we have a mate in 3, there is no point in searching nodes that can at best lead to a mate in 4, etc.
                 alpha = Math.Max(MakeMateScore(ss->Ply), alpha);
                 beta = Math.Min(ScoreMate - (ss->Ply + 1), beta);
                 if (alpha >= beta)
@@ -146,8 +146,6 @@ namespace LTChess.Logic.Search
                     return alpha;
                 }
             }
-
-            
 
             (ss + 1)->Skip = Move.Null;
             (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
@@ -162,7 +160,6 @@ namespace LTChess.Logic.Search
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
             }
 
-
             short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
 
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
@@ -174,11 +171,11 @@ namespace LTChess.Logic.Search
             //  we aren't in a singular extension search,
             //  the TT hit's depth is above the current depth,
             //  the ttScore isn't invalid,
-            //  the ttScore is below alpha or we thought this node would fail high,
+            //  the ttScore is below alpha (or it is just above alpha and we expected this node to fail high),
             //  and the tt entry's bound fits the criteria.
             if (!isPV 
                 && !doSkip 
-                && tte->Depth > depth 
+                && tte->Depth >= depth
                 && ttScore != ScoreNone
                 && (ttScore < alpha || cutNode)
                 && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
@@ -226,14 +223,15 @@ namespace LTChess.Logic.Search
             {
                 //  We are improving if the static evaluation at this ply is better than what it was
                 //  when it was our turn 2 plies ago, (or 4 plies if we were in check).
-                improving = ss->StaticEval > ((ss - 2)->StaticEval != ScoreNone ? (ss - 2)->StaticEval :
-                                             ((ss - 4)->StaticEval != ScoreNone ? (ss - 4)->StaticEval : 173));
+                improving = ((ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
+                            ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true));
             }
 
 
 
             //  We accept Reverse Futility Pruning for:
             //  non-PV nodes
+            //  that aren't a response to a previous singular extension search
             //  at a depth at or below the max (currently 8)
             //  which don't have a TT move,
             //  so long as:
@@ -242,6 +240,7 @@ namespace LTChess.Logic.Search
             //  and the eval is significantly above beta.
             if (UseReverseFutilityPruning
                 && !ss->TTPV
+                && !doSkip
                 && depth <= ReverseFutilityPruningMaxDepth
                 && (ttMove.Equals(CondensedMove.Null))
                 && (eval < ScoreAssuredWin)
@@ -288,7 +287,7 @@ namespace LTChess.Logic.Search
             {
                 int reduction = NullMovePruningMinDepth + (depth / NullMovePruningMinDepth);
                 ss->CurrentMove = Move.Null;
-                ss->ContinuationHistory = history.Continuations[0][0][0, 0, 0];
+                ss->ContinuationHistory = history.Continuations[0][0][0];
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 info.Position.MakeNullMove();
@@ -307,13 +306,21 @@ namespace LTChess.Logic.Search
             {
                 if (isPV)
                 {
-                    //  PV searches are more heavily scrutinized, so if we didn't get a TT move in this node
-                    //  it may not be worth looking as deeply in it.
+                    /**
+                    Likely neutral/positive:
+                    Score of ReduceNullTTDepth vs Baseline: 140 - 120 - 256  [0.519] 516
+                    ...      ReduceNullTTDepth playing White: 122 - 12 - 125  [0.712] 259
+                    ...      ReduceNullTTDepth playing Black: 18 - 108 - 131  [0.325] 257
+                    ...      White vs Black: 230 - 30 - 256  [0.694] 516
+                    Elo difference: 13.5 +/- 21.3, LOS: 89.3 %, DrawRatio: 49.6 %
+                    SPRT: llr 0.718 (24.8%), lbound -2.25, ubound 2.89
+                     */
                     depth -= 2;
 
                     if (depth <= 0)
                     {
-                        //  If we just reduced the depth below 1, go to QSearch instead.
+                        //  If we just reduced the depth below 1, dive into QSearch.
+                        //  Use a depth of 0 though so that we still consider checking moves.
                         return QSearch<PVNode>(ref info, ss, alpha, beta, 0);
                     }
                 }
