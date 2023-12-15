@@ -90,6 +90,7 @@ namespace LTChess.Logic.Threads
         /// Threads must get their own List, and the RootMoves within that list must be a personal copy as well.
         /// </summary>
         public List<RootMove> RootMoves = new List<RootMove>(20);
+        public CondensedMove CurrentMove => RootMoves[PVIndex].CondMove;
 
         /// <summary>
         /// The unique history heuristic table for this thread.

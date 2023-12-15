@@ -16,6 +16,7 @@ namespace LTChess.Logic.Book
     /// </summary>
     public unsafe class Polyglot
     {
+        private const string BookFile = "book.bin";
         private static Dictionary<ulong, List<PolyglotEntry>> BookEntries;
         private static Random rand = new Random();
 
@@ -103,10 +104,11 @@ namespace LTChess.Logic.Book
             Stopwatch sw = Stopwatch.StartNew();
             ulong posKey = MakeKey(pos);
 
-            //using Stream stream = File.OpenRead(BookFile);
-            //using BinaryReader reader = new BinaryReader(stream);
+            using Stream stream = File.OpenRead(BookFile);
+            using BinaryReader reader = new BinaryReader(stream);
+            var bookData = reader.ReadBytes((int)stream.Length);
 
-            var bookData = Resources.baron30;
+            //var bookData = Resources.baron30;
 
             entries = new List<PolyglotEntry>();
 

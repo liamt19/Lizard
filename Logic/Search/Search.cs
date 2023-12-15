@@ -164,7 +164,7 @@ namespace LTChess.Logic.Search
 
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
-            CondensedMove ttMove = (isRoot ? thisThread.RootMoves[thisThread.PVIndex].CondMove : (ss->TTHit ? tte->BestMove : CondensedMove.Null));
+            CondensedMove ttMove = (isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : CondensedMove.Null));
 
             //  For TT hits, we can accept and return the TT score if:
             //  We aren't in a PV node,

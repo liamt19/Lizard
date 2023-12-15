@@ -184,10 +184,10 @@ namespace LTChess.Logic.Core
                 State->Accumulator->RefreshPerspective[Black] = true;
 
                 if (UseSimple768)
-            {
+                {
                     Simple768.RefreshAccumulator(this, ref (*State->Accumulator));
+                }
             }
-        }
         }
 
 
@@ -672,10 +672,10 @@ namespace LTChess.Logic.Core
                     CheckInfo.idxChecker = lsb(State->Checkers);
                     break;
             }
-
-
+            
+            
             ToMove = Not(ToMove);
-            }
+        }
 
 
         /// <summary>
@@ -1288,9 +1288,9 @@ namespace LTChess.Logic.Core
                 }
             }
 
-            if (UseHalfKA && popcount(bb.Occupancy) > HalfKA_HM.MaxActiveDimensions)
+            if (EnableAssertions && (UseHalfKA || UseHalfKP))
             {
-                throw new IndexOutOfRangeException("ERROR FEN '" + fen + "' has more than " + HalfKA_HM.MaxActiveDimensions + " pieces, which isn't allowed with the HalfKA architecture!");
+                Assert(popcount(bb.Occupancy) <= HalfKA_HM.MaxActiveDimensions, "ERROR FEN '" + fen + "' has more than " + HalfKA_HM.MaxActiveDimensions + " pieces, which isn't allowed with the HalfKA architecture!");
             }
 
             return true;

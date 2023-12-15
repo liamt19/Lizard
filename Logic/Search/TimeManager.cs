@@ -54,6 +54,10 @@ namespace LTChess.Logic.Search
         /// </summary>
         public int[] PlayerTime;
 
+        //  Side note: Having this be a Stopwatch rather than keeping track of time via DateTime.Now is annoying,
+        //  but DateTime.Now can have unacceptably poor resolution (on some machines, like windows 7/8) of
+        //  +- 15ms, which can have a big impact for short time controls and especially "movetime" uci commands.
+        //  https://learn.microsoft.com/en-us/dotnet/api/system.datetime?view=net-8.0&redirectedfrom=MSDN#datetime-resolution
         private static Stopwatch TotalSearchTime = new Stopwatch();
 
 

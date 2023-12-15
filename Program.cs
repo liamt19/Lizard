@@ -361,8 +361,8 @@ namespace LTChess
         /// </summary>
         public static void DoEvalAllMoves()
         {
-            Log("Static evaluation (White's perspective): " + Evaluation.GetEvaluation(p));
-            Log("\r\nMove evaluations (White's perspective):");
+            Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + Evaluation.GetEvaluation(p));
+            Log("\r\nMove evaluations (" + ColorToString(p.ToMove) + "'s perspective):");
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = p.GenLegal(list);
@@ -451,18 +451,6 @@ namespace LTChess
             Environment.Exit(123);
         }
 
-        public static void TryToBreakSomething(int min = 100, int max = 300)
-        {
-            Random r = new Random();
-            while (true)
-            {
-                Console.WriteLine("\r\nStart:\r\n");
-                SearchPool.StartSearch(p, ref info);
-                Thread.Sleep(r.Next(min, max));
-                SearchPool.StopThreads = true;
-                Thread.Sleep(r.Next(min, max));
-            }
-        }
     }
 
 }

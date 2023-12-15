@@ -20,7 +20,6 @@ namespace LTChess.Logic.Core
         private ThreadSetup setup;
 
         public const string LogFileName = @".\ucilog.txt";
-        public const string FilenameLast = @".\ucilog_last.txt";
 
         /// <summary>
         /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
