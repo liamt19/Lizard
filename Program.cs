@@ -77,7 +77,15 @@ namespace LTChess
                 //  Don't run the constructors of NN classes.
                 if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
 
+                try
+                {
                 RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+            }
+                catch (TypeInitializationException e)
+                {
+                    Log("InitializeAll for type " + type.FullName + " failed: ");
+                    Log(e.ToString());
+                }
             }
 
             WarmUpJIT();

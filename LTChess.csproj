@@ -113,6 +113,7 @@
     <Configurations>Debug;Release</Configurations>
     <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
+    <PublishTrimmed>True</PublishTrimmed>
     
   </PropertyGroup>
 
