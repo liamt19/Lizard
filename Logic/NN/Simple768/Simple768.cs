@@ -22,13 +22,8 @@ namespace LTChess.Logic.NN.Simple768
     public unsafe static class Simple768
     {
         public const int InputSize = 768;
-
-        public const int HiddenSize = 1024 - (256 * 0);
-
+        public const int HiddenSize = 1024;
         public const int OutputBuckets = 1;
-        public const int BucketToUse = OutputBuckets - 1;
-
-        public static int debugBucketToUse = -1;
 
         private const int QA = 255;
         private const int QB = 64;
