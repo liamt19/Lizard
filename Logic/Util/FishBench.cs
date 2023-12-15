@@ -102,6 +102,7 @@ namespace LTChess.Logic.Util
             }
 
             Stopwatch sw = Stopwatch.StartNew();
+            ulong total = 0;
             int i = 1;
             foreach (var item in dict)
             {
@@ -117,9 +118,11 @@ namespace LTChess.Logic.Util
                     Log('[' + fen + ']' + ": Expected " + correctNodes + " nodes but got " + ourNodes + " nodes instead!");
                     nodesCorrect = false;
                 }
+
+                total += ourNodes;
             }
 
-            Log("Done in " + sw.Elapsed.TotalSeconds + " s!");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
             return nodesCorrect;
         }
 
