@@ -63,19 +63,9 @@ namespace LTChess.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] baron30 {
+        public static byte[] net_epoch10 {
             get {
-                object obj = ResourceManager.GetObject("baron30", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        public static byte[] nn_5af11540bbfe {
-            get {
-                object obj = ResourceManager.GetObject("nn-5af11540bbfe", resourceCulture);
+                object obj = ResourceManager.GetObject("net-epoch10", resourceCulture);
                 return ((byte[])(obj));
             }
         }

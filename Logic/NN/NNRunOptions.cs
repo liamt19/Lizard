@@ -9,24 +9,19 @@ namespace LTChess.Logic.NN
     public static class NNRunOptions
     {
         /// <summary>
-        /// If true, the Simple768 network will take the place of the classical evaluation function.
-        /// <para></para>
-        /// The included network (Thanks https://github.com/TheBlackPlague) runs extremely quickly (around 1,750,000 to 2,750,000 nps)
-        /// <para></para>
-        /// but isn't quite as strong as the larger and slower HalfKA.
+        /// If true, the Simple768 network will be used for static evaluation.
         /// </summary>
-        public const bool UseSimple768 = false;
+        public const bool UseSimple768 = true;
 
         /// <summary>
-        /// If true, the HalfKA network will take the place of the classical evaluation function.
+        /// If true, the HalfKA network will be used for static evaluation.
         /// <para></para>
         /// This architecture is the largest, slowest, but strongest out of the three.
         /// On my machine, this hits around 400,000 to 800,000 nps depending on how many king moves are made.
         /// <para></para>
-        /// It takes around 8 times as long to recalculate the entire board 
-        /// than it does to update it incrementally with <see cref="HalfKA_HM.HalfKA_HM.MakeMove"/>
+        /// Can handle around 215,000 full refreshes per second, per thread.
         /// </summary>
-        public const bool UseHalfKA = true;
+        public const bool UseHalfKA = false;
 
         /// <summary>
         /// If true, the HalfKP network will be used for static evaluation.

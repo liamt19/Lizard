@@ -146,6 +146,11 @@
     <Folder Include="obj\" />
   </ItemGroup>
 
+  <!-- This is for using Bitmaps -->
+  <ItemGroup Condition="'$(Configuration)'=='Debug'">
+    <PackageReference Include="System.Drawing.Common" Version="8.0.0" />
+  </ItemGroup>
+
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>

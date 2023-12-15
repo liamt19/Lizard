@@ -87,12 +87,6 @@ namespace LTChess
                 AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
-
-            if (UseSimple768)
-            {
-                NNUEEvaluation.ResetNN();
-            }
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
@@ -262,6 +256,13 @@ namespace LTChess
                 {
                     ForceGC();
                 }
+#if DEBUG
+                else if (input.EqualsIgnoreCase("draw nets") && UseSimple768)
+                {
+                    Simple768.DrawFeatureWeightPic(true);
+                    Simple768.DrawLayerWeightPic(true);
+                }
+#endif
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
                     break;

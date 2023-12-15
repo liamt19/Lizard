@@ -178,17 +178,16 @@ namespace LTChess.Logic.Core
 
             LoadFromFEN(fen);
 
-            if (UseSimple768 && createAccumulators)
-            {
-                NNUEEvaluation.RefreshNN(this);
-                NNUEEvaluation.ResetNN();
-            }
-
-            if (UseHalfKA && UpdateNN)
+            if (UpdateNN)
             {
                 State->Accumulator->RefreshPerspective[White] = true;
                 State->Accumulator->RefreshPerspective[Black] = true;
+
+                if (UseSimple768)
+            {
+                    Simple768.RefreshAccumulator(this, ref (*State->Accumulator));
             }
+        }
         }
 
 
@@ -291,16 +290,16 @@ namespace LTChess.Logic.Core
                 HalfKP.MakeMoveNN(this, move);
             }
 
+            if (UseSimple768 && UpdateNN)
+            {
+                Simple768.MakeMoveNN(this, move);
+            }
+
             //  Move onto the next state
             State++;
 
             State->HalfmoveClock++;
             GamePly++;
-
-            if (UseSimple768 && UpdateNN)
-            {
-                NNUEEvaluation.MakeMoveNN(this, move);
-            }
 
             if (ToMove == Color.Black)
             {
@@ -676,13 +675,7 @@ namespace LTChess.Logic.Core
 
 
             ToMove = Not(ToMove);
-
-            if (UseSimple768 && UpdateNN)
-            {
-                NNUEEvaluation.UnmakeMoveNN();
             }
-
-        }
 
 
         /// <summary>
@@ -1288,6 +1281,11 @@ namespace LTChess.Logic.Core
             {
                 State->Accumulator->RefreshPerspective[White] = true;
                 State->Accumulator->RefreshPerspective[Black] = true;
+
+                if (UseSimple768)
+                {
+                    Simple768.RefreshAccumulator(this, ref (*State->Accumulator));
+                }
             }
 
             if (UseHalfKA && popcount(bb.Occupancy) > HalfKA_HM.MaxActiveDimensions)

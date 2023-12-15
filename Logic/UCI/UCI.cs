@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using LTChess.Logic.Book;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
+using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Threads;
 
 using static LTChess.Logic.Search.Search;
@@ -142,6 +143,7 @@ namespace LTChess.Logic.Core
 
             SendString("id name LTChess " + EngineBuildVersion);
             SendString("id author Liam McGuire");
+            SendString("info string Using " + (UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " evaluation.");
             foreach (string k in Options.Keys)
             {
                 SendString(Options[k].ToString());
@@ -268,6 +270,11 @@ namespace LTChess.Logic.Core
                     {
                         info.Position.State->Accumulator->RefreshPerspective[White] = true;
                         info.Position.State->Accumulator->RefreshPerspective[Black] = true;
+                    }
+
+                    if (UseSimple768)
+                    {
+                        Simple768.RefreshAccumulator(info.Position, ref (*info.Position.State->Accumulator));
                     }
                 }
                 else if (cmd == "go")
