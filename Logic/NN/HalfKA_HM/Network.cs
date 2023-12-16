@@ -125,7 +125,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             void* src = (void*)(_buffer + ac_0_idx);
             void* dst = (void*)(_buffer + ac_sqr_0_idx + FC_0_OUTPUTS);
-            Buffer.MemoryCopy(src, dst, FC_0_OUTPUTS * sizeof(sbyte), FC_0_OUTPUTS * sizeof(sbyte));
+            Unsafe.CopyBlock(dst, src, FC_0_OUTPUTS * sizeof(sbyte));
 
             fc_1.PropagateNormal(ac_sqr_0_out, fc_1_out);
             ac_1.Propagate(fc_1_out, ac_1_out);

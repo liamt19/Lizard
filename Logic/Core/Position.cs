@@ -278,7 +278,7 @@ namespace LTChess.Logic.Core
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint) StateInfo.StateCopySize);
+            Unsafe.CopyBlock((State + 1), State, (uint) StateInfo.StateCopySize);
 
             if (UseHalfKA && UpdateNN)
             {
@@ -686,7 +686,7 @@ namespace LTChess.Logic.Core
         public void MakeNullMove()
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
-            Unsafe.CopyBlockUnaligned((State + 1), State, (uint) StateInfo.StateCopySize);
+            Unsafe.CopyBlock((State + 1), State, (uint) StateInfo.StateCopySize);
             State->Accumulator->CopyTo(NextState->Accumulator);
 
             State++;

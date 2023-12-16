@@ -107,7 +107,7 @@ namespace LTChess.Logic.NN.HalfKP
 
             var accumulation = accumulator[perspective];
 
-            Buffer.MemoryCopy(Biases, accumulation, (int)(HalfDimensions * sizeof(short)), (int)(HalfDimensions * sizeof(short)));
+            Unsafe.CopyBlock(accumulation, Biases, (int)(HalfDimensions * sizeof(short)));
 
             int i = 0;
             while (i < activeCount)
