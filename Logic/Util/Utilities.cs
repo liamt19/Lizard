@@ -400,6 +400,22 @@ namespace LTChess.Logic.Util
         }
 
 
+        [MethodImpl(Inline)]
+        public static bool DirectionOK(int sq, int dir)
+        {
+            if (sq + dir < A1 || sq + dir > H8)
+            {
+                //  Make sure we aren't going off the board.
+                return false;
+            }
+
+            //  The rank and file of (sq + dir) should only change by at most 2 for knight moves,
+            //  and 1 for bishop or rook moves.
+            int rankDistance = Math.Abs(GetIndexRank(sq) - GetIndexRank(sq + dir));
+            int fileDistance = Math.Abs(GetIndexFile(sq) - GetIndexFile(sq + dir));
+            return Math.Max(rankDistance, fileDistance) <= 2;
+        }
+
 
         /// <summary>
         /// Returns the letter of the file numbered <paramref name="fileNumber"/>, so GetFileChar(0) returns 'a'.

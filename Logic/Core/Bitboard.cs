@@ -213,36 +213,6 @@
             return mat;
         }
 
-        /// <summary>
-        /// Returns true if there is a pawn on the square <paramref name="idx"/>, 
-        /// and there are no enemy pawns on its file or to the files beside it for
-        /// each of the ranks it needs to move through to promote. 
-        /// <br></br>
-        /// So a White pawn on E4 is a passer if there are no black pawns on D7-F5.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public bool IsPasser(int idx)
-        {
-            if (GetPieceAtIndex(idx) != Piece.Pawn)
-            {
-                return false;
-            }
-
-            int ourColor = GetColorAtIndex(idx);
-            ulong them = Colors[Not(ourColor)];
-            ulong theirPawns = (them & Pieces[Piece.Pawn]);
-
-
-            if (ourColor == Color.White)
-            {
-                return ((WhitePassedPawnMasks[idx] & theirPawns) == 0);
-            }
-            else
-            {
-                return ((BlackPassedPawnMasks[idx] & theirPawns) == 0);
-            }
-        }
-
 
         /// <summary>
         /// Returns a mask of the pieces
@@ -306,12 +276,11 @@
         [MethodImpl(Inline)]
         public ulong AttackersTo(int idx, ulong occupied)
         {
-            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
-                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
-                  | (Pieces[Piece.Knight] & KnightMasks[idx])
-                  | ((WhitePawnAttackMasks[idx] & Colors[Color.Black] & Pieces[Piece.Pawn])
-                  | (BlackPawnAttackMasks[idx] & Colors[Color.White] & Pieces[Piece.Pawn])));
-
+            return ((GetBishopMoves(occupied, idx) & (Pieces[Bishop] | Pieces[Queen]))
+              | (GetRookMoves(occupied, idx) & (Pieces[Rook] | Pieces[Queen]))
+              | (KnightMasks[idx] & Pieces[Knight])
+              | ((WhitePawnAttackMasks[idx] & Colors[Black] & Pieces[Pawn])
+              | (BlackPawnAttackMasks[idx] & Colors[White] & Pieces[Pawn])));
         }
 
         /// <summary>

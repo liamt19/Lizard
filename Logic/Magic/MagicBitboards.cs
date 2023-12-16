@@ -71,10 +71,6 @@ namespace LTChess.Logic.Magic
 
 
             Initialized = true;
-
-            //  GetBishopMoves can now be called, so initialize the 
-            //  RayBB and XrayBB masks.
-            PrecomputedData.RunPostInitialization();
         }
 
 
@@ -210,7 +206,7 @@ namespace LTChess.Logic.Magic
 
             for (int sq = A1; sq <= H8; sq++)
             {
-                FancyMagicSquare m = new FancyMagicSquare();
+                ref FancyMagicSquare m = ref magicArray[sq];
                 m.mask = GetBlockerMask(pt, sq);
                 m.shift = (int)(64 - popcount(m.mask));
                 if (sq == A1)
@@ -235,8 +231,6 @@ namespace LTChess.Logic.Magic
                     b = (b - m.mask) & m.mask;
                 }
                 while (b != 0);
-
-                magicArray[sq] = m;
             }
 
             return magicArray;
@@ -323,122 +317,43 @@ namespace LTChess.Logic.Magic
         public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
         {
             ulong mask = 0UL;
-            if (pt == Piece.Bishop)
+
+            if (pt == Bishop)
             {
-                IndexToCoord(idx, out int x, out int y);
-                int sq;
-
-                int ix = x - 1;
-                int iy = y - 1;
-                while (ix >= 0 && iy >= 0)
+                foreach (int dir in new int[] { Direction.NORTH_EAST, Direction.NORTH_WEST, Direction.SOUTH_EAST, Direction.SOUTH_WEST })
                 {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
+                    int tempSq = idx;
+                    while (DirectionOK(tempSq, dir))
                     {
-                        break;
-                    }
-                    ix--;
-                    iy--;
-                }
+                        //  Keep moving in this direction until we move off the board, masking in squares along the way.
+                        tempSq += dir;
+                        mask |= (1UL << tempSq);
 
-                ix = x - 1;
-                iy = y + 1;
-                while (ix >= 0 && iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
+                        if ((occupied & SquareBB[tempSq]) != 0)
+                        {
+                            //  If we get to an occupied square, then stop moving in this direction.
+                            break;
+                        }
                     }
-                    ix--;
-                    iy++;
-                }
-
-                ix = x + 1;
-                iy = y + 1;
-                while (ix <= 7 && iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix++;
-                    iy++;
-                }
-
-                ix = x + 1;
-                iy = y - 1;
-                while (ix <= 7 && iy >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    ix++;
-                    iy--;
                 }
             }
             else
             {
-                IndexToCoord(idx, out int x, out int y);
-                int sq;
-
-                int ix = x - 1;
-                int iy = y;
-                while (ix >= 0)
+                foreach (int dir in new int[] { Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST })
                 {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
+                    int tempSq = idx;
+                    while (DirectionOK(tempSq, dir))
                     {
-                        break;
-                    }
-                    ix--;
-                }
+                        //  Keep moving in this direction until we move off the board, masking in squares along the way.
+                        tempSq += dir;
+                        mask |= (1UL << tempSq);
 
-                ix = x + 1;
-                iy = y;
-                while (ix <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
+                        if ((occupied & SquareBB[tempSq]) != 0)
+                        {
+                            //  If we get to an occupied square, then stop moving in this direction.
+                            break;
+                        }
                     }
-                    ix++;
-                }
-
-                ix = x;
-                iy = y - 1;
-                while (iy >= 0)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    iy--;
-                }
-
-                ix = x;
-                iy = y + 1;
-                while (iy <= 7)
-                {
-                    sq = CoordToIndex(ix, iy);
-                    mask |= (SquareBB[sq]);
-                    if ((occupied & SquareBB[sq]) != 0)
-                    {
-                        break;
-                    }
-                    iy++;
                 }
             }
 
@@ -452,7 +367,7 @@ namespace LTChess.Logic.Magic
         /// </summary>
         public static ulong GetBlockerMask(int pt, int idx)
         {
-            ulong mask = (pt == Piece.Bishop) ? PrecomputedData.BishopRays[idx] : PrecomputedData.RookRays[idx];
+            ulong mask = (pt == Piece.Bishop) ? BishopRay(idx) : RookRay(idx);
 
             int rank = (idx >> 3);
             int file = (idx & 7);
@@ -483,6 +398,31 @@ namespace LTChess.Logic.Magic
             }
 
             return mask;
+
+
+            static ulong RookRay(int sq)
+            {
+                return (GetFileBB(sq) | GetRankBB(sq)) & ~(1UL << sq);
+            }
+
+            static ulong BishopRay(int sq)
+            {
+                ulong bishopMask = 0UL;
+                foreach (int dir in new int[] { Direction.NORTH_EAST, Direction.NORTH_WEST, Direction.SOUTH_EAST, Direction.SOUTH_WEST })
+                {
+                    int tempSq = sq;
+                    while (DirectionOK(tempSq, dir))
+                    {
+                        //  Keep moving in this direction until we move off the board,
+                        //  masking in squares along the way,
+                        tempSq += dir;
+                        bishopMask |= (1UL << tempSq);
+                    }
+                }
+                return bishopMask;
+            }
+
+
         }
 
         private static int[] RookBits = {
