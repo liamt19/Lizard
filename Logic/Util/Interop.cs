@@ -15,19 +15,6 @@ namespace LTChess.Logic.Util
 {
     public static class Interop
     {
-
-        //http://graphics.stanford.edu/%7Eseander/bithacks.html
-        private static int[] BitScanValues = {
-            0,  1,  48,  2, 57, 49, 28,  3,
-            61, 58, 50, 42, 38, 29, 17,  4,
-            62, 55, 59, 36, 53, 51, 43, 22,
-            45, 39, 33, 30, 24, 18, 12,  5,
-            63, 47, 56, 27, 60, 41, 37, 16,
-            54, 35, 52, 21, 44, 32, 23, 11,
-            46, 26, 40, 15, 34, 20, 31, 10,
-            25, 14, 19,  9, 13,  8,  7,  6
-        };
-
         /// <summary>
         /// Hints the CPU that we are going to be using the data located at <paramref name="address"/> soon,
         /// so it should fetch a cache line from that address and place it in a high locality cache.
@@ -57,14 +44,7 @@ namespace LTChess.Logic.Util
             }
             else
             {
-                var count = 0ul;
-                while (value > 0)
-                {
-                    value = poplsb(value);
-                    count++;
-                }
-
-                return count;
+                return ulong.PopCount(value);
             }
         }
 
@@ -90,7 +70,7 @@ namespace LTChess.Logic.Util
             }
             else
             {
-                return BitScanValues[((ulong)((long)value & -(long)value) * 0x03F79D71B4CB0A89) >> 58];
+                return (int)ulong.TrailingZeroCount(value);
             }
         }
 
@@ -126,7 +106,7 @@ namespace LTChess.Logic.Util
             }
             else
             {
-                int sq = BitScanValues[((ulong)((long)value & -(long)value) * 0x03F79D71B4CB0A89) >> 58];
+                int sq = (int)ulong.TrailingZeroCount(*value);
                 *value = (*value & (*value - 1));
                 return sq;
             }
