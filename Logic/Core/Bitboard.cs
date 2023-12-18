@@ -183,7 +183,7 @@
         {
             if (EnableAssertions)
             {
-                Assert(lsb(KingMask(pc)) != LSBEmpty, 
+                Assert(lsb(KingMask(pc)) != SquareNB, 
                     "KingIndex(" + ColorToString(pc) + ") got a KingMask of " + KingMask(pc) 
                     + ", which has an LSB of 64! (this means that " + ColorToString(pc) + " doesn't have a king on the board)");
             }
@@ -344,7 +344,7 @@
                 case 0:
                     info.InCheck = false;
                     info.InDoubleCheck = false;
-                    info.idxChecker = LSBEmpty;
+                    info.idxChecker = SquareNB;
                     break;
                 case 1:
                     info.InCheck = true;

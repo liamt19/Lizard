@@ -272,7 +272,7 @@ namespace LTChess.Logic.Core
                                     "The piece causing a discovered check should be aligned on the XrayBB between "
                                     + theirKing + " and " + from + " (which is " + XrayBB[theirKing][from] + ")."
                                     + "This ray should have shared a bit with something in State->Xrays[" + ColorToString(ToMove) + "] (which is " + State->Xrays[ToMove] + "),"
-                                    + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == LSBEmpty)");
+                                    + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == SquareNB)");
                             }
 
                             //  The piece causing the discovery is the xrayer of our color 
@@ -627,7 +627,7 @@ namespace LTChess.Logic.Core
                             "The piece causing a discovered check should be aligned on the XrayBB between "
                             + theirKing + " and " + moveFrom + " (which is " + XrayBB[theirKing][moveFrom] + ")."
                             + "This ray should have shared a bit with something in State->Xrays[" + ColorToString(ourColor) + "] (which is " + State->Xrays[ourColor] + "),"
-                            + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == LSBEmpty)");
+                            + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == SquareNB)");
                     }
 
                     //  The piece causing the discovery is the xrayer of our color 
@@ -682,7 +682,7 @@ namespace LTChess.Logic.Core
                             "The piece causing a discovered check should be aligned on the XrayBB between "
                             + theirKing + " and " + from + " (which is " + XrayBB[theirKing][from] + ")."
                             + "This ray should have shared a bit with something in State->Xrays[" + ColorToString(ToMove) + "] (which is " + State->Xrays[ToMove] + "),"
-                            + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == LSBEmpty)");
+                            + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == SquareNB)");
                     }
 
                     //  The piece causing the discovery is the xrayer of our color 

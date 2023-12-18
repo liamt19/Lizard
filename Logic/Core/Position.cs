@@ -549,7 +549,7 @@ namespace LTChess.Logic.Core
             {
                 //	We are either getting out of a check, or weren't in check at all
                 CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = LSBEmpty;
+                CheckInfo.idxChecker = SquareNB;
                 CheckInfo.InDoubleCheck = false;
             }
 
@@ -659,7 +659,7 @@ namespace LTChess.Logic.Core
                 case 0:
                     CheckInfo.InCheck = false;
                     CheckInfo.InDoubleCheck = false;
-                    CheckInfo.idxChecker = LSBEmpty;
+                    CheckInfo.idxChecker = SquareNB;
                     break;
                 case 1:
                     CheckInfo.InCheck = true;
