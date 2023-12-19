@@ -276,10 +276,6 @@ namespace LTChess
                 {
                     SearchStatistics.PrintSnapshots();
                 }
-                else if (input.EqualsIgnoreCase("terms"))
-                {
-                    EvaluationConstants.PrintConstants();
-                }
                 else if (input.StartsWithIgnoreCase("bench "))
                 {
                     int depth = int.Parse(input.Substring(6));
