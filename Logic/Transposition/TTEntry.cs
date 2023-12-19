@@ -127,7 +127,7 @@ namespace LTChess.Logic.Transposition
 
                 if (EnableAssertions)
                 {
-                    Assert((score == ScoreNone || (score <= ScoreTTWin && score >= ScoreTTLoss)),
+                    Assert((score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate)),
                         "WARN the score " + score + " is outside of bounds for normal TT entries!");
                 }
             }

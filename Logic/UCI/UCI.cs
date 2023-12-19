@@ -497,7 +497,7 @@ namespace LTChess.Logic.Core
 
             //Search.Search.StartSearching(ref info, !hasDepthCommand);
             SearchPool.StartSearch(info.Position, ref info, setup);
-            LogString("[INFO]: Returned from call to start_thinking at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+            LogString("[INFO]: Returned from call to StartSearch at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
         }
 
 

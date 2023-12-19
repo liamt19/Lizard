@@ -533,37 +533,16 @@ namespace LTChess.Logic.Core
                     "but there are no attackers to their king's square after the move was made!");
             }
 
-            if (move.CausesCheck)
-            {
-                CheckInfo.idxChecker = move.SqChecker;
-                CheckInfo.InCheck = true;
-                CheckInfo.InDoubleCheck = false;
-            }
-            else if (move.CausesDoubleCheck)
-            {
-                CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = move.SqChecker;
-                CheckInfo.InDoubleCheck = true;
-            }
-            else
-            {
-                //	We are either getting out of a check, or weren't in check at all
-                CheckInfo.InCheck = false;
-                CheckInfo.idxChecker = SquareNB;
-                CheckInfo.InDoubleCheck = false;
-            }
+            CheckInfo.InCheck = move.CausesCheck;
+            CheckInfo.InDoubleCheck = move.CausesDoubleCheck;
+
+            //  move.SqChecker is (un)initialized as 0 if a move doesn't cause check, but we that to be 64 instead.
+            CheckInfo.idxChecker = (move.CausesCheck ? move.SqChecker : SquareNB);
 
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            if (move.Checks)
-            {
-                State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
-            }
-            else
-            {
-                State->Checkers = 0;
-            }
+            State->Checkers = (move.Checks ? bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor] : 0);
 
             SetCheckInfo();
         }
@@ -906,9 +885,8 @@ namespace LTChess.Logic.Core
                 }
 
                 int checker = CheckInfo.idxChecker;
-                bool blocksOrCaptures = (LineBB[ourKing][checker] & SquareBB[moveTo]) != 0;
-
-                if (blocksOrCaptures || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(CheckInfo.idxChecker)))
+                if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0) 
+                    || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
@@ -1265,7 +1243,6 @@ namespace LTChess.Logic.Core
             State->KingSquares[Black] = bb.KingIndex(Black);
 
             this.bb.DetermineCheck(ToMove, ref CheckInfo);
-            State->Hash = Zobrist.GetHash(this);
 
             SetState();
 
