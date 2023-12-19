@@ -63,19 +63,33 @@ namespace LTChess
 
         public static void InitializeAll()
         {
-#if DEBUG
-            Stopwatch sw = Stopwatch.StartNew();
+            if (!System.Diagnostics.Debugger.IsAttached)
+            {
+                AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
+            }
 
+            MakeJITNotAfraidOfSpookyStaticMethods();
+
+
+#if DEBUG
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
 #endif
 
             Utilities.CheckConcurrency();
 
+
+            //  Note Assembly.GetExecutingAssembly().GetTypes() can't be used with AOT compilation,
+            //  so if you are trying to use AOT this needs to be skipped. (It isn't needed for AOT anyway)
             foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
             {
                 //  Don't run the constructors of NN classes.
                 if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
+
+                //  Don't bother with types that are named similar to:
+                //  "<>c__DisplayClass4_0" (lambda functions)
+                //  "__StaticArrayInitTypeSize=16" (static int[] type stuff)
+                if (type.Name.StartsWith('<') || type.Name.StartsWith('_')) continue;
 
                 try
                 {
@@ -90,22 +104,29 @@ namespace LTChess
 
             WarmUpJIT();
 
-            if (!System.Diagnostics.Debugger.IsAttached) 
-            {
-                AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
-            }
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
             GC.WaitForPendingFinalizers();
-
-#if DEBUG
-            Log("InitializeAll done in " + sw.Elapsed.TotalSeconds + " s");
-            sw.Stop();
-#endif
         }
+
+
+        /// <summary>
+        /// Static classes which have an explicit static constructor, (i.e. static Simple768() { }) 
+        /// might require a JIT check to make sure that the static constructor is run before the first time the class is used.
+        /// <br></br>
+        /// Initializing them directly instead of giving them a static constructor might avoid this.
+        /// <para></para>
+        /// https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1810
+        /// </summary>
+        public static void MakeJITNotAfraidOfSpookyStaticMethods()
+        {
+            MagicBitboards.Initialize();
+            PrecomputedData.Initialize();
+            Simple768.Initialize();
+        }
+
 
         public static void DoInputLoop()
         {

@@ -1,11 +1,9 @@
 ﻿
-#define INC_SYS_DRAWING
 
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Net.Sockets;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -35,6 +33,18 @@ namespace LTChess.Logic.NN.Simple768
 
         public const string NetworkName = "net-epoch10.bin";
 
+
+        /*
+        May be marginally better at 10+0.1
+        Score of WDL_Net vs Baseline: 150 - 135 - 267  [0.514] 552
+        ...      WDL_Net playing White: 131 - 31 - 114  [0.681] 276
+        ...      WDL_Net playing Black: 19 - 104 - 153  [0.346] 276
+        ...      White vs Black: 235 - 50 - 267  [0.668] 552
+        Elo difference: 9.4 +/- 20.8, LOS: 81.3 %, DrawRatio: 48.4 %
+        SPRT: llr 0.392 (13.6%), lbound -2.25, ubound 2.89
+        */
+        public const string TestNetworkName = "net-wdl3-epoch20";
+
         /// <summary>
         /// The values applied according to the active features and current bucket.
         /// </summary>
@@ -54,24 +64,12 @@ namespace LTChess.Logic.NN.Simple768
         private const int LayerWeightElements = (HiddenSize * 2);
         private const int LayerBiasElements = OutputBuckets;
 
-        private static bool Initialized = false;
-
-        static Simple768()
-        {
-            if (!Initialized)
-            {
-                Initialize();
-            }
-        }
-
         public static void Initialize()
         {
-            if (Initialized || !UseSimple768)
+            if (!UseSimple768)
             {
                 return;
             }
-
-            Initialized = true;
 
             FeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
             FeatureBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
@@ -86,15 +84,23 @@ namespace LTChess.Logic.NN.Simple768
             if (File.Exists(networkToLoad))
             {
                 kpFile = File.OpenRead(networkToLoad);
+                Log("Using NNUE with 768 network " + networkToLoad);
             }
             else if (File.Exists(NetworkName))
             {
                 kpFile = File.OpenRead(NetworkName);
+                Log("Using NNUE with 768 network " + NetworkName);
             }
             else
             {
                 //  Just load the default network
+#if USE_TEST_NET
+                networkToLoad = TestNetworkName;
+                Log("Using NNUE with 768 network " + TestNetworkName);
+#else
                 networkToLoad = NetworkName;
+                Log("Using NNUE with 768 network " + NetworkName);
+#endif
 
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty));
 
@@ -185,10 +191,8 @@ namespace LTChess.Logic.NN.Simple768
                 int pt = bb.GetPieceAtIndex(pieceIdx);
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
-                (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
-
-                AddFeature(accumulator.White, wIdx);
-                AddFeature(accumulator.Black, bIdx);
+                AddFeature(accumulator.White, FeatureIndex(pc, pt, pieceIdx, White));
+                AddFeature(accumulator.Black, FeatureIndex(pc, pt, pieceIdx, Black));
             }
 
             accumulator.RefreshPerspective[White] = false;

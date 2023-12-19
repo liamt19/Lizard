@@ -40,16 +40,6 @@ namespace LTChess.Logic.Magic
 
         public static bool UseKnownMagics = true;
 
-        private static bool Initialized = false;
-
-        static MagicBitboards()
-        {
-            if (!Initialized)
-            {
-                Initialize();
-            }
-        }
-
         public static void Initialize()
         {
             RookTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
@@ -63,65 +53,20 @@ namespace LTChess.Logic.Magic
             else
             {
                 rand = new Random();
-                DoBlockerMasks();
                 GenAllBlockerBoards();
                 RookMagics = InitializeMagics(Piece.Rook);
                 BishopMagics = InitializeMagics(Piece.Bishop);
             }
-
-
-            Initialized = true;
-        }
-
-
-
-        private static void DoBlockerMasks()
-        {
-            for (int idx = 0; idx < 64; idx++)
-            {
-                ulong rookMask = GetBlockerMask(Piece.Rook, idx);
-                ulong bishopMask = GetBlockerMask(Piece.Bishop, idx);
-
-                RookBlockerMask[idx] = rookMask;
-                BishopBlockerMask[idx] = bishopMask;
-            }
-        }
-
-        // Generate a unique blocker board, given an index (0..2^bits) and the blocker mask for the piece/square.
-        // Each index will give a unique blocker board. 
-        // https://stackoverflow.com/questions/30680559/how-to-find-magic-bitboards
-        private static ulong GenBlockerBoard(int index, ulong blockermask)
-        {
-            ulong blockerboard = blockermask;
-
-            short bitindex = 0;
-            for (short i = 0; i < 64; i++)
-            {
-                if ((blockermask & (1UL << i)) != 0)
-                {
-                    if ((index & (1 << bitindex)) == 0)
-                    {
-                        blockerboard &= ~(1UL << i);
-                    }
-                    bitindex++;
-                }
-            }
-            return blockerboard;
         }
 
         private static void GenAllBlockerBoards()
         {
             for (int square = 0; square < 64; square++)
             {
+                RookBlockerMask[square] = GetBlockerMask(Piece.Rook, square);
                 int rbits = (int)popcount(RookBlockerMask[square]);
-                int bbits = (int)popcount(BishopBlockerMask[square]);
-
                 RookAttackBoards[square] = new ulong[(1 << rbits)];
                 RookBlockerBoards[square] = new ulong[(1 << rbits)];
-
-                BishopAttackBoards[square] = new ulong[(1 << bbits)];
-                BishopBlockerBoards[square] = new ulong[(1 << bbits)];
-
                 for (int i = 0; i < (1 << rbits); i++)
                 {
                     ulong blockBoard = GenBlockerBoard(i, RookBlockerMask[square]);
@@ -130,6 +75,12 @@ namespace LTChess.Logic.Magic
                     RookAttackBoards[square][i] = attackBoard;
                     RookBlockerBoards[square][i] = blockBoard;
                 }
+
+                BishopBlockerMask[square] = GetBlockerMask(Piece.Bishop, square);
+                int bbits = (int)popcount(BishopBlockerMask[square]);
+                BishopAttackBoards[square] = new ulong[(1 << bbits)];
+                BishopBlockerBoards[square] = new ulong[(1 << bbits)];
+
                 for (int i = 0; i < (1 << bbits); i++)
                 {
                     ulong blockBoard = GenBlockerBoard(i, BishopBlockerMask[square]);
@@ -138,6 +89,28 @@ namespace LTChess.Logic.Magic
                     BishopAttackBoards[square][i] = attackBoard;
                     BishopBlockerBoards[square][i] = blockBoard;
                 }
+            }
+
+            // Generate a unique blocker board, given an index (0..2^bits) and the blocker mask for the piece/square.
+            // Each index will give a unique blocker board. 
+            // https://stackoverflow.com/questions/30680559/how-to-find-magic-bitboards
+            static ulong GenBlockerBoard(int index, ulong blockermask)
+            {
+                ulong blockerboard = blockermask;
+
+                short bitindex = 0;
+                for (short i = 0; i < 64; i++)
+                {
+                    if ((blockermask & (1UL << i)) != 0)
+                    {
+                        if ((index & (1 << bitindex)) == 0)
+                        {
+                            blockerboard &= ~(1UL << i);
+                        }
+                        bitindex++;
+                    }
+                }
+                return blockerboard;
             }
         }
 
@@ -201,9 +174,6 @@ namespace LTChess.Logic.Magic
 
             ulong b;
             int size = 0;
-            ulong[] occupancy = new ulong[4096];
-            ulong[] reference = new ulong[4096];
-
             for (int sq = A1; sq <= H8; sq++)
             {
                 ref FancyMagicSquare m = ref magicArray[sq];
@@ -222,11 +192,7 @@ namespace LTChess.Logic.Magic
                 size = 0;
                 do
                 {
-                    occupancy[size] = b;
-                    reference[size] = SlidingAttacks(pt, sq, b);
-
-                    m.attacks[pext(b, m.mask)] = reference[size];
-
+                    m.attacks[pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
                     size++;
                     b = (b - m.mask) & m.mask;
                 }
@@ -329,7 +295,7 @@ namespace LTChess.Logic.Magic
                         tempSq += dir;
                         mask |= (1UL << tempSq);
 
-                        if ((occupied & SquareBB[tempSq]) != 0)
+                        if ((occupied & (1UL << tempSq)) != 0)
                         {
                             //  If we get to an occupied square, then stop moving in this direction.
                             break;
@@ -348,7 +314,7 @@ namespace LTChess.Logic.Magic
                         tempSq += dir;
                         mask |= (1UL << tempSq);
 
-                        if ((occupied & SquareBB[tempSq]) != 0)
+                        if ((occupied & (1UL << tempSq)) != 0)
                         {
                             //  If we get to an occupied square, then stop moving in this direction.
                             break;
