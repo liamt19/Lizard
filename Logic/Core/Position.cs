@@ -1060,7 +1060,7 @@ namespace LTChess.Logic.Core
         public ulong Perft(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = GenLegal(list);
+            int size = PerftGenLegal(list);
 
             if (depth == 1)
             {
@@ -1090,7 +1090,7 @@ namespace LTChess.Logic.Core
 
             //  This needs to be a pointer since a Span is a ref local and they can't be used inside of lambda functions.
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = GenLegal(list);
+            int size = PerftGenLegal(list);
 
             ulong n = 0;
 
