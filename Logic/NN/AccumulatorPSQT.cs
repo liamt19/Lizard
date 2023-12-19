@@ -25,7 +25,7 @@ namespace LTChess.Logic.NN
                                                       UseHalfKP ? HalfKP.HalfKP.TransformedFeatureDimensions :
                                                                   Simple768.Simple768.HiddenSize;
 
-        public readonly int ByteSize = NormalByteSize;
+        public static readonly int ByteSize = NormalByteSize;
 
         public int VectorCount => ByteSize / VSize.Short;
 
@@ -41,30 +41,39 @@ namespace LTChess.Logic.NN
         /// </summary>
         public fixed bool RefreshPerspective[2];
 
-        public AccumulatorPSQT() : this(NormalByteSize) { }
-
-        public AccumulatorPSQT(int byteSize)
+        public AccumulatorPSQT()
         {
-            ByteSize = byteSize;
 #if ONE_BLOCK
             //  This allocates each block together, so instead of allocating 12289 blocks of 2048 bytes and 12289 blocks of 32 bytes,
             //  we will only allocate 6144 blocks of size 4160.
             //  This uses the same amount of memory, but hopefully makes it easier on the memory allocator to not have
             //  to deal with tens of thousands of tiny allocations.
-            nuint allocationSize = (nuint) ((2 * sizeof(Vector256<short>) * (ByteSize / VSize.Short)) + (2 * sizeof(Vector256<int>) * (PSQTBuckets / VSize.Int)));
+            
+            nuint allocationSize = (nuint) (2 * VSize.Vector256Size * (ByteSize / VSize.Short)) 
+                            + (UseHalfKA ? (2 * VSize.Vector256Size * (PSQTBuckets / VSize.Int)) : 0);
+
             nuint block = (nuint) AlignedAllocZeroed(allocationSize, AllocAlignment);
 
             White = (Vector256<short>*) block;
             Black = (Vector256<short>*) (White + (nuint)(ByteSize / VSize.Short));
 
-            PSQTWhite = (Vector256<int>*)(Black + (nuint)(ByteSize / VSize.Short));
-            PSQTBlack = (Vector256<int>*)(PSQTWhite + (nuint)(PSQTBuckets / VSize.Int));
+            if (UseHalfKA) 
+            {
+                PSQTWhite = (Vector256<int>*)(Black + (nuint)(ByteSize / VSize.Short));
+                PSQTBlack = (Vector256<int>*)(PSQTWhite + (nuint)(PSQTBuckets / VSize.Int));
+            }
 #else
-            White = (Vector256<short>*)AlignedAllocZeroed((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), AllocAlignment);
-            Black = (Vector256<short>*)AlignedAllocZeroed((nuint)(sizeof(Vector256<short>) * (ByteSize / VSize.Short)), AllocAlignment);
-            PSQTWhite = (Vector256<int>*)AlignedAllocZeroed((nuint)(sizeof(Vector256<int>) * (PSQTBuckets / VSize.Int)), AllocAlignment);
-            PSQTBlack = (Vector256<int>*)AlignedAllocZeroed((nuint)(sizeof(Vector256<int>) * (PSQTBuckets / VSize.Int)), AllocAlignment);
+            White = (Vector256<short>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (ByteSize / VSize.Short)), AllocAlignment);
+            Black = (Vector256<short>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (ByteSize / VSize.Short)), AllocAlignment);
+            
+            if (UseHalfKA)
+            {
+                PSQTWhite = (Vector256<int>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (PSQTBuckets / VSize.Int)), AllocAlignment);
+                PSQTBlack = (Vector256<int>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (PSQTBuckets / VSize.Int)), AllocAlignment);
+            }
 #endif
+
+            
 
 
             RefreshPerspective[0] = RefreshPerspective[1] = true;
@@ -81,7 +90,10 @@ namespace LTChess.Logic.NN
         public void CopyTo(AccumulatorPSQT* target)
         {
 #if ONE_BLOCK
-            uint vecSize = (uint) ((ByteSize * sizeof(short) * 2) + (PSQTBuckets * sizeof(int) * 2));
+            //uint vecSize = (uint) ((ByteSize * sizeof(short) * 2) + (PSQTBuckets * sizeof(int) * 2));
+            uint vecSize = (uint) (2 * VSize.Vector256Size * (ByteSize / VSize.Short))
+                   + (UseHalfKA ? (2 * VSize.Vector256Size * (PSQTBuckets / VSize.Int)) : 0);
+
             Unsafe.CopyBlock(target->White, White, vecSize);
 #else
             uint vecSize = (uint)(ByteSize * sizeof(short));
@@ -111,8 +123,11 @@ namespace LTChess.Logic.NN
 #if !ONE_BLOCK
             NativeMemory.AlignedFree(Black);
 
-            NativeMemory.AlignedFree(PSQTWhite);
-            NativeMemory.AlignedFree(PSQTBlack);
+            if (UseHalfKA)
+            {
+                NativeMemory.AlignedFree(PSQTWhite);
+                NativeMemory.AlignedFree(PSQTBlack);
+            }
 #endif
         }
     }
