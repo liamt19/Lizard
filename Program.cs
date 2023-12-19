@@ -130,7 +130,11 @@ namespace LTChess
 
         public static void DoInputLoop()
         {
+#if DEV
+            Log("LTChess (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+#else
             Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+#endif
 
             ThreadSetup setup = new ThreadSetup();
             while (true)
@@ -284,6 +288,10 @@ namespace LTChess
                 else if (input.EqualsIgnoreCase("gc"))
                 {
                     ForceGC();
+                }
+                else if (input.EqualsIgnoreCase("compiler"))
+                {
+                    Log(GetCompilerInfo());
                 }
 #if DEBUG
                 else if (input.EqualsIgnoreCase("draw nets") && UseSimple768)

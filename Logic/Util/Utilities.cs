@@ -218,6 +218,42 @@ namespace LTChess.Logic.Util
         }
 
 
+        public static string GetCompilerInfo()
+        {
+            StringBuilder sb = new StringBuilder();
+
+#if DEV
+            sb.Append("DEV ");
+#endif
+
+#if DEBUG
+            sb.Append("Debug ");
+#endif
+
+#if IS64BIT
+            sb.Append("x64 ");
+#else
+            sb.Append("x86 ");
+#endif
+
+#if PUBLISH_AOT
+            sb.Append("AOT ");
+#endif
+
+            sb.Append((Avx2.IsSupported ? "Avx2 " : string.Empty));
+            sb.Append((AvxVnni.IsSupported ? "AvxVnni " : string.Empty));
+            sb.Append((Bmi2.IsSupported ? "Bmi2 " : string.Empty));
+            sb.Append((Sse3.IsSupported ? "Sse3 " : string.Empty));
+            sb.Append((Sse42.IsSupported ? "Sse42 " : string.Empty));
+
+            sb.Append((Sse.IsSupported ? "Prefetch " : string.Empty));
+            sb.Append((Popcnt.X64.IsSupported ? "Popcount " : string.Empty));
+            sb.Append((Bmi2.X64.IsSupported ? "Pext " : string.Empty));
+            sb.Append((Lzcnt.X64.IsSupported ? "Lzcnt " : string.Empty));
+
+            return sb.ToString();
+        }
+
 
         public static class Direction
         {
