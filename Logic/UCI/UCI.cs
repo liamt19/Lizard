@@ -140,14 +140,22 @@ namespace LTChess.Logic.Core
         {
             Active = true;
 
+#if DEV
+            SendString("id name LTChess " + EngineBuildVersion + " DEV");
+#else
             SendString("id name LTChess " + EngineBuildVersion);
+#endif
             SendString("id author Liam McGuire");
             SendString("info string Using " + (UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " evaluation.");
+
             foreach (string k in Options.Keys)
             {
                 SendString(Options[k].ToString());
             }
             SendString("uciok");
+
+            LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
+
             InputLoop();
         }
 
