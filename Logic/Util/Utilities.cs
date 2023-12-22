@@ -113,6 +113,7 @@ namespace LTChess.Logic.Util
         /// </summary>
         public static int ConcurrencyCount = 0;
 
+        public static int ProcessID;
 
 
         /// <summary>
@@ -171,6 +172,8 @@ namespace LTChess.Logic.Util
         public static void CheckConcurrency()
         {
             Process thisProc = Process.GetCurrentProcess();
+            ProcessID = thisProc.Id;
+
             var selfProcs = Process.GetProcesses().Where(x => (x.ProcessName == thisProc.ProcessName)).ToList();
             
             var thisTime = thisProc.StartTime.Ticks;

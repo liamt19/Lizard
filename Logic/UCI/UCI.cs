@@ -74,7 +74,7 @@ namespace LTChess.Logic.Core
                     {
                         if (WriteToConcurrentLogs)
                         {
-                            fileToWrite = @".\ucilog_" + ConcurrencyCount + ".txt";
+                            fileToWrite = @".\ucilog_" + ProcessID + ".txt";
                         }
                         else
                         {
