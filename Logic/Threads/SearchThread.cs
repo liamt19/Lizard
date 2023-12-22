@@ -10,7 +10,6 @@ using System.Threading.Tasks;
 using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.Search.Ordering;
 
-using static System.Formats.Asn1.AsnWriter;
 
 namespace LTChess.Logic.Threads
 {
@@ -203,7 +202,13 @@ namespace LTChess.Logic.Threads
             {
                 _SearchCond.Wait(_Mutex);
 
-                //  Spurious wakeups might be possible here?, but I haven't seen any occur so this doesn't need any special handling.
+                if (Searching)
+                {
+                    ///  Spurious wakeups are possible here if <see cref="SearchThreadPool.StartSearch"/> is called
+                    ///  again before this thread has returned to IdleLoop.
+                    _SearchCond.Pulse();
+                    Thread.Yield();
+                }
             }
 
             Monitor.Exit(_Mutex);
