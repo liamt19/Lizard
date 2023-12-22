@@ -13,13 +13,13 @@ namespace LTChess.Logic.Search.Ordering
         /// Index using Color * <see cref="MainHistoryPCStride"/> + Move.MoveMask
         /// </summary>
         public readonly short* MainHistory;
-        public const int MainHistoryClamp = 7500;
+        public const int MainHistoryClamp = 16384;
         public const int MainHistoryPCStride = 4096;
         public const int MainHistoryElements = (ColorNB * SquareNB * SquareNB);
 
 
         public readonly short* CaptureHistory;
-        public const int CaptureClamp = 10000;
+        public const int CaptureClamp = 16384;
         public const int CaptureHistoryElements = ((ColorNB * (PieceNB + 1)) * SquareNB * (PieceNB + 1));
 
 
@@ -127,7 +127,7 @@ namespace LTChess.Logic.Search.Ordering
     {
         private short* _History;
 
-        public const short Clamp = 28000;
+        public const short Clamp = 16384;
 
 
         private const short FillValue = -50;
