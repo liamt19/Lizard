@@ -22,7 +22,7 @@ namespace LTChess.Logic.Transposition
         public const int EntriesPerCluster = 3;
 
         private static TTCluster* Clusters;
-        private static ulong ClusterCount;
+        public static ulong ClusterCount { get; private set; }
 
         /// <summary>
         /// The age of the TT, which is increased for every call to <see cref="Threads.SearchThread.MainThreadSearch"/>.

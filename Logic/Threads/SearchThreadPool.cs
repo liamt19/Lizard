@@ -198,12 +198,6 @@ namespace LTChess.Logic.Threads
 
         public SearchThread GetBestThread()
         {
-            for (int i = 0; i < ThreadCount; i++)
-            {
-                Debug.WriteLine("Thread[" + i + "] = " + Threads[i].Searching + " " + Threads[i].RootMoves[0]);
-            }
-
-
             SearchThread bestThread = MainThread;
             for (int i = 1; i < ThreadCount; i++)
             {
@@ -214,7 +208,6 @@ namespace LTChess.Logic.Threads
                 if (thisScore > 0 && (Threads[i].CompletedDepth >= bestThread.CompletedDepth))
                 {
                     bestThread = Threads[i];
-                    Debug.WriteLine("GetBestThread() New best move is " + bestThread.RootMoves[0]);
                 }
             }
 

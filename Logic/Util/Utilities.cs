@@ -230,12 +230,6 @@ namespace LTChess.Logic.Util
             sb.Append("Debug ");
 #endif
 
-#if IS64BIT
-            sb.Append("x64 ");
-#else
-            sb.Append("x86 ");
-#endif
-
 #if PUBLISH_AOT
             sb.Append("AOT ");
 #endif
