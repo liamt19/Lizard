@@ -1,11 +1,4 @@
-﻿
-#define MP_NM
-#undef MP_NM
-
-#define MP_QS
-#undef MP_QS
-
-using System;
+﻿using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -24,8 +17,6 @@ namespace LTChess.Logic.Search
 {
     public static unsafe class Search
     {
-        private const int BadSEEScore = -90;
-
         /// <summary>
         /// If the depth is at or above this, then QSearch will allow non-capture, non-evasion moves that GIVE check.
         /// </summary>
@@ -197,13 +188,9 @@ namespace LTChess.Logic.Search
             }
             else if (ss->TTHit)
             {
-                //  Use the static evaluation from the TT
-                ss->StaticEval = eval = tte->StatEval;
-                if (ss->StaticEval == ScoreNone)
-                {
-                    //  But get the actual evaluation if the TT had an invalid score.
-                    ss->StaticEval = eval = Evaluation.GetEvaluation(pos);
-                }
+                //  Use the static evaluation from the TT if it had one, or get a new one.
+                //  We don't overwrite that TT's StatEval score yet though.
+                eval = ss->StaticEval = (tte->StatEval != ScoreNone ? tte->StatEval : Evaluation.GetEvaluation(pos));
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -214,7 +201,7 @@ namespace LTChess.Logic.Search
             else
             {
                 //  Get the static evaluation and store it in the empty TT slot.
-                ss->StaticEval = eval = Evaluation.GetEvaluation(pos);
+                eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
                 tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
             }
 
@@ -247,22 +234,6 @@ namespace LTChess.Logic.Search
                 && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
             {
                 return eval;
-            }
-
-
-            //  Try razoring if the depth is at or below the max (currently 6),
-            //  and the static evaluation (eval) is extremely bad (far lower than alpha).
-            if (UseRazoring
-                && depth <= RazoringMaxDepth 
-                && (eval + (RazoringMargin * (depth + 1)) <= alpha))
-            {
-                //  Try only forcing moves and see if any of them raise alpha.
-                score = QSearch<NodeType>(ref info, ss, alpha, beta, 0);
-                if (score < alpha)
-                {
-                    //  If none did, then this node is certainly bad.
-                    return score;
-                }
             }
 
 
@@ -340,41 +311,27 @@ namespace LTChess.Logic.Search
                                             null                        , (ss - 6)->ContinuationHistory };
 
 
-            int legalMoves = 0;     //  Number of moves that have been encountered so far in the loop.
-            int lmpMoves = 0;       //  Number of non-captures that have been encountered so far.
+            int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
             int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
 
-            int quietCount = 0;     //  Number of quiet moves that have been played, to a max of 64.
-            int captureCount = 0;   //  Number of capture moves that have been played, to a max of 32.
+            int quietCount = 0;     //  Number of quiet moves that have been played, to a max of 16.
+            int captureCount = 0;   //  Number of capture moves that have been played, to a max of 16.
 
             bool didSkip = false;
 
             Move* PV = stackalloc Move[MaxPly];
-            Move* captureMoves = stackalloc Move[32];
-            Move* quietMoves = stackalloc Move[64];
+            Move* captureMoves = stackalloc Move[16];
+            Move* quietMoves = stackalloc Move[16];
 
             bool skipQuiets = false;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-#if MP_NM
-            //  Killer0's 4 byte move is followed by a 4 byte buffer, and Killer1's move and buffer immediately follows that.
-            //  This is less of a headache to deal with constantly converting ScoredMove's to Move's and vice versa,
-            //  but we also need to be much more careful about accessing this pointer (since the Move*[1] is the junk data in Killer0's buffer)
-            Move* killers = &ss->Killer0;
-
-            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, SquareNB);
-
-            Move m;
-            while ((m = mp.NextMove(skipQuiets)) != Move.Null)
-            {
-#else
             int size = pos.GenPseudoLegal(list);
             AssignScores(ref bb, ss, history, contHist, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
-#endif
 
                 if (m == ss->Skip)
                 {
@@ -415,7 +372,7 @@ namespace LTChess.Logic.Search
                         skipQuiets = (legalMoves >= LMPTable[improving ? 1 : 0][depth]);
                     }
 
-                    if (m.CausesCheck || isCapture || (!isCapture && skipQuiets))
+                    if (m.CausesCheck || isCapture || skipQuiets)
                     {
                         if (!SEE_GE(pos, m, -ExchangeBase * depth))
                         {
@@ -460,10 +417,6 @@ namespace LTChess.Logic.Search
                             && ss->Extensions <= 8)
                         {
                             extend = 2;
-                            if (depth < 12)
-                            {
-                                depth++;
-                            }
                         }
                     }
                     else if (singleBeta >= beta)
@@ -494,11 +447,10 @@ namespace LTChess.Logic.Search
                 }
 
                 int newDepth = depth - 1 + extend;
-                bool doFullSearch = false;
 
                 if (depth >= 2 
-                    && legalMoves >= 3 
-                    && !(isPV && isCapture))
+                    && legalMoves >= 2 
+                    && !isCapture)
                 {
 
                     int R = LogarithmicReductionTable[depth][legalMoves];
@@ -515,21 +467,27 @@ namespace LTChess.Logic.Search
                     if (isPV)
                         R--;
 
-                    //  Extend moves that give check
-                    if (m.Checks)
+
+                    //  Extend killer moves
+                    if ((m.Equals(ss->Killer0) || m.Equals(ss->Killer1)))
                         R--;
 
-                    //  Extend if this move was also the one in the TTEntry
-                    if (m.Equals(ttMove))
-                        R--;
-
-
+                    /*
+                    Score of NoContHistReduction vs Baseline: 170 - 107 - 219  [0.564] 496
+                    ...      NoContHistReduction playing White: 147 - 14 - 87  [0.768] 248
+                    ...      NoContHistReduction playing Black: 23 - 93 - 132  [0.359] 248
+                    ...      White vs Black: 240 - 37 - 219  [0.705] 496
+                    Elo difference: 44.4 +/- 22.9, LOS: 100.0 %, DrawRatio: 44.2 %
+                    SPRT: llr 2.93 (101.2%), lbound -2.25, ubound 2.89 - H1 was accepted
+                     */
+#if SPRT_FAIL_CONT_HIST
                     ss->StatScore = 2 * history.MainHistory[HistoryTable.HistoryIndex(ourColor, m)] +
                                         (*contHist[0])[histIdx] +
                                         (*contHist[1])[histIdx] +
                                         (*contHist[3])[histIdx];
 
                     R -= (ss->StatScore / 10000);
+#endif
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth]
                     int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth + 1);
@@ -543,6 +501,15 @@ namespace LTChess.Logic.Search
 
                     if (score > alpha && newDepth > reducedDepth)
                     {
+                        /*
+                        Score of NoLMRNewDepthChange vs Baseline: 284 - 184 - 41  [0.598] 509
+                        ...      NoLMRNewDepthChange playing White: 164 - 78 - 13  [0.669] 255
+                        ...      NoLMRNewDepthChange playing Black: 120 - 106 - 28  [0.528] 254
+                        ...      White vs Black: 270 - 198 - 41  [0.571] 509
+                        Elo difference: 69.2 +/- 29.5, LOS: 100.0 %, DrawRatio: 8.1 %
+                        SPRT: llr 2.91 (100.8%), lbound -2.25, ubound 2.89 - H1 was accepted
+                        */
+#if SPRT_FAIL_LMR_NEWDEPTH_DIFF
                         if (score > (bestScore + ExchangeBase))
                         {
                             newDepth++;
@@ -551,6 +518,7 @@ namespace LTChess.Logic.Search
                         {
                             newDepth--;
                         }
+#endif
 
                         if (newDepth < reducedDepth)
                         {
@@ -672,11 +640,11 @@ namespace LTChess.Logic.Search
 
                 if (m != bestMove)
                 {
-                    if (isCapture && captureCount < 32)
+                    if (isCapture && captureCount < 16)
                     {
                         captureMoves[captureCount++] = m;
                     }
-                    else if (!isCapture && quietCount < 64)
+                    else if (!isCapture && quietCount < 16)
                     {
                         quietMoves[quietCount++] = m;
                     }
@@ -777,6 +745,11 @@ namespace LTChess.Logic.Search
                 return ss->InCheck ? ScoreDraw : Evaluation.GetEvaluation(pos);
             }
 
+            if (isPV)
+            {
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
+            }
+
             if (!isPV 
                 && tte->Depth >= ttDepth 
                 && ttScore != ScoreNone
@@ -843,20 +816,6 @@ namespace LTChess.Logic.Search
             int movesMade = 0;
             int quietCheckEvasions = 0;
 
-#if MP_QS
-            //  Killer0's 4 byte move is followed by a 4 byte buffer, and Killer1's move and buffer immediately follows that.
-            //  This is less of a headache to deal with constantly converting ScoredMove's to Move's and vice versa,
-            //  but we also need to be much more careful about accessing this pointer (since the Move*[1] is the junk data in Killer0's buffer)
-            Move* killers = &ss->Killer0;
-
-            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, prevSquare);
-            Move m;
-            while ((m = mp.NextMove()) != Move.Null) 
-            {
-
-#else
-
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
             AssignScores(ref pos.bb, ss, history, contHist, list, size, ttMove, false);
@@ -864,8 +823,6 @@ namespace LTChess.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
-
-#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -885,7 +842,6 @@ namespace LTChess.Logic.Search
                 bool isPromotion = m.Promotion;
                 bool givesCheck = m.Checks;
 
-#if !MP_QS
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
 
@@ -893,7 +849,6 @@ namespace LTChess.Logic.Search
                 {
                     continue;
                 }
-#endif
 
                 movesMade++;
 
@@ -923,12 +878,12 @@ namespace LTChess.Logic.Search
                         }
                     }
 
-                    if (quietCheckEvasions > 2)
+                    if (quietCheckEvasions >= 2)
                     {
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, BadSEEScore))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
                     {
                         continue;
                     }
@@ -985,8 +940,8 @@ namespace LTChess.Logic.Search
 
             if (EnableAssertions)
             {
-                Assert(bestScore is > -ScoreInfinite and < ScoreInfinite, 
-                    "A call to QSearch is returning a bestScore of " + bestScore + ", which is OOB! " + 
+                Assert(bestScore is > -ScoreInfinite and < ScoreInfinite,
+                    "A call to QSearch is returning a bestScore of " + bestScore + ", which is OOB! " +
                     "QSearch's return values should always be in the range (" + -ScoreInfinite + " < " + bestScore + " < " + ScoreInfinite + "). " +
                     "bestValue is only initialized to " + -ScoreInfinite + " when ss->InCheck is true, which it currently " + (ss->InCheck ? "is" : "isn't") + ".");
             }
@@ -1020,9 +975,11 @@ namespace LTChess.Logic.Search
             int moveFrom = bestMove.From;
             int moveTo = bestMove.To;
 
-            int thisPiece = pos.bb.GetPieceAtIndex(moveFrom);
-            int thisColor = pos.bb.GetColorAtIndex(moveFrom);
-            int capturedPiece = pos.bb.GetPieceAtIndex(moveTo);
+            ref Bitboard bb = ref pos.bb;
+
+            int thisPiece = bb.GetPieceAtIndex(moveFrom);
+            int thisColor = bb.GetColorAtIndex(moveFrom);
+            int capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             int quietMoveBonus = StatBonus(depth + 1);
 
@@ -1041,20 +998,19 @@ namespace LTChess.Logic.Search
                     ss->Killer1 = ss->Killer0;
                     ss->Killer0 = bestMove;
                 }
-
                 history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), captureBonus, HistoryTable.MainHistoryClamp);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
                     history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, m), -captureBonus, HistoryTable.MainHistoryClamp);
-                    UpdateContinuations(ss, thisColor, pos.bb.GetPieceAtIndex(m.From), m.To, -captureBonus);
+                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -captureBonus);
                 }
             }
 
             for (int i = 0; i < captureCount; i++)
             {
-                int idx = HistoryTable.CapIndex(thisColor, pos.bb.GetPieceAtIndex(captureMoves[i].From), captureMoves[i].To, pos.bb.GetPieceAtIndex(captureMoves[i].To));
+                int idx = HistoryTable.CapIndex(thisColor, bb.GetPieceAtIndex(captureMoves[i].From), captureMoves[i].To, bb.GetPieceAtIndex(captureMoves[i].To));
                 history.ApplyBonus(history.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
             }
         }
@@ -1065,7 +1021,7 @@ namespace LTChess.Logic.Search
         /// </summary>
         private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
         {
-            foreach (int i in new int[] {1, 2, 4, 6})
+            foreach (int i in new int[] { 1, 2, 4, 6 })
             {
                 if (ss->InCheck && i > 2)
                 {
@@ -1074,7 +1030,7 @@ namespace LTChess.Logic.Search
 
                 if ((ss - i)->CurrentMove != Move.Null)
                 {
-                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] += (short) (bonus - 
+                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] += (short)(bonus -
                     (*(ss - i)->ContinuationHistory)[pc, pt, sq] * Math.Abs(bonus) / PieceToHistory.Clamp);
                 }
             }

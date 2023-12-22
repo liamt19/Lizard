@@ -41,7 +41,7 @@
         /// <br></br>
         /// Using this will save time since we the best move is the only one we can make and we don't need to spend time to confirm that.
         /// </summary>
-        public const bool OneLegalMoveMode = true;
+        public const bool OneLegalMoveMode = false;
 
         /// <summary>
         /// The max time in milliseconds that will be searched if <see cref="OneLegalMoveMode"/> is <see langword="true"/>.
