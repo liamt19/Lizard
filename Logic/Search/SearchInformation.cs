@@ -88,7 +88,7 @@ namespace LTChess.Logic.Search
             PV = new Move[Utilities.MaxDepth];
 
             this.OnDepthFinish = PrintSearchInfo;
-            this.OnSearchFinish = PrintHumanReadableLine;
+            this.OnSearchFinish = PrintBestMove;
         }
 
         public static SearchInformation Infinite(Position p)
@@ -110,7 +110,7 @@ namespace LTChess.Logic.Search
         /// Prints out the "info depth (number) ..." string
         /// </summary>
         [MethodImpl(Inline)]
-        public void PrintSearchInfo(ref SearchInformation info)
+        private void PrintSearchInfo(ref SearchInformation info)
         {
             info.LastSearchInfo = FormatSearchInformationMultiPV(ref info);
             Log(info.LastSearchInfo);
@@ -121,41 +121,13 @@ namespace LTChess.Logic.Search
         }
 
         /// <summary>
-        /// Prints a human-readable version of the PV after a search has finished.
+        /// Prints the best move from a search.
         /// </summary>
         [MethodImpl(Inline)]
-        public void PrintHumanReadableLine(ref SearchInformation info)
+        private void PrintBestMove(ref SearchInformation info)
         {
-            StringBuilder sb = new StringBuilder();
-
-            SearchThread thisThread = info.Position.Owner;
-            List<RootMove> rootMoves = thisThread.RootMoves;
-
-            Move[] PV = new Move[MaxPly];
-            RootMove rm = rootMoves[0];
-            Array.Copy(rm.PV, PV, MaxPly);
-            
-
-
-            Position temp = new Position(info.Position.GetFEN(), false, null);
-
-            sb.Append("Line:");
-            int i = 0;
-
-            for (; i < MaxPly; i++)
-            {
-                if (PV[i] == Move.Null)
-                {
-                    break;
-                }
-
-                sb.Append(" " + PV[i].ToString(temp));
-                temp.MakeMove(PV[i]);
-            }
-
-            Log(sb.ToString());
-
-
+            Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
+            Log("bestmove " + bestThreadMove.ToString());
 
             if (ServerGC)
             {
