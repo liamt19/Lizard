@@ -24,7 +24,6 @@ namespace LTChess.Logic.Search
 {
     public static unsafe class Search
     {
-        private static readonly int[] SEE_VALUE = new int[] { 126, 781, 825, 1276, 2538, 0, 0 };
         private const int BadSEEScore = -90;
 
         /// <summary>
@@ -1122,11 +1121,11 @@ namespace LTChess.Logic.Search
             int from = m.From;
             int to = m.To;
 
-            int swap = SEE_VALUE[bb.PieceTypes[to]] - threshold;
+            int swap = EvaluationConstants.SEEValues[bb.PieceTypes[to]] - threshold;
             if (swap < 0)
                 return false;
 
-            swap = SEE_VALUE[bb.PieceTypes[from]] - swap;
+            swap = EvaluationConstants.SEEValues[bb.PieceTypes[from]] - swap;
             if (swap <= 0)
                 return true;
 
