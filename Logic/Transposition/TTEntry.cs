@@ -52,7 +52,7 @@ namespace LTChess.Logic.Transposition
         public int Age
         {
             get => (AgePVType & 0b11111000);
-            set => AgePVType = (sbyte)((AgePVType & ~(0b11111000)) | ((sbyte)(value) << 14));
+            set => AgePVType = (sbyte)((AgePVType & 0b00000111) | ((sbyte)value));
         }
 
         public bool PV
