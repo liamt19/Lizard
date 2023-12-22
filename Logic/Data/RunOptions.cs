@@ -2,7 +2,7 @@
 
 #define USE_AGGRESSIVE_INLINING
 
-#define USE_SKIP_INIT
+//#define USE_SKIP_INIT
 
 //#define SKIP_INIT_IN_DEBUG
 
@@ -47,6 +47,12 @@ namespace LTChess.Logic.Data
         public const bool HasPext = true;
 #else
         public const bool HasPext = false;
+#endif
+
+#if (USE_SKIP_INIT && (RELEASE || SKIP_INIT_IN_DEBUG))
+        public const bool HasSkipInit = true;
+#else
+        public const bool HasSkipInit = false;
 #endif
 
         /// <summary>

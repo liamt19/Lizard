@@ -240,6 +240,11 @@ namespace LTChess.Logic.Util
             sb.Append("AOT ");
 #endif
 
+            if (HasSkipInit)
+            {
+                sb.Append("SkipInit ");
+            }
+
             sb.Append((Avx2.IsSupported ? "Avx2 " : string.Empty));
             sb.Append((AvxVnni.IsSupported ? "AvxVnni " : string.Empty));
             sb.Append((Bmi2.IsSupported ? "Bmi2 " : string.Empty));
