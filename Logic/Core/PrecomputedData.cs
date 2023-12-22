@@ -92,6 +92,11 @@ namespace LTChess.Logic.Data
         public static readonly ulong** XrayBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
 
 
+        static PrecomputedData()
+        {
+            Initialize();
+        }
+
         public static void Initialize()
         {
             DoSquareBB();

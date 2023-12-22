@@ -68,7 +68,6 @@ namespace LTChess
                 AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
-            MakeJITNotAfraidOfSpookyStaticMethods();
 
 
 #if DEBUG
@@ -122,9 +121,9 @@ namespace LTChess
         /// </summary>
         public static void MakeJITNotAfraidOfSpookyStaticMethods()
         {
-            MagicBitboards.Initialize();
-            PrecomputedData.Initialize();
-            Simple768.Initialize();
+            //MagicBitboards.Initialize();
+            //PrecomputedData.Initialize();
+            //Simple768.Initialize();
         }
 
 

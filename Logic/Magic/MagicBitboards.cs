@@ -40,6 +40,12 @@ namespace LTChess.Logic.Magic
 
         public static bool UseKnownMagics = true;
 
+
+        static MagicBitboards() 
+        { 
+            Initialize(); 
+        }
+
         public static void Initialize()
         {
             RookTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);

@@ -64,6 +64,11 @@ namespace LTChess.Logic.NN.Simple768
         private const int LayerWeightElements = (HiddenSize * 2);
         private const int LayerBiasElements = OutputBuckets;
 
+        static Simple768()
+        {
+            Initialize();
+        }
+
         public static void Initialize()
         {
             if (!UseSimple768)
