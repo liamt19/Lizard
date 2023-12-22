@@ -275,10 +275,22 @@ namespace LTChess
                 {
                     SearchStatistics.PrintSnapshots();
                 }
-                else if (input.StartsWithIgnoreCase("bench "))
+                else if (input.StartsWithIgnoreCase("bench"))
                 {
+                    if (input.ContainsIgnoreCase("perft"))
+                    {
                     int depth = int.Parse(input.Substring(6));
                     FishBench.Go(depth);
+                }
+                    else
+                    {
+                        int depth = 12;
+                        if (input.Length > 5 && int.TryParse(input.Substring(6), out int newDepth)) {
+                            depth = newDepth;
+                        }
+
+                        SearchBench.Go(p, depth);
+                    }
                 }
                 else if (input.EqualsIgnoreCase("gc"))
                 {
