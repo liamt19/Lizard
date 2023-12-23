@@ -16,8 +16,8 @@ namespace LTChess.Logic.Util
         public const int IndexRight = 7;
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        public const string EngineBuildVersion = "9.2";
-        public const string EngineTagLine = "5,000+ lines of code and counting";
+        public const string EngineBuildVersion = "9.3";
+        public const string EngineTagLine = "A (somewhat) fresh start";
 
         public const int MaxListCapacity = 512;
         public const int ExtendedListCapacity = 256;
