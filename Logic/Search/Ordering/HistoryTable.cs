@@ -193,11 +193,11 @@ namespace LTChess.Logic.Search.Ordering
         {
             if (EnableAssertions)
             {
-                Assert((((pt + (PieceNB * pc)) * DimX) + sq) is >= 0 and < (int)Length, 
+                Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length,
                     "GetIndex(" + pc + ", " + pt + ", " + sq + ") is OOB! (should be 0 <= idx < " + Length + ")");
             }
-            
-            return (((pt + (PieceNB * pc)) * DimX) + sq);
+
+            return (((pt + (PieceNB * pc)) * DimY) + sq);
         }
 
         /// <summary>
