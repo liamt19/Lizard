@@ -175,7 +175,10 @@ namespace LTChess.Logic.Util
             ProcessID = thisProc.Id;
 
             var selfProcs = Process.GetProcesses().Where(x => (x.ProcessName == thisProc.ProcessName)).ToList();
-            
+
+            int concurrencyCount = 0;
+            int duplicates = 0;
+
             var thisTime = thisProc.StartTime.Ticks;
 
             for (int i = 0; i < selfProcs.Count; i++)
@@ -201,21 +204,23 @@ namespace LTChess.Logic.Util
                 catch (Exception e)
                 {
                     //  This will be a Win32Exception for trying to enumerate the modules of a SYSTEM process
-                    ConcurrencyCount++;
+                    concurrencyCount++;
                     continue;
                 }
+
+                duplicates++;
 
                 if (selfProcs[i].StartTime.Ticks < thisTime)
                 {
                     //  This instance was launched after another, so increase this one's count
-                    ConcurrencyCount++;
+                    concurrencyCount++;
                 }
             }
 
-            //  If this is the only instance, this should be 1
-            if (selfProcs.Count != 1)
+            //  If this is the only instance, this should be 0
+            if (concurrencyCount != 0)
             {
-                Log("Running concurrently! (" + ConcurrencyCount + " of " + (selfProcs.Count - 1) + " procs)");
+                Log("Running concurrently! (" + concurrencyCount + " other process" + (concurrencyCount > 1 ? "es" : string.Empty) + ")");
                 IsRunningConcurrently = true;
             }
         }
