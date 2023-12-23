@@ -249,11 +249,46 @@ namespace LTChess
                 {
                     DoEvalAllMoves();
                 }
-                else if (input.EqualsIgnoreCase("trace"))
+                else if (input.StartsWithIgnoreCase("trace"))
                 {
                     if (UseHalfKA)
                     {
                         HalfKA_HM.Trace(p);
+                    }
+
+                    if (UseSimple768)
+                    {
+                        if (input.ContainsIgnoreCase("piece"))
+                        {
+                            string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                            if (splits.Length == 4)
+                            {
+                                int pc = StringToColor(splits[2]);
+
+                                if (pc == Color.ColorNB)
+                                {
+                                    Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                                    continue;
+                                }
+
+                                int pt = StringToPiece(splits[3]);
+                                if (pt == Piece.None)
+                                {
+                                    Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                                    continue;
+                                }
+
+                                Simple768.TracePieceValues(pt, pc);
+                            }
+                            else
+                            {
+                                Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                            }
+                        }
+                        else
+                        {
+                            Simple768.Trace(p);
+                        }
                     }
                 }
                 else if (input.EqualsIgnoreCase("d"))

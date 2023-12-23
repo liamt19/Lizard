@@ -370,6 +370,20 @@ namespace LTChess.Logic.Util
         }
 
         /// <summary>
+        /// Returns the numerical value of the <paramref name="colorName"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static int StringToColor(string colorName)
+        {
+            return colorName.ToLower() switch
+            {
+                "white" => Color.White,
+                "black" => Color.Black,
+                _ => Color.ColorNB
+            };
+        }
+
+        /// <summary>
         /// Returns the name of the piece of type <paramref name="n"/>.
         /// </summary>
         [MethodImpl(Inline)]
@@ -384,6 +398,24 @@ namespace LTChess.Logic.Util
                 Piece.Queen => nameof(Piece.Queen),
                 Piece.King => nameof(Piece.King),
                 _ => "None"
+            };
+        }
+
+        /// <summary>
+        /// Returns the type of the piece called <paramref name="pieceName"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static int StringToPiece(string pieceName)
+        {
+            return pieceName.ToLower() switch
+            {
+                "pawn" => Piece.Pawn,
+                "knight" => Piece.Knight,
+                "bishop" => Piece.Bishop,
+                "rook" => Piece.Rook,
+                "queen" => Piece.Queen,
+                "king" => Piece.King,
+                _ => Piece.None
             };
         }
 
