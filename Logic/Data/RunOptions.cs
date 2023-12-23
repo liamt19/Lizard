@@ -22,7 +22,7 @@
 
 
 //  I prefer to have SkipInit off while debugging since the values that you mouse over can have confusing values
-#if (RELEASE || SKIP_INIT_IN_DEBUG)
+#if ((RELEASE || DEV) || SKIP_INIT_IN_DEBUG)
 [module: System.Runtime.CompilerServices.SkipLocalsInit]
 #endif
 
@@ -49,7 +49,7 @@ namespace LTChess.Logic.Data
         public const bool HasPext = false;
 #endif
 
-#if (USE_SKIP_INIT && (RELEASE || SKIP_INIT_IN_DEBUG))
+#if (USE_SKIP_INIT && ((RELEASE || DEV) || SKIP_INIT_IN_DEBUG))
         public const bool HasSkipInit = true;
 #else
         public const bool HasSkipInit = false;
