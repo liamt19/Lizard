@@ -22,8 +22,8 @@
 
 
             var lazySEEValues = new int[] { 126, 781, 825, 1276, 2538, 0, 0 };
-            SEEValues = (int*)AlignedAllocZeroed((6 * sizeof(int)), AllocAlignment);
-            for (int i = 0; i < 6; i++)
+            SEEValues = (int*)AlignedAllocZeroed(((PieceNB + 1) * sizeof(int)), AllocAlignment);
+            for (int i = 0; i < (PieceNB + 1); i++)
             {
                 SEEValues[i] = lazySEEValues[i];
             }
