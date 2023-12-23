@@ -16,6 +16,9 @@ namespace LTChess.Logic.Util
 
             ulong totalNodes = 0;
 			SearchInformation info = new SearchInformation(pos, depth);
+            info.OnDepthFinish = null;
+            info.OnSearchFinish = null;
+
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
             Search.Search.HandleNewGame();
@@ -27,7 +30,9 @@ namespace LTChess.Logic.Util
 
                 SearchPool.MainThread.WaitForThreadFinished();
 
-                totalNodes += SearchPool.GetNodeCount();
+                ulong thisNodeCount = SearchPool.GetNodeCount();
+                totalNodes += thisNodeCount;
+                Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
 
                 TranspositionTable.Clear();
                 Search.Search.HandleNewGame();
