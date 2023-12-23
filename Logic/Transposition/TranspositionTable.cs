@@ -82,11 +82,10 @@ namespace LTChess.Logic.Transposition
             {
                 TTEntry* cluster = (TTEntry*) &Clusters[i];
 
-                if (cluster[0].Key != 0 || cluster[1].Key != 0 || cluster[2].Key != 0)
-                {
-                    Clusters[i].Clear();
-                }
+                Clusters[i].Clear();
             }
+
+            Age = 0;
         }
 
         /// <summary>
@@ -184,7 +183,7 @@ namespace LTChess.Logic.Transposition
 
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    if ((cluster[j].AgePVType & TT_AGE_MASK) == Age)
+                    if (!cluster[j].IsEmpty && (cluster[j].AgePVType & TT_AGE_MASK) == (Age & TT_AGE_MASK))
                     {
                         entries++;
                     }
