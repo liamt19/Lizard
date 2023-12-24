@@ -13,7 +13,20 @@ namespace LTChess.Logic.Search
         /// </summary>
         public delegate void ActionRef<T>(ref T info);
 
+        /// <summary>
+        /// The method to call (which must accept a <see langword="ref"/> <see cref="SearchInformation"/> parameter)
+        /// during a search just before the depth increases.
+        /// <br></br>
+        /// By default, this will print out the "info depth # ..." string.
+        /// </summary>
         public ActionRef<SearchInformation>? OnDepthFinish;
+
+        /// <summary>
+        /// The method to call (which must accept a <see langword="ref"/> <see cref="SearchInformation"/> parameter)
+        /// when a search is finished.
+        /// <br></br>
+        /// By default, this will print "bestmove (move)".
+        /// </summary>
         public ActionRef<SearchInformation>? OnSearchFinish;
 
         public Position Position;
@@ -28,10 +41,6 @@ namespace LTChess.Logic.Search
         /// </summary>
         public ulong MaxNodes = MaxSearchNodes;
 
-        /// <summary>
-        /// If true, then the search will stop
-        /// </summary>
-        public bool StopSearching = false;
 
         /// <summary>
         /// Set to true the first time that OnSearchFinish is invoked.
@@ -43,27 +52,6 @@ namespace LTChess.Logic.Search
         /// </summary>
         public bool SearchActive = false;
 
-
-        /// <summary>
-        /// Set to the last "info depth ..." string that was sent.
-        /// </summary>
-        public string LastSearchInfo = string.Empty;
-
-        /// <summary>
-        /// A list of moves which the search thinks will be played next.
-        /// PV[0] is the best move that we found, PV[1] is the best response that we think they have, etc.
-        /// </summary>
-        public Move[] PV;
-
-        /// <summary>
-        /// The number of nodes/positions evaluated during the search.
-        /// </summary>
-        public ulong NodeCount = 0;
-
-        /// <summary>
-        /// The color of the player to move in the root position.
-        /// </summary>
-        public int RootPlayerToMove = Color.White;
 
         public TimeManager TimeManager;
 
@@ -85,8 +73,6 @@ namespace LTChess.Logic.Search
             this.TimeManager = new TimeManager();
             this.TimeManager.MaxSearchTime = searchTime;
 
-            PV = new Move[Utilities.MaxDepth];
-
             this.OnDepthFinish = PrintSearchInfo;
             this.OnSearchFinish = PrintBestMove;
         }
@@ -101,7 +87,6 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public void SetMoveTime(int moveTime)
         {
-            TimeManager.MoveTime = moveTime;
             TimeManager.MaxSearchTime = moveTime;
             TimeManager.HasMoveTime = true;
         }
@@ -112,11 +97,10 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         private void PrintSearchInfo(ref SearchInformation info)
         {
-            info.LastSearchInfo = FormatSearchInformationMultiPV(ref info);
-            Log(info.LastSearchInfo);
+            Log(FormatSearchInformationMultiPV(ref info));
 
 #if DEBUG
-            SearchStatistics.TakeSnapshot(info.NodeCount, (ulong)info.TimeManager.GetSearchTime());
+            SearchStatistics.TakeSnapshot(SearchPool.GetNodeCount(), (ulong)info.TimeManager.GetSearchTime());
 #endif
         }
 
@@ -139,8 +123,7 @@ namespace LTChess.Logic.Search
         public override string ToString()
         {
             return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime()) + ", "
-                + "NodeCount: " + NodeCount + ", " + "StopSearching: " + StopSearching;
+                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime());
         }
     }
 }

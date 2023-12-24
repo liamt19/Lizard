@@ -86,10 +86,6 @@ namespace LTChess.Logic.Core
                     using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
                     using StreamWriter sw = new StreamWriter(fs);
 
-#if DEBUG
-                    long timeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - Utilities.StartTimeMS;
-                    sw.WriteLine(timeMS.ToString("0000000") + " " + s);
-#else
                     if (newLine)
                     {
                         sw.WriteLine(s);
@@ -98,7 +94,6 @@ namespace LTChess.Logic.Core
                     {
                         sw.Write(s);
                     }
-#endif
 
                     sw.Flush();
                 }
@@ -286,14 +281,12 @@ namespace LTChess.Logic.Core
                 }
                 else if (cmd == "go")
                 {
-                    info.StopSearching = false;
                     SearchPool.StopThreads = false;
                     HandleGo(param);
                 }
                 else if (cmd == "stop")
                 {
-                    LogString("[INFO]: got stop command at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
-                    info.StopSearching = true;
+                    LogString("[INFO]: got stop command at " + FormatCurrentTime());
                     SearchPool.StopThreads = true;
                 }
                 else if (cmd == "leave")
@@ -362,16 +355,18 @@ namespace LTChess.Logic.Core
         /// <param name="param">List of parameters sent with the "go" command.</param>
         private void HandleGo(string[] param)
         {
-            LogString("[INFO]: Got 'go' command" + TimeManager.GetFormattedTime());
+            LogString("[INFO]: Got 'go' command at " + FormatCurrentTime());
             if (info.SearchActive)
             {
                 LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
                 return;
             }
 
+            TimeManager tm = info.TimeManager;
+
             //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
             info.MaxNodes = MaxSearchNodes;
-            info.TimeManager.MaxSearchTime = MaxSearchTime;
+            tm.MaxSearchTime = MaxSearchTime;
             info.MaxDepth = MaxDepth;
 
             if (info.SearchFinishedCalled)
@@ -392,8 +387,7 @@ namespace LTChess.Logic.Core
                 if (param[i] == "movetime")
                 {
                     info.SetMoveTime(int.Parse(param[i + 1]));
-                    //info.TimeManager.MaxSearchTime = int.Parse(param[i + 1]);
-                    LogString("[INFO]: MaxSearchTime is set to " + info.TimeManager.MaxSearchTime);
+                    LogString("[INFO]: MaxSearchTime is set to " + tm.MaxSearchTime);
 
                     hasMoveTime = true;
                 }
@@ -429,15 +423,15 @@ namespace LTChess.Logic.Core
                         Assert(info.MaxNodes == MaxSearchNodes,
                             "An infinite search command should have MaxNodes == " + MaxSearchNodes + ", but it was " + info.MaxNodes);
                         
-                        Assert(info.TimeManager.MaxSearchTime == MaxSearchTime,
-                            "An infinite search command should have MaxSearchTime == " + MaxSearchTime + ", but it was " + info.TimeManager.MaxSearchTime);
+                        Assert(tm.MaxSearchTime == MaxSearchTime,
+                            "An infinite search command should have MaxSearchTime == " + MaxSearchTime + ", but it was " + tm.MaxSearchTime);
                         
                         Assert(info.MaxDepth == MaxDepth,
                             "An infinite search command should have MaxDepth == " + MaxDepth + ", but it was " + info.MaxDepth);
                     }
 
                     info.MaxNodes = MaxSearchNodes;
-                    info.TimeManager.MaxSearchTime = MaxSearchTime;
+                    tm.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
                 }
                 else if (param[i] == "wtime")
@@ -447,12 +441,11 @@ namespace LTChess.Logic.Core
 
                     if (info.Position.ToMove == Color.White)
                     {
-                        info.TimeManager.PlayerTime[info.Position.ToMove] = whiteTime;
-                        info.RootPlayerToMove = Color.White;
+                        tm.PlayerTime = whiteTime;
 
-                        LogString("[INFO]: We have " + info.TimeManager.PlayerTime[info.Position.ToMove] + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
-                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+                        LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
+                                  ", current time " + FormatCurrentTime());
                     }
                 }
                 else if (param[i] == "btime")
@@ -462,38 +455,25 @@ namespace LTChess.Logic.Core
 
                     if (info.Position.ToMove == Color.Black)
                     {
-                        info.TimeManager.PlayerTime[info.Position.ToMove] = blackTime;
-                        info.RootPlayerToMove = Color.Black;
+                        tm.PlayerTime = blackTime;
 
-                        LogString("[INFO]: We have " + info.TimeManager.PlayerTime[info.Position.ToMove] + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(info.TimeManager.PlayerTime[info.Position.ToMove])).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
-                                  ", current time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+                        LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
+                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
+                                  ", current time " + FormatCurrentTime());
                     }
                 }
                 else if (param[i] == "winc")
                 {
-                    info.TimeManager.PlayerIncrement[Color.White] = int.Parse(param[i + 1]);
+                    tm.PlayerIncrement = int.Parse(param[i + 1]);
                 }
                 else if (param[i] == "binc")
                 {
-                    info.TimeManager.PlayerIncrement[Color.Black] = int.Parse(param[i + 1]);
+                    tm.PlayerIncrement = int.Parse(param[i + 1]);
                 }
                 else if (param[i] == "movestogo")
                 {
-                    info.TimeManager.MovesToGo = int.Parse(param[i + 1]);
+                    tm.MovesToGo = int.Parse(param[i + 1]);
                 }
-            }
-
-            if ((hasWhiteTime && info.Position.ToMove == Color.White && hasMoveTime && (whiteTime < info.TimeManager.MaxSearchTime)) ||
-                (hasBlackTime && info.Position.ToMove == Color.Black && hasMoveTime && (blackTime < info.TimeManager.MaxSearchTime)))
-            {
-                //  We will need to reduce our search time if we have less time than info.MaxSearchTime
-
-                int newTime = (info.Position.ToMove == Color.White ? whiteTime : blackTime);
-
-                // TODO: this should no longer happen
-                LogString("[ERROR]: only have " + whiteTime + "ms left <= MaxSearchTime: " + info.TimeManager.MaxSearchTime + ", setting time to " + newTime + "ms");
-                info.TimeManager.MaxSearchTime = newTime;
             }
 
             //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
@@ -503,9 +483,8 @@ namespace LTChess.Logic.Core
                 info.TimeManager.MakeMoveTime(info.Position.ToMove);
             }
 
-            //Search.Search.StartSearching(ref info, !hasDepthCommand);
             SearchPool.StartSearch(info.Position, ref info, setup);
-            LogString("[INFO]: Returned from call to StartSearch at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+            LogString("[INFO]: Returned from call to StartSearch at " + FormatCurrentTime());
         }
 
 
@@ -514,9 +493,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         private void OnDepthDone(ref SearchInformation info)
         {
-            //info.LastSearchInfo = FormatSearchInformation(ref info);
-            info.LastSearchInfo = FormatSearchInformationMultiPV(ref info);
-            SendString(info.LastSearchInfo);
+            SendString(FormatSearchInformationMultiPV(ref info));
         }
 
 
@@ -540,32 +517,19 @@ namespace LTChess.Logic.Core
 
                 if (bestThreadMove.IsNull())
                 {
-                    if (StopLosingOnTimeFromVerizon && info.TimeManager.PlayerTime[info.Position.ToMove] <= 1)
-                    {
-                        //  If the bestmove is null, and our search time was too low to give a reasonable time to search,
-                        //  then just pick the first legal move we can make and send that instead.
-                        ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
-                        int size = info.Position.GenLegal(legal);
+                    ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+                    int size = info.Position.GenLegal(legal);
+                    bestThreadMove = legal[0].Move;
 
-                        LogString("[ERROR]: bestThreadMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
-                        bestThreadMove = legal[0].Move;
-                    }
-                    else
-                    {
-                        LogString("[ERROR]: info.BestMove in OnSearchDone was null!");
-                    }
-
-                    LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
+                    LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
                 }
                 else if (!info.Position.IsLegal(bestThreadMove))
                 {
-                    LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal!");
-                    LogString("[INFO]: FEN = '" + info.Position.GetFEN() + "'");
-                    LogString("[INFO]: info.LastSearchInfo = '" + info.LastSearchInfo + "'");
+                    LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal for FEN '" + info.Position.GetFEN() + "'");
                 }
 
                 SendString("bestmove " + bestThreadMove.ToString());
-                LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000")));
+                LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + FormatCurrentTime());
             }
             else
             {

@@ -261,6 +261,7 @@ namespace LTChess.Logic.Util
             return sb.ToString();
         }
 
+        public static string FormatCurrentTime() => ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000"));
 
         public static class Direction
         {

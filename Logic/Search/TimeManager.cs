@@ -46,13 +46,13 @@ namespace LTChess.Logic.Search
         /// Set to the value of winc/binc if one was provided during a UCI "go" command.
         /// Only used
         /// </summary>
-        public int[] PlayerIncrement;
+        public int PlayerIncrement;
 
         /// <summary>
         /// Set to the value of wtime/btime if one was provided during a UCI "go" command.
         /// If the search time gets too close to this, it will stop prematurely so we don't lose on time.
         /// </summary>
-        public int[] PlayerTime;
+        public int PlayerTime;
 
         //  Side note: Having this be a Stopwatch rather than keeping track of time via DateTime.Now is annoying,
         //  but DateTime.Now can have unacceptably poor resolution (on some machines, like windows 7/8) of
@@ -63,15 +63,8 @@ namespace LTChess.Logic.Search
 
         public TimeManager()
         {
-            PlayerIncrement = new int[2] { 0, 0 };
-            PlayerTime = new int[2] { SearchConstants.MaxSearchTime, SearchConstants.MaxSearchTime };
-        }
-
-        public void CopyTo(TimeManager other)
-        {
-            other = (TimeManager) this.MemberwiseClone();
-            Array.Copy(this.PlayerIncrement, other.PlayerIncrement, PlayerIncrement.Length);
-            Array.Copy(this.PlayerTime, other.PlayerTime, PlayerTime.Length);
+            PlayerIncrement = 0;
+            PlayerTime = SearchConstants.MaxSearchTime;
         }
 
         [MethodImpl(Inline)]
@@ -97,30 +90,29 @@ namespace LTChess.Logic.Search
         /// returning true if they should stop searching as soon as possible.
         /// </summary>
         [MethodImpl(Inline)]
-        public bool CheckUp(int ToMove)
+        public bool CheckUp()
         {
             bool shouldStop = false;
-            int playerTimeLeft = PlayerTime[ToMove];
 
-            double currentTime = TotalSearchTime.Elapsed.TotalMilliseconds;
+            double currentTime = GetSearchTime();
 
             if (currentTime > (MaxSearchTime - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
             {
                 //  Stop if we are close to going over the max time
                 if (UCI.Active)
                 {
-                    Log("Stopping normally! Used " + currentTime + " of allowed " + MaxSearchTime + "ms" + GetFormattedTime());
+                    Log("Stopping normally! Used " + currentTime + " of allowed " + MaxSearchTime + "ms at " + FormatCurrentTime());
                 }
 
                 shouldStop = true;
             }
-            else if (MaxSearchTime >= playerTimeLeft && (playerTimeLeft - currentTime) < SearchLowTimeThreshold)
+            else if (MaxSearchTime >= PlayerTime && (PlayerTime - currentTime) < SearchLowTimeThreshold)
             {
                 //  Stop early if:
                 //  We were told to search for more time than we have left AND
                 //  We now have less time than the low time threshold
 
-                if ((currentTime < MinSearchTime) && ((playerTimeLeft - TimerBuffer) > MinSearchTime))
+                if ((currentTime < MinSearchTime) && ((PlayerTime - TimerBuffer) > MinSearchTime))
                 {
                     //  If we ordinarily would stop, try enforcing a minimum search time
                     //  to prevent the time spent on moves from oscillating to a large degree.
@@ -128,11 +120,11 @@ namespace LTChess.Logic.Search
                     //  As long as we have enough time left that this condition will be checked again,
                     //  postpone stopping until TotalSearchTime.Elapsed.TotalMilliseconds > MinSearchTime
 
-                    Log("Postponed stopping! Only searched for " + currentTime + "ms of our " + (playerTimeLeft - TimerBuffer) + GetFormattedTime());
+                    Log("Postponed stopping! Only searched for " + currentTime + "ms of our " + (PlayerTime - TimerBuffer) + " at " + FormatCurrentTime());
                 }
                 else
                 {
-                    Log("Stopping early! maxTime: " + MaxSearchTime + " >= playerTimeLeft: " + playerTimeLeft + " and we are in low time" + GetFormattedTime());
+                    Log("Stopping early! maxTime: " + MaxSearchTime + " >= playerTimeLeft: " + PlayerTime + " and we are in low time at " + FormatCurrentTime());
 
                     shouldStop = true;
                 }
@@ -143,12 +135,6 @@ namespace LTChess.Logic.Search
         }
 
 
-        [MethodImpl(Inline)]
-        public static string GetFormattedTime()
-        {
-            return ",\tcurrent time " + ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000"));
-        }
-
         /// <summary>
         /// Sets the maximum search time for the player <paramref name="ToMove"/>, given the number of moves <paramref name="moveCount"/> made so far.
         /// <para></para>
@@ -158,34 +144,25 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public void MakeMoveTime(int ToMove)
         {
-            int inc = PlayerIncrement[ToMove];
-            int newSearchTime;
+            int inc = PlayerIncrement;
 
-            if (StopLosingOnTimeFromVerizon)
-            {
-                // This tries to keep ~10 seconds on the clock
-                newSearchTime = PlayerIncrement[ToMove] + ((PlayerTime[ToMove] - VerizonDisconnectionBuffer) / 20);
-
-                if ((PlayerTime[ToMove] - VerizonDisconnectionBuffer) <= 0) {
-                    newSearchTime = PlayerIncrement[ToMove] / 4;
-                }
-            }
-            else
-            {
-                newSearchTime = PlayerIncrement[ToMove] + (PlayerTime[ToMove] / 20);
-            }
+#if DEV
+            int newSearchTime = PlayerIncrement + (PlayerTime / 3);
+#else
+            int newSearchTime = PlayerIncrement + (PlayerTime / 20);
+#endif
 
             if (MovesToGo != -1)
             {
                 //  This is a fairly simple approach to this:
                 //  we either search for 1/20th of our time or 1 / MovesToGo, whichever is greater.
-                newSearchTime = Math.Max(newSearchTime, PlayerTime[ToMove] / MovesToGo);
+                newSearchTime = Math.Max(newSearchTime, PlayerTime / MovesToGo);
             }
 
-            if (newSearchTime > PlayerTime[ToMove])
+            if (newSearchTime > PlayerTime)
             {
-                Log("WARN: MakeMoveTime tried setting time to " + newSearchTime + " > time left " + PlayerTime[ToMove]);
-                newSearchTime = PlayerTime[ToMove];
+                Log("WARN: MakeMoveTime tried setting time to " + newSearchTime + " > time left " + PlayerTime);
+                newSearchTime = PlayerTime;
             }
 
             this.MaxSearchTime = newSearchTime;

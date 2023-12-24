@@ -91,7 +91,7 @@ namespace LTChess.Logic.Search
             {
                 thisThread.CheckupCount = 0;
                 //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (info.TimeManager.CheckUp(info.RootPlayerToMove) || 
+                if (info.TimeManager.CheckUp() || 
                     SearchPool.GetNodeCount() >= info.MaxNodes)
                 {
                     SearchPool.StopThreads = true;
