@@ -208,10 +208,45 @@ namespace LTChess.Logic.NN.Simple768
 
         public static int GetEvaluation(Position pos, ref AccumulatorPSQT accumulator)
         {
+            Vector256<short> ClampMax = Vector256.Create((short)QA);
             int output = 0;
 
-            Vector256<short> ClampMax = Vector256.Create((short)QA);
+            if (AvxVnni.IsSupported)
+            {
+                Vector256<int> vnniSum = Vector256<int>.Zero;
+                var us = accumulator[pos.ToMove];
 
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    //  Clamp each feature between [0, QA]
+                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, *(us + i)));
+
+                    //  Multiply the clamped feature by its corresponding weight.
+                    //  We can do this with short values since the weights are always between [-127, 127]
+                    //  (and the product will always be < short.MaxValue) so this will never overflow.
+                    Vector256<short> mult = clamp * LayerWeights[i];
+
+
+                    //  We can use VPDPWSSD to do the multiplication of mult and clamp,
+                    //  as well as the horizontal accumulation of it into the sum in a single instruction.
+
+                    //  As a bonus, we only need to sum this once at the end, for both sides!
+                    //  Since the accumulation is happening via 32-bit integers,
+                    //  we would only need to worry about overflowing if we were summing short.MaxValue 2^16 times.
+                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
+                }
+
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
+                    Vector256<short> mult = clamp * LayerWeights[i + (SIMD_CHUNKS)];
+                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
+                }
+
+                output = SumVector256NoHadd(vnniSum);
+            }
+            else
+            {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 //  Clamp each feature between [0, QA]
@@ -258,6 +293,7 @@ namespace LTChess.Logic.NN.Simple768
 
                 output += SumVector256NoHadd(loMult);
                 output += SumVector256NoHadd(hiMult);
+            }
             }
 
             return (output / QA + LayerBiases[0][0]) * OutputScale / (QAB);
