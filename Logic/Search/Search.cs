@@ -81,6 +81,8 @@ namespace LTChess.Logic.Search
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
 
+            int startingAlpha = alpha;
+
             short eval = ss->StaticEval;
 
             bool doSkip = (ss->Skip != Move.Null);
@@ -674,15 +676,17 @@ namespace LTChess.Logic.Search
                 ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
             }
 
-            TTNodeType nodeTypeToSave = (bestScore >= beta)           ? TTNodeType.Alpha :
-                                        ((isPV && !bestMove.IsNull()) ? TTNodeType.Exact : TTNodeType.Beta);
-
             if (!doSkip && !(isRoot && thisThread.PVIndex > 0))
             {
                 //  Don't update the TT if:
                 //  This is a singular extensions search (since the a/b bounds were modified and we skipped a move),
                 //  This is one of the root nodes in a MultiPV search.
-                tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), nodeTypeToSave, depth, bestMove, ss->StaticEval, ss->TTPV);
+
+                TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
+                          ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
+
+                tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, 
+                    ((bound == TTNodeType.Beta) ? Move.Null : bestMove), ss->StaticEval, ss->TTPV);
             }
 
             return bestScore;
@@ -719,6 +723,8 @@ namespace LTChess.Logic.Search
             short bestScore;
             short futilityBase;
             short futilityValue;
+
+            int startingAlpha = alpha;
 
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
@@ -790,11 +796,6 @@ namespace LTChess.Logic.Search
 
                 if (bestScore >= beta)
                 {
-                    if (!ss->TTHit)
-                    {
-                        tte->Update(posHash, MakeTTScore(bestScore, ss->Ply), TTNodeType.Alpha, TTEntry.DepthNone, Move.Null, ss->StaticEval, false);
-                    }
-
                     return bestScore;
                 }
 
@@ -935,8 +936,10 @@ namespace LTChess.Logic.Search
                 return MakeMateScore(ss->Ply);
             }
 
-            TTNodeType nodeType = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
-            tte->Update(posHash, MakeTTScore(bestScore, ss->Ply), nodeType, ttDepth, bestMove, ss->StaticEval, ttPV);
+            TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
+                      ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
+
+            tte->Update(posHash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
 
             if (EnableAssertions)
             {
