@@ -57,7 +57,7 @@ namespace LTChess
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
-
+            
             DoInputLoop();
         }
 
@@ -144,79 +144,19 @@ namespace LTChess
                     continue;
                 }
                 string[] param = input.Split(' ');
-                
+
                 if (input.EqualsIgnoreCase("uci"))
                 {
                     UCI uci = new UCI();
                     uci.Run();
                 }
-                else if (input.StartsWithIgnoreCase("position fen "))
+                else if (input.StartsWithIgnoreCase("position"))
                 {
-                    p.LoadFromFEN(input.Substring(13));
-                    setup.StartFEN = input.Substring(13);
-                }
-                else if (input.StartsWithIgnoreCase("position startpos moves "))
-                {
-                    p.LoadFromFEN(InitialFEN);
-
-                    setup.StartFEN = InitialFEN;
-                    setup.SetupMoves.Clear();
-
-                    var splits = input.Split(' ').ToList();
-                    for (int i = 3; i < splits.Count; i++)
-                    {
-                        if (p.TryFindMove(splits[i], out Move m))
-                        {
-                            p.MakeMove(m);
-                            setup.SetupMoves.Add(m);
-                        }
-                        else
-                        {
-                            Log("Failed doing extra moves! '" + splits[i] + "' isn't a legal move in the FEN " + p.GetFEN());
-                            break;
-                        }
-                    }
-                    Log("New FEN is " + p.GetFEN());
+                    HandlePositionCommand(input, setup);
                 }
                 else if (input.StartsWith("go"))
                 {
-                    if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
-                    {
-                        int depth = int.Parse(param[2]);
-                        Task.Run(() =>
-                        {
-                            Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
-                            temp.PerftParallel(depth, true);
-                        });
-                        continue;
-                    }
-                    else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
-                    {
-                        int depth = int.Parse(param[2]);
-                        Task.Run(() => DoPerftDivide(depth, false));
-                        continue;
-                    }
-
-                    info = new SearchInformation(p, MaxDepth);
-                    info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
-
-                    for (int i = 1; i < param.Length; i++)
-                    {
-                        if (param[i] == "movetime" && i < param.Length - 1 && int.TryParse(param[i + 1], out int moveTime))
-                        {
-                            info.SetMoveTime(moveTime);
-                        }
-                        else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
-                        {
-                            info.TimeManager.MaxSearchTime = time;
-                        }
-                        else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
-                        {
-                            info.MaxDepth = depth;
-                        }
-                    }
-
-                    SearchPool.StartSearch(p, ref info, setup);
+                    HandleGoCommand(input, setup);
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
@@ -238,7 +178,6 @@ namespace LTChess
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
                     SearchPool.StopThreads = true;
-
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
@@ -246,49 +185,11 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
-                    DoEvalAllMoves();
+                    HandleEvalAllCommand();
                 }
                 else if (input.StartsWithIgnoreCase("trace"))
                 {
-                    if (UseHalfKA)
-                    {
-                        HalfKA_HM.Trace(p);
-                    }
-
-                    if (UseSimple768)
-                    {
-                        if (input.ContainsIgnoreCase("piece"))
-                        {
-                            string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                            if (splits.Length == 4)
-                            {
-                                int pc = StringToColor(splits[2]);
-
-                                if (pc == Color.ColorNB)
-                                {
-                                    Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                                    continue;
-                                }
-
-                                int pt = StringToPiece(splits[3]);
-                                if (pt == Piece.None)
-                                {
-                                    Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                                    continue;
-                                }
-
-                                Simple768.TracePieceValues(pt, pc);
-                            }
-                            else
-                            {
-                                Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                            }
-                        }
-                        else
-                        {
-                            Simple768.Trace(p);
-                        }
-                    }
+                    HandleTraceCommand(input);
                 }
                 else if (input.EqualsIgnoreCase("d"))
                 {
@@ -311,20 +212,7 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("bench"))
                 {
-                    if (input.ContainsIgnoreCase("perft"))
-                    {
-                        int depth = int.Parse(input.Substring(6));
-                        FishBench.Go(depth);
-                    }
-                    else
-                    {
-                        int depth = 12;
-                        if (input.Length > 5 && int.TryParse(input.Substring(6), out int newDepth)) {
-                            depth = newDepth;
-                        }
-
-                        SearchBench.Go(p, depth);
-                    }
+                    HandleBenchCommand(input);
                 }
                 else if (input.EqualsIgnoreCase("gc"))
                 {
@@ -352,7 +240,7 @@ namespace LTChess
                     {
                         if (p.LoadFromFEN(input.Trim()))
                         {
-                            Log("Loaded fen");
+                            Log("Loaded fen '" + p.GetFEN() + "'");
 
                             if (UseHalfKA || UseHalfKP || UseSimple768)
                             {
@@ -384,7 +272,7 @@ namespace LTChess
             info = new SearchInformation(temp);
             info.MaxDepth = 12;
             info.SetMoveTime(250);
-            
+
             SearchPool.StartSearch(temp, ref info);
             SearchPool.BlockCallerUntilFinished();
 
@@ -421,9 +309,9 @@ namespace LTChess
             }
             sw.Stop();
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int) (total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
-        
+
         public static void PrintSearchInfo()
         {
             Log(info.ToString());
@@ -437,7 +325,7 @@ namespace LTChess
         /// Prints out the current static evaluation of the position, and the static evaluations after 
         /// each of the legal moves for that position are made.
         /// </summary>
-        public static void DoEvalAllMoves()
+        public static void HandleEvalAllCommand()
         {
             Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + Evaluation.GetEvaluation(p));
             Log("\r\nMove evaluations (" + ColorToString(p.ToMove) + "'s perspective):");
@@ -510,6 +398,206 @@ namespace LTChess
                 Log("\n\n");
             }
         }
+
+        private static void HandleTraceCommand(string input)
+        {
+            if (UseHalfKA)
+            {
+                HalfKA_HM.Trace(p);
+            }
+
+            if (UseSimple768)
+            {
+                if (input.ContainsIgnoreCase("piece"))
+                {
+                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (splits.Length == 4)
+                    {
+                        int pc = StringToColor(splits[2]);
+
+                        if (pc == Color.ColorNB)
+                        {
+                            Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                            return;
+                        }
+
+                        int pt = StringToPiece(splits[3]);
+                        if (pt == Piece.None)
+                        {
+                            Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                            return;
+                        }
+
+                        Simple768.TracePieceValues(pt, pc);
+                    }
+                    else
+                    {
+                        Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                    }
+                }
+                else
+                {
+                    Simple768.Trace(p);
+                }
+            }
+        }
+
+        private static void HandleGoCommand(string input, ThreadSetup setup)
+        {
+            string[] param = input.Split(' ');
+
+            if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
+            {
+                int depth = int.Parse(param[2]);
+                Task.Run(() =>
+                {
+                    Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
+                    temp.PerftParallel(depth, true);
+                });
+                return;
+            }
+            else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
+            {
+                int depth = int.Parse(param[2]);
+                Task.Run(() => DoPerftDivide(depth, false));
+                return;
+            }
+
+            info = new SearchInformation(p, MaxDepth);
+            info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
+
+            for (int i = 1; i < param.Length; i++)
+            {
+                if (param[i] == "movetime" && i < param.Length - 1 && int.TryParse(param[i + 1], out int moveTime))
+                {
+                    info.SetMoveTime(moveTime);
+                }
+                else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
+                {
+                    info.TimeManager.MaxSearchTime = time;
+                }
+                else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
+                {
+                    info.MaxDepth = depth;
+                }
+            }
+
+            SearchPool.StartSearch(p, ref info, setup);
+        }
+
+        private static void HandlePositionCommand(string input, ThreadSetup setup)
+        {
+            string fen = InitialFEN;
+
+            if (input.ContainsIgnoreCase("fen"))
+            {
+                try
+                {
+                    fen = input.Substring(input.IndexOf("fen") + 4);
+
+                    //  Sanitize the input a bit to prevent crashes.
+                    //  I'm only doing this here (rather than in LoadFromFEN) because I need LoadFromFEN to be as fast as possible,
+                    //  and the UCI should never give a poorly formatted FEN anyways.
+                    if (fen.Where(x => x == '/').Count() != 7)
+                    {
+                        Log("Valid FEN strings should contain the character '/' exactly 7 times, and the FEN '" + fen + "' doesn't!");
+                        return;
+                    }
+
+                    if (fen.Where(x => x == ' ').Count() < 2)
+                    {
+                        Log("Valid FEN strings should contain at least 2 spaces, and the FEN '" + fen + "' doesn't!");
+                        return;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log("Couldn't parse fen from the input!");
+                    Log(e.ToString());
+                    return;
+                }
+            }
+
+            p.LoadFromFEN(fen);
+            setup.StartFEN = fen;
+
+            if (input.ContainsIgnoreCase("moves"))
+            {
+                setup.SetupMoves.Clear();
+
+                //  This expects the input to be formatted like "position fen <fen> moves <move1> <move2> <move3> ..."
+
+                List<string> splits;
+                try
+                {
+                    splits = input.Substring(input.IndexOf("moves") + 6).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                }
+                catch (IndexOutOfRangeException e)
+                {
+                    Log("Couldn't parse the list of moves to make from the input!");
+                    Log(e.ToString());
+                    return;
+                }
+
+                for (int i = 0; i < splits.Count; i++)
+                {
+                    if (p.TryFindMove(splits[i], out Move m))
+                    {
+                        p.MakeMove(m);
+                        setup.SetupMoves.Add(m);
+                    }
+                    else
+                    {
+                        Log("Failed doing extra moves! '" + splits[i] + "' isn't a legal move in the FEN " + p.GetFEN());
+                        break;
+                    }
+                }
+            }
+
+            Log("Loaded fen '" + p.GetFEN() + "'");
+        }
+
+        private static void HandleBenchCommand(string input)
+        {
+            if (input.ContainsIgnoreCase("perft"))
+            {
+                int depth;
+
+                try
+                {
+                    depth = int.Parse(input.Substring(input.IndexOf("perft") + 6));
+                }
+                catch (Exception e)
+                {
+                    Log("Couldn't parse the perft depth from the input!");
+                    Log(e.ToString());
+                    return;
+                }
+
+                FishBench.Go(depth);
+            }
+            else
+            {
+                int depth = 12;
+
+                try
+                {
+                    if (input.Length > 5 && int.TryParse(input.Substring(input.IndexOf("bench") + 6), out int newDepth))
+                    {
+                        depth = newDepth;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log("Couldn't parse the bench depth from the input!");
+                    Log(e.ToString());
+                    return;
+                }
+
+                SearchBench.Go(p, depth);
+            }
+        }
+        
 
         public static void DotTraceProfile(int depth = 24)
         {
