@@ -204,7 +204,6 @@ namespace LTChess.Logic.Search
             {
                 //  Get the static evaluation and store it in the empty TT slot.
                 eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
-                tte->Update(posHash, ScoreNone, TTNodeType.Invalid, TTEntry.DepthNone, CondensedMove.Null, eval, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
