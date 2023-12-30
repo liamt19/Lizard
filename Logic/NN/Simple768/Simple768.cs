@@ -201,12 +201,11 @@ namespace LTChess.Logic.NN.Simple768
             if (AvxVnni.IsSupported)
             {
                 Vector256<int> vnniSum = Vector256<int>.Zero;
-                var us = accumulator[pos.ToMove];
 
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
                     //  Clamp each feature between [0, QA]
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, *(us + i)));
+                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
 
                     //  Multiply the clamped feature by its corresponding weight.
                     //  We can do this with short values since the weights are always between [-127, 127]
