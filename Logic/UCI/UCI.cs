@@ -487,7 +487,16 @@ namespace LTChess.Logic.Core
             {
                 info.SearchFinishedCalled = true;
 
-                Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
+                var bestThread = SearchPool.GetBestThread();
+
+                if (bestThread.RootMoves.Count == 0)
+                {
+                    LogString("[ERROR]: bestThread.RootMoves.Count was 0!\n" + info.ToString());
+                    SendString("bestmove 0000");
+                    return;
+                }
+
+                Move bestThreadMove = bestThread.RootMoves[0].Move;
 
                 if (EnableAssertions)
                 {
