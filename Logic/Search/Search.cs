@@ -274,6 +274,73 @@ namespace LTChess.Logic.Search
             }
 
 
+            //  Try ProbCut for:
+            //  non-PV nodes
+            //  that aren't a response to a previous singular extension search
+            //  at a depth at or above the min (currently 5)
+            //  while our beta isn't near a mate score
+            //  so long as:
+            //  We didn't have a TT hit,
+            //  or the TT hit's depth is well below the current depth,
+            //  or the TT hit's score is above beta + ProbCutBeta(Improving).
+            int probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
+            const int seeThreshold = 1;
+            if (UseProbCut
+                && !isPV
+                && !doSkip
+                && depth >= ProbCutMinDepth
+                && Math.Abs(beta) < ScoreTTWin
+                && (!ss->TTHit || tte->Depth < depth - 3 || tte->Score >= probBeta))
+            {
+                //  nnnnnnnn/PPPPPPPP/1N1N4/1rbrB3/1QbR1q2/1nRn4/2B5/3K3k w - - 0 1
+                //  This position has 88 different captures (the most I could come up with), so 128 as a limit is fair.
+                ScoredMove* captures = stackalloc ScoredMove[NormalListCapacity];
+                int numCaps = pos.GenAll<GenLoud>(captures);
+                AssignProbCutScores(ref bb, captures, numCaps);
+
+
+                /*
+                Score of ProbCut vs Baseline: 401 - 329 - 697  [0.525] 1427
+                ...      ProbCut playing White: 353 - 46 - 315  [0.715] 714
+                ...      ProbCut playing Black: 48 - 283 - 382  [0.335] 713
+                ...      White vs Black: 636 - 94 - 697  [0.690] 1427
+                Elo difference: 17.5 +/- 12.9, LOS: 99.6 %, DrawRatio: 48.8 %
+                SPRT: llr 2.9 (100.5%), lbound -2.25, ubound 2.89 - H1 was accepted
+                */
+
+                for (int i = 0; i < numCaps; i++)
+                {
+                    Move m = OrderNextMove(captures, numCaps, i);
+                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, seeThreshold))
+                    {
+                        //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
+                        continue;
+                    }
+
+                    int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
+                    prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+                    ss->CurrentMove = m;
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][m.Capture ? 1 : 0][histIdx];
+                    pos.MakeMove(m);
+
+                    score = -QSearch<NonPVNode>(ref info, (ss + 1), -probBeta, -probBeta + 1, DepthQChecks);
+
+                    if (score >= probBeta)
+                    {
+                        //  Verify at a low depth
+                        score = -Negamax<NonPVNode>(ref info, (ss + 1), -probBeta, -probBeta + 1, depth - 4, !cutNode);
+            }
+
+                    pos.UnmakeMove(m);
+
+                    if (score >= probBeta)
+                    {
+                        return score;
+                    }
+                }
+            }
+
+
             if (ttMove.Equals(CondensedMove.Null)) 
             {
                 if (isPV)

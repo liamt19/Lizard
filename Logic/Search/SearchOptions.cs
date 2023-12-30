@@ -121,6 +121,10 @@
         /// </summary>
         public static int RazoringMargin = 275;
 
+        public const bool UseProbCut = false;
+        public static int ProbCutBeta = 175;
+        public static int ProbCutBetaImproving = 100;
+        public static int ProbCutMinDepth = 5;
 
 
 

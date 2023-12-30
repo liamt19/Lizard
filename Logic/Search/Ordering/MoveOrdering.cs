@@ -65,6 +65,30 @@ namespace LTChess.Logic.Search.Ordering
         }
 
 
+        /// <summary>
+        /// Assigns scores to each of the <paramref name="size"/> moves in the <paramref name="list"/>.
+        /// <br></br>
+        /// This is only called for ProbCut, so the only moves in <paramref name="list"/> should be generated 
+        /// using <see cref="GenLoud"/>, which only generates captures and promotions.
+        /// </summary>
+        public static void AssignProbCutScores(ref Bitboard bb, ScoredMove* list, int size)
+        {
+            for (int i = 0; i < size; i++)
+            {
+                ref ScoredMove sm = ref list[i];
+                Move m = sm.Move;
+
+                sm.Score = EvaluationConstants.SEEValues[m.EnPassant ? Pawn : bb.GetPieceAtIndex(m.To)];
+                if (m.Promotion)
+                {
+                    //  Gives promotions a higher score than captures.
+                    //  We can assume a queen promotion is better than most captures.
+                    sm.Score += EvaluationConstants.SEEValues[Queen] + 1;
+                }
+            }
+        }
+
+
         public static Move OrderNextMove(ScoredMove* moves, int size, int listIndex)
         {
             if (size < 2)
