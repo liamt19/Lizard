@@ -40,7 +40,12 @@ namespace LTChess.Logic.Search
         /// </summary>
         public int MaxSearchTime = DefaultSearchTime;
 
-        public int MovesToGo = -1;
+
+        public double SoftTimeLimit = -1;
+        public bool HasSoftTime => (SoftTimeLimit > 0);
+
+
+        public int MovesToGo = DefaultMovesToGo;
 
         /// <summary>
         /// Set to the value of winc/binc if one was provided during a UCI "go" command.
@@ -86,14 +91,11 @@ namespace LTChess.Logic.Search
         public double GetSearchTime() => TotalSearchTime.Elapsed.TotalMilliseconds;
 
         /// <summary>
-        /// Checks if the player <paramref name="ToMove"/> has searched for their allotted time,
-        /// returning true if they should stop searching as soon as possible.
+        /// Returns true if we have searched for our maximum allotted time
         /// </summary>
         [MethodImpl(Inline)]
         public bool CheckUp()
         {
-            bool shouldStop = false;
-
             double currentTime = GetSearchTime();
 
             if (currentTime > (MaxSearchTime - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
@@ -101,37 +103,13 @@ namespace LTChess.Logic.Search
                 //  Stop if we are close to going over the max time
                 if (UCI.Active)
                 {
-                    Log("Stopping normally! Used " + currentTime + " of allowed " + MaxSearchTime + "ms at " + FormatCurrentTime());
+                    Log("Reached hard time limit! Used " + currentTime + " of allowed " + MaxSearchTime + " ms at " + FormatCurrentTime());
                 }
 
-                shouldStop = true;
-            }
-            else if (MaxSearchTime >= PlayerTime && (PlayerTime - currentTime) < SearchLowTimeThreshold)
-            {
-                //  Stop early if:
-                //  We were told to search for more time than we have left AND
-                //  We now have less time than the low time threshold
-
-                if ((currentTime < MinSearchTime) && ((PlayerTime - TimerBuffer) > MinSearchTime))
-                {
-                    //  If we ordinarily would stop, try enforcing a minimum search time
-                    //  to prevent the time spent on moves from oscillating to a large degree.
-
-                    //  As long as we have enough time left that this condition will be checked again,
-                    //  postpone stopping until TotalSearchTime.Elapsed.TotalMilliseconds > MinSearchTime
-
-                    Log("Postponed stopping! Only searched for " + currentTime + "ms of our " + (PlayerTime - TimerBuffer) + " at " + FormatCurrentTime());
-                }
-                else
-                {
-                    Log("Stopping early! maxTime: " + MaxSearchTime + " >= playerTimeLeft: " + PlayerTime + " and we are in low time at " + FormatCurrentTime());
-
-                    shouldStop = true;
-                }
-
+                return true;
             }
 
-            return shouldStop;
+            return false;
         }
 
 
@@ -142,21 +120,13 @@ namespace LTChess.Logic.Search
         /// which works well since there are more pieces and therefore more moves that need to be considered in the early/midgame.
         /// </summary>
         [MethodImpl(Inline)]
-        public void MakeMoveTime(int ToMove)
+        public void MakeMoveTime()
         {
-            int inc = PlayerIncrement;
-
-#if DEV
-            int newSearchTime = PlayerIncrement + (PlayerTime / 3);
-#else
-            int newSearchTime = PlayerIncrement + (PlayerTime / 20);
-#endif
+            int newSearchTime = PlayerIncrement + (PlayerTime / 2);
 
             if (MovesToGo != -1)
             {
-                //  This is a fairly simple approach to this:
-                //  we either search for 1/20th of our time or 1 / MovesToGo, whichever is greater.
-                newSearchTime = Math.Max(newSearchTime, PlayerTime / MovesToGo);
+                newSearchTime = Math.Max(newSearchTime, PlayerIncrement + (PlayerTime / MovesToGo));
             }
 
             if (newSearchTime > PlayerTime)
@@ -165,8 +135,20 @@ namespace LTChess.Logic.Search
                 newSearchTime = PlayerTime;
             }
 
-            this.MaxSearchTime = newSearchTime;
-            Log("Setting search time to " + (newSearchTime - inc) + " + " + inc + " = " + newSearchTime);
+            /*
+            At 15+0.15
+            Score of SoftNodeTM vs Baseline: 156 - 99 - 254  [0.556] 509
+            ...      SoftNodeTM playing White: 133 - 9 - 113  [0.743] 255
+            ...      SoftNodeTM playing Black: 23 - 90 - 141  [0.368] 254
+            ...      White vs Black: 223 - 32 - 254  [0.688] 509
+            Elo difference: 39.1 +/- 21.4, LOS: 100.0 %, DrawRatio: 49.9 %
+            SPRT: llr 2.9 (100.4%), lbound -2.25, ubound 2.89 - H1 was accepted
+            */
+            //  Values from Clarity
+            SoftTimeLimit = 0.6 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
+
+            MaxSearchTime = newSearchTime;
+            Log("Setting search time to " + SoftTimeLimit + ", hard limit at " + newSearchTime);
         }
     }
 }

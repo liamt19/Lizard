@@ -96,6 +96,7 @@ namespace LTChess.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
+        public ulong[][] NodeTable;
 
         /// <summary>
         /// The system Thread that this SearchThread is running on.
@@ -158,6 +159,11 @@ namespace LTChess.Logic.Threads
             Quit = false;
 
             History = new HistoryTable();
+            NodeTable = new ulong[SquareNB][];
+            for (int sq = 0; sq < SquareNB; sq++)
+            {
+                NodeTable[sq] = new ulong[SquareNB];
+            }
 
             _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
             if (IsMain)
@@ -317,8 +323,15 @@ namespace LTChess.Logic.Threads
             Move* PV = stackalloc Move[MaxPly];
             ss->PV = PV;
 
+            for (int sq = 0; sq < SquareNB; sq++)
+            {
+                Array.Clear(NodeTable[sq]);
+            }
+
             //  Create a copy of the SearchPool's root SearchInformation instance.
             SearchInformation info = SearchPool.SharedInfo;
+
+            TimeManager tm = info.TimeManager;
 
             //  And set it's Position to this SearchThread's unique copy.
             //  (The Position that SearchPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
@@ -327,7 +340,7 @@ namespace LTChess.Logic.Threads
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
             int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
-
+            RootMove lastBestRootMove = new RootMove(Move.Null);
 
             //  The main thread may only go up to 64
             //  Other threads can go until depth 256
@@ -364,8 +377,6 @@ namespace LTChess.Logic.Threads
                         beta = Math.Min(BetaStart, score + window);
                     }
 
-                    int fails = 0;
-
                     while (true)
                     {
                         score = Logic.Search.Search.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);
@@ -379,7 +390,6 @@ namespace LTChess.Logic.Threads
                         {
                             beta = (alpha + beta) / 2;
                             alpha = Math.Max(alpha - window, AlphaStart);
-
                         }
                         else if (score >= beta)
                         {
@@ -388,16 +398,45 @@ namespace LTChess.Logic.Threads
                         else
                             break;
 
-                        fails++;
-                        window += (window * fails);
+                        window += (window / 2);
                     }
 
                     StableSort(ref RootMoves, 0);
 
-                    if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || info.TimeManager.GetSearchTime() > 3000))
+                    if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
                     {
                         info.OnDepthFinish?.Invoke(ref info);
                     }
+                }
+
+                if (!IsMain)
+                    continue;
+
+                if (SearchPool.StopThreads)
+                {
+                    //  If we received a stop command or hit the hard time limit, our RootMoves may not have been filled in properly.
+                    //  In that case, we replace the current bestmove with the last depth's bestmove
+                    //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
+                    RootMoves[0] = lastBestRootMove;
+                    return;
+                }
+
+                lastBestRootMove.Move = RootMoves[0].Move;
+                lastBestRootMove.Score = RootMoves[0].Score;
+                lastBestRootMove.Depth = RootMoves[0].Depth;
+
+                for (int i = 0; i < MaxPly; i++)
+                {
+                    lastBestRootMove.PV[i] = RootMoves[0].PV[i];
+                    if (lastBestRootMove.PV[i] == Move.Null)
+                    {
+                        break;
+                    }
+                }
+
+                if (SoftTimeUp(tm))
+                {
+                    break;
                 }
 
                 if (!SearchPool.StopThreads)
@@ -405,6 +444,27 @@ namespace LTChess.Logic.Threads
                     CompletedDepth = RootDepth;
                 }
             }
+        }
+
+        private bool SoftTimeUp(TimeManager tm)
+        {
+            if (!tm.HasSoftTime)
+                return false;
+
+            //  Base values taken from Clarity
+            double multFactor = 1.0;
+            if (RootDepth > 7)
+            {
+                double proportion = NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes;
+                multFactor = (1.5 - proportion) * 1.25;
+            }
+
+            if (tm.GetSearchTime() >= tm.SoftTimeLimit * multFactor)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>

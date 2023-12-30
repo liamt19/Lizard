@@ -375,12 +375,8 @@ namespace LTChess.Logic.Core
                 LogString("[INFO]: Reusing old SearchInfo object, info.SearchFinishedCalled was true");
             }
 
-            bool hasMoveTime = false;
-            bool hasWhiteTime = false;
-            bool hasBlackTime = false;
-
-            int whiteTime = 0;
-            int blackTime = 0;
+            bool isMoveTimeCommand = false;
+            bool hasPlayerTime = false;
 
             for (int i = 0; i < param.Length; i++)
             {
@@ -389,7 +385,7 @@ namespace LTChess.Logic.Core
                     info.SetMoveTime(int.Parse(param[i + 1]));
                     LogString("[INFO]: MaxSearchTime is set to " + tm.MaxSearchTime);
 
-                    hasMoveTime = true;
+                    isMoveTimeCommand = true;
                 }
                 else if (param[i] == "depth")
                 {
@@ -434,39 +430,18 @@ namespace LTChess.Logic.Core
                     tm.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
                 }
-                else if (param[i] == "wtime")
+                else if ((param[i] == "wtime" && info.Position.ToMove == Color.White) ||
+                         (param[i] == "btime" && info.Position.ToMove == Color.Black))
                 {
-                    whiteTime = int.Parse(param[i + 1]);
-                    hasWhiteTime = true;
-
-                    if (info.Position.ToMove == Color.White)
-                    {
-                        tm.PlayerTime = whiteTime;
+                    tm.PlayerTime = int.Parse(param[i + 1]);
+                    hasPlayerTime = true;
 
                         LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
                                   (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
                                   ", current time " + FormatCurrentTime());
                     }
-                }
-                else if (param[i] == "btime")
-                {
-                    blackTime = int.Parse(param[i + 1]);
-                    hasBlackTime = true;
-
-                    if (info.Position.ToMove == Color.Black)
-                    {
-                        tm.PlayerTime = blackTime;
-
-                        LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
-                                  ", current time " + FormatCurrentTime());
-                    }
-                }
-                else if (param[i] == "winc")
-                {
-                    tm.PlayerIncrement = int.Parse(param[i + 1]);
-                }
-                else if (param[i] == "binc")
+                else if ((param[i] == "winc" && info.Position.ToMove == Color.White) ||
+                         (param[i] == "binc" && info.Position.ToMove == Color.Black))
                 {
                     tm.PlayerIncrement = int.Parse(param[i + 1]);
                 }
@@ -478,9 +453,9 @@ namespace LTChess.Logic.Core
 
             //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
             //  then we make one ourselves
-            if (!hasMoveTime && hasWhiteTime && hasBlackTime)
+            if (!isMoveTimeCommand && hasPlayerTime)
             {
-                info.TimeManager.MakeMoveTime(info.Position.ToMove);
+                info.TimeManager.MakeMoveTime();
             }
 
             SearchPool.StartSearch(info.Position, ref info, setup);

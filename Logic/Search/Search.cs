@@ -442,6 +442,7 @@ namespace LTChess.Logic.Search
 
                 thisThread.Nodes++;
                 playedMoves++;
+                ulong prevNodes = thisThread.Nodes;
 
                 if (isPV)
                 {
@@ -553,6 +554,11 @@ namespace LTChess.Logic.Search
                 }
 
                 pos.UnmakeMove(m);
+
+                if (isRoot)
+                {
+                    thisThread.NodeTable[m.From][m.To] += (thisThread.Nodes - prevNodes);
+                }
 
                 if (EnableAssertions)
                 {
