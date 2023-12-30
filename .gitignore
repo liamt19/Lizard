@@ -11,5 +11,5 @@
 /TB_Files
 /Logic/Tablebase
 /LTChess.csproj.user
-/Properties/PublishProfiles/
+/Properties/PublishProfiles/*.user
 /Properties/launchSettings.json
