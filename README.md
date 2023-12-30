@@ -13,9 +13,10 @@ I'm uploading it here so I can keep backups of it and not lose it when my laptop
 
 ## Features
 ### NNUE Evaluation:
-Version 9.1 currently supports [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6 architecture](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
+Version 9.3 uses a 768 -> 1024 -> 1 neural network to evaluate positions, which was trained on 1.5 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
 
-In the near future I want to train my own network with a similar architecture. The use of Stockfish's networks was meant to make improving move searching easier since I didn't have to rely on my fairly poor classical evaluation.
+In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
+
 
 
 ### Other things:
@@ -23,18 +24,22 @@ In the near future I want to train my own network with a similar architecture. T
   - [Futility Pruning](https://www.chessprogramming.org/Futility_Pruning)
   - [Delta Pruning](https://www.chessprogramming.org/Delta_Pruning)
   - [Late Move Reductions](https://www.chessprogramming.org/Late_Move_Reductions)
-  - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning).
+  - [Null Move Pruning](https://www.chessprogramming.org/Null_Move_Pruning)
   - [Late Move Pruning](https://www.chessprogramming.org/Futility_Pruning#MoveCountBasedPruning)
   - [Reverse Futility Pruning](https://www.chessprogramming.org/Reverse_Futility_Pruning)
-  - [Razoring](https://www.chessprogramming.org/Razoring)
   - [Killer Heuristic](https://www.chessprogramming.org/Killer_Heuristic)
   - [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
 
 ## Status
-Version 9.1 has some major speed improvements to both searches and move generation.
-Currently rated a bit above 2500 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
+Version 9.3 uses its own NNUE evaluation, and began proper parameter testing with [SPRT](https://en.wikipedia.org/wiki/Sequential_probability_ratio_test).
+
+Currently rated a bit above 2600 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
 
 ## Some spotty history:
+#### Version 9.1:
+Some major speed improvements to both searches and move generation.
+It was rated a bit above 2500 bullet/blitz on Lichess.
+
 #### Version 8.4:
 A decent rating increase, and a lot fewer "dumb" moves. 
 Many of the commits between 8.0 and 8.4 improved some of the early architectural decisions, and it is now far easier to debug and improve the code. 
