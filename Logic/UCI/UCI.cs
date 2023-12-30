@@ -655,8 +655,6 @@ namespace LTChess.Logic.Core
             Options[nameof(NullMovePruningMinDepth)].SetMinMax(1, 16);
             Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(1, 16);
             Options[nameof(ReverseFutilityPruningPerDepth)].SetMinMax(1, 200);
-            Options[nameof(RazoringMaxDepth)].SetMinMax(1, 16);
-            Options[nameof(RazoringMargin)].SetMinMax(1, 500);
             Options[nameof(ExchangeBase)].SetMinMax(1, 500);
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
             Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);

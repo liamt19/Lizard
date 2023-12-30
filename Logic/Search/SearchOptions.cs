@@ -48,7 +48,7 @@
         /// This does reduce search speed (in terms of nodes/second), but the accuracy of the additional nodes 
         /// that are searched make this well worth the speed hit.
         /// </summary>
-        public static bool UseSingularExtensions = true;
+        public const bool UseSingularExtensions = true;
 
         /// <summary>
         /// The depth must be greater than or equal to this for singular extensions to be considered.
@@ -61,7 +61,7 @@
         /// Whether or not to prune sequences of moves that don't improve the position evaluation enough 
         /// even when if we give our opponent a free move.
         /// </summary>
-        public static bool UseNullMovePruning = true;
+        public const bool UseNullMovePruning = true;
 
         /// <summary>
         /// Nodes need to be at this depth of higher to be considered for pruning.
@@ -86,7 +86,7 @@
         /// This is counteracted by the fact that RFP searches are still significantly faster than otherwise, 
         /// so speed-wise this isn't a huge issue.
         /// </summary>
-        public static bool UseReverseFutilityPruning = true;
+        public const bool UseReverseFutilityPruning = true;
         
         /// <summary>
         /// The depth must be less than or equal to this for reverse futility pruning to be considered.
@@ -109,17 +109,17 @@
         /// <para></para>
         /// This can prevent moves which just straight up hang a piece from being searched at full depth.
         /// </summary>
-        public static bool UseRazoring = true;
+        private const bool UseRazoring = false;
 
         /// <summary>
         /// The depth must be less than or equal to this for razoring to be considered.
         /// </summary>
-        public static int RazoringMaxDepth = 6;
+        private static int RazoringMaxDepth = 6;
 
         /// <summary>
         /// This amount is added to razoring's margin per depth.
         /// </summary>
-        public static int RazoringMargin = 275;
+        private static int RazoringMargin = 275;
 
         public const bool UseProbCut = false;
         public static int ProbCutBeta = 175;
