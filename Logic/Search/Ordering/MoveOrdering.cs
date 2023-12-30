@@ -89,6 +89,10 @@ namespace LTChess.Logic.Search.Ordering
         }
 
 
+        /// <summary>
+        /// Passes over the list of <paramref name="moves"/>, bringing the move with the highest <see cref="ScoredMove.Score"/>
+        /// within the range of <paramref name="listIndex"/> and <paramref name="size"/> to the front and returning it.
+        /// </summary>
         public static Move OrderNextMove(ScoredMove* moves, int size, int listIndex)
         {
             if (size < 2)
@@ -114,7 +118,6 @@ namespace LTChess.Logic.Search.Ordering
         }
 
 
-
         public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
                 Span<ScoredMove> list, int size, CondensedMove ttMove, bool doKillers = true)
         {
@@ -124,7 +127,7 @@ namespace LTChess.Logic.Search.Ordering
             }
         }
 
-
+        /// <inheritdoc cref="OrderNextMove"/>
         public static Move OrderNextMove(Span<ScoredMove> moves, int size, int listIndex)
         {
             fixed (ScoredMove* ptr = moves)
@@ -132,25 +135,6 @@ namespace LTChess.Logic.Search.Ordering
                 return OrderNextMove(ptr, size, listIndex);
             }
         }
-
-
-
-        /// <summary>
-        /// A table containing move scores given to captures based on the value of the attacking piece in comparison to the piece being captured.
-        /// We want to look at PxQ before QxQ because it would win more material if their queen was actually defended.
-        /// <br></br>
-        /// For example, the value of a bishop capturing a queen would be <see cref="MvvLva"/>[<see cref="Piece.Queen"/>][<see cref="Piece.Bishop"/>], which is 6003
-        /// </summary>
-        private static readonly int[][] MvvLva =
-        {
-            //          pawn, knight, bishop, rook, queen, king
-            new int[] { 10005, 10004, 10003, 10002, 10001, 10000 },
-            new int[] { 20005, 20004, 20003, 20002, 20001, 20000 },
-            new int[] { 30005, 30004, 30003, 30002, 30001, 30000 },
-            new int[] { 40005, 40004, 40003, 40002, 40001, 40000 },
-            new int[] { 50005, 50004, 50003, 50002, 50001, 50000 },
-            new int[] { 60005, 60004, 60003, 60002, 60001, 60000 }
-        };
 
     }
 

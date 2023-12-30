@@ -122,6 +122,7 @@ namespace LTChess.Logic.Util
         public static readonly long StartTimeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
 
 
+        public const bool NO_LOG_FILE = true;
 
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
@@ -138,7 +139,7 @@ namespace LTChess.Logic.Util
             {
                 Console.WriteLine(s);
             }
-            else
+            else if (!NO_LOG_FILE)
             {
                 LogString("[LOG]: " + s);
             }

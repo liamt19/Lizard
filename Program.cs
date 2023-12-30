@@ -92,8 +92,8 @@ namespace LTChess
 
                 try
                 {
-                RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-            }
+                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+                }
                 catch (TypeInitializationException e)
                 {
                     Log("InitializeAll for type " + type.FullName + " failed: ");
@@ -237,14 +237,13 @@ namespace LTChess
                 }
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
-                    info.StopSearching = true;
                     SearchPool.StopThreads = true;
 
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
                     Log((UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " Eval: " + Evaluation.GetEvaluation(p));
-                    }
+                }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
                     DoEvalAllMoves();
@@ -314,9 +313,9 @@ namespace LTChess
                 {
                     if (input.ContainsIgnoreCase("perft"))
                     {
-                    int depth = int.Parse(input.Substring(6));
-                    FishBench.Go(depth);
-                }
+                        int depth = int.Parse(input.Substring(6));
+                        FishBench.Go(depth);
+                    }
                     else
                     {
                         int depth = 12;

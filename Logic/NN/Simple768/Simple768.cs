@@ -31,19 +31,11 @@ namespace LTChess.Logic.NN.Simple768
 
         public const int SIMD_CHUNKS = (HiddenSize / VSize.Short);
 
+#if DEV_NET
+        public const string NetworkName = "net-wdl3-epoch20.bin";
+#else
         public const string NetworkName = "net-epoch10.bin";
-
-
-        /*
-        May be marginally better at 10+0.1
-        Score of WDL_Net vs Baseline: 150 - 135 - 267  [0.514] 552
-        ...      WDL_Net playing White: 131 - 31 - 114  [0.681] 276
-        ...      WDL_Net playing Black: 19 - 104 - 153  [0.346] 276
-        ...      White vs Black: 235 - 50 - 267  [0.668] 552
-        Elo difference: 9.4 +/- 20.8, LOS: 81.3 %, DrawRatio: 48.4 %
-        SPRT: llr 0.392 (13.6%), lbound -2.25, ubound 2.89
-        */
-        public const string TestNetworkName = "net-wdl3-epoch20";
+#endif
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -99,13 +91,8 @@ namespace LTChess.Logic.NN.Simple768
             else
             {
                 //  Just load the default network
-#if USE_TEST_NET
-                networkToLoad = TestNetworkName;
-                Log("Using NNUE with 768 network " + TestNetworkName);
-#else
                 networkToLoad = NetworkName;
                 Log("Using NNUE with 768 network " + NetworkName);
-#endif
 
                 string resourceName = (networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty));
 
@@ -247,53 +234,53 @@ namespace LTChess.Logic.NN.Simple768
             }
             else
             {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                //  Clamp each feature between [0, QA]
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    //  Clamp each feature between [0, QA]
+                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
 
-                //  Multiply the clamped feature by its corresponding weight.
-                //  We can do this with short values since the weights are always between [-127, 127]
-                //  (and the product will always be < short.MaxValue) so this will never overflow.
-                Vector256<short> mult = clamp * LayerWeights[i];
+                    //  Multiply the clamped feature by its corresponding weight.
+                    //  We can do this with short values since the weights are always between [-127, 127]
+                    //  (and the product will always be < short.MaxValue) so this will never overflow.
+                    Vector256<short> mult = clamp * LayerWeights[i];
 
 
-                //  We want _mm256_mullo_epi32(_mm256_cvtepi16_epi32(_mm256_castsi256_si128(mult)), ...) here
-                //  Vector256.Widen(mult) generates almost exactly the same code but I'd rather write it out
-                //  so I can be disappointed when the JIT decides to use other intrinsics.
+                    //  We want _mm256_mullo_epi32(_mm256_cvtepi16_epi32(_mm256_castsi256_si128(mult)), ...) here
+                    //  Vector256.Widen(mult) generates almost exactly the same code but I'd rather write it out
+                    //  so I can be disappointed when the JIT decides to use other intrinsics.
 
-                //  With this approach we will need to widen both vectors before doing the squared part of the activation
-                //  so that this multiplication step is done with integers and not shorts.
-                Vector256<int> loMult = Avx2.MultiplyLow(
-                    Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                    Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
+                    //  With this approach we will need to widen both vectors before doing the squared part of the activation
+                    //  so that this multiplication step is done with integers and not shorts.
+                    Vector256<int> loMult = Avx2.MultiplyLow(
+                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
+                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
 
-                Vector256<int> hiMult = Avx2.MultiplyLow(
-                    Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                    Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
+                    Vector256<int> hiMult = Avx2.MultiplyLow(
+                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
+                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
 
-                //  Now sum the low and high vectors horizontally, preferably without vphaddd (which Vector256.Sum appears to use)
-                //  because it can be quite a bit slower on some architectures.
-                output += SumVector256NoHadd(loMult);
-                output += SumVector256NoHadd(hiMult);
-            }
+                    //  Now sum the low and high vectors horizontally, preferably without vphaddd (which Vector256.Sum appears to use)
+                    //  because it can be quite a bit slower on some architectures.
+                    output += SumVector256NoHadd(loMult);
+                    output += SumVector256NoHadd(hiMult);
+                }
 
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                Vector256<short> mult = clamp * LayerWeights[i + (SIMD_CHUNKS)];
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
+                    Vector256<short> mult = clamp * LayerWeights[i + (SIMD_CHUNKS)];
 
-                Vector256<int> loMult = Avx2.MultiplyLow(
-                    Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                    Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
+                    Vector256<int> loMult = Avx2.MultiplyLow(
+                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
+                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
 
-                Vector256<int> hiMult = Avx2.MultiplyLow(
-                    Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                    Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
+                    Vector256<int> hiMult = Avx2.MultiplyLow(
+                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
+                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
 
-                output += SumVector256NoHadd(loMult);
-                output += SumVector256NoHadd(hiMult);
-            }
+                    output += SumVector256NoHadd(loMult);
+                    output += SumVector256NoHadd(hiMult);
+                }
             }
 
             return (output / QA + LayerBiases[0][0]) * OutputScale / (QAB);

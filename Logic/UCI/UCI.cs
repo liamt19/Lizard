@@ -64,6 +64,11 @@ namespace LTChess.Logic.Core
         /// </summary>
         public static void LogString(string s, bool newLine = true)
         {
+            if (NO_LOG_FILE)
+            {
+                return;
+            }
+
             lock (LogFileLock)
             {
                 try

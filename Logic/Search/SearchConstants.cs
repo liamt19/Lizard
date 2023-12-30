@@ -35,6 +35,8 @@
         public const int DefaultSearchTime = 5 * 1000;
 
 
+        public const int DefaultMovesToGo = 20;
+
 
         /// <summary>
         /// Whether or not to adjust UCI search times if there is only one legal move in the position.
