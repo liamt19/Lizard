@@ -328,7 +328,7 @@ namespace LTChess.Logic.Search
                     {
                         //  Verify at a low depth
                         score = -Negamax<NonPVNode>(ref info, (ss + 1), -probBeta, -probBeta + 1, depth - 4, !cutNode);
-            }
+                    }
 
                     pos.UnmakeMove(m);
 
@@ -892,7 +892,6 @@ namespace LTChess.Logic.Search
 
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
-
                 if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
                 {
                     continue;

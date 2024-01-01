@@ -441,10 +441,10 @@ namespace LTChess.Logic.Core
                     tm.PlayerTime = int.Parse(param[i + 1]);
                     hasPlayerTime = true;
 
-                        LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
-                                  (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
-                                  ", current time " + FormatCurrentTime());
-                    }
+                    LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
+                              (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
+                              ", current time " + FormatCurrentTime());
+                }
                 else if ((param[i] == "winc" && info.Position.ToMove == Color.White) ||
                          (param[i] == "binc" && info.Position.ToMove == Color.Black))
                 {

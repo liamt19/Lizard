@@ -68,15 +68,10 @@ namespace LTChess
                 AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
-
-
-#if DEBUG
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
-#endif
 
             Utilities.CheckConcurrency();
-
 
             //  Note Assembly.GetExecutingAssembly().GetTypes() can't be used with AOT compilation,
             //  so if you are trying to use AOT this needs to be skipped. (It isn't needed for AOT anyway)
