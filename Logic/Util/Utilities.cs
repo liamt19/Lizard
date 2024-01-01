@@ -256,7 +256,10 @@ namespace LTChess.Logic.Util
 
             sb.Append((Sse.IsSupported ? "Prefetch " : string.Empty));
             sb.Append((Popcnt.X64.IsSupported ? "Popcount " : string.Empty));
+#if PEXT
+            //  Magic bitboards will only use Pext if "PEXT" is also defined
             sb.Append((Bmi2.X64.IsSupported ? "Pext " : string.Empty));
+#endif
             sb.Append((Lzcnt.X64.IsSupported ? "Lzcnt " : string.Empty));
 
             return sb.ToString();
