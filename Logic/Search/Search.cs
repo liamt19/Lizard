@@ -340,35 +340,13 @@ namespace LTChess.Logic.Search
             }
 
 
-            if (ttMove.Equals(CondensedMove.Null)) 
+            if (ttMove.Equals(CondensedMove.Null)
+                && cutNode 
+                && depth >= ExtraCutNodeReductionMinDepth) 
             {
-                if (isPV)
-                {
-                    /**
-                    Likely neutral/positive:
-                    Score of ReduceNullTTDepth vs Baseline: 140 - 120 - 256  [0.519] 516
-                    ...      ReduceNullTTDepth playing White: 122 - 12 - 125  [0.712] 259
-                    ...      ReduceNullTTDepth playing Black: 18 - 108 - 131  [0.325] 257
-                    ...      White vs Black: 230 - 30 - 256  [0.694] 516
-                    Elo difference: 13.5 +/- 21.3, LOS: 89.3 %, DrawRatio: 49.6 %
-                    SPRT: llr 0.718 (24.8%), lbound -2.25, ubound 2.89
-                     */
-                    depth -= 2;
-
-                    if (depth <= 0)
-                    {
-                        //  If we just reduced the depth below 1, dive into QSearch.
-                        //  Use a depth of 0 though so that we still consider checking moves.
-                        return QSearch<PVNode>(ref info, ss, alpha, beta, 0);
-                    }
-                }
-
                 //  We expected this node to be a bad one, so give it an extra depth reduction
                 //  if the depth is at or above a threshold (currently 6).
-                if (cutNode && depth >= ExtraCutNodeReductionMinDepth)
-                {
-                    depth--;
-                }
+                depth--;
             }
 
 
