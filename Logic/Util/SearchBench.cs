@@ -10,8 +10,10 @@ namespace LTChess.Logic.Util
     public static class SearchBench
     {
         
-        public static void Go(Position pos, int depth = 12)
+        public static void Go(int depth = 12)
         {
+            Position pos = new Position(InitialFEN, owner: SearchPool.MainThread);
+
             Stopwatch sw = Stopwatch.StartNew();
 
             ulong totalNodes = 0;

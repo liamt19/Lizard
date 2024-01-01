@@ -285,8 +285,10 @@ namespace LTChess
         }
 
 
-        public static void DoPerftDivide(int depth, bool sortAlphabetical = true)
+        public static void DoPerftDivide(int depth)
         {
+            if (depth <= 0) return;
+
             ulong total = 0;
 
             //  The Position "p" has UpdateNN == true, which we don't want
@@ -310,6 +312,30 @@ namespace LTChess
             sw.Stop();
 
             Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+        }
+
+        public static void DoPerftNN(int depth)
+        {
+            if (depth <= 0) return;
+
+            Stopwatch sw = Stopwatch.StartNew();
+
+            Span<ScoredMove> list = stackalloc ScoredMove[MoveListSize];
+            int size = p.GenLegal(list);
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = list[i].Move;
+                p.MakeMove(m);
+                long result = (depth > 1 ? p.PerftNN(depth - 1) : 1);
+                p.UnmakeMove(m);
+                Log(m.ToString() + ": " + result);
+            }
+            sw.Stop();
+
+            ulong[] shannon = {0, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167};
+            ulong nodeCount = depth < shannon.Length ? shannon[depth] : 0;
+            Log("\r\nRefreshed " + nodeCount + " times in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(nodeCount / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
 
         public static void PrintSearchInfo()
@@ -449,6 +475,12 @@ namespace LTChess
             if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
             {
                 int depth = int.Parse(param[2]);
+
+                if (depth <= 0)
+                {
+                    return;
+                }
+
                 Task.Run(() =>
                 {
                     Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
@@ -456,10 +488,16 @@ namespace LTChess
                 });
                 return;
             }
+            else if (param.Length > 2 && param[1].ContainsIgnoreCase("perftnn"))
+            {
+                int depth = int.Parse(param[2]);
+                Task.Run(() => DoPerftNN(depth));
+                return;
+            }
             else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
             {
                 int depth = int.Parse(param[2]);
-                Task.Run(() => DoPerftDivide(depth, false));
+                Task.Run(() => DoPerftDivide(depth));
                 return;
             }
 
@@ -594,7 +632,7 @@ namespace LTChess
                     return;
                 }
 
-                SearchBench.Go(p, depth);
+                SearchBench.Go(depth);
             }
         }
         
