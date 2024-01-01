@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace LTChess.Logic.Core
+namespace LTChess.Logic.UCI
 {
     public class UCIOption
     {

@@ -9,7 +9,7 @@
 //#define ENABLE_ASSERTIONS
 
 
-#if (USE_SKIP_INIT)
+#if USE_SKIP_INIT
 
 //  Using SkipInit will cause methods to be generated without a ".locals init" flag,
 //  meaning that local variables aren't automatically initialized to 0 when they are created.
@@ -22,11 +22,12 @@
 
 
 //  I prefer to have SkipInit off while debugging since the values that you mouse over can have confusing values
-#if ((RELEASE || DEV) || SKIP_INIT_IN_DEBUG)
+#if RELEASE || DEV || SKIP_INIT_IN_DEBUG
 [module: System.Runtime.CompilerServices.SkipLocalsInit]
 #endif
 
 #endif
+
 
 namespace LTChess.Logic.Data
 {
@@ -35,7 +36,7 @@ namespace LTChess.Logic.Data
 
         //  PreserveSig shouldn't have any meaningful impact on performance... I hope.
 
-#if (USE_AGGRESSIVE_INLINING)
+#if USE_AGGRESSIVE_INLINING
         public const MethodImplOptions Inline = MethodImplOptions.AggressiveInlining;
 #else
         public const MethodImplOptions Inline = MethodImplOptions.PreserveSig;
@@ -43,13 +44,13 @@ namespace LTChess.Logic.Data
 
         public const MethodImplOptions NoInline = MethodImplOptions.NoInlining;
 
-#if (PEXT)
+#if PEXT
         public const bool HasPext = true;
 #else
         public const bool HasPext = false;
 #endif
 
-#if (USE_SKIP_INIT && ((RELEASE || DEV) || SKIP_INIT_IN_DEBUG))
+#if USE_SKIP_INIT && (RELEASE || DEV || SKIP_INIT_IN_DEBUG)
         public const bool HasSkipInit = true;
 #else
         public const bool HasSkipInit = false;

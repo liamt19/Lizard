@@ -1,13 +1,7 @@
-﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System;
-using System.Net;
-using System.Numerics;
-using System.Reflection;
+
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
@@ -49,10 +43,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             OutputNumChunks = PaddedInputDimensions / SimdWidth;
             NormalNumChunks = CeilToMultiple((short)InputDimensions, 8) / 4;
             NumRegs = OutputDimensions / OutputSimdWidth;
-            WeightOffset = (OutputDimensions * 4) / VSize.SByte;
+            WeightOffset = OutputDimensions * 4 / VSize.SByte;
 
-            Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
-            Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
+            Weights = (Vector256<sbyte>*)AlignedAllocZeroed((nuint)(OutputDimensions * PaddedInputDimensions / VSize.SByte * 32), AllocAlignment);
+            Biases = (Vector256<int>*)AlignedAllocZeroed((nuint)(Math.Max(1, OutputDimensions / VSize.Int) * 32), AllocAlignment);
 
             if (OutputDimensions % OutputSimdWidth != 0 && OutputDimensions != 1)
             {
@@ -64,8 +58,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public void PropagateNormal(Span<sbyte> input, Span<int> output)
         {
-            int* inputPtr = (int*) Unsafe.AsPointer(ref input[0]);
-            int* outputPtr = (int*) Unsafe.AsPointer(ref output[0]);
+            int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*)Unsafe.AsPointer(ref output[0]);
 
             Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
             for (int k = 0; k < NumRegs; k++)
@@ -91,7 +85,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     m256_add_dpbusd_epi32x2(ref outs[k], in0, in1, b0, b1);
                 }
             }
-            
+
             for (int k = 0; k < NumRegs; k++)
             {
                 Avx.Store(outputPtr + (k * vectorStride), outs[k]);
@@ -101,7 +95,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         public void PropagateOutput(Span<sbyte> input, Span<int> output)
         {
             const int vectorStride = VSize.SByte;
-            byte* inputPtr = (byte*) Unsafe.AsPointer(ref input[0]);
+            byte* inputPtr = (byte*)Unsafe.AsPointer(ref input[0]);
 
             Vector256<int> sum0 = Vector256<int>.Zero;
 
@@ -118,7 +112,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         public bool ReadParameters(BinaryReader br)
         {
             var stream = br.BaseStream;
-            long toRead = (long)((sizeof(int) * (OutputDimensions)) + (sizeof(sbyte) * (OutputDimensions * PaddedInputDimensions)));
+            long toRead = (long)((sizeof(int) * OutputDimensions) + (sizeof(sbyte) * OutputDimensions * PaddedInputDimensions));
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("HalfKA AffineTransform's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -194,7 +188,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         [MethodImpl(Inline)]
         private uint GetSmallWeightIndex(int i)
         {
-            return (uint) ((i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 + i / PaddedInputDimensions * 4 + i % 4);
+            return (uint)((i / 4 % (PaddedInputDimensions / 4) * OutputDimensions * 4) + (i / PaddedInputDimensions * 4) + (i % 4));
         }
 
 
@@ -217,14 +211,14 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             const int _MM_PERM_CDAB = 0xB1;
 
             Vector128<int> lo = Avx2.ExtractVector128(sum, 0);
-            
+
             var sum128 = Sse2.Add(lo, Avx2.ExtractVector128(sum, 1));
             sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_BADC));
             sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, _MM_PERM_CDAB));
             return Sse2.ConvertToInt32(sum128) + bias;
         }
 
-        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1, 
+        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256<byte> a0, Vector256<byte> a1,
                                                                             Vector256<sbyte> b0, Vector256<sbyte> b1)
         {
             if (AvxVnni.IsSupported)

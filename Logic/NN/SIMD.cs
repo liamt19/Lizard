@@ -1,17 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics.X86;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
-using System.Numerics;
-using System.Drawing;
-using System.Net;
-using System.Reflection;
-using System.Reflection.Metadata;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Runtime.Intrinsics.X86;
 
 namespace LTChess.Logic.NN
 {
@@ -188,10 +177,10 @@ namespace LTChess.Logic.NN
         {
             if (Avx2.IsSupported)
             {
-                return Avx.LoadDquVector256((int*)arrayPointer + index * sizeof(int));
+                return Avx.LoadDquVector256((int*)arrayPointer + (index * sizeof(int)));
             }
 
-            return Unsafe.ReadUnaligned<Vector256<int>>((int*)arrayPointer + index * sizeof(int));
+            return Unsafe.ReadUnaligned<Vector256<int>>((int*)arrayPointer + (index * sizeof(int)));
         }
 
 
@@ -222,7 +211,7 @@ namespace LTChess.Logic.NN
         {
             if (Avx2.IsSupported)
             {
-                Avx.Store((int*) Unsafe.AsPointer(ref span[index]), vector);
+                Avx.Store((int*)Unsafe.AsPointer(ref span[index]), vector);
             }
             else
             {
@@ -236,7 +225,7 @@ namespace LTChess.Logic.NN
         {
             if (Avx2.IsSupported)
             {
-                Avx.Store((int*) Unsafe.AsPointer(ref span[index]), vector);
+                Avx.Store((int*)Unsafe.AsPointer(ref span[index]), vector);
             }
             else
             {
@@ -255,19 +244,19 @@ namespace LTChess.Logic.NN
         {
             if (Avx2.IsSupported)
             {
-                return Avx.LoadDquVector256((int*) Unsafe.AsPointer(ref span[index]));
+                return Avx.LoadDquVector256((int*)Unsafe.AsPointer(ref span[index]));
             }
 
             return Unsafe.ReadUnaligned<Vector256<int>>(ref Unsafe.As<int, byte>(ref span[index]));
         }
-        
+
         /// <inheritdoc cref="LoadSpan256"/>
         [MethodImpl(Inline)]
         public static Vector256<byte> LoadSpan256(in Span<sbyte> span, int index)
         {
             if (Avx2.IsSupported)
             {
-                return Avx.LoadDquVector256((byte*) Unsafe.AsPointer(ref span[index]));
+                return Avx.LoadDquVector256((byte*)Unsafe.AsPointer(ref span[index]));
             }
 
             return Unsafe.ReadUnaligned<Vector256<byte>>(ref Unsafe.As<sbyte, byte>(ref span[index]));
@@ -283,7 +272,7 @@ namespace LTChess.Logic.NN
         {
             if (Sse2.IsSupported)
             {
-                Sse2.LoadVector128((int*) Unsafe.AsPointer(ref span[index]));
+                Sse2.LoadVector128((int*)Unsafe.AsPointer(ref span[index]));
             }
 
             return Unsafe.ReadUnaligned<Vector128<int>>(ref Unsafe.As<int, byte>(ref span[index]));
@@ -299,7 +288,7 @@ namespace LTChess.Logic.NN
         {
             if (Sse2.IsSupported)
             {
-                Sse2.Store((sbyte*) Unsafe.AsPointer(ref span[index]), vector);
+                Sse2.Store((sbyte*)Unsafe.AsPointer(ref span[index]), vector);
             }
             else
             {
@@ -317,7 +306,7 @@ namespace LTChess.Logic.NN
         {
             void* pRawData = Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(arr));
 #pragma warning disable 8500 // sizeof of managed types
-            return (IntPtr)((byte*)pRawData + (uint)index * (nuint)sizeof(T));
+            return (IntPtr)((byte*)pRawData + ((uint)index * (nuint)sizeof(T)));
 #pragma warning restore 8500
         }
     }

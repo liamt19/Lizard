@@ -82,7 +82,7 @@ namespace LTChess.Logic.Variants
                 }
 
                 Place(idx, Piece.Pawn, currColor);
-                allPawnsPlaced = (whitePawns >= MinPawns && blackPawns >= MinPawns);
+                allPawnsPlaced = whitePawns >= MinPawns && blackPawns >= MinPawns;
                 currColor = Not(currColor);
             }
 
@@ -104,7 +104,7 @@ namespace LTChess.Logic.Variants
                     currPoints = ref whitePoints;
                 }
 
-                if ((whitePiecesPlaced && currColor == Color.White))
+                if (whitePiecesPlaced && currColor == Color.White)
                 {
                     if ((bb.Pieces[Piece.King] & bb.Colors[currColor]) == 0)
                     {
@@ -183,8 +183,8 @@ namespace LTChess.Logic.Variants
                 }
 
                 //  You are done when you have 0 points, or when you have 1/2 but already have 10 pawns, and those 1/2 points are wasted.
-                whitePiecesPlaced = (whitePoints == 0 || (whitePoints <= MinPoints && (whitePawns == MaxPawns)));
-                blackPiecesPlaced = (blackPoints == 0 || (blackPoints <= MinPoints && (blackPawns == MaxPawns)));
+                whitePiecesPlaced = whitePoints == 0 || (whitePoints <= MinPoints && (whitePawns == MaxPawns));
+                blackPiecesPlaced = blackPoints == 0 || (blackPoints <= MinPoints && (blackPawns == MaxPawns));
 
                 currColor = Not(currColor);
             }
@@ -245,22 +245,22 @@ namespace LTChess.Logic.Variants
             {
                 if (pt == Piece.Pawn)
                 {
-                    return (currColor == Color.White && (SquareBB[idx] & ValidWhitePawnRanks) == 0);
+                    return currColor == Color.White && (SquareBB[idx] & ValidWhitePawnRanks) == 0;
                 }
                 else
                 {
-                    return (currColor == Color.White && (SquareBB[idx] & ValidWhitePieceRanks) == 0);
+                    return currColor == Color.White && (SquareBB[idx] & ValidWhitePieceRanks) == 0;
                 }
             }
             else
             {
                 if (pt == Piece.Pawn)
                 {
-                    return (currColor == Color.Black && (SquareBB[idx] & ValidBlackPawnRanks) == 0);
+                    return currColor == Color.Black && (SquareBB[idx] & ValidBlackPawnRanks) == 0;
                 }
                 else
                 {
-                    return (currColor == Color.Black && (SquareBB[idx] & ValidBlackPieceRanks) == 0);
+                    return currColor == Color.Black && (SquareBB[idx] & ValidBlackPieceRanks) == 0;
                 }
             }
 

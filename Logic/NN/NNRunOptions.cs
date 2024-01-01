@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.NN
+﻿namespace LTChess.Logic.NN
 {
     public static class NNRunOptions
     {
@@ -31,6 +25,6 @@ namespace LTChess.Logic.NN
         public const bool UseHalfKP = false;
 
 
-        
+
     }
 }

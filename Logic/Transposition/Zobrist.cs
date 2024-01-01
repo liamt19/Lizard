@@ -147,7 +147,7 @@
         [MethodImpl(Inline)]
         public static void ZobristCastle(this ref ulong hash, CastlingStatus prev, CastlingStatus toRemove)
         {
-            ulong change = (ulong) (prev & toRemove);
+            ulong change = (ulong)(prev & toRemove);
             while (change != 0)
             {
                 hash ^= CastlingRightsHashes[poplsb(&change)];

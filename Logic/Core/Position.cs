@@ -1,10 +1,6 @@
-﻿using System;
-using System.Diagnostics;
-using System.Runtime.ExceptionServices;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
 
-using LTChess.Logic.Data;
 using LTChess.Logic.NN;
 using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.HalfKP;
@@ -47,7 +43,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int[] MaterialCountNonPawn;
 
-        public bool Checked => (CheckInfo.InCheck || CheckInfo.InDoubleCheck);
+        public bool Checked => CheckInfo.InCheck || CheckInfo.InDoubleCheck;
 
 
         /// <summary>
@@ -67,7 +63,7 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// The initial StateInfo.
         /// </summary>
-        public StateInfo* StartingState => (_SentinelStart);
+        public StateInfo* StartingState => _SentinelStart;
 
         /// <summary>
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
@@ -77,7 +73,7 @@ namespace LTChess.Logic.Core
         /// <summary>
         /// The StateInfo before the current one, or NULL if the current StateInfo is the first one, <see cref="_SentinelStart"/>
         /// </summary>
-        public StateInfo* PreviousState => (State == _SentinelStart ? (null) : (State - 1));
+        public StateInfo* PreviousState => State == _SentinelStart ? null : (State - 1);
 
         /// <summary>
         /// The StateInfo after the current one, which hopefully is within the bounds of <see cref="StateStackSize"/>
@@ -92,7 +88,7 @@ namespace LTChess.Logic.Core
                     return null;
                 }
 
-                return (State + 1);
+                return State + 1;
             }
         }
 
@@ -140,7 +136,7 @@ namespace LTChess.Logic.Core
             this.UpdateNN = createAccumulators;
             this.Owner = owner;
 
-            _bbBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
+            _bbBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
             this.bb = *(Bitboard*)_bbBlock;
 
             _stateBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
@@ -155,16 +151,16 @@ namespace LTChess.Logic.Core
                 //  Create the accumulators now if we need to.
                 //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
                 //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
-                _accumulatorBlock = (nint) AlignedAllocZeroed((nuint)(sizeof(AccumulatorPSQT) * StateStackSize), AllocAlignment);
-                AccumulatorPSQT* accs = (AccumulatorPSQT*) _accumulatorBlock;
+                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(AccumulatorPSQT) * StateStackSize), AllocAlignment);
+                AccumulatorPSQT* accs = (AccumulatorPSQT*)_accumulatorBlock;
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    (StateStack + i)->Accumulator = (accs + i);
+                    (StateStack + i)->Accumulator = accs + i;
                 }
 
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    *((StateStack + i)->Accumulator) = new AccumulatorPSQT();
+                    *(StateStack + i)->Accumulator = new AccumulatorPSQT();
                 }
             }
 
@@ -185,7 +181,7 @@ namespace LTChess.Logic.Core
 
                 if (UseSimple768)
                 {
-                    Simple768.RefreshAccumulator(this, ref (*State->Accumulator));
+                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
                 }
             }
         }
@@ -196,21 +192,21 @@ namespace LTChess.Logic.Core
         /// </summary>
         ~Position()
         {
-            NativeMemory.AlignedFree((void*) _bbBlock);
+            NativeMemory.AlignedFree((void*)_bbBlock);
 
             if (UpdateNN)
             {
                 //  Free each accumulator, then the block
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    var acc = *((_SentinelStart + i)->Accumulator);
+                    var acc = *(_SentinelStart + i)->Accumulator;
                     acc.Dispose();
                 }
 
                 NativeMemory.AlignedFree((void*)_accumulatorBlock);
             }
 
-            NativeMemory.AlignedFree((void*) _stateBlock);
+            NativeMemory.AlignedFree((void*)_stateBlock);
         }
 
         /// <summary>
@@ -278,7 +274,7 @@ namespace LTChess.Logic.Core
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
-            Unsafe.CopyBlock((State + 1), State, (uint) StateInfo.StateCopySize);
+            Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
 
             if (UseHalfKA && UpdateNN)
             {
@@ -317,13 +313,13 @@ namespace LTChess.Logic.Core
 
             if (EnableAssertions)
             {
-                Assert(ourPiece != Piece.None, 
+                Assert(ourPiece != Piece.None,
                     "Move " + move.ToString() + " in FEN '" + GetFEN() + "' doesn't have a piece on the From square!");
 
-                Assert((theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo)), 
+                Assert(theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo),
                     "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
-                
-                Assert(theirPiece != King, 
+
+                Assert(theirPiece != King,
                     "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to capture " + ColorToString(bb.GetColorAtIndex(moveTo)) + "'s king on " + IndexToString(moveTo));
 
                 Assert(ourColor == ToMove,
@@ -362,12 +358,12 @@ namespace LTChess.Logic.Core
                 //  Remove all of our castling rights
                 if (ourColor == Color.White)
                 {
-                    State->Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.WK | CastlingStatus.WQ));
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK | CastlingStatus.WQ);
                     State->CastleStatus &= ~(CastlingStatus.WK | CastlingStatus.WQ);
                 }
                 else
                 {
-                    State->Hash.ZobristCastle(State->CastleStatus, (CastlingStatus.BK | CastlingStatus.BQ));
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK | CastlingStatus.BQ);
                     State->CastleStatus &= ~(CastlingStatus.BK | CastlingStatus.BQ);
                 }
             }
@@ -459,7 +455,7 @@ namespace LTChess.Logic.Core
                 {
                     if (EnableAssertions)
                     {
-                        Assert(tempEPSquare != EPNone, 
+                        Assert(tempEPSquare != EPNone,
                             "MakeMove(" + move.ToString(this) + ") is an en passant move, " +
                             "but the current position doesn't have a pawn that can be captured via en passant!" +
                             "(State->EPSquare was " + EPNone + ", should be A3 <= EpSquare <= H6)");
@@ -477,11 +473,11 @@ namespace LTChess.Logic.Core
                 else if ((moveTo ^ moveFrom) == 16)
                 {
                     //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
-                    if (ourColor == Color.White && (WhitePawnAttackMasks[moveTo - 8] & (bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn])) != 0)
+                    if (ourColor == Color.White && (WhitePawnAttackMasks[moveTo - 8] & bb.Colors[Color.Black] & bb.Pieces[Piece.Pawn]) != 0)
                     {
                         State->EPSquare = moveTo - 8;
                     }
-                    else if (ourColor == Color.Black && (BlackPawnAttackMasks[moveTo + 8] & (bb.Colors[Color.White] & bb.Pieces[Piece.Pawn])) != 0)
+                    else if (ourColor == Color.Black && (BlackPawnAttackMasks[moveTo + 8] & bb.Colors[Color.White] & bb.Pieces[Piece.Pawn]) != 0)
                     {
                         State->EPSquare = moveTo + 8;
                     }
@@ -529,7 +525,7 @@ namespace LTChess.Logic.Core
             if (EnableAssertions && move.Checks)
             {
                 Assert((bb.AttackersTo(State->KingSquares[Not(ToMove)], bb.Occupancy) & bb.Colors[ToMove]) != 0,
-                    "The move " + move + " is marked as causing " + (move.CausesDoubleCheck ? "double" : string.Empty) + " check, " + 
+                    "The move " + move + " is marked as causing " + (move.CausesDoubleCheck ? "double" : string.Empty) + " check, " +
                     "but there are no attackers to their king's square after the move was made!");
             }
 
@@ -537,12 +533,12 @@ namespace LTChess.Logic.Core
             CheckInfo.InDoubleCheck = move.CausesDoubleCheck;
 
             //  move.SqChecker is (un)initialized as 0 if a move doesn't cause check, but we that to be 64 instead.
-            CheckInfo.idxChecker = (move.CausesCheck ? move.SqChecker : SquareNB);
+            CheckInfo.idxChecker = move.CausesCheck ? move.SqChecker : SquareNB;
 
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = (move.Checks ? bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor] : 0);
+            State->Checkers = move.Checks ? bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor] : 0;
 
             SetCheckInfo();
         }
@@ -651,8 +647,8 @@ namespace LTChess.Logic.Core
                     CheckInfo.idxChecker = lsb(State->Checkers);
                     break;
             }
-            
-            
+
+
             ToMove = Not(ToMove);
         }
 
@@ -665,11 +661,11 @@ namespace LTChess.Logic.Core
         public void MakeNullMove()
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
-            Unsafe.CopyBlock((State + 1), State, (uint) StateInfo.StateCopySize);
+            Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
             State->Accumulator->CopyTo(NextState->Accumulator);
 
             State++;
-            
+
             if (State->EPSquare != EPNone)
             {
                 //  Set EnPassantTarget to 64 now.
@@ -725,11 +721,11 @@ namespace LTChess.Logic.Core
 
             int kingSq = State->KingSquares[Not(ToMove)];
 
-            State->CheckSquares[Pawn]   = PawnAttackMasks[Not(ToMove)][kingSq];
+            State->CheckSquares[Pawn] = PawnAttackMasks[Not(ToMove)][kingSq];
             State->CheckSquares[Knight] = KnightMasks[kingSq];
             State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
-            State->CheckSquares[Rook]   = GetRookMoves(bb.Occupancy, kingSq);
-            State->CheckSquares[Queen]  = (State->CheckSquares[Bishop] | State->CheckSquares[Rook]);
+            State->CheckSquares[Rook] = GetRookMoves(bb.Occupancy, kingSq);
+            State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
         }
 
 
@@ -745,7 +741,7 @@ namespace LTChess.Logic.Core
         public ulong HashAfter(Move m)
         {
             ulong hash = State->Hash;
-            
+
             int from = m.From;
             int to = m.To;
             int us = bb.GetColorAtIndex(from);
@@ -809,29 +805,29 @@ namespace LTChess.Logic.Core
             {
                 if (move.EnPassant)
                 {
-                    return (State->EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0);
+                    return State->EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
                 }
 
                 ulong empty = ~bb.Occupancy;
                 if ((moveTo ^ moveFrom) != 16)
                 {
                     //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
-                    return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 
-                        || (empty & SquareBB[moveTo]) != 0);
+                    return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0
+                        || (empty & SquareBB[moveTo]) != 0;
                 }
                 else
                 {
                     //  This IS a pawn double move, so it can only go to a square it attacks,
                     //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
-                    return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 
-                        || ((empty & SquareBB[moveTo - ShiftUpDir(pc)]) != 0 && (empty & SquareBB[moveTo]) != 0));
+                    return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0
+                        || ((empty & SquareBB[moveTo - ShiftUpDir(pc)]) != 0 && (empty & SquareBB[moveTo]) != 0);
                 }
 
             }
 
             //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
             //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-            return ((bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.Castle);
+            return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.Castle;
         }
 
 
@@ -885,13 +881,13 @@ namespace LTChess.Logic.Core
                 }
 
                 int checker = CheckInfo.idxChecker;
-                if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0) 
+                if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0)
                     || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
 
-                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[moveFrom]) == 0);
+                    return pinnedPieces == 0 || (pinnedPieces & SquareBB[moveFrom]) == 0;
                 }
 
                 //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -926,7 +922,7 @@ namespace LTChess.Logic.Core
 
                 //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
                 //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
-                return ((bb.AttackersTo(moveTo, (bb.Occupancy ^ SquareBB[ourKing])) & bb.Colors[theirColor]) 
+                return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[ourKing]) & bb.Colors[theirColor])
                        | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
             }
             else if (move.EnPassant)
@@ -935,10 +931,10 @@ namespace LTChess.Logic.Core
                 //  to make sure it is still legal
 
                 int idxPawn = moveTo - ShiftUpDir(ourColor);
-                ulong moveMask = (SquareBB[moveFrom] | SquareBB[moveTo]);
+                ulong moveMask = SquareBB[moveFrom] | SquareBB[moveTo];
 
                 //  This is only legal if our king is NOT attacked after the EP is made
-                return (bb.AttackersTo(ourKing, (bb.Occupancy ^ (moveMask | SquareBB[idxPawn]))) & bb.Colors[Not(ourColor)]) == 0;
+                return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB[idxPawn])) & bb.Colors[Not(ourColor)]) == 0;
             }
 
             //  Otherwise, this move is legal if:
@@ -955,7 +951,7 @@ namespace LTChess.Logic.Core
         [MethodImpl(Inline)]
         public bool IsDraw()
         {
-            return (IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition());
+            return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
         }
 
 
@@ -976,7 +972,7 @@ namespace LTChess.Logic.Core
 
             //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
             //  Some organizations classify 2 knights a draw and others don't.
-            return ((knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2));
+            return (knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2);
         }
 
 
@@ -993,7 +989,7 @@ namespace LTChess.Logic.Core
             {
                 return false;
             }
-            
+
             ulong currHash = State->Hash;
 
             //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
@@ -1013,7 +1009,8 @@ namespace LTChess.Logic.Core
                     }
                 }
 
-                if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart) {
+                if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart)
+                {
                     break;
                 }
 
@@ -1159,11 +1156,11 @@ namespace LTChess.Logic.Core
                             if (char.IsLetter(splits[i][x]))
                             {
                                 int idx = CoordToIndex(pieceX, 7 - i);
-                                int pc = (char.IsUpper(splits[i][x]) ? White : Black);
+                                int pc = char.IsUpper(splits[i][x]) ? White : Black;
                                 int pt = FENToPiece(splits[i][x]);
 
                                 bb.AddPiece(idx, pc, pt);
-                                
+
                                 pieceX++;
                             }
                             else if (char.IsDigit(splits[i][x]))
@@ -1261,7 +1258,7 @@ namespace LTChess.Logic.Core
 
                 if (UseSimple768)
                 {
-                    Simple768.RefreshAccumulator(this, ref (*State->Accumulator));
+                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
                 }
             }
 

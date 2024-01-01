@@ -70,7 +70,7 @@ namespace LTChess.Logic.Search
         public static ulong TTMisses_QS = 0;
         public static ulong TT_InCheck_QS = 0;
         public static ulong TTScoreFit_QS = 0;
-        
+
 
         public static ulong EvalCalls = 0;
 
@@ -150,7 +150,7 @@ namespace LTChess.Logic.Search
         private static int _shots = 0;
         private static List<FieldInfo>? _snapshot_fields;
         private static Dictionary<string, List<ulong>> _snapshots = new Dictionary<string, List<ulong>>();
-        
+
         public static void TakeSnapshot(ulong nodeCount = 0, ulong time = 0)
         {
             foreach (var field in _snapshot_fields)
@@ -174,7 +174,7 @@ namespace LTChess.Logic.Search
             Console.Write("Depth: ");
             for (int i = 0; i < _shots; i++)
             {
-                Console.Write((i + 1) + (i < _shots - 1 ? ", " : string.Empty));
+                Console.Write(i + 1 + (i < _shots - 1 ? ", " : string.Empty));
             }
             Console.WriteLine();
 

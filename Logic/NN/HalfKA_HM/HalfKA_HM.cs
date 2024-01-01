@@ -1,19 +1,12 @@
 ﻿
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System;
+using System.Runtime.Intrinsics.X86;
 
-using LTChess.Logic.Data;
-using LTChess.Logic.NN.HalfKA_HM.Layers;
 using LTChess.Properties;
 
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
-using LTChess.Logic.Core;
-using System.Text;
-using System.Runtime.InteropServices;
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+using static LTChess.Logic.NN.SIMD;
 
 namespace LTChess.Logic.NN.HalfKA_HM
 {
@@ -93,7 +86,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                 networkToLoad = NNV6_Sparse_LEB;
 
                 Log("Using embedded NNUE with HalfKA_v2_hm network " + networkToLoad);
-                string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
+                string resourceName = networkToLoad.Replace(".nnue", string.Empty);
 
                 object? o = Resources.ResourceManager.GetObject(resourceName);
                 if (o == null)
@@ -127,7 +120,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         public static void ReadHeader(BinaryReader br)
         {
-            
+
 
             uint version = br.ReadUInt32();
             if (version != VersionValue)
@@ -138,7 +131,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             uint hashValue = br.ReadUInt32();
             uint netHash = LayerStack[0].GetHashValue();
             uint ftHash = FeatureTransformer.HashValue;
-            uint finalHash = (netHash ^ ftHash);
+            uint finalHash = netHash ^ ftHash;
 
             if (hashValue != finalHash)
             {
@@ -167,7 +160,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int GetEvaluation(Position pos, bool adjusted = false)
         {
-            ref AccumulatorPSQT Accumulator = ref *(pos.State->Accumulator);
+            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
             return GetEvaluation(pos, ref Accumulator, adjusted);
         }
 
@@ -186,7 +179,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             if (adjusted)
             {
-                v = (((1024 - delta) * psqt + (1024 + delta) * positional) / (1024 * OutputScale));
+                v = (((1024 - delta) * psqt) + ((1024 + delta) * positional)) / (1024 * OutputScale);
             }
             else
             {
@@ -319,7 +312,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
             const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
 
-            int ci = (RelativeDimensions * index);
+            int ci = RelativeDimensions * index;
             for (int j = 0; j < NumChunks; j++)
             {
                 accumulation[j] = Avx2.Subtract(accumulation[j], FeatureTransformer.Weights[ci + j]);
@@ -327,7 +320,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
-                psqtAccumulation[j] = Sub256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
+                psqtAccumulation[j] = Sub256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
             }
         }
 
@@ -344,7 +337,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
             const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
 
-            int ci = (RelativeDimensions * index);
+            int ci = RelativeDimensions * index;
             for (int j = 0; j < NumChunks; j++)
             {
                 accumulation[j] = Avx2.Add(accumulation[j], FeatureTransformer.Weights[ci + j]);
@@ -352,7 +345,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
-                psqtAccumulation[j] = Add256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + j * RelativeTileHeight]);
+                psqtAccumulation[j] = Add256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
             }
 
         }
@@ -412,7 +405,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int Orient(int perspective, int s, int ksq = 0)
         {
-            return (s ^ (perspective * Squares.A8) ^ ((GetIndexFile(ksq) < Files.E ? 1 : 0) * Squares.H1));
+            return s ^ (perspective * Squares.A8) ^ ((GetIndexFile(ksq) < Files.E ? 1 : 0) * Squares.H1);
         }
 
         /// <summary>
@@ -425,7 +418,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             int orientSq = Orient(perspective, s, ksq);
             uint psqI = PieceSquareIndex[perspective][fishPT];
-            int fishIndex = (int)(orientSq + psqI + PS_NB * KingBuckets[o_ksq]);
+            int fishIndex = (int)(orientSq + psqI + (PS_NB * KingBuckets[o_ksq]));
             return fishIndex;
         }
 
@@ -438,7 +431,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         [MethodImpl(Inline)]
         public static int FishPiece(int pc, int pt)
         {
-            return ((pt + 1) + (pc * 8));
+            return pt + 1 + (pc * 8);
         }
 
 
@@ -491,25 +484,25 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static void Trace(Position pos)
         {
-            char[][] board = new char[3 * 8 + 1][];
-            for (int i = 0; i < 3 * 8 + 1; i++)
+            char[][] board = new char[(3 * 8) + 1][];
+            for (int i = 0; i < (3 * 8) + 1; i++)
             {
-                board[i] = new char[8 * 8 + 2];
+                board[i] = new char[(8 * 8) + 2];
                 Array.Fill(board[i], ' ');
             }
 
 
 
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
-                board[row][8 * 8 + 1] = '\0';
+                board[row][(8 * 8) + 1] = '\0';
             }
 
             void writeSquare(int file, int rank, int pc, int value)
             {
                 const string PieceToChar = " PNBRQK  pnbrqk";
 
-                int x = (file) * 8;
+                int x = file * 8;
                 int y = (7 - rank) * 3;
 
                 for (int i = 1; i < 8; i++)
@@ -546,7 +539,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
-            ref AccumulatorPSQT Accumulator = ref *(pos.State->Accumulator);
+            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {
@@ -575,7 +568,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -608,25 +601,25 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static void TracePieceValues(int pieceType, int pieceColor)
         {
-            char[][] board = new char[3 * 8 + 1][];
-            for (int i = 0; i < 3 * 8 + 1; i++)
+            char[][] board = new char[(3 * 8) + 1][];
+            for (int i = 0; i < (3 * 8) + 1; i++)
             {
-                board[i] = new char[8 * 8 + 2];
+                board[i] = new char[(8 * 8) + 2];
                 Array.Fill(board[i], ' ');
             }
 
 
 
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
-                board[row][8 * 8 + 1] = '\0';
+                board[row][(8 * 8) + 1] = '\0';
             }
 
             void writeSquare(int file, int rank, int pc, int value)
             {
                 const string PieceToChar = " PNBRQK  pnbrqk";
 
-                int x = (file) * 8;
+                int x = file * 8;
                 int y = (7 - rank) * 3;
 
                 for (int i = 1; i < 8; i++)
@@ -687,7 +680,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -726,19 +719,19 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static class UniquePiece
         {
-            public const uint PS_NONE       =  0;
-            public const uint PS_W_PAWN     =  0;
-            public const uint PS_B_PAWN     =  1 * SquareNB;
-            public const uint PS_W_KNIGHT   =  2 * SquareNB;
-            public const uint PS_B_KNIGHT   =  3 * SquareNB;
-            public const uint PS_W_BISHOP   =  4 * SquareNB;
-            public const uint PS_B_BISHOP   =  5 * SquareNB;
-            public const uint PS_W_ROOK     =  6 * SquareNB;
-            public const uint PS_B_ROOK     =  7 * SquareNB;
-            public const uint PS_W_QUEEN    =  8 * SquareNB;
-            public const uint PS_B_QUEEN    =  9 * SquareNB;
-            public const uint PS_KING       = 10 * SquareNB;
-            public const uint PS_NB         = 11 * SquareNB;
+            public const uint PS_NONE = 0;
+            public const uint PS_W_PAWN = 0;
+            public const uint PS_B_PAWN = 1 * SquareNB;
+            public const uint PS_W_KNIGHT = 2 * SquareNB;
+            public const uint PS_B_KNIGHT = 3 * SquareNB;
+            public const uint PS_W_BISHOP = 4 * SquareNB;
+            public const uint PS_B_BISHOP = 5 * SquareNB;
+            public const uint PS_W_ROOK = 6 * SquareNB;
+            public const uint PS_B_ROOK = 7 * SquareNB;
+            public const uint PS_W_QUEEN = 8 * SquareNB;
+            public const uint PS_B_QUEEN = 9 * SquareNB;
+            public const uint PS_KING = 10 * SquareNB;
+            public const uint PS_NB = 11 * SquareNB;
         }
     }
 }

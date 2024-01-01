@@ -1,25 +1,18 @@
-﻿using System.Diagnostics;
-using System.Reflection;
-using System.Text.RegularExpressions;
+﻿using System.Reflection;
 
-using LTChess.Logic.Book;
-using LTChess.Logic.NN;
-using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Threads;
 
-using static LTChess.Logic.Search.Search;
-
-namespace LTChess.Logic.Core
+namespace LTChess.Logic.UCI
 {
-    public unsafe class UCI
+    public unsafe class UCIClient
     {
 
         private Position pos;
         private SearchInformation info;
         private ThreadSetup setup;
 
-        public const string LogFileName = @".\ucilog.txt";
+        private const string LogFileName = @".\ucilog.txt";
 
         /// <summary>
         /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
@@ -33,7 +26,7 @@ namespace LTChess.Logic.Core
 
         public static bool Active = false;
 
-        public UCI()
+        public UCIClient()
         {
             ProcessUCIOptions();
 
@@ -102,7 +95,7 @@ namespace LTChess.Logic.Core
 
                     sw.Flush();
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     Console.WriteLine("ERROR LogString('" + s + "') failed!");
                     Console.WriteLine(e.ToString());
@@ -115,7 +108,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         /// <param name="cmd">Set to the command, which is the first word in the input</param>
         /// <returns>The remaining words in the input, which are parameters for the command</returns>
-        public string[] ReceiveString(out string cmd)
+        private string[] ReceiveString(out string cmd)
         {
             string input = Console.ReadLine();
             if (input == null || input.Length == 0)
@@ -160,7 +153,7 @@ namespace LTChess.Logic.Core
         }
 
         /// <summary>
-        /// The main loop of the UCI, which handles commands sent by UCI's.
+        /// Handles commands sent by UCI's.
         /// </summary>
         private void InputLoop()
         {
@@ -224,7 +217,7 @@ namespace LTChess.Logic.Core
                     {
                         if (EnableAssertions)
                         {
-                            Assert(param[0] == "fen", 
+                            Assert(param[0] == "fen",
                                 "The first parameter for a 'position' UCI command was '" + param[0] + "', but it should have been 'fen'! " +
                                 "A 'position' command must either be followed by 'startpos' for the initial position, or by 'fen ...' for an arbitrary FEN.");
                         }
@@ -281,7 +274,7 @@ namespace LTChess.Logic.Core
 
                     if (UseSimple768)
                     {
-                        Simple768.RefreshAccumulator(info.Position, ref (*info.Position.State->Accumulator));
+                        Simple768.RefreshAccumulator(info.Position, ref *info.Position.State->Accumulator);
                     }
                 }
                 else if (cmd == "go")
@@ -423,10 +416,10 @@ namespace LTChess.Logic.Core
                     {
                         Assert(info.MaxNodes == MaxSearchNodes,
                             "An infinite search command should have MaxNodes == " + MaxSearchNodes + ", but it was " + info.MaxNodes);
-                        
+
                         Assert(tm.MaxSearchTime == MaxSearchTime,
                             "An infinite search command should have MaxSearchTime == " + MaxSearchTime + ", but it was " + tm.MaxSearchTime);
-                        
+
                         Assert(info.MaxDepth == MaxDepth,
                             "An infinite search command should have MaxDepth == " + MaxDepth + ", but it was " + info.MaxDepth);
                     }
@@ -500,7 +493,7 @@ namespace LTChess.Logic.Core
 
                 if (EnableAssertions)
                 {
-                    Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove, 
+                    Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove,
                         "MainThread's best move = " + SearchPool.MainThread.RootMoves[0].Move + " was different than the BestThread's = " + bestThreadMove + "!");
                 }
 
@@ -538,7 +531,7 @@ namespace LTChess.Logic.Core
         {
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
-            Search.Search.HandleNewGame();
+            Search.Searches.HandleNewGame();
         }
 
         private void HandleSetOption(string optName, string optValue)
@@ -640,7 +633,7 @@ namespace LTChess.Logic.Core
 
                 //  Most options are numbers and are called "spin"
                 //  If they are true/false, they are called "check"
-                string fieldType = (field.FieldType == typeof(bool) ? "check" : "spin");
+                string fieldType = field.FieldType == typeof(bool) ? "check" : "spin";
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
                 UCIOption opt = new UCIOption(fieldName, fieldType, defaultValue, field);
@@ -675,6 +668,6 @@ namespace LTChess.Logic.Core
 
             Options[nameof(SPSA_ASPIRATION_MARGIN)].SetMinMax(5, 80);
 #endif
-            }
+        }
     }
 }

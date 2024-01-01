@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.InteropServices;
 
 using LTChess.Logic.NN.HalfKP.Layers;
 
@@ -57,7 +52,7 @@ namespace LTChess.Logic.NN.HalfKP
 
             int bytes;
             bytes = (fc_0.BufferSize + fc_1.BufferSize + fc_2.BufferSize) * sizeof(int);
-            bytes += ((ac_0.BufferSize) + (ac_1.BufferSize) * sizeof(sbyte));
+            bytes += ac_0.BufferSize + (ac_1.BufferSize * sizeof(sbyte));
             _bytesToAlloc = (nuint)bytes;
 
             _ThreadBuffer = new ThreadLocal<nuint>(() => (nuint)AlignedAllocZeroed(_bytesToAlloc, AllocAlignment));
@@ -91,13 +86,13 @@ namespace LTChess.Logic.NN.HalfKP
             var _buffer = _ThreadBuffer.Value;
             NativeMemory.Clear((void*)_buffer, _bytesToAlloc);
 
-            Span<int>   fc_0_out     = new Span<int>   ((void*) (_buffer + fc_0_idx    ), fc_0.BufferSize);
-            Span<sbyte> ac_0_out     = new Span<sbyte> ((void*) (_buffer + ac_0_idx    ), ac_0.BufferSize);
+            Span<int> fc_0_out = new Span<int>((void*)(_buffer + fc_0_idx), fc_0.BufferSize);
+            Span<sbyte> ac_0_out = new Span<sbyte>((void*)(_buffer + ac_0_idx), ac_0.BufferSize);
 
-            Span<int>   fc_1_out     = new Span<int>   ((void*) (_buffer + fc_1_idx    ), fc_1.BufferSize);
-            Span<sbyte> ac_1_out     = new Span<sbyte> ((void*) (_buffer + ac_1_idx    ), ac_1.BufferSize);
+            Span<int> fc_1_out = new Span<int>((void*)(_buffer + fc_1_idx), fc_1.BufferSize);
+            Span<sbyte> ac_1_out = new Span<sbyte>((void*)(_buffer + ac_1_idx), ac_1.BufferSize);
 
-            Span<int>   fc_2_out     = new Span<int>   ((void*) (_buffer + fc_2_idx    ), fc_2.BufferSize);
+            Span<int> fc_2_out = new Span<int>((void*)(_buffer + fc_2_idx), fc_2.BufferSize);
 
             fc_0.Propagate(transformedFeatures, fc_0_out);
             ac_0.Propagate(fc_0_out, ac_0_out);

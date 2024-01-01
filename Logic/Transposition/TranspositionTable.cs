@@ -5,11 +5,11 @@ namespace LTChess.Logic.Transposition
     public static unsafe class TranspositionTable
     {
 
-        public const int TT_BOUND_MASK = (0x3             );
-        public const int TT_PV_MASK    = (0x4             );
-        public const int TT_AGE_MASK   = (0xF8            );
-        public const int TT_AGE_INC    = (0x8             );
-        public const int TT_AGE_CYCLE  = (255 + TT_AGE_INC);
+        public const int TT_BOUND_MASK = 0x3;
+        public const int TT_PV_MASK = 0x4;
+        public const int TT_AGE_MASK = 0xF8;
+        public const int TT_AGE_INC = 0x8;
+        public const int TT_AGE_CYCLE = 255 + TT_AGE_INC;
 
         /// <summary>
         /// The minimum number of TTClusters for hashfull to work properly.
@@ -62,8 +62,8 @@ namespace LTChess.Logic.Transposition
                 NativeMemory.AlignedFree(Clusters);
             }
 
-            ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*) AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
+            ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
+            Clusters = (TTCluster*)AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();
@@ -80,7 +80,7 @@ namespace LTChess.Logic.Transposition
 
             for (ulong i = 0; i < ClusterCount; i++)
             {
-                TTEntry* cluster = (TTEntry*) &Clusters[i];
+                TTEntry* cluster = (TTEntry*)&Clusters[i];
 
                 Clusters[i].Clear();
             }
@@ -94,7 +94,7 @@ namespace LTChess.Logic.Transposition
         [MethodImpl(Inline)]
         public static TTCluster* GetCluster(ulong hash)
         {
-            return (Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64)));
+            return Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64));
         }
 
 
@@ -110,9 +110,9 @@ namespace LTChess.Logic.Transposition
         public static bool Probe(ulong hash, out TTEntry* tte)
         {
             TTCluster* cluster = GetCluster(hash);
-            tte = (TTEntry*) cluster;
+            tte = (TTEntry*)cluster;
 
-            var key = (ushort) hash;
+            var key = (ushort)hash;
 
             for (int i = 0; i < EntriesPerCluster; i++)
             {
@@ -136,8 +136,8 @@ namespace LTChess.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((replace->_depth - (TT_AGE_CYCLE + Age - replace->AgePVType) & TT_AGE_MASK) >
-                    (  tte[i]._depth - (TT_AGE_CYCLE + Age -   tte[i].AgePVType) & TT_AGE_MASK))
+                if (((replace->_depth - (TT_AGE_CYCLE + Age - replace->AgePVType)) & TT_AGE_MASK) >
+                    ((tte[i]._depth - (TT_AGE_CYCLE + Age - tte[i].AgePVType)) & TT_AGE_MASK))
                 {
                     replace = &tte[i];
                 }
@@ -179,7 +179,7 @@ namespace LTChess.Logic.Transposition
 
             for (int i = 0; i < MinTTClusters; i++)
             {
-                TTEntry* cluster = (TTEntry*) &Clusters[i];
+                TTEntry* cluster = (TTEntry*)&Clusters[i];
 
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
@@ -250,11 +250,11 @@ namespace LTChess.Logic.Transposition
             int entries = Beta + Alpha + Exact;
 
             //  "Full" is the total number of entries of any age in the TT.
-            Log("Full:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (((double)entries / (ClusterCount * EntriesPerCluster)) * 100) + "%");
+            Log("Full:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + ((double)entries / (ClusterCount * EntriesPerCluster) * 100) + "%");
 
             //  "Recent" is the number of entries that have the same age as the TT's Age.
-            Log("Recent:\t " + recentEntries + " / " + (ClusterCount * EntriesPerCluster) + " = " + (((double)recentEntries / (ClusterCount * EntriesPerCluster)) * 100) + "%");
-            
+            Log("Recent:\t " + recentEntries + " / " + (ClusterCount * EntriesPerCluster) + " = " + ((double)recentEntries / (ClusterCount * EntriesPerCluster) * 100) + "%");
+
             //  "Slots[0,1,2]" are the number of entries that exist in each TTCluster slot
             Log("Slots:\t " + slots[0] + " / " + slots[1] + " / " + slots[2]);
             Log("Alpha:\t " + Alpha);

@@ -45,8 +45,8 @@
         BK = 4,
         BQ = 8,
 
-        White = (WK | WQ),
-        Black = (BK | BQ),
+        White = WK | WQ,
+        Black = BK | BQ,
 
         All = WK | WQ | BK | BQ,
     }

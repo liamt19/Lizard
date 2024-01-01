@@ -1,13 +1,7 @@
-﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System;
-using System.Numerics;
-using System.Reflection;
+
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
@@ -29,7 +23,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         private readonly int kStart;
 
         public ClippedReLU(int inputDims)
-        {   
+        {
             InputDimensions = inputDims;
             OutputDimensions = InputDimensions;
 
@@ -47,8 +41,8 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         /// </summary>
         public void Propagate(Span<int> input, Span<sbyte> output)
         {
-            int* inputPtr = (int*) Unsafe.AsPointer(ref input[0]);
-            int* outputPtr = (int*) Unsafe.AsPointer(ref output[0]);
+            int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*)Unsafe.AsPointer(ref output[0]);
 
             int NumChunks = InputDimensions / SimdWidth;
             Vector256<sbyte> Zero = Vector256<sbyte>.Zero;
@@ -57,12 +51,12 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             for (int i = 0; i < NumChunks; i++)
             {
                 Vector256<short> words0 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 0) * VectorSize)),
-                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 1) * VectorSize))), WeightScaleBits);
+                    Avx.LoadDquVector256(inputPtr + (((i * 4) + 0) * VectorSize)),
+                    Avx.LoadDquVector256(inputPtr + (((i * 4) + 1) * VectorSize))), WeightScaleBits);
 
                 Vector256<short> words1 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 2) * VectorSize)),
-                    Avx.LoadDquVector256(inputPtr + ((i * 4 + 3) * VectorSize))), WeightScaleBits);
+                    Avx.LoadDquVector256(inputPtr + (((i * 4) + 2) * VectorSize)),
+                    Avx.LoadDquVector256(inputPtr + (((i * 4) + 3) * VectorSize))), WeightScaleBits);
 
                 Vector256<sbyte> packed = Avx2.PackSignedSaturate(words0, words1);
                 Vector256<sbyte> max = Avx2.Max(packed, Zero);
@@ -73,7 +67,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             for (int i = kStart; i < InputDimensions; ++i)
             {
-                output[i] = (sbyte) Math.Max(0, Math.Min(127, input[i] >> WeightScaleBits));
+                output[i] = (sbyte)Math.Max(0, Math.Min(127, input[i] >> WeightScaleBits));
             }
         }
 

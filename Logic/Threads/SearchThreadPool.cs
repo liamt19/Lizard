@@ -1,14 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-
-using LTChess.Logic.Search;
-
-using static LTChess.Logic.Threads.SearchThread;
+﻿using System.Text;
 
 namespace LTChess.Logic.Threads
 {
@@ -65,7 +55,7 @@ namespace LTChess.Logic.Threads
 
             this.ThreadCount = newThreadCount;
             Threads = new SearchThread[ThreadCount];
-            
+
 
             for (int i = 0; i < ThreadCount; i++)
             {
@@ -134,13 +124,13 @@ namespace LTChess.Logic.Threads
 
                 if (EnableAssertions)
                 {
-                    Assert(td.RootPosition.Owner == td, 
-                        "The RootPosition for the thread " + td.ToString() + " had an owner of " + td.RootPosition.Owner.ToString() + "! " + 
+                    Assert(td.RootPosition.Owner == td,
+                        "The RootPosition for the thread " + td.ToString() + " had an owner of " + td.RootPosition.Owner.ToString() + "! " +
                         "All search threads must be the owner of their RootPosition objects. " +
                         "This can only happen when a SearchThread's RootPosition object is overwritten with a different position, " +
                         "and if the RootPosition field is readonly (which it should be) this means there is UB.");
                 }
-                
+
                 foreach (var move in setup.SetupMoves)
                 {
                     td.RootPosition.MakeMove(move);
@@ -148,7 +138,7 @@ namespace LTChess.Logic.Threads
 
                 if (EnableAssertions)
                 {
-                    if ((td.RootPosition.State->Hash) != (rootPosition.State->Hash))
+                    if (td.RootPosition.State->Hash != rootPosition.State->Hash)
                     {
                         StringBuilder threadHashes = new StringBuilder();
                         var temp = td.RootPosition.StartingState;
@@ -173,16 +163,16 @@ namespace LTChess.Logic.Threads
                         if (searchHashes.Length > 3)
                             searchHashes.Remove(searchHashes.Length - 2, 2);
 
-                        Assert((td.RootPosition.State->Hash) == (rootPosition.State->Hash),
-                            "The RootPosition for the thread " + td.ToString() + " had a hash of " + (td.RootPosition.State->Hash) + 
-                            ", but it should have been " + (rootPosition.State->Hash) + ". " +
+                        Assert(td.RootPosition.State->Hash == rootPosition.State->Hash,
+                            "The RootPosition for the thread " + td.ToString() + " had a hash of " + td.RootPosition.State->Hash +
+                            ", but it should have been " + rootPosition.State->Hash + ". " +
                             "The previous hashes of the thread RootPosition are as follows: [" + threadHashes.ToString() + "]. " +
                             "The previous hashes of the should have looked like this: [" + searchHashes.ToString() + "].");
                     }
                 }
             }
 
-            if (size == 1 && UCI.Active && OneLegalMoveMode)
+            if (size == 1 && UCIClient.Active && OneLegalMoveMode)
             {
                 //  If we only have one legal move while running in UCI mode, set the search time to be at most 100 ms.
                 //  There is no point in searching this node longer, since the TT will be cleared anyways.

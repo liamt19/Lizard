@@ -1,13 +1,7 @@
-﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System;
-using System.Net;
-using System.Numerics;
-using System.Reflection;
+
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
@@ -23,9 +17,9 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         static AffineTransformSparse()
         {
             Zero = Vector256.Create(0);
-            Eight = Vector128.Create((ushort) 8);
+            Eight = Vector128.Create((ushort)8);
 
-            LookupIndices = (Vector128<ushort>*) AlignedAllocZeroed((nuint)(sizeof(Vector128<ushort>) * 256), AllocAlignment);
+            LookupIndices = (Vector128<ushort>*)AlignedAllocZeroed((nuint)(sizeof(Vector128<ushort>) * 256), AllocAlignment);
 
             ushort[] temp = new ushort[8];
             for (int i = 0; i < 256; i++)
@@ -44,7 +38,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 LookupIndices[i] = Sse2.LoadVector128((ushort*)Unsafe.AsPointer(ref temp[0]));
             }
 
-            LookupCount = (int*) AlignedAllocZeroed(sizeof(int) * 256);
+            LookupCount = (int*)AlignedAllocZeroed(sizeof(int) * 256);
             for (int i = 0; i < 256; i++)
             {
                 int j = i;
@@ -54,7 +48,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                     j &= j - 1;
                     ++k;
                 }
-                LookupCount[i] = (int) k;
+                LookupCount[i] = (int)k;
             }
         }
 
@@ -90,16 +84,16 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
             BufferSize = CeilToMultiple((short)OutputDimensions, MaxSimdWidth);
             BufferSizeBytes = BufferSize * sizeof(int);
 
-            Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
-            Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
+            Weights = (Vector256<sbyte>*)AlignedAllocZeroed((nuint)(OutputDimensions * PaddedInputDimensions / VSize.SByte * 32), AllocAlignment);
+            Biases = (Vector256<int>*)AlignedAllocZeroed((nuint)(Math.Max(1, OutputDimensions / VSize.Int) * 32), AllocAlignment);
 
             NNZ_Size = CeilToMultiple((short)InputDimensions, 8) / 4;
             NumRegs = OutputDimensions / VSize.UInt;
 
-            WeightOffset = (OutputDimensions * ChunkSize) / VSize.SByte;
+            WeightOffset = OutputDimensions * ChunkSize / VSize.SByte;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(Inline)]
         public int FindNNZ(int* input, ushort* outputPtr)
         {
             const int InputSimdWidth = VSize.Int;
@@ -116,10 +110,10 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 uint nnz = 0;
                 for (int j = 0; j < InputsPerChunk; j++)
                 {
-                    Vector256<int> chunk = Avx.LoadDquVector256(input + ((i * InputsPerChunk + j) * VSize.Int));
+                    Vector256<int> chunk = Avx.LoadDquVector256(input + (((i * InputsPerChunk) + j) * VSize.Int));
                     Vector256<int> cmpgt = Avx2.CompareGreaterThan(chunk, Zero);
                     int mask = Avx.MoveMask(cmpgt.AsSingle());
-                    nnz |= (uint)(mask) << (j * InputSimdWidth);
+                    nnz |= (uint)mask << (j * InputSimdWidth);
                 }
 
                 for (int j = 0; j < OutputsPerChunk; j++)
@@ -164,7 +158,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
             for (int k = 0; k < NumRegs; k++)
             {
-                Avx.Store((outputPtr + (k * VSize.Int)), outs[k]);
+                Avx.Store(outputPtr + (k * VSize.Int), outs[k]);
             }
         }
 
@@ -173,7 +167,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         {
 
             var stream = br.BaseStream;
-            long toRead = (long)((sizeof(int) * (OutputDimensions)) + (sizeof(sbyte) * (OutputDimensions * PaddedInputDimensions)));
+            long toRead = (long)((sizeof(int) * OutputDimensions) + (sizeof(sbyte) * OutputDimensions * PaddedInputDimensions));
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("HalfKA AffineTransformSparse's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -242,7 +236,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         [MethodImpl(Inline)]
         private uint GetWeightIndex(int i)
         {
-            return (uint) ((i / 4) % (PaddedInputDimensions / 4) * OutputDimensions * 4 + i / PaddedInputDimensions * 4 + i % 4);
+            return (uint)((i / 4 % (PaddedInputDimensions / 4) * OutputDimensions * 4) + (i / PaddedInputDimensions * 4) + (i % 4));
         }
     }
 }

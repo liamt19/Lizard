@@ -1,10 +1,4 @@
-﻿using System.Text;
-using LTChess.Logic.NN;
-using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.Simple768;
-using LTChess.Logic.Threads;
-
-namespace LTChess.Logic.Search
+﻿namespace LTChess.Logic.Search
 {
     public struct SearchInformation
     {
@@ -55,7 +49,7 @@ namespace LTChess.Logic.Search
 
         public TimeManager TimeManager;
 
-        public bool IsInfinite => (MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime);
+        public bool IsInfinite => MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime;
 
         public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
         {

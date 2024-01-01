@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-
-
-namespace LTChess.Logic.Data
+﻿namespace LTChess.Logic.Data
 {
 
     /// <summary>
@@ -118,7 +115,7 @@ namespace LTChess.Logic.Data
         {
             for (int s = 0; s <= 63; ++s)
             {
-                SquareBB[s] = (1UL << s);
+                SquareBB[s] = 1UL << s;
             }
         }
 
@@ -141,7 +138,7 @@ namespace LTChess.Logic.Data
                         //  Keep moving in this direction until we move off the board,
                         //  masking in squares along the way,
                         tempSq += dir;
-                        bishopMask |= (1UL << tempSq);
+                        bishopMask |= 1UL << tempSq;
                     }
                 }
                 BishopRays[sq] = bishopMask;
@@ -152,21 +149,21 @@ namespace LTChess.Logic.Data
         {
             for (int s1 = 0; s1 < 64; s1++)
             {
-                RayBB[s1]  = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
-                XrayBB[s1] = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                RayBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                XrayBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
 
 
                 for (int s2 = 0; s2 < 64; s2++)
                 {
                     if ((RookRays[s1] & SquareBB[s2]) != 0)
                     {
-                        RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
-                        XrayBB[s1][s2] = (GetRookMoves(SquareBB[s1], s2) & RookRays[s1]) | (SquareBB[s1] | SquareBB[s2]);
+                        RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | SquareBB[s1] | SquareBB[s2];
+                        XrayBB[s1][s2] = (GetRookMoves(SquareBB[s1], s2) & RookRays[s1]) | SquareBB[s1] | SquareBB[s2];
                     }
                     else if ((BishopRays[s1] & SquareBB[s2]) != 0)
                     {
-                        RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | (SquareBB[s1] | SquareBB[s2]);
-                        XrayBB[s1][s2] = (GetBishopMoves(SquareBB[s1], s2) & BishopRays[s1]) | (SquareBB[s1] | SquareBB[s2]);
+                        RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | SquareBB[s1] | SquareBB[s2];
+                        XrayBB[s1][s2] = (GetBishopMoves(SquareBB[s1], s2) & BishopRays[s1]) | SquareBB[s1] | SquareBB[s2];
                     }
                     else
                     {
@@ -183,7 +180,7 @@ namespace LTChess.Logic.Data
             {
                 foreach (int offset in new int[] { 7, 8, 9, -1, 1, -7, -8, -9 }.Where(x => DirectionOK(i, x)))
                 {
-                    NeighborsMask[i] |= (1UL << (i + offset));
+                    NeighborsMask[i] |= 1UL << (i + offset);
                 }
             }
         }
@@ -194,7 +191,7 @@ namespace LTChess.Logic.Data
             {
                 foreach (int offset in new int[] { 6, 10, 15, 17, -6, -10, -15, -17 }.Where(x => DirectionOK(i, x)))
                 {
-                    KnightMasks[i] |= (1UL << (i + offset));
+                    KnightMasks[i] |= 1UL << (i + offset);
                 }
             }
         }
@@ -207,24 +204,24 @@ namespace LTChess.Logic.Data
             for (int i = 0; i < 64; i++)
             {
                 ulong whiteAttack = 0;
-                ulong whiteMove = (1UL << (i + 8));
+                ulong whiteMove = 1UL << (i + 8);
 
                 ulong blackAttack = 0;
-                ulong blackMove = (1UL << (i - 8));
+                ulong blackMove = 1UL << (i - 8);
 
                 IndexToCoord(i, out int x, out int y);
 
-                int wy = (y + 1);
-                int by = (y - 1);
+                int wy = y + 1;
+                int by = y - 1;
 
                 if (y == 1)
                 {
-                    whiteMove |= (1UL << (i + 16));
+                    whiteMove |= 1UL << (i + 16);
                 }
 
                 if (y == 6)
                 {
-                    blackMove |= (1UL << (i - 16));
+                    blackMove |= 1UL << (i - 16);
                 }
 
                 if (x > 0)
@@ -234,19 +231,19 @@ namespace LTChess.Logic.Data
                         BlackPawnAttackMasks[i] = 0;
                         PawnAttackMasks[Color.Black][i] = 0;
 
-                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
+                        whiteAttack |= 1UL << CoordToIndex(x - 1, wy);
                     }
                     else if (i > H7)
                     {
                         WhitePawnAttackMasks[i] = 0;
                         PawnAttackMasks[Color.White][i] = 0;
 
-                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
+                        blackAttack |= 1UL << CoordToIndex(x - 1, by);
                     }
                     else
                     {
-                        whiteAttack |= (1UL << CoordToIndex(x - 1, wy));
-                        blackAttack |= (1UL << CoordToIndex(x - 1, by));
+                        whiteAttack |= 1UL << CoordToIndex(x - 1, wy);
+                        blackAttack |= 1UL << CoordToIndex(x - 1, by);
                     }
 
                 }
@@ -258,19 +255,19 @@ namespace LTChess.Logic.Data
                         BlackPawnAttackMasks[i] = 0;
                         PawnAttackMasks[Color.Black][i] = 0;
 
-                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
+                        whiteAttack |= 1UL << CoordToIndex(x + 1, wy);
                     }
                     else if (i > H7)
                     {
                         WhitePawnAttackMasks[i] = 0;
                         PawnAttackMasks[Color.White][i] = 0;
 
-                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
+                        blackAttack |= 1UL << CoordToIndex(x + 1, by);
                     }
                     else
                     {
-                        whiteAttack |= (1UL << CoordToIndex(x + 1, wy));
-                        blackAttack |= (1UL << CoordToIndex(x + 1, by));
+                        whiteAttack |= 1UL << CoordToIndex(x + 1, wy);
+                        blackAttack |= 1UL << CoordToIndex(x + 1, by);
                     }
                 }
 
@@ -291,8 +288,8 @@ namespace LTChess.Logic.Data
 
             for (int s1 = 0; s1 < 64; s1++)
             {
-                LineBB[s1]    = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
-                BetweenBB[s1] = (ulong*) AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                LineBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                BetweenBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
 
                 int f1 = GetIndexFile(s1);
                 int r1 = GetIndexRank(s1);
@@ -303,12 +300,12 @@ namespace LTChess.Logic.Data
 
                     if ((RookRays[s1] & SquareBB[s2]) != 0)
                     {
-                        BetweenBB[s1][s2] = (GetRookMoves(SquareBB[s2], s1) & GetRookMoves(SquareBB[s1], s2));
+                        BetweenBB[s1][s2] = GetRookMoves(SquareBB[s2], s1) & GetRookMoves(SquareBB[s1], s2);
                         LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB[s2];
                     }
                     else if ((BishopRays[s1] & SquareBB[s2]) != 0)
                     {
-                        BetweenBB[s1][s2] = (GetBishopMoves(SquareBB[s2], s1) & GetBishopMoves(SquareBB[s1], s2));
+                        BetweenBB[s1][s2] = GetBishopMoves(SquareBB[s2], s1) & GetBishopMoves(SquareBB[s1], s2);
                         LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB[s2];
                     }
                     else
@@ -328,7 +325,7 @@ namespace LTChess.Logic.Data
                 for (int moveIndex = 0; moveIndex < MaxListCapacity; moveIndex++)
                 {
                     //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
-                    LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2.25 + 0.25);
+                    LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
 
                     if (LogarithmicReductionTable[depth][moveIndex] < 1)
                     {
@@ -343,8 +340,8 @@ namespace LTChess.Logic.Data
             LMPTable[improving] = new int[MaxPly];
             for (int depth = 0; depth < MaxPly; depth++)
             {
-                LMPTable[not_improving][depth] = (3 + depth * depth) / 2;
-                LMPTable[improving][depth] = (3 + depth * depth);
+                LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
+                LMPTable[improving][depth] = 3 + (depth * depth);
             }
         }
     }

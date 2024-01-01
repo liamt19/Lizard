@@ -50,12 +50,12 @@
 
             var pawnBB = (ourColor == Color.White) ? BlackPawnAttackMasks : WhitePawnAttackMasks;
 
-            ulong ourDiags = (GetBishopMoves(us | them, idx) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]));
-            ulong ourStraights = (GetRookMoves(us | them, idx) & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]));
+            ulong ourDiags = GetBishopMoves(us | them, idx) & (bb.Pieces[Piece.Bishop] | bb.Pieces[Piece.Queen]);
+            ulong ourStraights = GetRookMoves(us | them, idx) & (bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Queen]);
 
-            ulong ourKnightAttacks = (bb.Pieces[Piece.Knight] & KnightMasks[idx]);
-            ulong ourPawnAttacks = (bb.Pieces[Piece.Pawn] & pawnBB[idx]);
-            ulong ourKingDefender = (SquareBB[bb.KingIndex(ourColor)] & NeighborsMask[idx]);
+            ulong ourKnightAttacks = bb.Pieces[Piece.Knight] & KnightMasks[idx];
+            ulong ourPawnAttacks = bb.Pieces[Piece.Pawn] & pawnBB[idx];
+            ulong ourKingDefender = SquareBB[bb.KingIndex(ourColor)] & NeighborsMask[idx];
             ulong defenders = (ourDiags | ourStraights | ourKnightAttacks | ourPawnAttacks | ourKingDefender) & us;
 
             return defenders;

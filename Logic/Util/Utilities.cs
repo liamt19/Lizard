@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
+
 using LTChess.Logic.Threads;
 
 namespace LTChess.Logic.Util
@@ -43,7 +44,7 @@ namespace LTChess.Logic.Util
         public const ulong Corners = 0x8100000000000081;
 
         public const ulong Empty = 0UL;
-        public const ulong AllSquares = ~(0UL);
+        public const ulong AllSquares = ~0UL;
         public const ulong DarkSquares = 0xAA55AA55AA55AA55UL;
         public const ulong LightSquares = 0x55AA55AA55AA55AAUL;
 
@@ -75,8 +76,8 @@ namespace LTChess.Logic.Util
 
         public static readonly ulong[] LowRanks = new ulong[]
         {
-            (Rank2BB | Rank3BB),
-            (Rank7BB | Rank6BB),
+            Rank2BB | Rank3BB,
+            Rank7BB | Rank6BB,
         };
 
         public const ulong WhiteKingsideMask = (1UL << F1) | (1UL << G1);
@@ -87,7 +88,7 @@ namespace LTChess.Logic.Util
         /// <summary>
         /// A mask of the ranks that outpost squares can be on for each color
         /// </summary>
-        public static readonly ulong[] OutpostSquares = { (Rank4BB | Rank5BB | Rank6BB), (Rank3BB | Rank4BB | Rank5BB) };
+        public static readonly ulong[] OutpostSquares = { Rank4BB | Rank5BB | Rank6BB, Rank3BB | Rank4BB | Rank5BB };
 
 
 
@@ -135,13 +136,13 @@ namespace LTChess.Logic.Util
                 return;
             }
 
-            if (!UCI.Active)
+            if (!UCIClient.Active)
             {
                 Console.WriteLine(s);
             }
             else if (!NO_LOG_FILE)
             {
-                LogString("[LOG]: " + s);
+                UCIClient.LogString("[LOG]: " + s);
             }
 
             Debug.WriteLine(s);
@@ -175,7 +176,7 @@ namespace LTChess.Logic.Util
             Process thisProc = Process.GetCurrentProcess();
             ProcessID = thisProc.Id;
 
-            var selfProcs = Process.GetProcesses().Where(x => (x.ProcessName == thisProc.ProcessName)).ToList();
+            var selfProcs = Process.GetProcesses().Where(x => x.ProcessName == thisProc.ProcessName).ToList();
 
             int concurrencyCount = 0;
             int duplicates = 0;
@@ -248,31 +249,31 @@ namespace LTChess.Logic.Util
                 sb.Append("SkipInit ");
             }
 
-            sb.Append((Avx2.IsSupported ? "Avx2 " : string.Empty));
-            sb.Append((AvxVnni.IsSupported ? "AvxVnni " : string.Empty));
-            sb.Append((Bmi2.IsSupported ? "Bmi2 " : string.Empty));
-            sb.Append((Sse3.IsSupported ? "Sse3 " : string.Empty));
-            sb.Append((Sse42.IsSupported ? "Sse42 " : string.Empty));
+            sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
+            sb.Append(AvxVnni.IsSupported ? "AvxVnni " : string.Empty);
+            sb.Append(Bmi2.IsSupported ? "Bmi2 " : string.Empty);
+            sb.Append(Sse3.IsSupported ? "Sse3 " : string.Empty);
+            sb.Append(Sse42.IsSupported ? "Sse42 " : string.Empty);
 
-            sb.Append((Sse.IsSupported ? "Prefetch " : string.Empty));
-            sb.Append((Popcnt.X64.IsSupported ? "Popcount " : string.Empty));
+            sb.Append(Sse.IsSupported ? "Prefetch " : string.Empty);
+            sb.Append(Popcnt.X64.IsSupported ? "Popcount " : string.Empty);
 #if PEXT
             //  Magic bitboards will only use Pext if "PEXT" is also defined
-            sb.Append((Bmi2.X64.IsSupported ? "Pext " : string.Empty));
+            sb.Append(Bmi2.X64.IsSupported ? "Pext " : string.Empty);
 #endif
-            sb.Append((Lzcnt.X64.IsSupported ? "Lzcnt " : string.Empty));
+            sb.Append(Lzcnt.X64.IsSupported ? "Lzcnt " : string.Empty);
 
             return sb.ToString();
         }
 
-        public static string FormatCurrentTime() => ((new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000"));
+        public static string FormatCurrentTime() => (new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000");
 
         public static class Direction
         {
-            public const int NORTH =  8;
-            public const int EAST  =  1;
+            public const int NORTH = 8;
+            public const int EAST = 1;
             public const int SOUTH = -NORTH;
-            public const int WEST  = -EAST;
+            public const int WEST = -EAST;
 
             public const int NORTH_EAST = NORTH + EAST;
             public const int SOUTH_EAST = SOUTH + EAST;
@@ -340,7 +341,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static ulong GetFileBB(int idx)
         {
-            return (FileABB << GetIndexFile(idx));
+            return FileABB << GetIndexFile(idx);
         }
 
         /// <summary>
@@ -349,7 +350,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static ulong GetRankBB(int idx)
         {
-            return (Rank1BB << (8 * GetIndexRank(idx)));
+            return Rank1BB << (8 * GetIndexRank(idx));
         }
 
 
@@ -570,7 +571,7 @@ namespace LTChess.Logic.Util
 
             for (int y = 7; y >= 0; y--)
             {
-                sb.Append((y + 1) + " |");
+                sb.Append(y + 1 + " |");
                 for (int x = 0; x < 8; x++)
                 {
                     int idx = CoordToIndex(x, y);
@@ -744,7 +745,7 @@ namespace LTChess.Logic.Util
 
             double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
             double nodes = SearchPool.GetNodeCount();
-            int nodesPerSec = ((int)(nodes / (time / 1000)));
+            int nodesPerSec = (int)(nodes / (time / 1000));
 
             int lastValidScore = 0;
 
@@ -753,7 +754,7 @@ namespace LTChess.Logic.Util
             for (int i = 0; i < multiPV; i++)
             {
                 RootMove rm = rootMoves[i];
-                bool moveSearched = (rm.Score != -ScoreInfinite);
+                bool moveSearched = rm.Score != -ScoreInfinite;
 
                 int depth = moveSearched ? thisThread.RootDepth : Math.Max(1, thisThread.RootDepth - 1);
                 int moveScore = moveSearched ? rm.Score : rm.PreviousScore;
@@ -828,7 +829,7 @@ namespace LTChess.Logic.Util
                 {
                     return "mate " + ((-ScoreMate - score) / 2);
                 }
-                
+
                 //return "mate " + mateIn;
             }
             else

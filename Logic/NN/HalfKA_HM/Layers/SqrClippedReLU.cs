@@ -1,13 +1,7 @@
-﻿using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System;
-using System.Numerics;
-using System.Reflection;
+
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKA_HM.Layers
 {
@@ -19,7 +13,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
         public readonly int BufferSize;
         public readonly int BufferSizeBytes;
 
-        private const int VectorSize = (VSize.Int / 2);
+        private const int VectorSize = VSize.Int / 2;
 
         public readonly int NumChunks;
         private readonly int OutputStart;
@@ -38,18 +32,18 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
 
         public void Propagate(Span<int> input, Span<sbyte> output)
         {
-            int*    inputPtr = (int*)   Unsafe.AsPointer(ref input[0]);
-            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);
+            int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
+            sbyte* outputPtr = (sbyte*)Unsafe.AsPointer(ref output[0]);
 
             for (int i = 0; i < NumChunks; i++)
             {
                 Vector128<short> words0 = Sse2.PackSignedSaturate(
-                    Sse3.LoadDquVector128(inputPtr + (i * 4 + 0) * (VectorSize)),
-                    Sse3.LoadDquVector128(inputPtr + (i * 4 + 1) * (VectorSize)));
+                    Sse3.LoadDquVector128(inputPtr + (((i * 4) + 0) * VectorSize)),
+                    Sse3.LoadDquVector128(inputPtr + (((i * 4) + 1) * VectorSize)));
 
                 Vector128<short> words1 = Sse2.PackSignedSaturate(
-                    Sse3.LoadDquVector128(inputPtr + (i * 4 + 2) * (VectorSize)),
-                    Sse3.LoadDquVector128(inputPtr + (i * 4 + 3) * (VectorSize)));
+                    Sse3.LoadDquVector128(inputPtr + (((i * 4) + 2) * VectorSize)),
+                    Sse3.LoadDquVector128(inputPtr + (((i * 4) + 3) * VectorSize)));
 
                 words0 = Sse2.ShiftRightLogical(Sse2.MultiplyHigh(words0, words0), 3);
                 words1 = Sse2.ShiftRightLogical(Sse2.MultiplyHigh(words1, words1), 3);
@@ -59,7 +53,7 @@ namespace LTChess.Logic.NN.HalfKA_HM.Layers
                 Sse2.StoreAligned(outputPtr + (i * VectorSize), packed);
             }
 
-            
+
             for (int i = OutputStart; i < InputDimensions; ++i)
             {
                 output[i] = (sbyte)Math.Min(127L, ((input[i] * input[i]) >> (2 * WeightScaleBits)) / 128);

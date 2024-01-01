@@ -3,8 +3,6 @@
 
 using System.Runtime.InteropServices;
 
-using LTChess.Logic.Data;
-
 namespace LTChess.Logic.Search.Ordering
 {
     public unsafe struct HistoryTable
@@ -15,12 +13,12 @@ namespace LTChess.Logic.Search.Ordering
         public readonly short* MainHistory;
         public const int MainHistoryClamp = 16384;
         public const int MainHistoryPCStride = 4096;
-        public const int MainHistoryElements = (ColorNB * SquareNB * SquareNB);
+        public const int MainHistoryElements = ColorNB * SquareNB * SquareNB;
 
 
         public readonly short* CaptureHistory;
         public const int CaptureClamp = 16384;
-        public const int CaptureHistoryElements = ((ColorNB * (PieceNB + 1)) * SquareNB * (PieceNB + 1));
+        public const int CaptureHistoryElements = ColorNB * (PieceNB + 1) * SquareNB * (PieceNB + 1);
 
 
         /// <summary>
@@ -34,14 +32,14 @@ namespace LTChess.Logic.Search.Ordering
 
         public HistoryTable()
         {
-            MainHistory         = (short*) AlignedAllocZeroed(sizeof(short) * MainHistoryElements, AllocAlignment);
-            CaptureHistory      = (short*) AlignedAllocZeroed(sizeof(short) * CaptureHistoryElements, AllocAlignment);
+            MainHistory = (short*)AlignedAllocZeroed(sizeof(short) * MainHistoryElements, AllocAlignment);
+            CaptureHistory = (short*)AlignedAllocZeroed(sizeof(short) * CaptureHistoryElements, AllocAlignment);
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
-            Continuations = (ContinuationHistory**) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont0 = (ContinuationHistory*) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont1 = (ContinuationHistory*) AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            Continuations = (ContinuationHistory**)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            ContinuationHistory* cont0 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            ContinuationHistory* cont1 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
 
             cont0[0] = new ContinuationHistory();
             cont0[1] = new ContinuationHistory();
@@ -82,10 +80,10 @@ namespace LTChess.Logic.Search.Ordering
         {
             if (EnableAssertions)
             {
-                Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements, 
+                Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements,
                     "HistoryIndex(" + pc + ", " + m.MoveMask + ") is OOB! (should be 0 <= idx < " + MainHistoryElements + ")");
             }
-            return ((pc * MainHistoryPCStride) + m.MoveMask);
+            return (pc * MainHistoryPCStride) + m.MoveMask;
         }
 
         /// <summary>
@@ -98,18 +96,18 @@ namespace LTChess.Logic.Search.Ordering
         [MethodImpl(Inline)]
         public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
         {
-            const int xMax = ((PieceNB + 1) * ColorNB);
-            const int yMax = (SquareNB);
-            const int zMax = (PieceNB);
+            const int xMax = (PieceNB + 1) * ColorNB;
+            const int yMax = SquareNB;
+            const int zMax = PieceNB;
 
-            int x = (pt + ((PieceNB + 1) * pc));
-            int y = (toSquare);
-            int z = (capturedPt);
+            int x = pt + ((PieceNB + 1) * pc);
+            int y = toSquare;
+            int z = capturedPt;
 
             if (EnableAssertions)
             {
-                int idx = ((z * xMax * yMax) + (y * xMax) + x);
-                Assert(idx is >= 0 and < CaptureHistoryElements, 
+                int idx = (z * xMax * yMax) + (y * xMax) + x;
+                Assert(idx is >= 0 and < CaptureHistoryElements,
                     "CapIndex(" + pt + ", " + pc + ", " + toSquare + ", " + capturedPt + ") == " + idx + " is OOB! (should be 0 <= idx < " + CaptureHistoryElements + ")");
             }
 
@@ -197,7 +195,7 @@ namespace LTChess.Logic.Search.Ordering
                     "GetIndex(" + pc + ", " + pt + ", " + sq + ") is OOB! (should be 0 <= idx < " + Length + ")");
             }
 
-            return (((pt + (PieceNB * pc)) * DimY) + sq);
+            return ((pt + (PieceNB * pc)) * DimY) + sq;
         }
 
         /// <summary>

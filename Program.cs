@@ -2,45 +2,11 @@
 #define JB
 #undef JB
 
-//  Thanks C# 10!
-global using System.Runtime.CompilerServices;
-global using System.Diagnostics;
-
-global using LTChess.Logic.Core;
-global using LTChess.Logic.Data;
-global using LTChess.Logic.Magic;
-global using LTChess.Logic.Search;
-global using LTChess.Logic.Transposition;
-global using LTChess.Logic.Util;
-
-global using static LTChess.Logic.Core.UCI;
-global using static LTChess.Logic.Data.CheckInfo;
-global using static LTChess.Logic.Data.PrecomputedData;
-global using static LTChess.Logic.Data.RunOptions;
-global using static LTChess.Logic.Data.Squares;
-global using static LTChess.Logic.Data.Color;
-global using Color = LTChess.Logic.Data.Color;
-global using static LTChess.Logic.Data.Piece;
-global using static LTChess.Logic.Data.Bound;
-global using static LTChess.Logic.Magic.MagicBitboards;
-global using static LTChess.Logic.Search.SearchOptions;
-global using static LTChess.Logic.Search.SearchConstants;
-global using static LTChess.Logic.Search.Evaluation;
-global using static LTChess.Logic.Util.PositionUtilities;
-global using static LTChess.Logic.Util.Utilities;
-global using static LTChess.Logic.Util.Interop;
-global using static LTChess.Logic.Util.ExceptionHandling;
-global using static LTChess.Logic.NN.NNRunOptions;
-global using static LTChess.Logic.Threads.SearchThreadPool;
-
-using LTChess.Logic.Book;
-using LTChess.Logic.NN.Simple768;
-using System.Runtime.Intrinsics;
 using System.Reflection;
-using LTChess.Logic.NN;
-using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+
 using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
+using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Threads;
 
 namespace LTChess
@@ -57,7 +23,7 @@ namespace LTChess
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
-            
+
             DoInputLoop();
         }
 
@@ -142,7 +108,7 @@ namespace LTChess
 
                 if (input.EqualsIgnoreCase("uci"))
                 {
-                    UCI uci = new UCI();
+                    UCIClient uci = new UCIClient();
                     uci.Run();
                 }
                 else if (input.StartsWithIgnoreCase("position"))
@@ -156,7 +122,7 @@ namespace LTChess
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
                     p = new Position(InitialFEN, owner: SearchPool.MainThread);
-                    Search.HandleNewGame();
+                    Searches.HandleNewGame();
                 }
                 else if (input.Equals("listmoves"))
                 {
@@ -271,7 +237,7 @@ namespace LTChess
             SearchPool.StartSearch(temp, ref info);
             SearchPool.BlockCallerUntilFinished();
 
-            Search.HandleNewGame();
+            Searches.HandleNewGame();
             SearchStatistics.Zero();
             TranspositionTable.Clear();
             SearchPool.Clear();
@@ -298,8 +264,8 @@ namespace LTChess
 
                 var time = sw.Elapsed.TotalSeconds;
                 Log("Depth " + d + ": " +
-                    "\tnodes " + result.ToString().PadLeft(12) + 
-                    "\ttime " + time.ToString("N6").PadLeft(12) + 
+                    "\tnodes " + result.ToString().PadLeft(12) +
+                    "\ttime " + time.ToString("N6").PadLeft(12) +
                     "\tnps " + ((int)(result / time)).ToString("N0").PadLeft(14));
 
             }
@@ -324,7 +290,7 @@ namespace LTChess
             {
                 Move m = list[i].Move;
                 pos.MakeMove(m);
-                ulong result = (depth > 1 ? pos.Perft(depth - 1) : 1);
+                ulong result = depth > 1 ? pos.Perft(depth - 1) : 1;
                 pos.UnmakeMove(m);
                 Log(m.ToString() + ": " + result);
                 total += result;
@@ -347,13 +313,13 @@ namespace LTChess
             {
                 Move m = list[i].Move;
                 p.MakeMove(m);
-                long result = (depth > 1 ? p.PerftNN(depth - 1) : 1);
+                long result = depth > 1 ? p.PerftNN(depth - 1) : 1;
                 p.UnmakeMove(m);
                 Log(m.ToString() + ": " + result);
             }
             sw.Stop();
 
-            ulong[] shannon = {0, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167};
+            ulong[] shannon = { 0, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167 };
             ulong nodeCount = depth < shannon.Length ? shannon[depth] : 0;
             Log("\r\nRefreshed " + nodeCount + " times in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(nodeCount / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
@@ -675,7 +641,7 @@ namespace LTChess
                 SearchBench.Go(depth);
             }
         }
-        
+
 
         private static void DotTraceProfile(int depth = 24)
         {

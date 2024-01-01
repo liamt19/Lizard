@@ -1,9 +1,4 @@
-﻿
-
-
-using System.Text;
-
-namespace LTChess.Logic.NN.HalfKA_HM
+﻿namespace LTChess.Logic.NN.HalfKA_HM
 {
     public static class NNCommon
     {
@@ -39,9 +34,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
         }
 
 
-        public unsafe static void format_cp_ptr(int v, char* buffer)
+        public static unsafe void format_cp_ptr(int v, char* buffer)
         {
-            buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
+            buffer[0] = v < 0 ? '-' : v > 0 ? '+' : ' ';
 
             //  This reduces the displayed value of each piece so that it is more in line with
             //  conventional piece values, i.e. pawn = ~100, bishop/knight = ~300, rook = ~500
@@ -50,24 +45,24 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             if (cp >= 10000)
             {
-                buffer[1] = (char) ('0' + cp / 10000); cp %= 10000;
-                buffer[2] = (char) ('0' + cp / 1000); cp %= 1000;
-                buffer[3] = (char) ('0' + cp / 100); cp %= 100;
-                buffer[4] = (char) (' ');
+                buffer[1] = (char)('0' + (cp / 10000)); cp %= 10000;
+                buffer[2] = (char)('0' + (cp / 1000)); cp %= 1000;
+                buffer[3] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[4] = (char)' ';
             }
             else if (cp >= 1000)
             {
-                buffer[1] = (char) ('0' + cp / 1000); cp %= 1000;
-                buffer[2] = (char) ('0' + cp / 100); cp %= 100;
-                buffer[3] = (char) ('.');
-                buffer[4] = (char) ('0' + cp / 10);
+                buffer[1] = (char)('0' + (cp / 1000)); cp %= 1000;
+                buffer[2] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[3] = (char)'.';
+                buffer[4] = (char)('0' + (cp / 10));
             }
             else
             {
-                buffer[1] = (char) ('0' + cp / 100); cp %= 100;
-                buffer[2] = (char) ('.');
-                buffer[3] = (char) ('0' + cp / 10); cp %= 10;
-                buffer[4] = (char) ('0' + cp / 1);
+                buffer[1] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[2] = (char)'.';
+                buffer[3] = (char)('0' + (cp / 10)); cp %= 10;
+                buffer[4] = (char)('0' + (cp / 1));
             }
         }
     }

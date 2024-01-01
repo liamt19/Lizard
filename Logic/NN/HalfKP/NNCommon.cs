@@ -26,14 +26,14 @@ namespace LTChess.Logic.NN.HalfKP
         /// <summary>
         /// Rounds <paramref name="n"/> up to be a multiple of <paramref name="numBase"/>
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(Inline)]
         public static int CeilToMultiple(short n, short numBase)
         {
             return (n + numBase - 1) / numBase * numBase;
         }
 
         //  https://stackoverflow.com/questions/19497765/equivalent-of-cs-reinterpret-cast-in-c-sharp
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(Inline)]
         public static unsafe TDest reinterpret_cast<TSource, TDest>(TSource source)
         {
             var sourceRef = __makeref(source);
@@ -50,7 +50,7 @@ namespace LTChess.Logic.NN.HalfKP
 
         public ExtPieceSquare(uint a, uint b)
         {
-            from[0] = a; 
+            from[0] = a;
             from[1] = b;
         }
 

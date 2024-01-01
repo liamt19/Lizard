@@ -1,13 +1,9 @@
 ﻿
 
-using static LTChess.Logic.NN.HalfKP.NNCommon;
-using static LTChess.Logic.NN.HalfKP.HalfKP;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System;
-using System.Net;
+using System.Runtime.Intrinsics.X86;
+
+using static LTChess.Logic.NN.HalfKP.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKP.Layers
 {
@@ -40,20 +36,20 @@ namespace LTChess.Logic.NN.HalfKP.Layers
             InputDimensions = inputDims;
             OutputDimensions = outputDims;
 
-            BufferSize = CeilToMultiple((short)(OutputDimensions), CacheLineSize);
+            BufferSize = CeilToMultiple((short)OutputDimensions, CacheLineSize);
             BufferSizeBytes = CeilToMultiple((short)(OutputDimensions * sizeof(int)), CacheLineSize);
 
             PaddedInputDimensions = CeilToMultiple((short)InputDimensions, MaxSimdWidth);
 
-            Biases  = (Vector256<int>*)    AlignedAllocZeroed((nuint)(Math.Max(1, (OutputDimensions) / VSize.Int) * 32),              AllocAlignment);
-            Weights = (Vector256<sbyte>*)  AlignedAllocZeroed((nuint)((OutputDimensions * PaddedInputDimensions) / VSize.SByte * 32), AllocAlignment);
+            Biases = (Vector256<int>*)AlignedAllocZeroed((nuint)(Math.Max(1, OutputDimensions / VSize.Int) * 32), AllocAlignment);
+            Weights = (Vector256<sbyte>*)AlignedAllocZeroed((nuint)(OutputDimensions * PaddedInputDimensions / VSize.SByte * 32), AllocAlignment);
         }
 
 
         public void Propagate(Span<sbyte> input, Span<int> output)
         {
-            int* inputPtr = (int*) Unsafe.AsPointer(ref input[0]);
-            int* outputPtr = (int*) Unsafe.AsPointer(ref output[0]);
+            int* inputPtr = (int*)Unsafe.AsPointer(ref input[0]);
+            int* outputPtr = (int*)Unsafe.AsPointer(ref output[0]);
 
             int NumChunks = PaddedInputDimensions / SimdWidth;
             Vector256<short> Ones = Vector256<short>.One;
@@ -65,7 +61,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
 
                 for (int j = 0; j < NumChunks; j++)
                 {
-                    Vector256<byte> left = Avx.LoadVector256((byte*) inputPtr + (j * VSize.SByte));
+                    Vector256<byte> left = Avx.LoadVector256((byte*)inputPtr + (j * VSize.SByte));
                     Vector256<sbyte> right = Weights[j + (i * PaddedInputDimensions / VSize.SByte)];
                     _mm256_dpbusd_epi32(ref sum, left, right);
                 }
@@ -83,7 +79,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
         {
 
             var stream = br.BaseStream;
-            long toRead = (long) ((OutputDimensions * sizeof(int)) + ((OutputDimensions * PaddedInputDimensions) * sizeof(sbyte)));
+            long toRead = (long)((OutputDimensions * sizeof(int)) + (OutputDimensions * PaddedInputDimensions * sizeof(sbyte)));
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("HalfKP AffineTransform's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -137,7 +133,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
             }
         }
 
-        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256< byte> a0, Vector256< byte> a1,
+        private static void m256_add_dpbusd_epi32x2(ref Vector256<int> acc, Vector256<byte> a0, Vector256<byte> a1,
                                                                             Vector256<sbyte> b0, Vector256<sbyte> b1)
         {
             if (AvxVnni.IsSupported)

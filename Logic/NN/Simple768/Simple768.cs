@@ -1,15 +1,6 @@
-﻿
-
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Numerics;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
 
 using LTChess.Properties;
 
@@ -17,7 +8,7 @@ using LTChess.Properties;
 namespace LTChess.Logic.NN.Simple768
 {
     [SkipStaticConstructor]
-    public unsafe static class Simple768
+    public static unsafe class Simple768
     {
         public const int InputSize = 768;
         public const int HiddenSize = 1024;
@@ -25,11 +16,11 @@ namespace LTChess.Logic.NN.Simple768
 
         private const int QA = 255;
         private const int QB = 64;
-        private const int QAB = (QA * QB);
+        private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
 
-        public const int SIMD_CHUNKS = (HiddenSize / VSize.Short);
+        public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
 #if DEV_NET
         public const string NetworkName = "net-wdl3-epoch20.bin";
@@ -50,10 +41,10 @@ namespace LTChess.Logic.NN.Simple768
         public static Vector256<short>* LayerWeights;
         public static Vector256<short>* LayerBiases;
 
-        private const int FeatureWeightElements = (InputSize * HiddenSize);
-        private const int FeatureBiasElements = (HiddenSize);
+        private const int FeatureWeightElements = InputSize * HiddenSize;
+        private const int FeatureBiasElements = HiddenSize;
 
-        private const int LayerWeightElements = (HiddenSize * 2);
+        private const int LayerWeightElements = HiddenSize * 2;
         private const int LayerBiasElements = OutputBuckets;
 
         static Simple768()
@@ -94,7 +85,7 @@ namespace LTChess.Logic.NN.Simple768
                 networkToLoad = NetworkName;
                 Log("Using NNUE with 768 network " + NetworkName);
 
-                string resourceName = (networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty));
+                string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
 
                 object? o = Resources.ResourceManager.GetObject(resourceName);
                 if (o == null)
@@ -113,7 +104,7 @@ namespace LTChess.Logic.NN.Simple768
 
             using BinaryReader br = new BinaryReader(kpFile);
             var stream = br.BaseStream;
-            long toRead = (sizeof(short) * (FeatureWeightElements + FeatureBiasElements + (LayerWeightElements * OutputBuckets) + LayerBiasElements));
+            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + (LayerWeightElements * OutputBuckets) + LayerBiasElements);
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -167,7 +158,7 @@ namespace LTChess.Logic.NN.Simple768
 #endif
         }
 
-        public static void RefreshAccumulator(Position pos) => RefreshAccumulator(pos, ref *(pos.State->Accumulator));
+        public static void RefreshAccumulator(Position pos) => RefreshAccumulator(pos, ref *pos.State->Accumulator);
         public static void RefreshAccumulator(Position pos, ref AccumulatorPSQT accumulator)
         {
             ref Bitboard bb = ref pos.bb;
@@ -191,7 +182,7 @@ namespace LTChess.Logic.NN.Simple768
             accumulator.RefreshPerspective[Black] = false;
         }
 
-        public static int GetEvaluation(Position pos) => GetEvaluation(pos, ref (*pos.State->Accumulator));
+        public static int GetEvaluation(Position pos) => GetEvaluation(pos, ref *pos.State->Accumulator);
 
         public static int GetEvaluation(Position pos, ref AccumulatorPSQT accumulator)
         {
@@ -225,7 +216,7 @@ namespace LTChess.Logic.NN.Simple768
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
                     Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + (SIMD_CHUNKS)];
+                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
                     vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
                 }
 
@@ -267,7 +258,7 @@ namespace LTChess.Logic.NN.Simple768
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
                     Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + (SIMD_CHUNKS)];
+                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
 
                     Vector256<int> loMult = Avx2.MultiplyLow(
                         Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
@@ -282,7 +273,7 @@ namespace LTChess.Logic.NN.Simple768
                 }
             }
 
-            return (output / QA + LayerBiases[0][0]) * OutputScale / (QAB);
+            return ((output / QA) + LayerBiases[0][0]) * OutputScale / QAB;
         }
 
 
@@ -446,23 +437,23 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void Trace(Position pos)
         {
-            char[][] board = new char[3 * 8 + 1][];
-            for (int i = 0; i < 3 * 8 + 1; i++)
+            char[][] board = new char[(3 * 8) + 1][];
+            for (int i = 0; i < (3 * 8) + 1; i++)
             {
-                board[i] = new char[8 * 8 + 2];
+                board[i] = new char[(8 * 8) + 2];
                 Array.Fill(board[i], ' ');
             }
 
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
-                board[row][8 * 8 + 1] = '\0';
+                board[row][(8 * 8) + 1] = '\0';
             }
 
             int baseEval = GetEvaluation(pos);
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
-            ref AccumulatorPSQT Accumulator = ref *(pos.State->Accumulator);
+            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {
@@ -471,7 +462,7 @@ namespace LTChess.Logic.NN.Simple768
                     int idx = CoordToIndex(f, r);
                     int pt = bb.GetPieceAtIndex(idx);
                     int pc = bb.GetColorAtIndex(idx);
-                    int fishPc = ((pt + 1) + (pc * 8));
+                    int fishPc = pt + 1 + (pc * 8);
                     int v = ScoreMate;
 
                     if (pt != None && bb.GetPieceAtIndex(idx) != King)
@@ -490,7 +481,7 @@ namespace LTChess.Logic.NN.Simple768
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -498,16 +489,16 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void TracePieceValues(int pieceType, int pieceColor)
         {
-            char[][] board = new char[3 * 8 + 1][];
-            for (int i = 0; i < 3 * 8 + 1; i++)
+            char[][] board = new char[(3 * 8) + 1][];
+            for (int i = 0; i < (3 * 8) + 1; i++)
             {
-                board[i] = new char[8 * 8 + 2];
+                board[i] = new char[(8 * 8) + 2];
                 Array.Fill(board[i], ' ');
             }
 
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
-                board[row][8 * 8 + 1] = '\0';
+                board[row][(8 * 8) + 1] = '\0';
             }
 
             //  White king on A1, black king on H8
@@ -522,8 +513,8 @@ namespace LTChess.Logic.NN.Simple768
             {
                 if (bb.GetPieceAtIndex(i) != None)
                 {
-                    
-                    int fp = ((bb.GetPieceAtIndex(i) + 1) + (bb.GetColorAtIndex(i) * 8));
+
+                    int fp = bb.GetPieceAtIndex(i) + 1 + (bb.GetColorAtIndex(i) * 8);
                     writeSquare(board, GetIndexFile(i), GetIndexRank(i), fp, ScoreMate);
                     continue;
                 }
@@ -533,11 +524,11 @@ namespace LTChess.Logic.NN.Simple768
                 int eval = GetEvaluation(pos);
                 bb.RemovePiece(i, pieceColor, pieceType);
 
-                writeSquare(board, GetIndexFile(i), GetIndexRank(i), ((pieceType + 1) + (pieceColor * 8)), eval);
+                writeSquare(board, GetIndexFile(i), GetIndexRank(i), pieceType + 1 + (pieceColor * 8), eval);
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < 3 * 8 + 1; row++)
+            for (int row = 0; row < (3 * 8) + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -598,7 +589,7 @@ namespace LTChess.Logic.NN.Simple768
                 }
             }
 
-            Bitmap pic = new Bitmap(xSize, ySize);
+            System.Drawing.Bitmap pic = new System.Drawing.Bitmap(xSize, ySize);
 
             var FTWeights = (short*)featuresWeights;
 
@@ -750,7 +741,7 @@ namespace LTChess.Logic.NN.Simple768
                 }
             }
 
-            Bitmap pic = new Bitmap(xSize, ySize);
+            System.Drawing.Bitmap pic = new System.Drawing.Bitmap(xSize, ySize);
 
             for (int perspective = 0; perspective < 2; perspective++)
             {
@@ -836,13 +827,13 @@ namespace LTChess.Logic.NN.Simple768
             Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + ((double)avg / n));
         }
 
-        
+
 
         private static void writeSquare(char[][] board, int file, int rank, int pc, int value)
         {
             const string PieceToChar = " PNBRQK  pnbrqk";
 
-            int x = (file) * 8;
+            int x = file * 8;
             int y = (7 - rank) * 3;
 
             for (int i = 1; i < 8; i++)
@@ -875,7 +866,7 @@ namespace LTChess.Logic.NN.Simple768
 
         private static void format_cp_ptr(int v, char* buffer)
         {
-            buffer[0] = (v < 0 ? '-' : v > 0 ? '+' : ' ');
+            buffer[0] = v < 0 ? '-' : v > 0 ? '+' : ' ';
 
             //  This reduces the displayed value of each piece so that it is more in line with
             //  conventional piece values, i.e. pawn = ~100, bishop/knight = ~300, rook = ~500
@@ -884,24 +875,24 @@ namespace LTChess.Logic.NN.Simple768
 
             if (cp >= 10000)
             {
-                buffer[1] = (char)('0' + cp / 10000); cp %= 10000;
-                buffer[2] = (char)('0' + cp / 1000); cp %= 1000;
-                buffer[3] = (char)('0' + cp / 100); cp %= 100;
-                buffer[4] = (char)(' ');
+                buffer[1] = (char)('0' + (cp / 10000)); cp %= 10000;
+                buffer[2] = (char)('0' + (cp / 1000)); cp %= 1000;
+                buffer[3] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[4] = (char)' ';
             }
             else if (cp >= 1000)
             {
-                buffer[1] = (char)('0' + cp / 1000); cp %= 1000;
-                buffer[2] = (char)('0' + cp / 100); cp %= 100;
-                buffer[3] = (char)('.');
-                buffer[4] = (char)('0' + cp / 10);
+                buffer[1] = (char)('0' + (cp / 1000)); cp %= 1000;
+                buffer[2] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[3] = (char)'.';
+                buffer[4] = (char)('0' + (cp / 10));
             }
             else
             {
-                buffer[1] = (char)('0' + cp / 100); cp %= 100;
-                buffer[2] = (char)('.');
-                buffer[3] = (char)('0' + cp / 10); cp %= 10;
-                buffer[4] = (char)('0' + cp / 1);
+                buffer[1] = (char)('0' + (cp / 100)); cp %= 100;
+                buffer[2] = (char)'.';
+                buffer[3] = (char)('0' + (cp / 10)); cp %= 10;
+                buffer[4] = (char)('0' + (cp / 1));
             }
         }
 

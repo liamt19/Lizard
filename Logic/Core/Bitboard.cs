@@ -172,7 +172,7 @@
         [MethodImpl(Inline)]
         public ulong KingMask(int pc)
         {
-            return (Colors[pc] & Pieces[Piece.King]);
+            return Colors[pc] & Pieces[Piece.King];
         }
 
         /// <summary>
@@ -183,8 +183,8 @@
         {
             if (EnableAssertions)
             {
-                Assert(lsb(KingMask(pc)) != SquareNB, 
-                    "KingIndex(" + ColorToString(pc) + ") got a KingMask of " + KingMask(pc) 
+                Assert(lsb(KingMask(pc)) != SquareNB,
+                    "KingIndex(" + ColorToString(pc) + ") got a KingMask of " + KingMask(pc)
                     + ", which has an LSB of 64! (this means that " + ColorToString(pc) + " doesn't have a king on the board)");
             }
 
@@ -240,7 +240,7 @@
             ulong candidates = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) |
                                 (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
 
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             while (candidates != 0)
             {
@@ -276,11 +276,11 @@
         [MethodImpl(Inline)]
         public ulong AttackersTo(int idx, ulong occupied)
         {
-            return ((GetBishopMoves(occupied, idx) & (Pieces[Bishop] | Pieces[Queen]))
+            return (GetBishopMoves(occupied, idx) & (Pieces[Bishop] | Pieces[Queen]))
               | (GetRookMoves(occupied, idx) & (Pieces[Rook] | Pieces[Queen]))
               | (KnightMasks[idx] & Pieces[Knight])
-              | ((WhitePawnAttackMasks[idx] & Colors[Black] & Pieces[Pawn])
-              | (BlackPawnAttackMasks[idx] & Colors[White] & Pieces[Pawn])));
+              | (WhitePawnAttackMasks[idx] & Colors[Black] & Pieces[Pawn])
+              | (BlackPawnAttackMasks[idx] & Colors[White] & Pieces[Pawn]);
         }
 
         /// <summary>
@@ -290,9 +290,9 @@
         [MethodImpl(Inline)]
         public ulong AttackersToMajors(int idx, ulong occupied)
         {
-            return ((GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
+            return (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
                   | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
-                  | (Pieces[Piece.Knight] & KnightMasks[idx]));
+                  | (Pieces[Piece.Knight] & KnightMasks[idx]);
         }
 
         /// <summary>
@@ -304,12 +304,12 @@
         {
             return pt switch
             {
-                Pawn =>   (PawnAttackMasks[pc][idx]),
-                Knight => (KnightMasks[idx]),
-                Bishop => (GetBishopMoves(occupied, idx)),
-                Rook =>   (GetRookMoves(occupied, idx)),
-                Queen =>  (GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx)),
-                King =>   (NeighborsMask[idx]),
+                Pawn => PawnAttackMasks[pc][idx],
+                Knight => KnightMasks[idx],
+                Bishop => GetBishopMoves(occupied, idx),
+                Rook => GetRookMoves(occupied, idx),
+                Queen => GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx),
+                King => NeighborsMask[idx],
                 _ => 0,
             };
         }

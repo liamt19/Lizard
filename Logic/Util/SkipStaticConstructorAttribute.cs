@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.Util
+﻿namespace LTChess.Logic.Util
 {
     /// <summary>
     /// Placing this attribute on a class causes the static constructor of that class to be skipped during program initialization.

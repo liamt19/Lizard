@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.NN
+﻿namespace LTChess.Logic.NN
 {
     public static class VSize
     {

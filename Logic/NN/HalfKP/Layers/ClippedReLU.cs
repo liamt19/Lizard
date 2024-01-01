@@ -3,14 +3,10 @@
 //using __m256i = System.Runtime.Intrinsics.Vector256<short>;
 //using __m256isb = System.Runtime.Intrinsics.Vector256<sbyte>;
 
-using static LTChess.Logic.NN.HalfKP.NNCommon;
-using static LTChess.Logic.NN.HalfKP.HalfKP;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System.ComponentModel;
-using System;
+using System.Runtime.Intrinsics.X86;
+
+using static LTChess.Logic.NN.HalfKP.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKP.Layers
 {
@@ -32,7 +28,7 @@ namespace LTChess.Logic.NN.HalfKP.Layers
             InputDimensions = inputDims;
             OutputDimensions = InputDimensions;
 
-            BufferSize = CeilToMultiple((short)(OutputDimensions), CacheLineSize);
+            BufferSize = CeilToMultiple((short)OutputDimensions, CacheLineSize);
             BufferSizeBytes = CeilToMultiple((short)(OutputDimensions * sizeof(ushort)), CacheLineSize);
         }
 
@@ -56,12 +52,12 @@ namespace LTChess.Logic.NN.HalfKP.Layers
             for (int i = 0; i < NumChunks; i++)
             {
                 Vector256<short> words0 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                    Avx.LoadAlignedVector256(inputPtr + ((i * 4 + 0) * VectorSize)),
-                    Avx.LoadAlignedVector256(inputPtr + ((i * 4 + 1) * VectorSize))), WeightScaleBits);
+                    Avx.LoadAlignedVector256(inputPtr + (((i * 4) + 0) * VectorSize)),
+                    Avx.LoadAlignedVector256(inputPtr + (((i * 4) + 1) * VectorSize))), WeightScaleBits);
 
                 Vector256<short> words1 = Avx2.ShiftRightArithmetic(Avx2.PackSignedSaturate(
-                    Avx.LoadAlignedVector256(inputPtr + ((i * 4 + 2) * VectorSize)),
-                    Avx.LoadAlignedVector256(inputPtr + ((i * 4 + 3) * VectorSize))), WeightScaleBits);
+                    Avx.LoadAlignedVector256(inputPtr + (((i * 4) + 2) * VectorSize)),
+                    Avx.LoadAlignedVector256(inputPtr + (((i * 4) + 3) * VectorSize))), WeightScaleBits);
 
                 Vector256<sbyte> packed = Avx2.PackSignedSaturate(words0, words1);
                 Vector256<sbyte> max = Avx2.Max(packed, Vector256<sbyte>.Zero);

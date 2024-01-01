@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using LTChess.Logic.Data;
-
-namespace LTChess.Logic.Core
+﻿namespace LTChess.Logic.Core
 {
     public unsafe partial class Position
     {
@@ -29,11 +21,11 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int GenPawns<GenType>(ScoredMove* list, ulong targets, int size) where GenType : MoveGenerationType
         {
-            bool loudMoves   = (typeof(GenType) == typeof(GenLoud));
-            bool quiets      = (typeof(GenType) == typeof(GenQuiets));
-            bool quietChecks = (typeof(GenType) == typeof(GenQChecks));
-            bool evasions    = (typeof(GenType) == typeof(GenEvasions));
-            bool nonEvasions = (typeof(GenType) == typeof(GenNonEvasions));
+            bool loudMoves = typeof(GenType) == typeof(GenLoud);
+            bool quiets = typeof(GenType) == typeof(GenQuiets);
+            bool quietChecks = typeof(GenType) == typeof(GenQChecks);
+            bool evasions = typeof(GenType) == typeof(GenEvasions);
+            bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
 
             ulong rank7 = (ToMove == White) ? Rank7BB : Rank2BB;
@@ -171,9 +163,9 @@ namespace LTChess.Logic.Core
                         m.EnPassant = true;
 
                         ulong moveMask = SquareBB[from] | SquareBB[State->EPSquare];
-                        ulong occ = (bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up]);
+                        ulong occ = bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up];
                         ulong pawnAttacks = PawnAttackMasks[Not(ToMove)][theirKing] & (bb.Pieces[Pawn] ^ moveMask);
-                        ulong colorMask = (bb.Colors[ToMove] ^ moveMask);
+                        ulong colorMask = bb.Colors[ToMove] ^ moveMask;
                         ulong attacks = (bb.AttackersToMajors(theirKing, occ) | pawnAttacks) & colorMask;
 
                         switch (popcount(attacks))
@@ -201,7 +193,7 @@ namespace LTChess.Logic.Core
                 int highPiece = Knight;
                 int lowPiece = Queen;
 
-                if ((quiets && isCapture))
+                if (quiets && isCapture)
                 {
                     return size;
                 }
@@ -239,7 +231,7 @@ namespace LTChess.Logic.Core
                         m.Capture = true;
                     }
 
-                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, (occupiedSquares ^ SquareBB[from])) & SquareBB[theirKing]) != 0)
+                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, occupiedSquares ^ SquareBB[from]) & SquareBB[theirKing]) != 0)
                     {
                         m.CausesCheck = true;
                         m.SqChecker = promotionSquare;
@@ -294,15 +286,15 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int GenAll<GenType>(ScoredMove* list, int size = 0) where GenType : MoveGenerationType
         {
-            bool loudMoves = (typeof(GenType) == typeof(GenLoud));
-            bool quiets = (typeof(GenType) == typeof(GenQuiets));
-            bool evasions = (typeof(GenType) == typeof(GenEvasions));
-            bool quietChecks = (typeof(GenType) == typeof(GenQChecks));
-            bool nonEvasions = (typeof(GenType) == typeof(GenNonEvasions));
+            bool loudMoves = typeof(GenType) == typeof(GenLoud);
+            bool quiets = typeof(GenType) == typeof(GenQuiets);
+            bool evasions = typeof(GenType) == typeof(GenEvasions);
+            bool quietChecks = typeof(GenType) == typeof(GenQChecks);
+            bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             int ourKing = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -334,7 +326,7 @@ namespace LTChess.Logic.Core
                     //  then only generate moves that get the king off of any shared ranks/files.
                     //  Note we can't move our king from one shared ray to another since we can only move diagonally 1 square
                     //  and their king would be attacking ours.
-                    moves &= ~(bb.AttackMask(theirKing, Not(ToMove), Queen, occ));
+                    moves &= ~bb.AttackMask(theirKing, Not(ToMove), Queen, occ);
                 }
 
                 while (moves != 0)
@@ -342,7 +334,7 @@ namespace LTChess.Logic.Core
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to, ((them & SquareBB[to]) != 0));
+                    m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
 
                     MakeCheck(Piece.King, ref m);
                 }
@@ -446,7 +438,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int GenLegal(ScoredMove* legal)
         {
-            int numMoves = (State->Checkers != 0) ? GenAll<   GenEvasions>(legal) :
+            int numMoves = (State->Checkers != 0) ? GenAll<GenEvasions>(legal) :
                                                     GenAll<GenNonEvasions>(legal);
 
             int ourKing = State->KingSquares[ToMove];
@@ -454,13 +446,13 @@ namespace LTChess.Logic.Core
             ulong pinned = State->BlockingPieces[ToMove];
 
             ScoredMove* curr = legal;
-            ScoredMove* end = (legal + numMoves);
+            ScoredMove* end = legal + numMoves;
 
             while (curr != end)
             {
                 if (!IsLegal(curr->Move, ourKing, theirKing, pinned))
                 {
-                    *curr = *(--end);
+                    *curr = *--end;
                     numMoves--;
                 }
                 else
@@ -509,7 +501,7 @@ namespace LTChess.Logic.Core
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
@@ -527,7 +519,7 @@ namespace LTChess.Logic.Core
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to, capture: ((them & SquareBB[to]) != 0));
+                    m.SetNew(idx, to, capture: (them & SquareBB[to]) != 0);
 
                     MakeCheck(pt, ref m);
                 }
@@ -648,7 +640,7 @@ namespace LTChess.Logic.Core
             int promotionSquare = m.To;
             int promotionPiece = m.PromotionTo;
 
-            if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, (bb.Occupancy ^ SquareBB[from])) & SquareBB[theirKing]) != 0)
+            if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, bb.Occupancy ^ SquareBB[from]) & SquareBB[theirKing]) != 0)
             {
                 m.CausesCheck = true;
                 m.SqChecker = promotionSquare;
@@ -723,9 +715,9 @@ namespace LTChess.Logic.Core
 
             int up = ShiftUpDir(ToMove);
             ulong moveMask = SquareBB[m.From] | SquareBB[State->EPSquare];
-            bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
+            bb.Pieces[Piece.Pawn] ^= moveMask | SquareBB[State->EPSquare - up];
             bb.Colors[ToMove] ^= moveMask;
-            bb.Colors[Not(ToMove)] ^= (SquareBB[State->EPSquare - up]);
+            bb.Colors[Not(ToMove)] ^= SquareBB[State->EPSquare - up];
 
             ulong attacks = bb.AttackersTo(State->KingSquares[Not(ToMove)], bb.Occupancy) & bb.Colors[ToMove];
 
@@ -743,9 +735,9 @@ namespace LTChess.Logic.Core
                     break;
             }
 
-            bb.Pieces[Piece.Pawn] ^= (moveMask | SquareBB[State->EPSquare - up]);
+            bb.Pieces[Piece.Pawn] ^= moveMask | SquareBB[State->EPSquare - up];
             bb.Colors[ToMove] ^= moveMask;
-            bb.Colors[Not(ToMove)] ^= (SquareBB[State->EPSquare - up]);
+            bb.Colors[Not(ToMove)] ^= SquareBB[State->EPSquare - up];
         }
 
 
@@ -798,7 +790,7 @@ namespace LTChess.Logic.Core
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             int ourKing = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -825,10 +817,10 @@ namespace LTChess.Logic.Core
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to, ((them & SquareBB[to]) != 0));
+                    m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
 
-                    if ((State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) != 0
-                        && ((RayBB[ourKing][to] & SquareBB[theirKing]) == 0) || m.Castle)
+                    if (((State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) != 0
+                        && ((RayBB[ourKing][to] & SquareBB[theirKing]) == 0)) || m.Castle)
                     {
                         m.CausesCheck = true;
                         m.SqChecker = lsb(State->Xrays[ToMove] & XrayBB[theirKing][ourKing]);
@@ -847,7 +839,7 @@ namespace LTChess.Logic.Core
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             int ourKing = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
@@ -870,12 +862,12 @@ namespace LTChess.Logic.Core
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to, ((them & SquareBB[to]) != 0));
+                    m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
 
                     MakeCheck(Piece.King, ref m);
                 }
 
-                if (((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
+                if ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None)
                 {
                     //  Only do castling moves if we are doing non-captures or we aren't in check.
                     ulong ourKingMask = bb.KingMask(ToMove);
@@ -971,7 +963,7 @@ namespace LTChess.Logic.Core
         {
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = (us | them);
+            ulong occ = us | them;
 
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
@@ -984,7 +976,7 @@ namespace LTChess.Logic.Core
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to, capture: ((them & SquareBB[to]) != 0));
+                    m.SetNew(idx, to, capture: (them & SquareBB[to]) != 0);
 
                     MakeCheck(pt, ref m);
                 }
@@ -1118,9 +1110,9 @@ namespace LTChess.Logic.Core
                     m.EnPassant = true;
 
                     ulong moveMask = SquareBB[from] | SquareBB[State->EPSquare];
-                    ulong occ = (bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up]);
+                    ulong occ = bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up];
                     ulong pawnAttacks = PawnAttackMasks[Not(ToMove)][theirKing] & (bb.Pieces[Pawn] ^ moveMask);
-                    ulong colorMask = (bb.Colors[ToMove] ^ moveMask);
+                    ulong colorMask = bb.Colors[ToMove] ^ moveMask;
                     ulong attacks = (bb.AttackersToMajors(theirKing, occ) | pawnAttacks) & colorMask;
 
                     switch (popcount(attacks))
@@ -1157,7 +1149,7 @@ namespace LTChess.Logic.Core
                         m.Capture = true;
                     }
 
-                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, (occupiedSquares ^ SquareBB[from])) & SquareBB[theirKing]) != 0)
+                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, occupiedSquares ^ SquareBB[from]) & SquareBB[theirKing]) != 0)
                     {
                         m.CausesCheck = true;
                         m.SqChecker = promotionSquare;
@@ -1313,9 +1305,9 @@ namespace LTChess.Logic.Core
                     m.EnPassant = true;
 
                     ulong moveMask = SquareBB[from] | SquareBB[State->EPSquare];
-                    ulong occ = (bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up]);
+                    ulong occ = bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up];
                     ulong pawnAttacks = PawnAttackMasks[Not(ToMove)][theirKing] & (bb.Pieces[Pawn] ^ moveMask);
-                    ulong colorMask = (bb.Colors[ToMove] ^ moveMask);
+                    ulong colorMask = bb.Colors[ToMove] ^ moveMask;
                     ulong attacks = (bb.AttackersToMajors(theirKing, occ) | pawnAttacks) & colorMask;
 
                     switch (popcount(attacks))
@@ -1356,7 +1348,7 @@ namespace LTChess.Logic.Core
                         m.Capture = true;
                     }
 
-                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, (occupiedSquares ^ SquareBB[from])) & SquareBB[theirKing]) != 0)
+                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, occupiedSquares ^ SquareBB[from]) & SquareBB[theirKing]) != 0)
                     {
                         m.CausesCheck = true;
                         m.SqChecker = promotionSquare;
@@ -1405,13 +1397,13 @@ namespace LTChess.Logic.Core
             ulong pinned = State->BlockingPieces[ToMove];
 
             ScoredMove* curr = legal;
-            ScoredMove* end = (legal + numMoves);
+            ScoredMove* end = legal + numMoves;
 
             while (curr != end)
             {
                 if (!PerftIsLegal(curr->Move, ourKing, theirKing, pinned))
                 {
-                    *curr = *(--end);
+                    *curr = *--end;
                     numMoves--;
                 }
                 else
@@ -1438,7 +1430,7 @@ namespace LTChess.Logic.Core
 
                 //  SquareBB[ourKing] is masked out from bb.Occupancy to prevent kings from being able to move backwards out of check,
                 //  meaning a king on B1 in check from a rook on C1 can't actually go to A1.
-                return ((bb.AttackersTo(moveTo, (bb.Occupancy ^ SquareBB[ourKing])) & bb.Colors[Not(ToMove)])
+                return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[ourKing]) & bb.Colors[Not(ToMove)])
                        | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
             }
 
@@ -1451,7 +1443,7 @@ namespace LTChess.Logic.Core
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
 
-                    return (pinnedPieces == 0 || (pinnedPieces & SquareBB[moveFrom]) == 0);
+                    return pinnedPieces == 0 || (pinnedPieces & SquareBB[moveFrom]) == 0;
                 }
 
                 //  This isn't a king move and doesn't get us out of check, so it's illegal.
@@ -1459,14 +1451,14 @@ namespace LTChess.Logic.Core
             }
 
 
-            
-            
+
+
             if (move.EnPassant)
             {
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal
                 //  This is only legal if our king is NOT attacked after the EP is made
-                return (bb.AttackersTo(ourKing, (bb.Occupancy ^ ((SquareBB[moveFrom] | SquareBB[moveTo]) | SquareBB[moveTo - ShiftUpDir(ToMove)]))) & bb.Colors[Not(ToMove)]) == 0;
+                return (bb.AttackersTo(ourKing, bb.Occupancy ^ (SquareBB[moveFrom] | SquareBB[moveTo] | SquareBB[moveTo - ShiftUpDir(ToMove)])) & bb.Colors[Not(ToMove)]) == 0;
             }
 
             //  Otherwise, this move is legal if:

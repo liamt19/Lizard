@@ -1,8 +1,4 @@
-﻿
-
-
-using LTChess.Logic.Data;
-namespace LTChess.Logic.Search.Ordering
+﻿namespace LTChess.Logic.Search.Ordering
 {
     public static unsafe class MoveOrdering
     {
@@ -44,17 +40,17 @@ namespace LTChess.Logic.Search.Ordering
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                    sm.Score = (13 * GetPieceValue(capturedPiece)) + history.CaptureHistory[capIdx] / 12;
+                    sm.Score = (13 * GetPieceValue(capturedPiece)) + (history.CaptureHistory[capIdx] / 12);
                 }
                 else
                 {
                     int contIdx = PieceToHistory.GetIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo);
 
-                    sm.Score =  2 * (history.MainHistory[HistoryTable.HistoryIndex(pc, m)]);
+                    sm.Score = 2 * history.MainHistory[HistoryTable.HistoryIndex(pc, m)];
                     sm.Score += 2 * (*continuationHistory[0])[contIdx];
-                    sm.Score +=     (*continuationHistory[1])[contIdx];
-                    sm.Score +=     (*continuationHistory[3])[contIdx];
-                    sm.Score +=     (*continuationHistory[5])[contIdx];
+                    sm.Score += (*continuationHistory[1])[contIdx];
+                    sm.Score += (*continuationHistory[3])[contIdx];
+                    sm.Score += (*continuationHistory[5])[contIdx];
 
                     if (m.Checks)
                     {

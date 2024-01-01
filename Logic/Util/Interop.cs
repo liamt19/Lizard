@@ -1,16 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Numerics;
+﻿using System.Numerics;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
-using System.Security.Principal;
-using System.Text;
-using System.Threading.Tasks;
-
-using Microsoft.Win32.SafeHandles;
 
 namespace LTChess.Logic.Util
 {
@@ -55,7 +46,7 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static bool MoreThanOne(ulong value)
         {
-            return (poplsb(value) != 0);
+            return poplsb(value) != 0;
         }
 
         /// <summary>
@@ -108,7 +99,7 @@ namespace LTChess.Logic.Util
             else
             {
                 int sq = (int)ulong.TrailingZeroCount(*value);
-                *value = (*value & (*value - 1));
+                *value = *value & (*value - 1);
                 return sq;
             }
         }
@@ -126,7 +117,7 @@ namespace LTChess.Logic.Util
             }
             else
             {
-                return (BitOperations.Log2(value - 1) + 1);
+                return BitOperations.Log2(value - 1) + 1;
             }
         }
 
@@ -210,7 +201,7 @@ namespace LTChess.Logic.Util
                         curMethod.ContainsGenericParameters)
                         continue;
 
-                    RuntimeHelpers.PrepareMethod(curMethod.MethodHandle);
+                    System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(curMethod.MethodHandle);
                 }
             }
         }

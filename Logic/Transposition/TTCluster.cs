@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.InteropServices;
 
 namespace LTChess.Logic.Transposition
 {
@@ -13,7 +8,7 @@ namespace LTChess.Logic.Transposition
     /// A pointer to this (TTCluster*) can be casted to a TTEntry* and indexed from 0 to 2 to access
     /// the individual TTEntry's since the offsets of the entries do not change.
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size=32)]
+    [StructLayout(LayoutKind.Explicit, Size = 32)]
     public unsafe struct TTCluster
     {
         [FieldOffset(0)]
@@ -33,14 +28,14 @@ namespace LTChess.Logic.Transposition
         /// <para></para>
         /// This constructor should ONLY be called on TTCluster's created with <see cref="NativeMemory"/>!
         /// </summary>
-        public TTCluster() 
+        public TTCluster()
         {
             _elem0 = new TTEntry();
             _elem1 = new TTEntry();
             _elem2 = new TTEntry();
 
-            _pad[0] = (byte) ':';
-            _pad[1] = (byte) ')';
+            _pad[0] = (byte)':';
+            _pad[1] = (byte)')';
         }
 
         /// <summary>
@@ -48,7 +43,7 @@ namespace LTChess.Logic.Transposition
         /// </summary>
         public void Clear()
         {
-            fixed(void* ptr = &_elem0)
+            fixed (void* ptr = &_elem0)
             {
                 //  Clear all 3 here.
                 NativeMemory.Clear((void*)ptr, (nuint)sizeof(TTEntry) * 3);

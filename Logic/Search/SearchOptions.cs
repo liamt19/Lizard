@@ -87,7 +87,7 @@
         /// so speed-wise this isn't a huge issue.
         /// </summary>
         public const bool UseReverseFutilityPruning = true;
-        
+
         /// <summary>
         /// The depth must be less than or equal to this for reverse futility pruning to be considered.
         /// </summary>
@@ -141,7 +141,7 @@
         public static int ExtraCutNodeReductionMinDepth = 6;
 
 
-        
+
         /// <summary>
         /// If the evaluation at the next depth is within this margin from the previous evaluation,
         /// we use the next depth's evaluation as the starting point for our Alpha/Beta values.

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.Util
+﻿namespace LTChess.Logic.Util
 {
     public static class ExceptionHandling
     {
@@ -42,16 +36,16 @@ namespace LTChess.Logic.Util
                 sw.Flush();
             }
 
-            if (UCI.Active)
+            if (UCIClient.Active)
             {
                 //  Try to tell the UCI what happened before this process terminates
-                UCI.SendString("info string I'm going to crash! Exception: ");
+                UCIClient.SendString("info string I'm going to crash! Exception: ");
 
                 //  Send each exception line separately, in case the UCI doesn't like
                 //  newlines in the strings that it reads.
                 foreach (string s in e.ToString().Split(Environment.NewLine))
                 {
-                    UCI.SendString("info string " + s);
+                    UCIClient.SendString("info string " + s);
                     Thread.Sleep(10);
                 }
 

@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+
 using static LTChess.Logic.Transposition.TranspositionTable;
 
 
@@ -11,7 +12,7 @@ namespace LTChess.Logic.Transposition
     /// Setting Pack=1/2 causes the struct to NOT pad itself with an extra 2 bytes, so its size would increase from 10 -> 12. 
     /// Each TTCluster contains 3 TTEntry, and TTClusters are meant to align on 32 byte boundaries, so we need this to be 10 bytes max.
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Pack=2, Size=10)]
+    [StructLayout(LayoutKind.Explicit, Pack = 2, Size = 10)]
     public struct TTEntry
     {
         public static readonly TTEntry Null = new TTEntry(0, 0, TTNodeType.Invalid, 0, Move.Null);
@@ -39,25 +40,25 @@ namespace LTChess.Logic.Transposition
 
         public short Score
         {
-            get => ((short)(_ScoreStatEval & 0xFFFF));
-            set => _ScoreStatEval = ((_ScoreStatEval & ~0xFFFF) | value);
+            get => (short)(_ScoreStatEval & 0xFFFF);
+            set => _ScoreStatEval = (_ScoreStatEval & ~0xFFFF) | value;
         }
 
         public short StatEval
         {
-            get => ((short)((_ScoreStatEval & 0xFFFF0000) >> 16));
+            get => (short)((_ScoreStatEval & 0xFFFF0000) >> 16);
             set => _ScoreStatEval = (int)((_ScoreStatEval & 0x0000FFFF) | (value << 16));
         }
 
         public int Age
         {
-            get => (AgePVType & 0b11111000);
+            get => AgePVType & 0b11111000;
             set => AgePVType = (sbyte)((AgePVType & 0b00000111) | ((sbyte)value));
         }
 
         public bool PV
         {
-            get => ((AgePVType & TT_PV_MASK) != 0);
+            get => (AgePVType & TT_PV_MASK) != 0;
             set
             {
                 if (value)
@@ -73,13 +74,13 @@ namespace LTChess.Logic.Transposition
 
         public TTNodeType NodeType
         {
-            get => (((TTNodeType)(AgePVType & TT_BOUND_MASK)));
-            set => AgePVType = (sbyte) ((AgePVType & ~TT_BOUND_MASK) | (sbyte)value);
+            get => (TTNodeType)(AgePVType & TT_BOUND_MASK);
+            set => AgePVType = (sbyte)((AgePVType & ~TT_BOUND_MASK) | (sbyte)value);
         }
 
         public int Bound
         {
-            get => (AgePVType & TT_BOUND_MASK);
+            get => AgePVType & TT_BOUND_MASK;
         }
 
         public sbyte Depth
@@ -88,7 +89,7 @@ namespace LTChess.Logic.Transposition
             set => _depth = (sbyte)(value + DepthOffset);
         }
 
-        public bool IsEmpty => (_depth == 0);
+        public bool IsEmpty => _depth == 0;
 
         public TTEntry(ulong key, short score, TTNodeType nodeType, int depth, Move move)
         {
@@ -123,11 +124,11 @@ namespace LTChess.Logic.Transposition
                 this.Score = score;
                 this.StatEval = statEval;
                 this.Depth = (sbyte)depth;
-                this.AgePVType = (sbyte)(TranspositionTable.Age | (isPV ? 1 : 0) << 2 | (int)nodeType);
+                this.AgePVType = (sbyte)(TranspositionTable.Age | ((isPV ? 1 : 0) << 2) | (int)nodeType);
 
                 if (EnableAssertions)
                 {
-                    Assert((score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate)),
+                    Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
                         "WARN the score " + score + " is outside of bounds for normal TT entries!");
                 }
             }
@@ -177,7 +178,7 @@ namespace LTChess.Logic.Transposition
                     return ScoreMatedMax + 1;
                 }
 
-                return (short) (ttScore + ply);
+                return (short)(ttScore + ply);
             }
 
             return ttScore;
@@ -195,12 +196,12 @@ namespace LTChess.Logic.Transposition
         {
             if (score >= ScoreTTWin)
             {
-                return (short) (score + ply);
+                return (short)(score + ply);
             }
 
             if (score <= ScoreTTLoss)
             {
-                return (short) (score - ply);
+                return (short)(score - ply);
             }
 
             return score;

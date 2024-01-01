@@ -1,8 +1,10 @@
 ﻿
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using LTChess.Logic.NN.HalfKA_HM.Layers;
 using System.Runtime.InteropServices;
+
+using LTChess.Logic.NN.HalfKA_HM.Layers;
+
+using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKA_HM
 {
@@ -64,18 +66,18 @@ namespace LTChess.Logic.NN.HalfKA_HM
             //  Each AffineTransform uses a buffer of 32 ints, which are 128 bytes in size.
             //  The ClippedReLU layers use buffers of 32 sbytes, which are 32 bytes in size.
             //  The ClippedReLU buffers are padded so that they are aligned on a 64 byte boundary.
-            fc_0_idx = (nuint) 0;
+            fc_0_idx = (nuint)0;
             ac_sqr_0_idx = (nuint)(fc_0_idx + (nuint)fc_0.BufferSizeBytes);
             ac_0_idx = (nuint)(ac_sqr_0_idx + (nuint)ac_sqr_0.BufferSizeBytes + ClippedReLU_Padding);
-            fc_1_idx = (nuint) (ac_0_idx + (nuint) ac_0.BufferSizeBytes + ClippedReLU_Padding);
-            ac_1_idx = (nuint) (fc_1_idx + (nuint) fc_1.BufferSizeBytes);
-            fc_2_idx = (nuint) (ac_1_idx + (nuint) ac_1.BufferSizeBytes + ClippedReLU_Padding);
+            fc_1_idx = (nuint)(ac_0_idx + (nuint)ac_0.BufferSizeBytes + ClippedReLU_Padding);
+            ac_1_idx = (nuint)(fc_1_idx + (nuint)fc_1.BufferSizeBytes);
+            fc_2_idx = (nuint)(ac_1_idx + (nuint)ac_1.BufferSizeBytes + ClippedReLU_Padding);
 
             int bytes;
-            bytes  = (fc_0.BufferSize + fc_1.BufferSize + fc_2.BufferSize) * sizeof(int);
-            bytes += ((ac_0.BufferSize + ClippedReLU_Padding) + (ac_1.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
-            bytes += ((ac_sqr_0.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
-            _bytesToAlloc = (nuint) bytes;
+            bytes = (fc_0.BufferSize + fc_1.BufferSize + fc_2.BufferSize) * sizeof(int);
+            bytes += ac_0.BufferSize + ClippedReLU_Padding + ((ac_1.BufferSize + ClippedReLU_Padding) * sizeof(sbyte));
+            bytes += (ac_sqr_0.BufferSize + ClippedReLU_Padding) * sizeof(sbyte);
+            _bytesToAlloc = (nuint)bytes;
 
             //  The first time a thread tries to access its buffer, this will allocate it and store it
             //  separately for each thread.
@@ -110,14 +112,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
             var _buffer = _ThreadBuffer.Value;
             NativeMemory.Clear((void*)_buffer, _bytesToAlloc);
 
-            Span<int>   fc_0_out     = new Span<int>   ((void*) (_buffer + fc_0_idx    ), fc_0.BufferSize);
-            Span<sbyte> ac_sqr_0_out = new Span<sbyte> ((void*) (_buffer + ac_sqr_0_idx), ac_sqr_0.BufferSize);
-            Span<sbyte> ac_0_out     = new Span<sbyte> ((void*) (_buffer + ac_0_idx    ), ac_0.BufferSize);
+            Span<int> fc_0_out = new Span<int>((void*)(_buffer + fc_0_idx), fc_0.BufferSize);
+            Span<sbyte> ac_sqr_0_out = new Span<sbyte>((void*)(_buffer + ac_sqr_0_idx), ac_sqr_0.BufferSize);
+            Span<sbyte> ac_0_out = new Span<sbyte>((void*)(_buffer + ac_0_idx), ac_0.BufferSize);
 
-            Span<int>   fc_1_out     = new Span<int>   ((void*) (_buffer + fc_1_idx    ), fc_1.BufferSize);
-            Span<sbyte> ac_1_out     = new Span<sbyte> ((void*) (_buffer + ac_1_idx    ), ac_1.BufferSize);
+            Span<int> fc_1_out = new Span<int>((void*)(_buffer + fc_1_idx), fc_1.BufferSize);
+            Span<sbyte> ac_1_out = new Span<sbyte>((void*)(_buffer + ac_1_idx), ac_1.BufferSize);
 
-            Span<int>   fc_2_out     = new Span<int>   ((void*) (_buffer + fc_2_idx    ), fc_2.BufferSize);
+            Span<int> fc_2_out = new Span<int>((void*)(_buffer + fc_2_idx), fc_2.BufferSize);
 
             fc_0.Propagate(transformedFeatures, fc_0_out);
             ac_sqr_0.Propagate(fc_0_out, ac_sqr_0_out);
@@ -132,7 +134,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             fc_2.PropagateOutput(ac_1_out, fc_2_out);
 
-            int fwdOut = (int) (fc_0_out[FC_0_OUTPUTS]) * (600 * OutputScale) / (127 * (1 << WeightScaleBits));
+            int fwdOut = (int)fc_0_out[FC_0_OUTPUTS] * 600 * OutputScale / (127 * (1 << WeightScaleBits));
             int outputValue = fc_2_out[0] + fwdOut;
 
             return outputValue;

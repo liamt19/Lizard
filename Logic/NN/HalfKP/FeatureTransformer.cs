@@ -2,16 +2,11 @@
 
 
 
-using static LTChess.Logic.NN.HalfKP.NNCommon;
-using static LTChess.Logic.NN.HalfKP.HalfKP;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System;
-using System.Numerics;
-using System.Reflection;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Runtime.Intrinsics.X86;
+
+using static LTChess.Logic.NN.HalfKP.HalfKP;
+using static LTChess.Logic.NN.HalfKP.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKP
 {
@@ -45,8 +40,8 @@ namespace LTChess.Logic.NN.HalfKP
 
         static FeatureTransformer()
         {
-            Weights = (Vector256<short>*) AlignedAllocZeroed((nuint) ((HalfDimensions * InputDimensions) * sizeof(short)), AllocAlignment);
-            Biases  = (Vector256<short>*) AlignedAllocZeroed((nuint) ((HalfDimensions                  ) * sizeof(short)), AllocAlignment);
+            Weights = (Vector256<short>*)AlignedAllocZeroed((nuint)(HalfDimensions * InputDimensions * sizeof(short)), AllocAlignment);
+            Biases = (Vector256<short>*)AlignedAllocZeroed((nuint)(HalfDimensions * sizeof(short)), AllocAlignment);
         }
 
 
@@ -69,7 +64,7 @@ namespace LTChess.Logic.NN.HalfKP
             const uint NumChunks = HalfDimensions / SimdWidth;
             const int Control = 0b11011000;
 
-            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);
+            sbyte* outputPtr = (sbyte*)Unsafe.AsPointer(ref output[0]);
 
             Span<int> perspectives = stackalloc int[2] { pos.ToMove, Not(pos.ToMove) };
             for (int p = 0; p < 2; p++)
@@ -79,8 +74,8 @@ namespace LTChess.Logic.NN.HalfKP
 
                 for (int j = 0; j < NumChunks; ++j)
                 {
-                    Vector256<short> sum0 = accumulation[(j * 2 + 0)];
-                    Vector256<short> sum1 = accumulation[(j * 2 + 1)];
+                    Vector256<short> sum0 = accumulation[(j * 2) + 0];
+                    Vector256<short> sum1 = accumulation[(j * 2) + 1];
 
                     Vector256<sbyte> saturated = Avx2.PackSignedSaturate(sum0, sum1);
                     Vector256<sbyte> maxVec = Avx2.Max(saturated, Vector256<sbyte>.Zero);
@@ -88,7 +83,7 @@ namespace LTChess.Logic.NN.HalfKP
 
                     //  JIT seems to just use vmovups to place 'permuted' into the right offset in the output
                     //  instead of storing it with movdqu
-                    int storeIdx = (int)((offset) + (j * VSize.SByte));
+                    int storeIdx = (int)(offset + (j * VSize.SByte));
                     Avx.Store(outputPtr + storeIdx, permuted.AsSByte());
                 }
             }
@@ -139,7 +134,7 @@ namespace LTChess.Logic.NN.HalfKP
         public bool ReadParameters(BinaryReader br)
         {
             var stream = br.BaseStream;
-            long toRead = (long) ((HalfDimensions * InputDimensions) + HalfDimensions) * sizeof(short);
+            long toRead = (long)((HalfDimensions * InputDimensions) + HalfDimensions) * sizeof(short);
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("HalfKP FeatureTransformer's BinaryReader doesn't have enough data for all weights and biases to be read!");

@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-using LTChess.Properties;
+﻿using LTChess.Properties;
 
 namespace LTChess.Logic.Util
 {

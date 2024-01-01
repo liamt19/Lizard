@@ -1,19 +1,10 @@
-﻿
-
-using static LTChess.Logic.NN.HalfKP.FeatureTransformer;
-using static LTChess.Logic.NN.HalfKP.NNCommon;
-using static LTChess.Logic.NN.HalfKP.HalfKP;
-using static LTChess.Logic.NN.SIMD;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.Intrinsics;
-using System;
 
-using LTChess.Logic.Data;
-using LTChess.Logic.NN.HalfKP.Layers;
 using LTChess.Properties;
 
 using static LTChess.Logic.NN.HalfKP.HalfKP.UniquePiece;
-using System.Resources;
+using static LTChess.Logic.NN.HalfKP.NNCommon;
 
 namespace LTChess.Logic.NN.HalfKP
 {
@@ -43,7 +34,7 @@ namespace LTChess.Logic.NN.HalfKP
         public const string Stockfish12FinalNet = @"nn-62ef826d1a6d.nnue";
 
         public const string Name = "HalfKP(Friend)";
-        public const int Dimensions = SquareNB * (10 * SquareNB + 1);
+        public const int Dimensions = SquareNB * ((10 * SquareNB) + 1);
 
         /// <summary>
         /// There are a max of 32 pieces on the board, and kings are excluded here
@@ -107,7 +98,7 @@ namespace LTChess.Logic.NN.HalfKP
                 networkToLoad = Stockfish12FinalNet;
 
                 Log("Using embedded NNUE with HalfKP network " + networkToLoad);
-                string resourceName = (networkToLoad.Replace(".nnue", string.Empty));
+                string resourceName = networkToLoad.Replace(".nnue", string.Empty);
 
                 object? o = Resources.ResourceManager.GetObject(resourceName);
                 if (o == null)
@@ -119,7 +110,7 @@ namespace LTChess.Logic.NN.HalfKP
                     Environment.Exit(-1);
                 }
 
-                byte[] data = (byte[]) o;
+                byte[] data = (byte[])o;
                 kpFile = new MemoryStream(data);
             }
 
@@ -151,7 +142,7 @@ namespace LTChess.Logic.NN.HalfKP
 
             uint hashValue = br.ReadUInt32();
             uint netHash = NetworkLayers.GetHashValue();
-            uint finalHash = (hashValue ^ netHash);
+            uint finalHash = hashValue ^ netHash;
 
             if (finalHash != CorrectHashValue)
             {
@@ -210,9 +201,9 @@ namespace LTChess.Logic.NN.HalfKP
         [MethodImpl(Inline)]
         public static int GetEvaluation(Position pos)
         {
-            Span<sbyte> transformed_features = stackalloc sbyte[(int) FeatureTransformer.BufferSize];
+            Span<sbyte> transformed_features = stackalloc sbyte[(int)FeatureTransformer.BufferSize];
 
-            ref AccumulatorPSQT accumulator = ref *(pos.State->Accumulator);
+            ref AccumulatorPSQT accumulator = ref *pos.State->Accumulator;
             Transformer.TransformFeatures(pos, transformed_features, ref accumulator);
 
             var score = NetworkLayers.Propagate(transformed_features);
@@ -225,7 +216,7 @@ namespace LTChess.Logic.NN.HalfKP
         [MethodImpl(Inline)]
         public static void RefreshNN(Position pos)
         {
-            ref AccumulatorPSQT accumulator = ref *(pos.State->Accumulator);
+            ref AccumulatorPSQT accumulator = ref *pos.State->Accumulator;
             Transformer.RefreshAccumulatorPerspective(pos, ref accumulator, Color.White);
         }
 
@@ -375,7 +366,7 @@ namespace LTChess.Logic.NN.HalfKP
             const uint NumChunks = TransformedFeatureDimensions / (SimdWidth / 2);
             const int RelativeDimensions = (int)TransformedFeatureDimensions / 16;
 
-            int ci = (RelativeDimensions * index);
+            int ci = RelativeDimensions * index;
             for (int j = 0; j < NumChunks; j++)
             {
                 accumulation[j] = Avx2.Subtract(accumulation[j], FeatureTransformer.Weights[ci + j]);
@@ -393,7 +384,7 @@ namespace LTChess.Logic.NN.HalfKP
             const uint NumChunks = TransformedFeatureDimensions / (SimdWidth / 2);
             const int RelativeDimensions = (int)TransformedFeatureDimensions / 16;
 
-            int ci = (RelativeDimensions * index);
+            int ci = RelativeDimensions * index;
             for (int j = 0; j < NumChunks; j++)
             {
                 accumulation[j] = Avx2.Add(accumulation[j], FeatureTransformer.Weights[ci + j]);
@@ -477,7 +468,7 @@ namespace LTChess.Logic.NN.HalfKP
         public static int HalfKPIndex(int kingSq, int pieceSq, int fishPT, int perspective)
         {
             int fishPieceSQ = (int)(PieceSquareIndex[perspective][fishPT] + pieceSq);
-            int fishIndex = ((641 * kingSq) + fishPieceSQ);
+            int fishIndex = (641 * kingSq) + fishPieceSQ;
             return fishIndex;
         }
 
@@ -490,7 +481,7 @@ namespace LTChess.Logic.NN.HalfKP
         [MethodImpl(Inline)]
         public static int FishPieceKP(int pc, int pt)
         {
-            return ((pt + 1) + (pc * 8));
+            return pt + 1 + (pc * 8);
         }
 
 
@@ -561,21 +552,21 @@ namespace LTChess.Logic.NN.HalfKP
         /// </summary>
         public static class UniquePiece
         {
-            public const uint PS_NONE       =  0;
-            public const uint PS_W_PAWN     =  1;
-            public const uint PS_B_PAWN     =  1 * SquareNB + 1;
-            public const uint PS_W_KNIGHT   =  2 * SquareNB + 1;
-            public const uint PS_B_KNIGHT   =  3 * SquareNB + 1;
-            public const uint PS_W_BISHOP   =  4 * SquareNB + 1;
-            public const uint PS_B_BISHOP   =  5 * SquareNB + 1;
-            public const uint PS_W_ROOK     =  6 * SquareNB + 1;
-            public const uint PS_B_ROOK     =  7 * SquareNB + 1;
-            public const uint PS_W_QUEEN    =  8 * SquareNB + 1;
-            public const uint PS_B_QUEEN    =  9 * SquareNB + 1;
-            public const uint PS_W_KING     = 10 * SquareNB + 1;
-            public const uint PS_END        = PS_W_KING;
-            public const uint PS_B_KING     = 11 * SquareNB + 1;
-            public const uint PS_END2       = 12 * SquareNB + 1;
+            public const uint PS_NONE = 0;
+            public const uint PS_W_PAWN = 1;
+            public const uint PS_B_PAWN = (1 * SquareNB) + 1;
+            public const uint PS_W_KNIGHT = (2 * SquareNB) + 1;
+            public const uint PS_B_KNIGHT = (3 * SquareNB) + 1;
+            public const uint PS_W_BISHOP = (4 * SquareNB) + 1;
+            public const uint PS_B_BISHOP = (5 * SquareNB) + 1;
+            public const uint PS_W_ROOK = (6 * SquareNB) + 1;
+            public const uint PS_B_ROOK = (7 * SquareNB) + 1;
+            public const uint PS_W_QUEEN = (8 * SquareNB) + 1;
+            public const uint PS_B_QUEEN = (9 * SquareNB) + 1;
+            public const uint PS_W_KING = (10 * SquareNB) + 1;
+            public const uint PS_END = PS_W_KING;
+            public const uint PS_B_KING = (11 * SquareNB) + 1;
+            public const uint PS_END2 = (12 * SquareNB) + 1;
 
             public static readonly uint[][] PieceSquareIndex = {
                 // convention: W - us, B - them

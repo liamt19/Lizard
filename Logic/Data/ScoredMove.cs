@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.Data
+﻿namespace LTChess.Logic.Data
 {
     /// <summary>
     /// Contains a <see cref="Data.Move"/> and a score.
@@ -35,8 +28,8 @@ namespace LTChess.Logic.Data
             return Move.ToString() + ", " + Score;
         }
 
-        public static bool operator <(ScoredMove a, ScoredMove b) => (a.Score < b.Score);
-        public static bool operator >(ScoredMove a, ScoredMove b) => (a.Score > b.Score);
+        public static bool operator <(ScoredMove a, ScoredMove b) => a.Score < b.Score;
+        public static bool operator >(ScoredMove a, ScoredMove b) => a.Score > b.Score;
 
         public bool Equals(ScoredMove other)
         {

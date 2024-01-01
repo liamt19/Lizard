@@ -1,13 +1,4 @@
-﻿using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using LTChess.Properties;
+﻿using System.Buffers.Binary;
 
 namespace LTChess.Logic.Book
 {
@@ -148,8 +139,8 @@ namespace LTChess.Logic.Book
 
                     entries.Add(entry);
                 }
-            
-                
+
+
             }
             catch (Exception ex)
             {
@@ -177,7 +168,7 @@ namespace LTChess.Logic.Book
                 int pt = bb.GetPieceAtIndex(idx);
                 int pgPieceType = PieceToPolyglotPiece(pc, pt);
 
-                int pieceOffset = 64 * pgPieceType + idx;
+                int pieceOffset = (64 * pgPieceType) + idx;
 
                 pieceHash ^= RandomPiece[pieceOffset];
             }
@@ -227,7 +218,7 @@ namespace LTChess.Logic.Book
                 return (pt * 2) + 1;
             }
 
-            return (pt * 2);
+            return pt * 2;
 
             /**
             black pawn    0

@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using System.Security.Cryptography;
-using System.Text;
+﻿using System.Text;
 
 namespace LTChess.Logic.Data
 {
@@ -24,12 +22,12 @@ namespace LTChess.Logic.Data
             set => _data = value;
         }
 
-        public const int FlagCapture =     0b000001 << 26;
-        public const int FlagEnPassant =   0b000010 << 26;
-        public const int FlagCastle =      0b000100 << 26;
-        public const int FlagCheck =       0b001000 << 26;
+        public const int FlagCapture = 0b000001 << 26;
+        public const int FlagEnPassant = 0b000010 << 26;
+        public const int FlagCastle = 0b000100 << 26;
+        public const int FlagCheck = 0b001000 << 26;
         public const int FlagDoubleCheck = 0b010000 << 26;
-        public const int FlagPromotion =   0b100000 << 26;
+        public const int FlagPromotion = 0b100000 << 26;
 
         /// <summary>
         /// A mask of <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>
@@ -57,8 +55,8 @@ namespace LTChess.Logic.Data
         public int To
         {
             //  Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
-            get => (_data & 0x3F);
-            set => _data = ((_data & ~0x3F) | value);
+            get => _data & 0x3F;
+            set => _data = (_data & ~0x3F) | value;
         }
 
         /// <summary>
@@ -67,8 +65,8 @@ namespace LTChess.Logic.Data
         public int From
         {
             //  Reminder to future self: This is a property, and calling move.get_From() 124,310,980 times at depth 15 is a no-no.
-            get => ((_data >> 6) & 0x3F);
-            set => _data = ((_data & ~(0x3F << 6)) | (value << 6));
+            get => (_data >> 6) & 0x3F;
+            set => _data = (_data & ~(0x3F << 6)) | (value << 6);
         }
 
         /// <summary>
@@ -77,7 +75,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public int MoveMask
         {
-            get => (_data & Mask_ToFrom);
+            get => _data & Mask_ToFrom;
         }
 
         /// <summary>
@@ -87,7 +85,7 @@ namespace LTChess.Logic.Data
         public int PromotionTo
         {
             get => ((_data >> 12) & 0x3) + 1;
-            set => _data = ((_data & ~(0x3 << 12)) | ((value - 1) << 12));
+            set => _data = (_data & ~(0x3 << 12)) | ((value - 1) << 12);
         }
 
         /// <summary>
@@ -95,8 +93,8 @@ namespace LTChess.Logic.Data
         /// </summary>
         public int SqChecker
         {
-            get => ((_data >> 18) & 0x3F);
-            set => _data = ((_data & ~(0x3F << 18)) | (value << 18));
+            get => (_data >> 18) & 0x3F;
+            set => _data = (_data & ~(0x3F << 18)) | (value << 18);
         }
 
 
@@ -108,7 +106,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool Capture
         {
-            get => ((_data & FlagCapture) != 0);
+            get => (_data & FlagCapture) != 0;
             set => _data ^= FlagCapture;
         }
 
@@ -117,7 +115,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool EnPassant
         {
-            get => ((_data & FlagEnPassant) != 0);
+            get => (_data & FlagEnPassant) != 0;
             set => _data ^= FlagEnPassant;
         }
 
@@ -126,7 +124,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool Castle
         {
-            get => ((_data & FlagCastle) != 0);
+            get => (_data & FlagCastle) != 0;
             set => _data ^= FlagCastle;
         }
 
@@ -135,8 +133,8 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool CausesCheck
         {
-            get => ((_data & FlagCheck) != 0);
-            set => _data = (value ? (_data | FlagCheck) : (_data & ~FlagCheck));
+            get => (_data & FlagCheck) != 0;
+            set => _data = value ? (_data | FlagCheck) : (_data & ~FlagCheck);
         }
 
         /// <summary>
@@ -144,7 +142,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool CausesDoubleCheck
         {
-            get => ((_data & FlagDoubleCheck) != 0);
+            get => (_data & FlagDoubleCheck) != 0;
             set => _data ^= FlagDoubleCheck;
         }
 
@@ -153,7 +151,7 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool Promotion
         {
-            get => ((_data & FlagPromotion) != 0);
+            get => (_data & FlagPromotion) != 0;
             set => _data ^= FlagPromotion;
         }
 
@@ -163,8 +161,9 @@ namespace LTChess.Logic.Data
         /// The setter will only clear the <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>, 
         /// so doing <see cref="Checks"/> = <see langword="true"/> will change nothing.
         /// </summary>
-        public bool Checks {
-            get => ((_data & Mask_Check) != 0);
+        public bool Checks
+        {
+            get => (_data & Mask_Check) != 0;
             set => _data &= ~Mask_Check;
         }
 
@@ -173,7 +172,7 @@ namespace LTChess.Logic.Data
         public Move(CondensedMove cm)
         {
             ushort condData = cm.Data;
-            _data = (condData & Mask_ToFrom);
+            _data = condData & Mask_ToFrom;
 
             int rank = GetIndexRank(cm.To);
             if ((rank == 0 || rank == 7) && cm.PromotionTo != 0)
@@ -342,7 +341,7 @@ namespace LTChess.Logic.Data
             //  This meant that every time we did move.Equals(other) the generated IL had ~8 extra instructions,
             //  plus a pair of lengthy "box/unbox" instructions since a Move is a value type being passes as an object.
 
-            return ((move.Data & Mask_EQ) == (Data & Mask_EQ));
+            return (move.Data & Mask_EQ) == (Data & Mask_EQ);
         }
 
         /// <summary>
@@ -351,7 +350,7 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public bool Equals(CondensedMove move)
         {
-            return ((move.GetToFromPromotion) == (Data & Mask_Condensed_EQ)) && move.Castle == Castle;
+            return (move.GetToFromPromotion == (Data & Mask_Condensed_EQ)) && move.Castle == Castle;
         }
 
         [MethodImpl(Inline)]

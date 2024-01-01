@@ -1,15 +1,10 @@
 ﻿
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.SIMD;
-using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Runtime.InteropServices;
-using System;
-using System.Numerics;
-using System.Reflection;
-using System.IO;
-using LTChess.Logic.Search;
+using System.Runtime.Intrinsics.X86;
+
+using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
+using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+using static LTChess.Logic.NN.SIMD;
 
 namespace LTChess.Logic.NN.HalfKA_HM
 {
@@ -48,9 +43,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         static FeatureTransformer()
         {
-            Biases      = (Vector256<short>*) AlignedAllocZeroed(((HalfDimensions) / VSize.Short * 32),                   AllocAlignment);
-            Weights     = (Vector256<short>*) AlignedAllocZeroed(((HalfDimensions * InputDimensions) / VSize.Short * 32), AllocAlignment);
-            PSQTWeights = (Vector256<int>*)   AlignedAllocZeroed(((InputDimensions * PSQTBuckets) / VSize.Int * 32),      AllocAlignment);
+            Biases = (Vector256<short>*)AlignedAllocZeroed(HalfDimensions / VSize.Short * 32, AllocAlignment);
+            Weights = (Vector256<short>*)AlignedAllocZeroed(HalfDimensions * InputDimensions / VSize.Short * 32, AllocAlignment);
+            PSQTWeights = (Vector256<int>*)AlignedAllocZeroed(InputDimensions * PSQTBuckets / VSize.Int * 32, AllocAlignment);
 
             One = Vector256.Create((short)127).AsInt16();
         }
@@ -75,25 +70,25 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             const uint OutputChunkSize = 256 / 8;
             const uint NumOutputChunks = HalfDimensions / 2 / OutputChunkSize;
-            const uint StrideOffset = (HalfKA_HM.TransformedFeatureDimensions / VSize.Short) / 2;
+            const uint StrideOffset = HalfKA_HM.TransformedFeatureDimensions / VSize.Short / 2;
 
             Span<int> perspectives = stackalloc int[2] { pos.ToMove, Not(pos.ToMove) };
 
             var psqt = (accumulator.PSQ(perspectives[0])[0][bucket] -
                         accumulator.PSQ(perspectives[1])[0][bucket]) / 2;
 
-            sbyte* outputPtr = (sbyte*) Unsafe.AsPointer(ref output[0]);
+            sbyte* outputPtr = (sbyte*)Unsafe.AsPointer(ref output[0]);
 
             for (int p = 0; p < 2; p++)
             {
                 var accumulation = accumulator[perspectives[p]];
-                uint offset = (uint)((HalfDimensions / 2) * p);
+                uint offset = (uint)(HalfDimensions / 2 * p);
                 for (int j = 0; j < NumOutputChunks; j++)
                 {
-                    var sum0a = Avx2.Max(Avx2.Min(accumulation[(j * 2 + 0)               ], One), Zero);
-                    var sum0b = Avx2.Max(Avx2.Min(accumulation[(j * 2 + 1)               ], One), Zero);
-                    var sum1a = Avx2.Max(Avx2.Min(accumulation[(j * 2 + 0) + StrideOffset], One), Zero);
-                    var sum1b = Avx2.Max(Avx2.Min(accumulation[(j * 2 + 1) + StrideOffset], One), Zero);
+                    var sum0a = Avx2.Max(Avx2.Min(accumulation[(j * 2) + 0], One), Zero);
+                    var sum0b = Avx2.Max(Avx2.Min(accumulation[(j * 2) + 1], One), Zero);
+                    var sum1a = Avx2.Max(Avx2.Min(accumulation[(j * 2) + 0 + StrideOffset], One), Zero);
+                    var sum1b = Avx2.Max(Avx2.Min(accumulation[(j * 2) + 1 + StrideOffset], One), Zero);
 
                     var pa = Avx2.ShiftRightLogical(Avx2.MultiplyLow(sum0a, sum1a), 7);
                     var pb = Avx2.ShiftRightLogical(Avx2.MultiplyLow(sum0b, sum1b), 7);
@@ -101,7 +96,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<sbyte> saturated = Avx2.PackSignedSaturate(pa, pb);
                     Vector256<long> permuted = Avx2.Permute4x64(saturated.AsInt64(), Control);
 
-                    int storeIdx = (int)((offset) + (j * VSize.SByte));
+                    int storeIdx = (int)(offset + (j * VSize.SByte));
                     Avx.Store((long*)(outputPtr + storeIdx), permuted);
                 }
             }
@@ -137,7 +132,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             {
                 for (int k = 0; k < NumRegs; k++)
                 {
-                    acc[k] = Biases[((j * RelativeTileHeight) + k)];
+                    acc[k] = Biases[(j * RelativeTileHeight) + k];
                 }
 
                 int i = 0;
@@ -149,7 +144,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                         break;
                     }
 
-                    var offset = RelativeWeightIndex * index + j * RelativeTileHeight;
+                    var offset = (RelativeWeightIndex * index) + (j * RelativeTileHeight);
                     Vector256<short>* column = &Weights[offset];
                     for (int k = 0; k < NumRegs; k++)
                     {
@@ -183,7 +178,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumPsqtRegs; k++)
                     {
-                        psq[k] = Add256(psq[k], PSQTWeights[(index + j * PsqtTileHeight)]);
+                        psq[k] = Add256(psq[k], PSQTWeights[index + (j * PsqtTileHeight)]);
                     }
                 }
 

@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace LTChess.Logic.Book
 {
@@ -21,7 +17,7 @@ namespace LTChess.Logic.Book
         public ushort Weight;
         public uint Learn;
 
-        public int ToSquare => (RawMove & MoveMask);
+        public int ToSquare => RawMove & MoveMask;
         public int FromSquare => (RawMove >> 6) & MoveMask;
         public int PromotionTo => (RawMove >> 12) & 0b111;
 

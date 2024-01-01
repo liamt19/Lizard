@@ -18,9 +18,6 @@
 
 
 
-using System;
-using System.IO;
-using System.Runtime.Intrinsics;
 using System.Text;
 
 namespace LTChess.Logic.Util
@@ -35,7 +32,7 @@ namespace LTChess.Logic.Util
         public const int MagicStringSize = 17;
 
         private const long SIGN_EXTEND_MASK = -1L;
-        private const int INT64_BITSIZE = (sizeof(long) * 8);
+        private const int INT64_BITSIZE = sizeof(long) * 8;
 
         /// <summary>
         /// Returns true if the NNUE file has a "COMPRESSED_LEB128" header, which means that the weights and biases
@@ -63,7 +60,7 @@ namespace LTChess.Logic.Util
                 {
                     str = Encoding.UTF8.GetString(ptr, MagicStringSize);
                 }
-                
+
                 if (str.Equals(MagicString))
                 {
                     return true;
@@ -92,16 +89,16 @@ namespace LTChess.Logic.Util
                 {
                     if (buf_pos == BUF_SIZE)
                     {
-                        stream.Read(buf, 0, (int) Math.Min(bytes_left, BUF_SIZE));
+                        stream.Read(buf, 0, (int)Math.Min(bytes_left, BUF_SIZE));
                         buf_pos = 0;
                     }
                     byte b = buf[buf_pos++];
                     --bytes_left;
-                    result |= (short) ((b & 0x7f) << shift);
+                    result |= (short)((b & 0x7f) << shift);
                     shift += 7;
                     if ((b & 0x80) == 0)
                     {
-                        output[i] = ((sizeof(short) * 8 <= shift) || (b & 0x40) == 0) ? result : ((short) (result | ~((1 << shift) - 1)));
+                        output[i] = ((sizeof(short) * 8 <= shift) || (b & 0x40) == 0) ? result : ((short)(result | ~((1 << shift) - 1)));
                         break;
                     }
                 } while (shift < sizeof(short) * 8);

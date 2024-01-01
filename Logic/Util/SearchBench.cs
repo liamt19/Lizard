@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace LTChess.Logic.Util
+﻿namespace LTChess.Logic.Util
 {
     [SkipStaticConstructor]
     public static class SearchBench
     {
-        
+
         public static void Go(int depth = 12)
         {
             Position pos = new Position(InitialFEN, owner: SearchPool.MainThread);
@@ -17,18 +11,18 @@ namespace LTChess.Logic.Util
             Stopwatch sw = Stopwatch.StartNew();
 
             ulong totalNodes = 0;
-			SearchInformation info = new SearchInformation(pos, depth);
+            SearchInformation info = new SearchInformation(pos, depth);
             info.OnDepthFinish = null;
             info.OnSearchFinish = null;
 
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
-            Search.Search.HandleNewGame();
+            Search.Searches.HandleNewGame();
 
             foreach (string fen in BenchFENs)
             {
                 pos.LoadFromFEN(fen);
-				SearchPool.StartSearch(pos, ref info);
+                SearchPool.StartSearch(pos, ref info);
 
                 SearchPool.MainThread.WaitForThreadFinished();
 
@@ -37,21 +31,21 @@ namespace LTChess.Logic.Util
                 Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
 
                 TranspositionTable.Clear();
-                Search.Search.HandleNewGame();
+                Search.Searches.HandleNewGame();
             }
-			sw.Stop();
+            sw.Stop();
 
-            if (UCI.Active)
-			{
-                UCI.SendString("info string node " + totalNodes + " time " + Math.Round(sw.Elapsed.TotalMilliseconds) + " nps " + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps");
+            if (UCIClient.Active)
+            {
+                UCIClient.SendString("info string node " + totalNodes + " time " + Math.Round(sw.Elapsed.TotalMilliseconds) + " nps " + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps");
             }
-			else
-			{
+            else
+            {
                 Log("\r\nNodes searched:  " + totalNodes + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
             }
         }
 
-        private static string[] BenchFENs = new string[] 
+        private static string[] BenchFENs = new string[]
         {
             "r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
             "4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",

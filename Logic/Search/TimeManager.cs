@@ -1,13 +1,11 @@
-﻿using System.Diagnostics;
-
-namespace LTChess.Logic.Search
+﻿namespace LTChess.Logic.Search
 {
     public class TimeManager
     {
 
         /// <summary>
         /// Add this amount of milliseconds to the total search time when checking if the
-        /// search should stop, in case the move overhead is very low and the UCI expects
+        /// search should stop, in case the move overhead is very low and the Uci expects
         /// the search to stop very quickly after our time expires.
         /// </summary>
         public const int TimerBuffer = 50;
@@ -21,7 +19,7 @@ namespace LTChess.Logic.Search
         /// <summary>
         /// The minimum amount of time to search, regardless of the other limitations of the search.
         /// This only applies to the amount of time that we were told to search for (i.e. "movetime 100").
-        /// If we receive a "stop" command from the UCI, this does no apply and we stop as soon as possible.
+        /// If we receive a "stop" command from the Uci, this does no apply and we stop as soon as possible.
         /// </summary>
         public const int MinSearchTime = 200;
 
@@ -42,7 +40,7 @@ namespace LTChess.Logic.Search
 
 
         public double SoftTimeLimit = -1;
-        public bool HasSoftTime => (SoftTimeLimit > 0);
+        public bool HasSoftTime => SoftTimeLimit > 0;
 
 
         public int MovesToGo = DefaultMovesToGo;
@@ -101,7 +99,7 @@ namespace LTChess.Logic.Search
             if (currentTime > (MaxSearchTime - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
             {
                 //  Stop if we are close to going over the max time
-                if (UCI.Active)
+                if (UCIClient.Active)
                 {
                     Log("Reached hard time limit! Used " + currentTime + " of allowed " + MaxSearchTime + " ms at " + FormatCurrentTime());
                 }

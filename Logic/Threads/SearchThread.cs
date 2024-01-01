@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.NN.HalfKA_HM;
 using LTChess.Logic.Search.Ordering;
 
 
@@ -249,7 +241,7 @@ namespace LTChess.Logic.Threads
                         _SearchCond.Pulse();
                         Thread.Yield();
                     }
-                    
+
                 }
 
                 if (Quit)
@@ -283,7 +275,7 @@ namespace LTChess.Logic.Threads
             SearchPool.StartThreads();  //  Start other threads (if any)
             this.Search();              //  Make this thread begin searching
 
-            while (!SearchPool.StopThreads && (SearchPool.SharedInfo.IsInfinite)) { }
+            while (!SearchPool.StopThreads && SearchPool.SharedInfo.IsInfinite) { }
 
             //  When the main thread is done, prevent the other threads from searching any deeper
             SearchPool.StopThreads = true;
@@ -291,7 +283,7 @@ namespace LTChess.Logic.Threads
             //  Wait for the other threads to return
             SearchPool.WaitForSearchFinished();
 
-            //  Search is finished, now give the UCI output.
+            //  Searches is finished, now give the UCI output.
             SearchPool.SharedInfo.OnSearchFinish?.Invoke(ref SearchPool.SharedInfo);
             SearchPool.SharedInfo.TimeManager.ResetTimer();
 
@@ -316,7 +308,7 @@ namespace LTChess.Logic.Threads
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
                 (ss + i)->Clear();
-                (ss + i)->Ply = (short) i;
+                (ss + i)->Ply = (short)i;
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
 
@@ -379,7 +371,7 @@ namespace LTChess.Logic.Threads
 
                     while (true)
                     {
-                        score = Logic.Search.Search.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);
+                        score = Logic.Search.Searches.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);
 
                         StableSort(ref RootMoves, PVIndex);
 
@@ -398,7 +390,7 @@ namespace LTChess.Logic.Threads
                         else
                             break;
 
-                        window += (window / 2);
+                        window += window / 2;
                     }
 
                     StableSort(ref RootMoves, 0);
@@ -481,7 +473,7 @@ namespace LTChess.Logic.Threads
             {
                 if (EnableAssertions)
                 {
-                    Assert(Searching == false, 
+                    Assert(Searching == false,
                         "The search thread '" + ToString() + "' had its Dispose(" + disposing + ") method called " +
                         "while the thread's Searching field was " + Searching + "! " +
                         "A thread may only be disposed if it isn't currently in a search.");

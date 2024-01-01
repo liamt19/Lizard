@@ -1,7 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
-
-namespace LTChess.Logic.Magic
+﻿namespace LTChess.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {
@@ -41,15 +38,15 @@ namespace LTChess.Logic.Magic
         public static bool UseKnownMagics = true;
 
 
-        static MagicBitboards() 
-        { 
-            Initialize(); 
+        static MagicBitboards()
+        {
+            Initialize();
         }
 
         public static void Initialize()
         {
-            RookTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
-            BishopTable = (ulong*) AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+            RookTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+            BishopTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
 
             if (HasPext)
             {
@@ -176,7 +173,7 @@ namespace LTChess.Logic.Magic
         /// </summary>
         private static FancyMagicSquare* InitializeFancyMagics(int pt, ulong* table)
         {
-            FancyMagicSquare* magicArray = (FancyMagicSquare*) AlignedAllocZeroed((nuint) (sizeof(FancyMagicSquare) * 64), AllocAlignment);
+            FancyMagicSquare* magicArray = (FancyMagicSquare*)AlignedAllocZeroed((nuint)(sizeof(FancyMagicSquare) * 64), AllocAlignment);
 
             ulong b;
             int size = 0;
@@ -187,7 +184,7 @@ namespace LTChess.Logic.Magic
                 m.shift = (int)(64 - popcount(m.mask));
                 if (sq == A1)
                 {
-                    m.attacks = (ulong*) (table + 0);
+                    m.attacks = (ulong*)(table + 0);
                 }
                 else
                 {
@@ -210,12 +207,12 @@ namespace LTChess.Logic.Magic
 
         private static MagicSquare[] InitializeMagics(int pt)
         {
-            ulong[] blockerMasks    = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
+            ulong[] blockerMasks = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
             ulong[][] blockerBoards = (pt == Piece.Bishop) ? BishopBlockerBoards : RookBlockerBoards;
-            ulong[][] attackBoards  = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
-            int[] bits              = (pt == Piece.Bishop) ? BishopBits : RookBits;
-            ulong[] BetterMagics    = (pt == Piece.Bishop) ? BetterBishopMagics : BetterRookMagics;
-            ulong[] KnownMagics     = (pt == Piece.Bishop) ? KnownBishopMagics : KnownRookMagics;
+            ulong[][] attackBoards = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
+            int[] bits = (pt == Piece.Bishop) ? BishopBits : RookBits;
+            ulong[] BetterMagics = (pt == Piece.Bishop) ? BetterBishopMagics : BetterRookMagics;
+            ulong[] KnownMagics = (pt == Piece.Bishop) ? KnownBishopMagics : KnownRookMagics;
 
             MagicSquare[] magicArray = new MagicSquare[64];
 
@@ -223,7 +220,7 @@ namespace LTChess.Logic.Magic
             {
                 MagicSquare newMagic = new MagicSquare
                 {
-                    shift = (64 - bits[sq]),
+                    shift = 64 - bits[sq],
                     mask = blockerMasks[sq],
                     attacks = new ulong[1 << bits[sq]]
                 };
@@ -299,7 +296,7 @@ namespace LTChess.Logic.Magic
                     {
                         //  Keep moving in this direction until we move off the board, masking in squares along the way.
                         tempSq += dir;
-                        mask |= (1UL << tempSq);
+                        mask |= 1UL << tempSq;
 
                         if ((occupied & (1UL << tempSq)) != 0)
                         {
@@ -318,7 +315,7 @@ namespace LTChess.Logic.Magic
                     {
                         //  Keep moving in this direction until we move off the board, masking in squares along the way.
                         tempSq += dir;
-                        mask |= (1UL << tempSq);
+                        mask |= 1UL << tempSq;
 
                         if ((occupied & (1UL << tempSq)) != 0)
                         {
@@ -341,8 +338,8 @@ namespace LTChess.Logic.Magic
         {
             ulong mask = (pt == Piece.Bishop) ? BishopRay(idx) : RookRay(idx);
 
-            int rank = (idx >> 3);
-            int file = (idx & 7);
+            int rank = idx >> 3;
+            int file = idx & 7;
             if (rank == 7)
             {
                 mask &= ~Rank1BB;
@@ -353,7 +350,7 @@ namespace LTChess.Logic.Magic
             }
             else
             {
-                mask &= (~Rank1BB & ~Rank8BB);
+                mask &= ~Rank1BB & ~Rank8BB;
             }
 
             if (file == 0)
@@ -366,7 +363,7 @@ namespace LTChess.Logic.Magic
             }
             else
             {
-                mask &= (~FileHBB & ~FileABB);
+                mask &= ~FileHBB & ~FileABB;
             }
 
             return mask;
@@ -388,7 +385,7 @@ namespace LTChess.Logic.Magic
                         //  Keep moving in this direction until we move off the board,
                         //  masking in squares along the way,
                         tempSq += dir;
-                        bishopMask |= (1UL << tempSq);
+                        bishopMask |= 1UL << tempSq;
                     }
                 }
                 return bishopMask;

@@ -1,20 +1,8 @@
-﻿
+﻿using System.Runtime.InteropServices;
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-
-using LTChess.Logic.Core;
-using LTChess.Logic.Data;
 using LTChess.Logic.Search.Ordering;
 
 using static LTChess.Logic.Search.MovePicker.MovePickerStage;
-using static LTChess.Logic.Search.EvaluationConstants;
 
 namespace LTChess.Logic.Search
 {
@@ -26,8 +14,8 @@ namespace LTChess.Logic.Search
             //  Ensure proper offsets for Killer0 and Killer1 in a SearchStackEntry
             if (EnableAssertions)
             {
-                int off0 = ((FieldOffsetAttribute)(typeof(SearchStackEntry).GetField("Killer0").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0])).Value;
-                int off1 = ((FieldOffsetAttribute)(typeof(SearchStackEntry).GetField("Killer1").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0])).Value;
+                int off0 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer0").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
+                int off1 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer1").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
 
                 Assert(off0 == off1 - sizeof(ScoredMove),
                     "The offset of Killer1 must be exactly 8 bytes after Killer0. " +
@@ -41,7 +29,7 @@ namespace LTChess.Logic.Search
             {
                 foreach (var field in typeof(MovePickerStage).GetFields())
                 {
-                    if ((int) field.GetValue(null) == stage)
+                    if ((int)field.GetValue(null) == stage)
                         return field.Name.ToString();
                 }
                 return "(Unknown!)";
@@ -75,7 +63,7 @@ namespace LTChess.Logic.Search
 
 
         public MovePicker(Position pos, short* mainHistory, short* captureHistory, PieceToHistory*[] contHist,
-                          Move* killers, ScoredMove* moveBuffer, int depth, 
+                          Move* killers, ScoredMove* moveBuffer, int depth,
                           CondensedMove ttMove, int previousSquare = SquareNB)
         {
             this.pos = pos;
@@ -115,7 +103,7 @@ namespace LTChess.Logic.Search
                 Assert(!k0.Capture,
                     "MovePicker(" + pos.GetFEN() + ") was given the Killer0 move " + k0 + " = " + k0.ToString(pos) + " which is a capture! " +
                     "(Killer moves should never be captures)");
-                
+
                 Assert(!k1.Capture,
                     "MovePicker(" + pos.GetFEN() + ") was given the Killer1 move " + k1 + " = " + k1.ToString(pos) + " which is a capture! " +
                     "(Killer moves should never be captures)");
@@ -128,7 +116,7 @@ namespace LTChess.Logic.Search
 
             //  If we are in check at any depth, we only look at evasions.
             //  Otherwise, we use the Negamax path for depth > 0, or the quiescence path for <= 0
-            stage = this.pos.Checked ? EvasionsTT : 
+            stage = this.pos.Checked ? EvasionsTT :
                           (depth > 0 ? NegamaxTT :
                                        QuiesceTT);
 
@@ -162,7 +150,7 @@ namespace LTChess.Logic.Search
         /// </summary>
         private bool SelectGoodCaptures()
         {
-            if (Search.SEE_GE(pos, currentMove->Move, -(currentMove->Score)))
+            if (Searches.SEE_GE(pos, currentMove->Move, -currentMove->Score))
             {
                 return true;
             }
@@ -190,8 +178,8 @@ namespace LTChess.Logic.Search
         /// </summary>
         private bool SelectQuiets()
         {
-            return (!currentMove->Move.Equals(k0)
-                 && !currentMove->Move.Equals(k1));
+            return !currentMove->Move.Equals(k0)
+                 && !currentMove->Move.Equals(k1);
         }
 
         /// <summary>
@@ -199,7 +187,7 @@ namespace LTChess.Logic.Search
         /// </summary>
         private bool SelectQuiescenceRecaptures()
         {
-            return (currentMove->Move.To == previousSquare);
+            return currentMove->Move.To == previousSquare;
         }
 
         /// <summary>
@@ -228,7 +216,7 @@ namespace LTChess.Logic.Search
                     currentMove = endBadCaptures = moveBufferStart;
                     genSize = pos.GenAll<GenLoud>(currentMove);
 
-                    lastMove = (currentMove + genSize);
+                    lastMove = currentMove + genSize;
 
                     if (EnableAssertions)
                     {
@@ -250,13 +238,13 @@ namespace LTChess.Logic.Search
                                 int epPawnSquare = m.To - up;
 
                                 Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[epPawnSquare]) != 0,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " + 
+                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
                                     "marked as an en passant, but " + ColorToString(Not(pos.ToMove)) + " doesn't have a pawn to be captured on " + IndexToString(epPawnSquare) + "!");
                             }
                             else if (m.Promotion)
                             {
                                 Assert(m.PromotionTo == Queen,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " + 
+                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
                                     "but GenLoud is only supposed to generate queen promotions for non-captures!");
                             }
                             else
@@ -285,7 +273,7 @@ namespace LTChess.Logic.Search
 
 
                 case Killers:
-                    
+
                     if (killerNumber == 0 && KillerWorks(killerNumber))
                     {
                         killerNumber++;
@@ -343,7 +331,7 @@ namespace LTChess.Logic.Search
                     {
                         currentMove = endBadCaptures;
                         genSize = pos.GenAll<GenQuiets>(currentMove);
-                        lastMove = (currentMove + genSize);
+                        lastMove = currentMove + genSize;
 
                         ScoreQuiets();
                         PartialSort(currentMove, lastMove, -3000 * depth);
@@ -377,10 +365,10 @@ namespace LTChess.Logic.Search
                 case EvasionsInit:
                     currentMove = moveBufferStart;
                     genSize = pos.GenAll<GenEvasions>(currentMove);
-                    lastMove = (currentMove + genSize);
+                    lastMove = currentMove + genSize;
 
                     ScoreEvasions();
-                    
+
                     stage = Evasions;
 
                     //  Fallthrough
@@ -397,7 +385,7 @@ namespace LTChess.Logic.Search
                         return (currentMove - 1)->Move;
                     }
 
-                    if (depth != Search.DepthQChecks)
+                    if (depth != Searches.DepthQChecks)
                     {
                         //  Only go to QuiesceChecks(Init) if the depth == DepthQChecks, otherwise we're done.
                         return Move.Null;
@@ -412,7 +400,7 @@ namespace LTChess.Logic.Search
                 case QuiesceChecksInit:
                     currentMove = moveBufferStart;
                     genSize = pos.GenAll<GenQChecks>(currentMove);
-                    lastMove = (currentMove + genSize);
+                    lastMove = currentMove + genSize;
 
                     stage = QuiesceChecks;
 
@@ -536,7 +524,7 @@ namespace LTChess.Logic.Search
                     {
                         Assert(m.Promotion && m.PromotionTo == Queen,
                             "ScoreCaptures() for move " + m + " = " + m.ToString(pos) + " wasn't a capture nor en passant, " +
-                            "so it must be a queen promotion. m.Promotion is " + (m.Promotion) + ", and m.PromotionTo is " + PieceToString(m.PromotionTo));
+                            "so it must be a queen promotion. m.Promotion is " + m.Promotion + ", and m.PromotionTo is " + PieceToString(m.PromotionTo));
                     }
 
                     //  For non-capture queen promotions
@@ -544,7 +532,7 @@ namespace LTChess.Logic.Search
                 }
 
                 int capIdx = HistoryTable.CapIndex(pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                iter->Score = (13 * GetPieceValue(capturedPiece)) + captureHistory[capIdx] / 12;
+                iter->Score = (13 * GetPieceValue(capturedPiece)) + (captureHistory[capIdx] / 12);
             }
         }
 
@@ -554,8 +542,8 @@ namespace LTChess.Logic.Search
             {
                 int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
 
-                iter->Score = 2 * (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
-                              2 * (*continuations[0])[contIdx] +
+                iter->Score = (2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                              (2 * (*continuations[0])[contIdx]) +
                                   (*continuations[1])[contIdx] +
                                   (*continuations[3])[contIdx] +
                                   (*continuations[5])[contIdx];
@@ -575,12 +563,12 @@ namespace LTChess.Logic.Search
             {
                 if (iter->Move.Capture || iter->Move.EnPassant)
                 {
-                    int capturedPiece = (iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To));
+                    int capturedPiece = iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To);
                     iter->Score = GetPieceValue(capturedPiece) + 10000;
 
                     if (EnableAssertions)
                     {
-                        Assert(capturedPiece != None, 
+                        Assert(capturedPiece != None,
                             "ScoreEvasions() got the move " + iter->Move.ToString() + " = " + iter->Move.ToString(pos) + ", " +
                             "which was generated as a capture/EP but isn't in the current position!");
                     }
@@ -589,8 +577,8 @@ namespace LTChess.Logic.Search
                 {
                     int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
 
-                    iter->Score = 2 * (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
-                                  2 * (*continuations[0])[contIdx] +
+                    iter->Score = (2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                                  (2 * (*continuations[0])[contIdx]) +
                                       (*continuations[1])[contIdx] +
                                       (*continuations[3])[contIdx] +
                                       (*continuations[5])[contIdx];

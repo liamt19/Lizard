@@ -37,25 +37,25 @@ namespace LTChess.Logic.Data
         /// </summary>
         private const int Mask_Condensed_EQ = 0x3FFF;
 
-        public int GetToFromPromotion => (_data & Mask_Condensed_EQ);
+        public int GetToFromPromotion => _data & Mask_Condensed_EQ;
 
 
         public int To
         {
-            get => (_data & 0x3F);
-            set => _data = (ushort) (((_data & ~0x3F) | value));
+            get => _data & 0x3F;
+            set => _data = (ushort)((_data & ~0x3F) | value);
         }
 
         public int From
         {
-            get => ((_data >> 6) & 0x3F);
-            set => _data = (ushort) ((_data & ~(0x3F << 6)) | (value << 6));
+            get => (_data >> 6) & 0x3F;
+            set => _data = (ushort)((_data & ~(0x3F << 6)) | (value << 6));
         }
 
         public int PromotionTo
         {
             get => ((_data >> 12) & 0x3) + 1;
-            set => _data = (ushort) ((_data & ~(0x3 << 12)) | ((value - 1) << 12));
+            set => _data = (ushort)((_data & ~(0x3 << 12)) | ((value - 1) << 12));
         }
 
         /// <summary>
@@ -63,20 +63,20 @@ namespace LTChess.Logic.Data
         /// </summary>
         public bool EnPassant
         {
-            get => ((_data & FlagEnPassant) != 0);
+            get => (_data & FlagEnPassant) != 0;
             set => _data |= FlagEnPassant;
         }
 
         public bool Castle
         {
-            get => ((_data & FlagCastle) != 0);
+            get => (_data & FlagCastle) != 0;
             set => _data |= FlagCastle;
         }
 
 
         public CondensedMove(int from, int to)
         {
-            _data = (ushort) (to | (from << 6));
+            _data = (ushort)(to | (from << 6));
         }
 
         public CondensedMove(int from, int to, int promotionTo) : this(from, to)
@@ -131,7 +131,7 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public bool Equals(CondensedMove other)
         {
-            return (other.GetToFromPromotion == GetToFromPromotion);
+            return other.GetToFromPromotion == GetToFromPromotion;
         }
 
         [MethodImpl(Inline)]
@@ -145,7 +145,7 @@ namespace LTChess.Logic.Data
         [MethodImpl(Inline)]
         public bool IsNull()
         {
-            return (From == 0 && To == 0);
+            return From == 0 && To == 0;
         }
 
         [MethodImpl(Inline)]

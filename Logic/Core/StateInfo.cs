@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
+
 using LTChess.Logic.NN;
 
 namespace LTChess.Logic.Core
@@ -26,7 +22,7 @@ namespace LTChess.Logic.Core
             if (EnableAssertions)
             {
                 //  Static assertion
-                int accOffset = ((FieldOffsetAttribute)(typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0])).Value;
+                int accOffset = ((FieldOffsetAttribute)typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
 
                 Assert(accOffset == (int)StateCopySize,
                     "A StateInfo's Accumulator pointer must be the last field in the struct! " +

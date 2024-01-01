@@ -4,8 +4,6 @@
 
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
-using LTChess.Logic.NN.HalfKP;
-using LTChess.Logic.NN.Simple768;
 
 
 using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
@@ -65,7 +63,7 @@ namespace LTChess.Logic.NN
 #else
             White = (Vector256<short>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (ByteSize / VSize.Short)), AllocAlignment);
             Black = (Vector256<short>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (ByteSize / VSize.Short)), AllocAlignment);
-            
+
             if (UseHalfKA)
             {
                 PSQTWhite = (Vector256<int>*)AlignedAllocZeroed((nuint)(VSize.Vector256Size * (PSQTBuckets / VSize.Int)), AllocAlignment);
@@ -73,7 +71,7 @@ namespace LTChess.Logic.NN
             }
 #endif
 
-            
+
 
 
             RefreshPerspective[0] = RefreshPerspective[1] = true;
