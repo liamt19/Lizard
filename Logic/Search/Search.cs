@@ -704,6 +704,8 @@ namespace LTChess.Logic.Search
 
                         if (score >= beta)
                         {
+                            UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
+
                             //  This is a beta cutoff: Don't bother searching other moves because the current one is already too good.
                             break;
                         }
@@ -736,11 +738,6 @@ namespace LTChess.Logic.Search
                     //  If we skipped the only legal move we had, return alpha instead of an erroneous mate/draw score.
                     bestScore = alpha;
                 }
-            }
-            else if (bestMove != Move.Null)
-            {
-                //  We found at least one move that was better than alpha, so update the history tables.
-                UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
             }
 
             if (bestScore <= alpha)
