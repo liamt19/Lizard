@@ -114,7 +114,7 @@ namespace LTChess
         /// <para></para>
         /// https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1810
         /// </summary>
-        public static void MakeJITNotAfraidOfSpookyStaticMethods()
+        private static void MakeJITNotAfraidOfSpookyStaticMethods()
         {
             //MagicBitboards.Initialize();
             //PrecomputedData.Initialize();
@@ -122,7 +122,7 @@ namespace LTChess
         }
 
 
-        public static void DoInputLoop()
+        private static void DoInputLoop()
         {
 #if DEV
             Log("LTChess (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
@@ -280,7 +280,32 @@ namespace LTChess
         }
 
 
-        public static void DoPerftDivide(int depth)
+        private static void DoPerftIterative(int depth)
+        {
+            if (depth <= 0) return;
+
+            //  The Position "p" has UpdateNN == true, which we don't want
+            //  for purely Perft usage.
+            Position pos = new Position(p.GetFEN(), false, null);
+
+            Stopwatch sw = Stopwatch.StartNew();
+
+            for (int d = 1; d <= depth; d++)
+            {
+                sw.Restart();
+                ulong result = pos.Perft(d);
+                sw.Stop();
+
+                var time = sw.Elapsed.TotalSeconds;
+                Log("Depth " + d + ": " +
+                    "\tnodes " + result.ToString().PadLeft(12) + 
+                    "\ttime " + time.ToString("N6").PadLeft(12) + 
+                    "\tnps " + ((int)(result / time)).ToString("N0").PadLeft(14));
+
+            }
+        }
+
+        private static void DoPerftDivide(int depth)
         {
             if (depth <= 0) return;
 
@@ -309,7 +334,7 @@ namespace LTChess
             Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
 
-        public static void DoPerftNN(int depth)
+        private static void DoPerftNN(int depth)
         {
             if (depth <= 0) return;
 
@@ -333,7 +358,7 @@ namespace LTChess
             Log("\r\nRefreshed " + nodeCount + " times in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(nodeCount / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
         }
 
-        public static void PrintSearchInfo()
+        private static void PrintSearchInfo()
         {
             Log(info.ToString());
             Log("\r\n");
@@ -346,7 +371,7 @@ namespace LTChess
         /// Prints out the current static evaluation of the position, and the static evaluations after 
         /// each of the legal moves for that position are made.
         /// </summary>
-        public static void HandleEvalAllCommand()
+        private static void HandleEvalAllCommand()
         {
             Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + Evaluation.GetEvaluation(p));
             Log("\r\nMove evaluations (" + ColorToString(p.ToMove) + "'s perspective):");
@@ -467,32 +492,52 @@ namespace LTChess
         {
             string[] param = input.Split(' ');
 
-            if (param.Length > 2 && param[1].ContainsIgnoreCase("perftp"))
+            if (param.Length > 2)
             {
-                int depth = int.Parse(param[2]);
-
-                if (depth <= 0)
+                if (param[1].ContainsIgnoreCase("perftp"))
                 {
+                    if (int.TryParse(param[2], out int depth) && depth > 0)
+                    {
+                        Task.Run(() =>
+                        {
+                            Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
+                            temp.PerftParallel(depth, true);
+                        });
+                    }
+
                     return;
                 }
-
-                Task.Run(() =>
+                else if (param[1].ContainsIgnoreCase("perfti"))
                 {
-                    Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
-                    temp.PerftParallel(depth, true);
-                });
-                return;
+                    if (int.TryParse(param[2], out int depth))
+                    {
+                        Task.Run(() => DoPerftIterative(depth));
+                    }
+
+                    return;
+                }
+                else if (param[1].ContainsIgnoreCase("perftnn"))
+                {
+                    if (int.TryParse(param[2], out int depth))
+                    {
+                        Task.Run(() => DoPerftNN(depth));
+                    }
+
+                    return;
+                }
+                else if (param[1].ContainsIgnoreCase("perft"))
+                {
+                    if (int.TryParse(param[2], out int depth))
+                    {
+                        Task.Run(() => DoPerftDivide(depth));
+                    }
+
+                    return;
+                }
             }
-            else if (param.Length > 2 && param[1].ContainsIgnoreCase("perftnn"))
+            else if (input.ContainsIgnoreCase("perft"))
             {
-                int depth = int.Parse(param[2]);
-                Task.Run(() => DoPerftNN(depth));
-                return;
-            }
-            else if (param.Length > 2 && param[1].ContainsIgnoreCase("perft"))
-            {
-                int depth = int.Parse(param[2]);
-                Task.Run(() => DoPerftDivide(depth));
+                Log("'go' commands involving perft must have a specified depth!");
                 return;
             }
 
@@ -632,7 +677,7 @@ namespace LTChess
         }
         
 
-        public static void DotTraceProfile(int depth = 24)
+        private static void DotTraceProfile(int depth = 24)
         {
             info.TimeManager.MaxSearchTime = 30000;
             info.MaxDepth = depth;
