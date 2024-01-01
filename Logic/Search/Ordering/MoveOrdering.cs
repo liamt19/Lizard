@@ -44,7 +44,7 @@ namespace LTChess.Logic.Search.Ordering
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                    sm.Score = (7 * GetPieceValue(capturedPiece)) + history.CaptureHistory[capIdx] / 16;
+                    sm.Score = (13 * GetPieceValue(capturedPiece)) + history.CaptureHistory[capIdx] / 12;
                 }
                 else
                 {
