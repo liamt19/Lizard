@@ -283,7 +283,7 @@ namespace LTChess.Logic.Threads
             //  Wait for the other threads to return
             SearchPool.WaitForSearchFinished();
 
-            //  Searches is finished, now give the UCI output.
+            //  Search is finished, now give the UCI output.
             SearchPool.SharedInfo.OnSearchFinish?.Invoke(ref SearchPool.SharedInfo);
             SearchPool.SharedInfo.TimeManager.ResetTimer();
 

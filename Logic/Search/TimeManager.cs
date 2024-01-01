@@ -5,7 +5,7 @@
 
         /// <summary>
         /// Add this amount of milliseconds to the total search time when checking if the
-        /// search should stop, in case the move overhead is very low and the Uci expects
+        /// search should stop, in case the move overhead is very low and the UCI expects
         /// the search to stop very quickly after our time expires.
         /// </summary>
         public const int TimerBuffer = 50;
@@ -19,7 +19,7 @@
         /// <summary>
         /// The minimum amount of time to search, regardless of the other limitations of the search.
         /// This only applies to the amount of time that we were told to search for (i.e. "movetime 100").
-        /// If we receive a "stop" command from the Uci, this does no apply and we stop as soon as possible.
+        /// If we receive a "stop" command from the UCI, this does no apply and we stop as soon as possible.
         /// </summary>
         public const int MinSearchTime = 200;
 
