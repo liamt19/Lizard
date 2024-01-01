@@ -659,6 +659,22 @@ namespace LTChess.Logic.Core
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
             Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);
 
-        }
+#if SPSA
+            Options[nameof(SPSA_SINGLE_NUMERATOR)].SetMinMax(1, 20);
+            Options[nameof(SPSA_SINGLE_MIN_DEPTH)].SetMinMax(1, 10);
+            Options[nameof(SPSA_SINGLE_BETA)].SetMinMax(0, 60);
+
+            Options[nameof(SPSA_STATBONUS_MULT)].SetMinMax(100, 400);
+            Options[nameof(SPSA_STATBONUS_SUB)].SetMinMax(0, 500);
+            Options[nameof(SPSA_STATBONUS_MIN)].SetMinMax(500, 3000);
+
+            Options[nameof(SPSA_RFP_MAX_DEPTH)].SetMinMax(4, 12);
+            Options[nameof(SPSA_RFP_PER_DEPTH)].SetMinMax(35, 95);
+
+            Options[nameof(SPSA_EXCHANGE_BASE)].SetMinMax(80, 360);
+
+            Options[nameof(SPSA_ASPIRATION_MARGIN)].SetMinMax(5, 80);
+#endif
+            }
     }
 }

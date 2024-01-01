@@ -150,5 +150,24 @@
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
         public static int AspirationWindowMargin = 10;
+
+#if SPSA
+        public static int SPSA_SINGLE_MIN_DEPTH = 5;
+        public static int SPSA_SINGLE_NUMERATOR = 8;
+        public static int SPSA_SINGLE_DENOMINATOR = 9;
+        public static int SPSA_SINGLE_BETA = 20;
+
+        public static int SPSA_STATBONUS_MULT = 250;
+        public static int SPSA_STATBONUS_SUB = 100;
+        public static int SPSA_STATBONUS_MIN = 1700;
+
+        public static int SPSA_RFP_MAX_DEPTH = 8;
+        public static int SPSA_RFP_PER_DEPTH = 65;
+
+        public static int SPSA_EXCHANGE_BASE = 200;
+
+        public static int SPSA_ASPIRATION_MARGIN = 30;
+#endif
+
     }
 }
