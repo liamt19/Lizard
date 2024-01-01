@@ -514,7 +514,6 @@ namespace LTChess.Logic.Search
                     if (isPV)
                         R--;
 
-
                     //  Extend killer moves
                     if ((m.Equals(ss->Killer0) || m.Equals(ss->Killer1)))
                         R--;
@@ -534,6 +533,7 @@ namespace LTChess.Logic.Search
                                         (*contHist[3])[histIdx];
 
                     R -= (ss->StatScore / 10000);
+                    //  TODO: If this ever works again, 16384 works better.
 #endif
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth]
@@ -635,6 +635,13 @@ namespace LTChess.Logic.Search
                             "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves!" +
                             "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
                             "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
+                    }
+                    else if (rmIndex == -1)
+                    {
+                        //  This is for an extremely infrequent crash :(
+                        Log("Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves!" +
+                        "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
+                        "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
                     }
 
                     RootMove rm = thisThread.RootMoves[rmIndex];
@@ -761,20 +768,18 @@ namespace LTChess.Logic.Search
             Position pos = info.Position;
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
-            ulong posHash = pos.State->Hash;
             Move bestMove = Move.Null;
-            int ourColor = pos.ToMove;
 
-            int score;
+            int score = -ScoreMate - MaxPly;
+            short bestScore = -ScoreInfinite;
+            short futilityBase = -ScoreInfinite;
 
-            short bestScore;
-            short futilityBase;
-            short futilityValue;
+            short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
 
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
+            ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
             int ttDepth = (ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks);
             short ttScore = (ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone);
             CondensedMove ttMove = (ss->TTHit ? tte->BestMove : CondensedMove.Null);
@@ -813,43 +818,46 @@ namespace LTChess.Logic.Search
 
             if (ss->InCheck)
             {
-                bestScore = futilityBase = -ScoreInfinite;
+                eval = ss->StaticEval = -ScoreInfinite;
             }
             else
             {
                 if (ss->TTHit)
                 {
-                    if ((ss->StaticEval = bestScore = tte->StatEval) == ScoreNone)
+                    eval = ss->StaticEval = tte->StatEval;
+                    if (eval == ScoreNone)
                     {
-                        ss->StaticEval = bestScore = Evaluation.GetEvaluation(pos);
+                        eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
                     }
 
-                    if (ttScore != ScoreNone && ((tte->Bound & (ttScore > bestScore ? BoundLower : BoundUpper)) != 0))
+                    if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
-                        bestScore = ttScore;
+                        eval = ttScore;
                     }
                 }
                 else
                 {
                     if ((ss - 1)->CurrentMove.IsNull())
                     {
-                        ss->StaticEval = bestScore = (short)(-(ss - 1)->StaticEval);
+                        eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
                     }
                     else
                     {
-                        ss->StaticEval = bestScore = Evaluation.GetEvaluation(pos);
+                        eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
                     }
                 }
 
-                if (bestScore >= beta)
+                if (eval >= beta)
                 {
-                    return bestScore;
+                    return eval;
                 }
 
-                if (bestScore > alpha)
+                if (eval > alpha)
                 {
-                    alpha = bestScore;
+                    alpha = eval;
                 }
+
+                bestScore = eval;
 
                 futilityBase = (short)(Math.Min(ss->StaticEval, bestScore) + ExchangeBase);
             }
@@ -862,7 +870,7 @@ namespace LTChess.Logic.Search
             int prevSquare = ((ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To);
             int legalMoves = 0;
             int movesMade = 0;
-            int quietCheckEvasions = 0;
+            int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
@@ -910,7 +918,7 @@ namespace LTChess.Logic.Search
                             continue;
                         }
 
-                        futilityValue = (short)(futilityBase + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
+                        short futilityValue = (short)(futilityBase + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
 
                         if (futilityValue <= alpha)
                         {
@@ -925,7 +933,7 @@ namespace LTChess.Logic.Search
                         }
                     }
 
-                    if (quietCheckEvasions >= 2)
+                    if (checkEvasions >= 2)
                     {
                         break;
                     }
@@ -938,10 +946,10 @@ namespace LTChess.Logic.Search
 
                 if (ss->InCheck && !isCapture)
                 {
-                    quietCheckEvasions++;
+                    checkEvasions++;
                 }
 
-                int histIdx = PieceToHistory.GetIndex(ourColor, pos.bb.GetPieceAtIndex(m.From), m.To);
+                int histIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(m.From), m.To);
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
@@ -959,17 +967,14 @@ namespace LTChess.Logic.Search
                     if (score > alpha)
                     {
                         bestMove = m;
+                        alpha = score;
 
                         if (isPV)
                         {
                             UpdatePV(ss->PV, m, (ss + 1)->PV);
                         }
 
-                        if (score < beta)
-                        {
-                            alpha = score;
-                        }
-                        else
+                        if (score >= beta)
                         {
                             break;
                         }
@@ -985,7 +990,7 @@ namespace LTChess.Logic.Search
             TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
 
-            tte->Update(posHash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
 
             if (EnableAssertions)
             {
