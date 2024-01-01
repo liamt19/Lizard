@@ -1104,17 +1104,17 @@ namespace LTChess.Logic.Core
         /// Only for benchmarking/debugging.
         /// </summary>
         [MethodImpl(Inline)]
-        public ulong PerftNN(int depth)
+        public long PerftNN(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = GenLegal(list);
 
             if (depth == 0)
             {
-                return (ulong)Evaluation.GetEvaluation(this);
+                return (long)Evaluation.GetEvaluation(this);
             }
 
-            ulong n = 0;
+            long n = 0;
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
