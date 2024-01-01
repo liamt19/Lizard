@@ -1,6 +1,4 @@
 ﻿
-#define OLD
-#undef OLD
 
 using System;
 using System.Collections.Generic;
@@ -37,17 +35,6 @@ namespace LTChess.Logic.Search
             }
         }
 
-
-        /// <summary>
-        /// == 17500
-        /// </summary>
-        private const int GivesCheckBonus = (HistoryTable.CaptureClamp + HistoryTable.MainHistoryClamp);
-
-        private const int PawnAttackThreat  = ((HistoryTable.CaptureClamp) - ValuePawn);
-        private const int MinorAttackThreat = ((HistoryTable.CaptureClamp) - ValueKnight);
-        private const int MajorAttackThreat = ((HistoryTable.CaptureClamp) - ValueRook);
-
-
         public string StageName
         {
             get
@@ -66,7 +53,7 @@ namespace LTChess.Logic.Search
         private readonly short* mainHistory;
         private readonly short* captureHistory;
 
-        private readonly PieceToHistory*[] continuationHistories;
+        private readonly PieceToHistory*[] continuations;
         private readonly int depth;
         private ScoredMove TTMove;
         private int previousSquare;
@@ -99,7 +86,7 @@ namespace LTChess.Logic.Search
             this.mainHistory = mainHistory;
             this.captureHistory = captureHistory;
 
-            this.continuationHistories = contHist;
+            this.continuations = contHist;
 
             //  The "killers" parameter that was passed is a ScoredMove array, not a Move array.
             //  The second move is at killers[2] instead of killers[1].
@@ -143,7 +130,7 @@ namespace LTChess.Logic.Search
             //  Otherwise, we use the Negamax path for depth > 0, or the quiescence path for <= 0
             stage = this.pos.Checked ? EvasionsTT : 
                           (depth > 0 ? NegamaxTT :
-                                        QuiesceTT);
+                                       QuiesceTT);
 
             if (TTCondMove.Equals(CondensedMove.Null))
             {
@@ -291,7 +278,7 @@ namespace LTChess.Logic.Search
                         return (currentMove - 1)->Move;
                     }
 
-                    ++stage;
+                    stage = Killers;
 
                     //  Fallthrough
                     goto case Killers;
@@ -345,7 +332,7 @@ namespace LTChess.Logic.Search
                     }
 
 
-                    ++stage;
+                    stage = QuietsInit;
 
                     //  Fallthrough
                     goto case QuietsInit;
@@ -362,7 +349,7 @@ namespace LTChess.Logic.Search
                         PartialSort(currentMove, lastMove, -3000 * depth);
                     }
 
-                    ++stage;
+                    stage = Quiets;
 
                     //  Fallthrough
                     goto case Quiets;
@@ -377,7 +364,7 @@ namespace LTChess.Logic.Search
                     currentMove = moveBufferStart;
                     lastMove = endBadCaptures;
 
-                    ++stage;
+                    stage = BadCaptures;
 
                     //  Fallthrough
                     goto case BadCaptures;
@@ -393,7 +380,8 @@ namespace LTChess.Logic.Search
                     lastMove = (currentMove + genSize);
 
                     ScoreEvasions();
-                    ++stage;
+                    
+                    stage = Evasions;
 
                     //  Fallthrough
                     goto case Evasions;
@@ -411,10 +399,11 @@ namespace LTChess.Logic.Search
 
                     if (depth != Search.DepthQChecks)
                     {
+                        //  Only go to QuiesceChecks(Init) if the depth == DepthQChecks, otherwise we're done.
                         return Move.Null;
                     }
 
-                    ++stage;
+                    stage = QuiesceChecksInit;
 
                     //  Fallthrough
                     goto case QuiesceChecksInit;
@@ -425,7 +414,7 @@ namespace LTChess.Logic.Search
                     genSize = pos.GenAll<GenQChecks>(currentMove);
                     lastMove = (currentMove + genSize);
 
-                    ++stage;
+                    stage = QuiesceChecks;
 
                     //  Fallthrough
                     goto case QuiesceChecks;
@@ -555,71 +544,25 @@ namespace LTChess.Logic.Search
                 }
 
                 int capIdx = HistoryTable.CapIndex(pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                iter->Score = (7 * GetPieceValue(capturedPiece)) + captureHistory[capIdx] / 16;
+                iter->Score = (13 * GetPieceValue(capturedPiece)) + captureHistory[capIdx] / 12;
             }
         }
 
         public void ScoreQuiets()
         {
-            ref Bitboard bb = ref pos.bb;
-
-            ulong theirPawnAttacks = bb.AttackMask(Not(pos.ToMove), Pawn);
-
-            ulong theirMinorAttacks = bb.AttackMask(Not(pos.ToMove), Knight) 
-                                    | bb.AttackMask(Not(pos.ToMove), Bishop) 
-                                    | theirPawnAttacks;
-            
-            ulong theirMajorAttacks = bb.AttackMask(Not(pos.ToMove), Rook) 
-                                    | theirMinorAttacks;
-
-            ulong ourThreatenedPieces = (pos.bb.GetPieces(pos.ToMove, (Knight, Bishop)) & theirPawnAttacks) 
-                                      | (pos.bb.GetPieces(pos.ToMove, Rook)             & theirMinorAttacks) 
-                                      | (pos.bb.GetPieces(pos.ToMove, Queen)            & theirMajorAttacks);
-
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                int moveTo = iter->Move.To;
-                int moveFrom = iter->Move.From;
+                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
 
-                int pt = pos.bb.GetPieceAtIndex(moveFrom);
+                iter->Score = 2 * (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                              2 * (*continuations[0])[contIdx] +
+                                  (*continuations[1])[contIdx] +
+                                  (*continuations[3])[contIdx] +
+                                  (*continuations[5])[contIdx];
 
-                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pt, moveTo);
-
-                iter->Score =  2 *  (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]);
-                iter->Score += 2 *  (*continuationHistories[0])[contIdx];
-                iter->Score +=      (*continuationHistories[1])[contIdx];
-                iter->Score +=      (*continuationHistories[3])[contIdx];
-                iter->Score +=      (*continuationHistories[5])[contIdx];
-
-                if (pt != King && (pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
+                if (iter->Move.Checks)
                 {
-                    //  Bonus for giving check
-                    iter->Score += GivesCheckBonus;
-                }
-
-                if ((ourThreatenedPieces & SquareBB[moveFrom]) == 0)
-                {
-                    //  If the piece we are moving isn't already under attack from a lesser value piece,
-                    //  then apply a penalty if the move DOES bring it under attack.
-
-                    switch (pt)
-                    {
-                        case Knight:
-                        case Bishop:
-                            iter->Score -= ((theirPawnAttacks  & SquareBB[moveTo]) != 0) ? PawnAttackThreat : 0;
-                            break;
-
-                        case Rook:
-                            iter->Score -= ((theirPawnAttacks  & SquareBB[moveTo]) != 0) ? PawnAttackThreat  : 0;
-                            iter->Score -= ((theirMinorAttacks & SquareBB[moveTo]) != 0) ? MinorAttackThreat : 0;
-                            break;
-
-                        case Queen:
-                            iter->Score -= ((theirPawnAttacks  & SquareBB[moveTo]) != 0) ? PawnAttackThreat  : 0;
-                            iter->Score -= ((theirMinorAttacks & SquareBB[moveTo]) != 0) ? MinorAttackThreat : 0;
-                            iter->Score -= ((theirMajorAttacks & SquareBB[moveTo]) != 0) ? MajorAttackThreat : 0;
-                            break;
-                    }
+                    iter->Score += 10000;
                 }
             }
 
@@ -627,26 +570,30 @@ namespace LTChess.Logic.Search
 
         public void ScoreEvasions()
         {
+            ref Bitboard bb = ref pos.bb;
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                if (iter->Move.Capture)
+                if (iter->Move.Capture || iter->Move.EnPassant)
                 {
-                    int thisPiece = pos.bb.GetPieceAtIndex(iter->Move.From);
-                    int capturedPiece = pos.bb.GetPieceAtIndex(iter->Move.To);
-                    iter->Score = GetPieceValue(capturedPiece) - thisPiece + 100000;
+                    int capturedPiece = (iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To));
+                    iter->Score = GetPieceValue(capturedPiece) + 10000;
 
                     if (EnableAssertions)
                     {
                         Assert(capturedPiece != None, 
                             "ScoreEvasions() got the move " + iter->Move.ToString() + " = " + iter->Move.ToString(pos) + ", " +
-                            "which is marked was generated as a capture but isn't in the current position!");
+                            "which was generated as a capture/EP but isn't in the current position!");
                     }
                 }
                 else
                 {
                     int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
-                    iter->Score = (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)])
-                                + (*continuationHistories[0])[contIdx];
+
+                    iter->Score = 2 * (mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                                  2 * (*continuations[0])[contIdx] +
+                                      (*continuations[1])[contIdx] +
+                                      (*continuations[3])[contIdx] +
+                                      (*continuations[5])[contIdx];
                 }
 
             }
