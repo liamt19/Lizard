@@ -140,6 +140,8 @@ namespace LTChess.Logic.Search
             }
 
             (ss + 1)->Skip = Move.Null;
+            
+            //  TODO: SPRT this with (ss + 2) instead
             (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
 
             ss->Extensions = (ss - 1)->Extensions;
@@ -827,11 +829,13 @@ namespace LTChess.Logic.Search
                     eval = ss->StaticEval = tte->StatEval;
                     if (eval == ScoreNone)
                     {
+                        //  If the TT hit didn't have a static eval, get one now.
                         eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
                     }
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
+                        //  If the TTEntry has a valid score and the bound is correct, use that score in place of the static eval.
                         eval = ttScore;
                     }
                 }
@@ -839,6 +843,8 @@ namespace LTChess.Logic.Search
                 {
                     if ((ss - 1)->CurrentMove.IsNull())
                     {
+                        //  The previous move made was done in NMP (and nothing has changed since (ss - 1)),
+                        //  so for simplicity we can use the previous static eval but negative.
                         eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
                     }
                     else
@@ -915,6 +921,8 @@ namespace LTChess.Logic.Search
                     {
                         if (legalMoves > 3 && !ss->InCheck)
                         {
+                            //  If we've already tried 3 moves and we know that we aren't getting mated,
+                            //  only try checks, promotions, and recaptures
                             continue;
                         }
 
@@ -935,6 +943,7 @@ namespace LTChess.Logic.Search
 
                     if (checkEvasions >= 2)
                     {
+                        //  If we are in check, only consider 2 non-capturing moves.
                         break;
                     }
 
