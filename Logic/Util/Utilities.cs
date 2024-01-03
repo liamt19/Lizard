@@ -9,24 +9,13 @@ namespace LTChess.Logic.Util
 {
     public static class Utilities
     {
-        public const int NumPieces = 6;
-
-        public const int IndexTop = 7;
-        public const int IndexBot = 0;
-        public const int IndexLeft = 0;
-        public const int IndexRight = 7;
-        public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
         public const string EngineBuildVersion = "9.3.1";
         public const string EngineTagLine = "A (somewhat) fresh start!";
 
-        public const int MaxListCapacity = 512;
-        public const int ExtendedListCapacity = 256;
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
-        public const int LSBEmpty = 64;
-        public const int MaxDepth = 64;
 
+        public const int MaxDepth = 64;
         public const int MaxPly = 256;
 
         /// <summary>
@@ -39,14 +28,6 @@ namespace LTChess.Logic.Util
 
         public const nuint AllocAlignment = 64;
 
-        public const ulong Border = 0xFF818181818181FF;
-        public const ulong PawnPromotionSquares = 0xFF000000000000FF;
-        public const ulong Corners = 0x8100000000000081;
-
-        public const ulong Empty = 0UL;
-        public const ulong AllSquares = ~0UL;
-        public const ulong DarkSquares = 0xAA55AA55AA55AA55UL;
-        public const ulong LightSquares = 0x55AA55AA55AA55AAUL;
 
         public const ulong FileABB = 0x0101010101010101UL;
         public const ulong FileBBB = FileABB << 1;
@@ -66,30 +47,14 @@ namespace LTChess.Logic.Util
         public const ulong Rank7BB = Rank1BB << (8 * 6);
         public const ulong Rank8BB = Rank1BB << (8 * 7);
 
-        public const ulong QueenSide = FileABB | FileBBB | FileCBB | FileDBB;
-        public const ulong CenterFiles = FileCBB | FileDBB | FileEBB | FileFBB;
-        public const ulong KingSide = FileEBB | FileFBB | FileGBB | FileHBB;
-        public const ulong Center = (FileDBB | FileEBB) & (Rank4BB | Rank5BB);
-
-        public const ulong MobilityInner = 0x3C3C3C3C0000;
-        public const ulong MobilityOutter = AllSquares ^ MobilityInner;
-
-        public static readonly ulong[] LowRanks = new ulong[]
-        {
-            Rank2BB | Rank3BB,
-            Rank7BB | Rank6BB,
-        };
-
         public const ulong WhiteKingsideMask = (1UL << F1) | (1UL << G1);
         public const ulong WhiteQueensideMask = (1UL << B1) | (1UL << C1) | (1UL << D1);
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
-        /// <summary>
-        /// A mask of the ranks that outpost squares can be on for each color
-        /// </summary>
-        public static readonly ulong[] OutpostSquares = { Rank4BB | Rank5BB | Rank6BB, Rank3BB | Rank4BB | Rank5BB };
 
+
+        public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
         /// <summary>
@@ -97,23 +62,18 @@ namespace LTChess.Logic.Util
         /// </summary>
         public static readonly bool ServerGC = System.Runtime.GCSettings.IsServerGC;
 
-        /// <summary>
-        /// If true, will block all output to the console and log file.
-        /// </summary>
-        public static bool BlockOutputForJIT = false;
-
 
 
         /// <summary>
-        /// Set to true if multiple instances of this engine are running, in which case the log file won't be written to.
+        /// Set to true if multiple instances of this engine are running.
+        /// <br></br>
+        /// If there are, then the log file to not be written to unless <see cref="UCIClient.WriteToConcurrentLogs"/> = <see langword="true"/>.
         /// </summary>
         public static bool IsRunningConcurrently = false;
 
         /// <summary>
-        /// The total number of processes running, which will be > 1 if there are duplicates.
+        /// The process ID for this engine instance. This is only used to determine the name of the log file to write to.
         /// </summary>
-        public static int ConcurrencyCount = 0;
-
         public static int ProcessID;
 
 
@@ -131,11 +91,6 @@ namespace LTChess.Logic.Util
         [MethodImpl(Inline)]
         public static void Log(string s)
         {
-            if (BlockOutputForJIT)
-            {
-                return;
-            }
-
             if (!UCIClient.Active)
             {
                 Console.WriteLine(s);

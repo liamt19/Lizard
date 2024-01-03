@@ -114,7 +114,7 @@
         {
             if (color == Color.White)
             {
-                return IndexTop - GetIndexRank(idx);
+                return 7 - GetIndexRank(idx);
             }
             else
             {

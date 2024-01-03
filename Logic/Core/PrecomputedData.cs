@@ -321,8 +321,8 @@
         {
             for (int depth = 0; depth < MaxPly; depth++)
             {
-                LogarithmicReductionTable[depth] = new int[MaxListCapacity];
-                for (int moveIndex = 0; moveIndex < MaxListCapacity; moveIndex++)
+                LogarithmicReductionTable[depth] = new int[MoveListSize];
+                for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
                 {
                     //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
                     LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);

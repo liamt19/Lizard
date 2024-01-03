@@ -112,7 +112,7 @@ namespace LTChess.Logic.Data
             IndexToCoord(From, out int fx, out int fy);
             IndexToCoord(To, out int tx, out int ty);
 
-            if (PromotionTo != 0 && (ty == IndexBot || ty == IndexTop))
+            if (PromotionTo != 0 && (ty == 0 || ty == 7))
             {
                 return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1) + char.ToLower(PieceToFENChar(PromotionTo));
             }

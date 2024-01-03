@@ -62,29 +62,11 @@ namespace LTChess
                 }
             }
 
-            WarmUpJIT();
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
             GC.WaitForPendingFinalizers();
-        }
-
-
-        /// <summary>
-        /// Static classes which have an explicit static constructor, (i.e. static Simple768() { }) 
-        /// might require a JIT check to make sure that the static constructor is run before the first time the class is used.
-        /// <br></br>
-        /// Initializing them directly instead of giving them a static constructor might avoid this.
-        /// <para></para>
-        /// https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1810
-        /// </summary>
-        private static void MakeJITNotAfraidOfSpookyStaticMethods()
-        {
-            //MagicBitboards.Initialize();
-            //PrecomputedData.Initialize();
-            //Simple768.Initialize();
         }
 
 
@@ -216,33 +198,6 @@ namespace LTChess
                     }
                 }
             }
-        }
-
-        /// <summary>
-        /// The first time a search is performed, we have to spend about 50ms JIT'ing the various little functions in the search and evaluation classes.
-        /// This can be done as soon as the engine starts so the time spent during the first search command isn't lost.
-        /// </summary>
-        private static void WarmUpJIT()
-        {
-            BlockOutputForJIT = true;
-
-            Position temp = new Position(owner: SearchPool.MainThread);
-
-            temp.Perft(4);
-
-            info = new SearchInformation(temp);
-            info.MaxDepth = 12;
-            info.SetMoveTime(250);
-
-            SearchPool.StartSearch(temp, ref info);
-            SearchPool.BlockCallerUntilFinished();
-
-            Searches.HandleNewGame();
-            SearchStatistics.Zero();
-            TranspositionTable.Clear();
-            SearchPool.Clear();
-
-            BlockOutputForJIT = false;
         }
 
 
