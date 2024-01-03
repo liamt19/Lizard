@@ -152,13 +152,6 @@
     <Compile Remove="Logic\Core\PositionRESIZE.cs" />
   </ItemGroup>
 
-
-  <ItemGroup>
-    <EmbeddedResource Include="Resources\baron30.bin" />
-    <EmbeddedResource Include="Resources\sf14bench_perft4.txt" />
-    <EmbeddedResource Include="Resources\sf14bench_perft5.txt" />
-  </ItemGroup>
-
   <ItemGroup>
     <Folder Include="obj\" />
   </ItemGroup>
