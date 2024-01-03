@@ -5,8 +5,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.Simple768;
+using LTChess.Logic.NN;
 using LTChess.Logic.Threads;
 
 namespace LTChess
@@ -124,7 +123,7 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    Log((UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " Eval: " + Evaluation.GetEvaluation(p));
+                    Log("Simple768 Eval: " + Evaluation.GetEvaluation(p));
                 }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
@@ -166,7 +165,7 @@ namespace LTChess
                     Log(GetCompilerInfo());
                 }
 #if DEBUG
-                else if (input.EqualsIgnoreCase("draw nets") && UseSimple768)
+                else if (input.EqualsIgnoreCase("draw nets"))
                 {
                     Simple768.DrawFeatureWeightPic(true);
                     Simple768.DrawLayerWeightPic(true);
@@ -184,12 +183,6 @@ namespace LTChess
                         if (p.LoadFromFEN(input.Trim()))
                         {
                             Log("Loaded fen '" + p.GetFEN() + "'");
-
-                            if (UseHalfKA || UseHalfKP || UseSimple768)
-                            {
-                                p.State->Accumulator->RefreshPerspective[White] = true;
-                                p.State->Accumulator->RefreshPerspective[Black] = true;
-                            }
                         }
                     }
                     else
@@ -368,44 +361,36 @@ namespace LTChess
 
         private static void HandleTraceCommand(string input)
         {
-            if (UseHalfKA)
+            if (input.ContainsIgnoreCase("piece"))
             {
-                HalfKA_HM.Trace(p);
-            }
-
-            if (UseSimple768)
-            {
-                if (input.ContainsIgnoreCase("piece"))
+                string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (splits.Length == 4)
                 {
-                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (splits.Length == 4)
+                    int pc = StringToColor(splits[2]);
+
+                    if (pc == Color.ColorNB)
                     {
-                        int pc = StringToColor(splits[2]);
-
-                        if (pc == Color.ColorNB)
-                        {
-                            Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                            return;
-                        }
-
-                        int pt = StringToPiece(splits[3]);
-                        if (pt == Piece.None)
-                        {
-                            Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                            return;
-                        }
-
-                        Simple768.TracePieceValues(pt, pc);
+                        Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        return;
                     }
-                    else
+
+                    int pt = StringToPiece(splits[3]);
+                    if (pt == Piece.None)
                     {
-                        Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        return;
                     }
+
+                    Simple768.TracePieceValues(pt, pc);
                 }
                 else
                 {
-                    Simple768.Trace(p);
+                    Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
                 }
+            }
+            else
+            {
+                Simple768.Trace(p);
             }
         }
 

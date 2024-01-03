@@ -5,7 +5,7 @@ using System.Runtime.Intrinsics.X86;
 using LTChess.Properties;
 
 
-namespace LTChess.Logic.NN.Simple768
+namespace LTChess.Logic.NN
 {
     [SkipStaticConstructor]
     public static unsafe class Simple768
@@ -54,11 +54,6 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void Initialize()
         {
-            if (!UseSimple768)
-            {
-                return;
-            }
-
             FeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
             FeatureBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
 
@@ -104,7 +99,7 @@ namespace LTChess.Logic.NN.Simple768
 
             using BinaryReader br = new BinaryReader(kpFile);
             var stream = br.BaseStream;
-            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + (LayerWeightElements * OutputBuckets) + LayerBiasElements);
+            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements * OutputBuckets + LayerBiasElements);
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -114,17 +109,17 @@ namespace LTChess.Logic.NN.Simple768
                 Environment.Exit(-1);
             }
 
-            for (int i = 0; i < (FeatureWeightElements / VSize.Short); i++)
+            for (int i = 0; i < FeatureWeightElements / VSize.Short; i++)
             {
                 FeatureWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
             }
 
-            for (int i = 0; i < (FeatureBiasElements / VSize.Short); i++)
+            for (int i = 0; i < FeatureBiasElements / VSize.Short; i++)
             {
                 FeatureBiases[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
             }
 
-            for (int i = 0; i < (LayerWeightElements / VSize.Short); i++)
+            for (int i = 0; i < LayerWeightElements / VSize.Short; i++)
             {
                 LayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
             }
@@ -143,7 +138,7 @@ namespace LTChess.Logic.NN.Simple768
             {
                 for (int i = 0; i < totalBiases; i += VSize.Short)
                 {
-                    LayerBiases[i / VSize.Short] = Vector256.Load(biasPtr + (i * VSize.Short));
+                    LayerBiases[i / VSize.Short] = Vector256.Load(biasPtr + i * VSize.Short);
                 }
             }
 
@@ -177,9 +172,6 @@ namespace LTChess.Logic.NN.Simple768
                 AddFeature(accumulator.White, FeatureIndex(pc, pt, pieceIdx, White));
                 AddFeature(accumulator.Black, FeatureIndex(pc, pt, pieceIdx, Black));
             }
-
-            accumulator.RefreshPerspective[White] = false;
-            accumulator.RefreshPerspective[Black] = false;
         }
 
         public static int GetEvaluation(Position pos) => GetEvaluation(pos, ref *pos.State->Accumulator);
@@ -273,7 +265,7 @@ namespace LTChess.Logic.NN.Simple768
                 }
             }
 
-            return ((output / QA) + LayerBiases[0][0]) * OutputScale / QAB;
+            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
         }
 
 
@@ -283,7 +275,7 @@ namespace LTChess.Logic.NN.Simple768
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
 
-            return ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq ^ (perspective * 56));
+            return (pc ^ perspective) * ColorStride + pt * PieceStride + (sq ^ perspective * 56);
         }
 
 
@@ -294,8 +286,8 @@ namespace LTChess.Logic.NN.Simple768
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
 
-            int whiteIndex = (pc * ColorStride) + (pt * PieceStride) + sq;
-            int blackIndex = (Not(pc) * ColorStride) + (pt * PieceStride) + (sq ^ 56);
+            int whiteIndex = pc * ColorStride + pt * PieceStride + sq;
+            int blackIndex = Not(pc) * ColorStride + pt * PieceStride + (sq ^ 56);
 
             return (whiteIndex, blackIndex);
         }
@@ -437,16 +429,16 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void Trace(Position pos)
         {
-            char[][] board = new char[(3 * 8) + 1][];
-            for (int i = 0; i < (3 * 8) + 1; i++)
+            char[][] board = new char[3 * 8 + 1][];
+            for (int i = 0; i < 3 * 8 + 1; i++)
             {
-                board[i] = new char[(8 * 8) + 2];
+                board[i] = new char[8 * 8 + 2];
                 Array.Fill(board[i], ' ');
             }
 
-            for (int row = 0; row < (3 * 8) + 1; row++)
+            for (int row = 0; row < 3 * 8 + 1; row++)
             {
-                board[row][(8 * 8) + 1] = '\0';
+                board[row][8 * 8 + 1] = '\0';
             }
 
             int baseEval = GetEvaluation(pos);
@@ -462,7 +454,7 @@ namespace LTChess.Logic.NN.Simple768
                     int idx = CoordToIndex(f, r);
                     int pt = bb.GetPieceAtIndex(idx);
                     int pc = bb.GetColorAtIndex(idx);
-                    int fishPc = pt + 1 + (pc * 8);
+                    int fishPc = pt + 1 + pc * 8;
                     int v = ScoreMate;
 
                     if (pt != None && bb.GetPieceAtIndex(idx) != King)
@@ -481,7 +473,7 @@ namespace LTChess.Logic.NN.Simple768
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < (3 * 8) + 1; row++)
+            for (int row = 0; row < 3 * 8 + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -489,16 +481,16 @@ namespace LTChess.Logic.NN.Simple768
 
         public static void TracePieceValues(int pieceType, int pieceColor)
         {
-            char[][] board = new char[(3 * 8) + 1][];
-            for (int i = 0; i < (3 * 8) + 1; i++)
+            char[][] board = new char[3 * 8 + 1][];
+            for (int i = 0; i < 3 * 8 + 1; i++)
             {
-                board[i] = new char[(8 * 8) + 2];
+                board[i] = new char[8 * 8 + 2];
                 Array.Fill(board[i], ' ');
             }
 
-            for (int row = 0; row < (3 * 8) + 1; row++)
+            for (int row = 0; row < 3 * 8 + 1; row++)
             {
-                board[row][(8 * 8) + 1] = '\0';
+                board[row][8 * 8 + 1] = '\0';
             }
 
             //  White king on A1, black king on H8
@@ -514,7 +506,7 @@ namespace LTChess.Logic.NN.Simple768
                 if (bb.GetPieceAtIndex(i) != None)
                 {
 
-                    int fp = bb.GetPieceAtIndex(i) + 1 + (bb.GetColorAtIndex(i) * 8);
+                    int fp = bb.GetPieceAtIndex(i) + 1 + bb.GetColorAtIndex(i) * 8;
                     writeSquare(board, GetIndexFile(i), GetIndexRank(i), fp, ScoreMate);
                     continue;
                 }
@@ -524,11 +516,11 @@ namespace LTChess.Logic.NN.Simple768
                 int eval = GetEvaluation(pos);
                 bb.RemovePiece(i, pieceColor, pieceType);
 
-                writeSquare(board, GetIndexFile(i), GetIndexRank(i), pieceType + 1 + (pieceColor * 8), eval);
+                writeSquare(board, GetIndexFile(i), GetIndexRank(i), pieceType + 1 + pieceColor * 8, eval);
             }
 
             Log("NNUE derived piece values:\n");
-            for (int row = 0; row < (3 * 8) + 1; row++)
+            for (int row = 0; row < 3 * 8 + 1; row++)
             {
                 Log(new string(board[row]));
             }
@@ -824,7 +816,7 @@ namespace LTChess.Logic.NN.Simple768
                 avg += ptr[i];
             }
 
-            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + ((double)avg / n));
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
         }
 
 
@@ -875,24 +867,24 @@ namespace LTChess.Logic.NN.Simple768
 
             if (cp >= 10000)
             {
-                buffer[1] = (char)('0' + (cp / 10000)); cp %= 10000;
-                buffer[2] = (char)('0' + (cp / 1000)); cp %= 1000;
-                buffer[3] = (char)('0' + (cp / 100)); cp %= 100;
-                buffer[4] = (char)' ';
+                buffer[1] = (char)('0' + cp / 10000); cp %= 10000;
+                buffer[2] = (char)('0' + cp / 1000); cp %= 1000;
+                buffer[3] = (char)('0' + cp / 100); cp %= 100;
+                buffer[4] = ' ';
             }
             else if (cp >= 1000)
             {
-                buffer[1] = (char)('0' + (cp / 1000)); cp %= 1000;
-                buffer[2] = (char)('0' + (cp / 100)); cp %= 100;
-                buffer[3] = (char)'.';
-                buffer[4] = (char)('0' + (cp / 10));
+                buffer[1] = (char)('0' + cp / 1000); cp %= 1000;
+                buffer[2] = (char)('0' + cp / 100); cp %= 100;
+                buffer[3] = '.';
+                buffer[4] = (char)('0' + cp / 10);
             }
             else
             {
-                buffer[1] = (char)('0' + (cp / 100)); cp %= 100;
-                buffer[2] = (char)'.';
-                buffer[3] = (char)('0' + (cp / 10)); cp %= 10;
-                buffer[4] = (char)('0' + (cp / 1));
+                buffer[1] = (char)('0' + cp / 100); cp %= 100;
+                buffer[2] = '.';
+                buffer[3] = (char)('0' + cp / 10); cp %= 10;
+                buffer[4] = (char)('0' + cp / 1);
             }
         }
 
@@ -900,7 +892,7 @@ namespace LTChess.Logic.NN.Simple768
         private static int ConvertRange(int originalStart, int originalEnd, int newStart, int newEnd, int value)
         {
             double scale = (double)(newEnd - newStart) / (originalEnd - originalStart);
-            return (int)(newStart + ((value - originalStart) * scale));
+            return (int)(newStart + (value - originalStart) * scale);
         }
     }
 }

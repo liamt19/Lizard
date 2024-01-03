@@ -14,7 +14,6 @@ global using static LTChess.Logic.Data.PrecomputedData;
 global using static LTChess.Logic.Data.RunOptions;
 global using static LTChess.Logic.Data.Squares;
 global using static LTChess.Logic.Magic.MagicBitboards;
-global using static LTChess.Logic.NN.NNRunOptions;
 global using static LTChess.Logic.Search.Evaluation;
 global using static LTChess.Logic.Search.EvaluationConstants;
 global using static LTChess.Logic.Search.SearchConstants;

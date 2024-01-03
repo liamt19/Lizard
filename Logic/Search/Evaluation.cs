@@ -1,6 +1,4 @@
-﻿using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
-using LTChess.Logic.NN.Simple768;
+﻿using LTChess.Logic.NN;
 
 namespace LTChess.Logic.Search
 {
@@ -13,16 +11,6 @@ namespace LTChess.Logic.Search
         [MethodImpl(Inline)]
         public static short GetEvaluation(in Position position)
         {
-            if (UseHalfKA)
-            {
-                return (short)HalfKA_HM.GetEvaluation(position, FavorPositionalEval);
-            }
-
-            if (UseHalfKP)
-            {
-                return (short)HalfKP.GetEvaluation(position);
-            }
-
             return (short)Simple768.GetEvaluation(position);
         }
 

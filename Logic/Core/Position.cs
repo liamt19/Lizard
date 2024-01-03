@@ -2,9 +2,6 @@
 using System.Text;
 
 using LTChess.Logic.NN;
-using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
-using LTChess.Logic.NN.Simple768;
 using LTChess.Logic.Threads;
 
 namespace LTChess.Logic.Core
@@ -176,13 +173,7 @@ namespace LTChess.Logic.Core
 
             if (UpdateNN)
             {
-                State->Accumulator->RefreshPerspective[White] = true;
-                State->Accumulator->RefreshPerspective[Black] = true;
-
-                if (UseSimple768)
-                {
-                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
-                }
+                Simple768.RefreshAccumulator(this, ref *State->Accumulator);
             }
         }
 
@@ -276,17 +267,7 @@ namespace LTChess.Logic.Core
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
             Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
 
-            if (UseHalfKA && UpdateNN)
-            {
-                HalfKA_HM.MakeMove(this, move);
-            }
-
-            if (UseHalfKP && UpdateNN)
-            {
-                HalfKP.MakeMoveNN(this, move);
-            }
-
-            if (UseSimple768 && UpdateNN)
+            if (UpdateNN)
             {
                 Simple768.MakeMoveNN(this, move);
             }
@@ -1253,18 +1234,7 @@ namespace LTChess.Logic.Core
 
             if (UpdateNN)
             {
-                State->Accumulator->RefreshPerspective[White] = true;
-                State->Accumulator->RefreshPerspective[Black] = true;
-
-                if (UseSimple768)
-                {
-                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
-                }
-            }
-
-            if (EnableAssertions && (UseHalfKA || UseHalfKP))
-            {
-                Assert(popcount(bb.Occupancy) <= HalfKA_HM.MaxActiveDimensions, "ERROR FEN '" + fen + "' has more than " + HalfKA_HM.MaxActiveDimensions + " pieces, which isn't allowed with the HalfKA architecture!");
+                Simple768.RefreshAccumulator(this, ref *State->Accumulator);
             }
 
             return true;
