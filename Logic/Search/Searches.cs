@@ -294,12 +294,9 @@ namespace LTChess.Logic.Search
 
 
                 /*
-                Score of ProbCut vs Baseline: 401 - 329 - 697  [0.525] 1427
-                ...      ProbCut playing White: 353 - 46 - 315  [0.715] 714
-                ...      ProbCut playing Black: 48 - 283 - 382  [0.335] 713
-                ...      White vs Black: 636 - 94 - 697  [0.690] 1427
-                Elo difference: 17.5 +/- 12.9, LOS: 99.6 %, DrawRatio: 48.8 %
-                SPRT: llr 2.9 (100.5%), lbound -2.25, ubound 2.89 - H1 was accepted
+                Score of ProbCut vs Baseline: 904 - 723 - 1676 	3303
+                Elo difference: 19.1 +/- 8.31 [10.8, 27.4]
+                SPRT: llr 3.55 [0, 5] (-2.94, 2.94) - H1 Accepted
                 */
 
                 for (int i = 0; i < numCaps; i++)
