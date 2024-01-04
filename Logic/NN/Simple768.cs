@@ -199,7 +199,6 @@ namespace LTChess.Logic.NN
                     //  We can use VPDPWSSD to do the multiplication of mult and clamp,
                     //  as well as the horizontal accumulation of it into the sum in a single instruction.
 
-                    //  As a bonus, we only need to sum this once at the end, for both sides!
                     //  Since the accumulation is happening via 32-bit integers,
                     //  we would only need to worry about overflowing if we were summing short.MaxValue 2^16 times.
                     vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
@@ -216,6 +215,8 @@ namespace LTChess.Logic.NN
             }
             else
             {
+                Vector256<int> normalSum = Vector256<int>.Zero;
+
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
                     //  Clamp each feature between [0, QA]
@@ -241,10 +242,8 @@ namespace LTChess.Logic.NN
                         Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
                         Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
 
-                    //  Now sum the low and high vectors horizontally, preferably without vphaddd (which Vector256.Sum appears to use)
-                    //  because it can be quite a bit slower on some architectures.
-                    output += SumVector256NoHadd(loMult);
-                    output += SumVector256NoHadd(hiMult);
+                    //  Add the sum of loMult and hiMult to the summation vector.
+                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
                 }
 
                 for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -260,9 +259,12 @@ namespace LTChess.Logic.NN
                         Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
                         Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
 
-                    output += SumVector256NoHadd(loMult);
-                    output += SumVector256NoHadd(hiMult);
+                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
                 }
+
+                //  Now sum the summation vector, preferably without vphaddd (which Vector256.Sum appears to use)
+                //  because it can be quite a bit slower on some architectures.
+                output = SumVector256NoHadd(normalSum);
             }
 
             return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
