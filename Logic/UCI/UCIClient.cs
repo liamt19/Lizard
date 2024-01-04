@@ -518,7 +518,7 @@ namespace LTChess.Logic.UCI
             }
         }
 
-        public void HandleNewGame()
+        private void HandleNewGame()
         {
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();

@@ -272,7 +272,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static int FeatureIndex(int pc, int pt, int sq, int perspective)
+        private static int FeatureIndex(int pc, int pt, int sq, int perspective)
         {
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
@@ -283,7 +283,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static (int, int) FeatureIndex(int pc, int pt, int sq)
+        private static (int, int) FeatureIndex(int pc, int pt, int sq)
         {
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
@@ -297,7 +297,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static void AddToAll(Vector256<short>* input, Vector256<short>* delta, int offset)
+        private static void AddToAll(Vector256<short>* input, Vector256<short>* delta, int offset)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -308,7 +308,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static void SubtractFromAll(Vector256<short>* input, Vector256<short>* delta, int offset)
+        private static void SubtractFromAll(Vector256<short>* input, Vector256<short>* delta, int offset)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -387,7 +387,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static void MoveFeature(Vector256<short>* accumulation, int indexFrom, int indexTo)
+        private static void MoveFeature(Vector256<short>* accumulation, int indexFrom, int indexTo)
         {
             SubtractFromAll(accumulation, FeatureWeights, indexFrom * SIMD_CHUNKS);
             AddToAll(accumulation, FeatureWeights, indexTo * SIMD_CHUNKS);
@@ -395,13 +395,13 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static void AddFeature(Vector256<short>* accumulation, int index)
+        private static void AddFeature(Vector256<short>* accumulation, int index)
         {
             AddToAll(accumulation, FeatureWeights, index * SIMD_CHUNKS);
         }
 
         [MethodImpl(Inline)]
-        public static void RemoveFeature(Vector256<short>* accumulation, int index)
+        private static void RemoveFeature(Vector256<short>* accumulation, int index)
         {
             SubtractFromAll(accumulation, FeatureWeights, index * SIMD_CHUNKS);
         }
@@ -409,7 +409,7 @@ namespace LTChess.Logic.NN
 
 
         [MethodImpl(Inline)]
-        public static int SumVector256NoHadd(Vector256<int> vect)
+        private static int SumVector256NoHadd(Vector256<int> vect)
         {
             Vector128<int> lo = vect.GetLower();
             Vector128<int> hi = Avx.ExtractVector128(vect, 1);

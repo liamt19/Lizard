@@ -1103,7 +1103,7 @@ namespace LTChess.Logic.Search
         /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
         [MethodImpl(Inline)]
-        public static int GetReverseFutilityMargin(int depth, bool improving)
+        private static int GetReverseFutilityMargin(int depth, bool improving)
         {
             return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;
         }
@@ -1227,7 +1227,7 @@ namespace LTChess.Logic.Search
         /// <summary>
         /// Returns a string with the CurrentMove for each state between the first one and the current one.
         /// </summary>
-        public static string Debug_GetMovesPlayed(SearchStackEntry* ss)
+        private static string Debug_GetMovesPlayed(SearchStackEntry* ss)
         {
             StringBuilder sb = new StringBuilder();
 

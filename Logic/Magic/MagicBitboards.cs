@@ -282,7 +282,7 @@
         /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
         /// except for A8 and H1.
         /// </summary>
-        public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
+        private static ulong SlidingAttacks(int pt, int idx, ulong occupied)
         {
             ulong mask = 0UL;
 
@@ -333,7 +333,7 @@
         /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
         /// except for A8 and H1.
         /// </summary>
-        public static ulong GetBlockerMask(int pt, int idx)
+        private static ulong GetBlockerMask(int pt, int idx)
         {
             ulong mask = (pt == Piece.Bishop) ? BishopRay(idx) : RookRay(idx);
 

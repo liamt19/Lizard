@@ -50,26 +50,5 @@
         /// </summary>
         public const int OneLegalMoveTime = 100;
 
-
-
-        /// <summary>
-        /// Whether to use the included (small) Polyglot opening book file.
-        /// Most UCI's will handle this automatically, but using a book can add some variety to the 
-        /// first couple moves that engines make.
-        /// </summary>
-        public const bool UsePolyglot = false;
-
-        /// <summary>
-        /// How many moves to try to play from the Polyglot file. 
-        /// A ply of X means that from the starting position it will try probing for the first X moves that it makes.
-        /// </summary>
-        public const int PolyglotMaxPly = 6;
-
-        /// <summary>
-        /// Whether to simulate the time it would ordinarily take to search when using an opening book.
-        /// Probing a Polyglot file only takes 5-20 ms, so to make things more fair for engines that don't use books,
-        /// this will pick the move it wants to make in ~10 ms and waste the remaining few seconds before responding with that move.
-        /// </summary>
-        public const bool PolyglotSimulateTime = false;
     }
 }
