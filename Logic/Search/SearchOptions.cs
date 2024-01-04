@@ -30,19 +30,6 @@
 
 
         /// <summary>
-        /// For HalfKA, the NNUE evaluation has a 2 parts: PSQT and Positional. It is usually beneficial to give Positional slightly more weight.
-        /// <para></para>
-        /// The PSQT component comes from the FeatureTransformer and almost exclusively uses the values of pieces, 
-        /// plus a small amount for the square that piece is on.
-        /// <para></para>
-        /// The Positional component comes from the network layers (AffineTransform, ClippedReLU, ...) and gives a score based on
-        /// the relative positions of each piece on the board.
-        /// </summary>
-        public const bool FavorPositionalEval = true;
-
-
-
-        /// <summary>
         /// Whether or not to extend searches if there is only one good move in a position.
         /// <para></para>
         /// This does reduce search speed (in terms of nodes/second), but the accuracy of the additional nodes 
