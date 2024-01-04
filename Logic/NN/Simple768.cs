@@ -154,7 +154,7 @@ namespace LTChess.Logic.NN
         }
 
         public static void RefreshAccumulator(Position pos) => RefreshAccumulator(pos, ref *pos.State->Accumulator);
-        public static void RefreshAccumulator(Position pos, ref AccumulatorPSQT accumulator)
+        public static void RefreshAccumulator(Position pos, ref Accumulator accumulator)
         {
             ref Bitboard bb = ref pos.bb;
 
@@ -176,7 +176,7 @@ namespace LTChess.Logic.NN
 
         public static int GetEvaluation(Position pos) => GetEvaluation(pos, ref *pos.State->Accumulator);
 
-        public static int GetEvaluation(Position pos, ref AccumulatorPSQT accumulator)
+        public static int GetEvaluation(Position pos, ref Accumulator accumulator)
         {
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             int output = 0;
@@ -320,7 +320,7 @@ namespace LTChess.Logic.NN
         {
             ref Bitboard bb = ref pos.bb;
 
-            AccumulatorPSQT* accumulator = pos.NextState->Accumulator;
+            Accumulator* accumulator = pos.NextState->Accumulator;
             pos.State->Accumulator->CopyTo(accumulator);
 
             int moveTo = m.To;
@@ -447,7 +447,7 @@ namespace LTChess.Logic.NN
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
-            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
+            ref Accumulator Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {

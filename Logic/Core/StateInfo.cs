@@ -17,7 +17,7 @@ namespace LTChess.Logic.Core
         public static readonly nuint StateCopySize;
         static StateInfo()
         {
-            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*));
+            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
 
             if (EnableAssertions)
             {
@@ -68,7 +68,7 @@ namespace LTChess.Logic.Core
         public int CapturedPiece = None;
 
         [FieldOffset(128)]
-        public AccumulatorPSQT* Accumulator;
+        public Accumulator* Accumulator;
 
         public StateInfo()
         {

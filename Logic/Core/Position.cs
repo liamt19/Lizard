@@ -148,8 +148,8 @@ namespace LTChess.Logic.Core
                 //  Create the accumulators now if we need to.
                 //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
                 //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
-                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(AccumulatorPSQT) * StateStackSize), AllocAlignment);
-                AccumulatorPSQT* accs = (AccumulatorPSQT*)_accumulatorBlock;
+                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
+                Accumulator* accs = (Accumulator*)_accumulatorBlock;
                 for (int i = 0; i < StateStackSize; i++)
                 {
                     (StateStack + i)->Accumulator = accs + i;
@@ -157,7 +157,7 @@ namespace LTChess.Logic.Core
 
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    *(StateStack + i)->Accumulator = new AccumulatorPSQT();
+                    *(StateStack + i)->Accumulator = new Accumulator();
                 }
             }
 
