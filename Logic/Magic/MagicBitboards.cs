@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Magic
+﻿namespace Lizard.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {

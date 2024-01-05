@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
-namespace LTChess.Logic.NN
+namespace Lizard.Logic.NN
 {
     /// <summary>
     /// Keeps track of the weights of the active features for both sides.

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Core
+﻿namespace Lizard.Logic.Core
 {
     /// <summary>
     /// Manages the bitboards for a position, which are 64-bit number arrays for each piece type and color.

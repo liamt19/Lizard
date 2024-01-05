@@ -1,9 +1,8 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.Search.Ordering;
+using Lizard.Logic.Search.Ordering;
 
-
-namespace LTChess.Logic.Threads
+namespace Lizard.Logic.Threads
 {
     public unsafe class SearchThread : IDisposable
     {

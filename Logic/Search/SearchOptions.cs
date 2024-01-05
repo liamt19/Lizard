@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Search
+﻿namespace Lizard.Logic.Search
 {
     public static class SearchOptions
     {

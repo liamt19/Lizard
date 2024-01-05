@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
-namespace LTChess.Logic.Util
+namespace Lizard.Logic.Util
 {
     public static class Interop
     {

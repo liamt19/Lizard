@@ -5,10 +5,10 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-using LTChess.Logic.NN;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.Threads;
 
-namespace LTChess
+namespace Lizard
 {
 
     public static unsafe class Program
@@ -72,9 +72,9 @@ namespace LTChess
         private static void DoInputLoop()
         {
 #if DEV
-            Log("LTChess (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+            Log("Lizard (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
 #else
-            Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+            Log("Lizard version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
 #endif
 
             ThreadSetup setup = new ThreadSetup();

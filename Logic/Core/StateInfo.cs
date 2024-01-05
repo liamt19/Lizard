@@ -1,8 +1,8 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.NN;
+using Lizard.Logic.NN;
 
-namespace LTChess.Logic.Core
+namespace Lizard.Logic.Core
 {
     /// <summary>
     /// Contains information for a single moment of a <see cref="Position"/>.

@@ -1,29 +1,29 @@
 ﻿//  Thanks C# 10!
 
-global using LTChess.Logic.Core;
-global using LTChess.Logic.Data;
-global using LTChess.Logic.Search;
-global using LTChess.Logic.Transposition;
-global using LTChess.Logic.UCI;
-global using LTChess.Logic.Util;
+global using Lizard.Logic.Core;
+global using Lizard.Logic.Data;
+global using Lizard.Logic.Search;
+global using Lizard.Logic.Transposition;
+global using Lizard.Logic.UCI;
+global using Lizard.Logic.Util;
 
-global using static LTChess.Logic.Data.Bound;
-global using static LTChess.Logic.Data.Color;
-global using static LTChess.Logic.Data.Piece;
-global using static LTChess.Logic.Data.PrecomputedData;
-global using static LTChess.Logic.Data.RunOptions;
-global using static LTChess.Logic.Data.Squares;
-global using static LTChess.Logic.Magic.MagicBitboards;
-global using static LTChess.Logic.Search.Evaluation;
-global using static LTChess.Logic.Search.EvaluationConstants;
-global using static LTChess.Logic.Search.SearchConstants;
-global using static LTChess.Logic.Search.SearchOptions;
-global using static LTChess.Logic.Threads.SearchThreadPool;
-global using static LTChess.Logic.Util.ExceptionHandling;
-global using static LTChess.Logic.Util.Interop;
-global using static LTChess.Logic.Util.Utilities;
+global using static Lizard.Logic.Data.Bound;
+global using static Lizard.Logic.Data.Color;
+global using static Lizard.Logic.Data.Piece;
+global using static Lizard.Logic.Data.PrecomputedData;
+global using static Lizard.Logic.Data.RunOptions;
+global using static Lizard.Logic.Data.Squares;
+global using static Lizard.Logic.Magic.MagicBitboards;
+global using static Lizard.Logic.Search.Evaluation;
+global using static Lizard.Logic.Search.EvaluationConstants;
+global using static Lizard.Logic.Search.SearchConstants;
+global using static Lizard.Logic.Search.SearchOptions;
+global using static Lizard.Logic.Threads.SearchThreadPool;
+global using static Lizard.Logic.Util.ExceptionHandling;
+global using static Lizard.Logic.Util.Interop;
+global using static Lizard.Logic.Util.Utilities;
 
-global using Color = LTChess.Logic.Data.Color;
+global using Color = Lizard.Logic.Data.Color;
 global using Debug = System.Diagnostics.Debug;
 global using Stopwatch = System.Diagnostics.Stopwatch;
 global using MethodImpl = System.Runtime.CompilerServices.MethodImplAttribute;

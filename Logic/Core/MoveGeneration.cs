@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Core
+﻿namespace Lizard.Logic.Core
 {
     public unsafe partial class Position
     {

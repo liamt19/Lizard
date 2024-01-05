@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace LTChess.Logic.Data
+namespace Lizard.Logic.Data
 {
 
     public unsafe struct Move

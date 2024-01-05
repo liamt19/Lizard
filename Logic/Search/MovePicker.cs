@@ -1,10 +1,10 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.Search.Ordering;
+using Lizard.Logic.Search.Ordering;
 
-using static LTChess.Logic.Search.MovePicker.MovePickerStage;
+using static Lizard.Logic.Search.MovePicker.MovePickerStage;
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
 
     public unsafe class MovePicker

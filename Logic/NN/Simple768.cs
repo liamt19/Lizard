@@ -2,10 +2,10 @@
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-using LTChess.Properties;
+using Lizard.Properties;
 
 
-namespace LTChess.Logic.NN
+namespace Lizard.Logic.NN
 {
     [SkipStaticConstructor]
     public static unsafe class Simple768

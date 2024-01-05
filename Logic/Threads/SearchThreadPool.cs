@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace LTChess.Logic.Threads
+namespace Lizard.Logic.Threads
 {
     public unsafe class SearchThreadPool
     {

@@ -1,12 +1,12 @@
 ﻿using System.Text;
 
-using LTChess.Logic.Search.Ordering;
-using LTChess.Logic.Threads;
+using Lizard.Logic.Search.Ordering;
+using Lizard.Logic.Threads;
 
-using static LTChess.Logic.Search.Ordering.MoveOrdering;
-using static LTChess.Logic.Transposition.TTEntry;
+using static Lizard.Logic.Search.Ordering.MoveOrdering;
+using static Lizard.Logic.Transposition.TTEntry;
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
     public static unsafe class Searches
     {

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Util
+﻿namespace Lizard.Logic.Util
 {
     /// <summary>
     /// Placing this attribute on a class causes the static constructor of that class to be skipped during program initialization.

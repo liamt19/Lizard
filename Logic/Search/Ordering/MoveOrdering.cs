@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Search.Ordering
+﻿namespace Lizard.Logic.Search.Ordering
 {
     public static unsafe class MoveOrdering
     {

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Data
+﻿namespace Lizard.Logic.Data
 {
     public class RootMove : IComparable<RootMove>
     {

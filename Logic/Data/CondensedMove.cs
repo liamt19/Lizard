@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-namespace LTChess.Logic.Data
+namespace Lizard.Logic.Data
 {
     /// <summary>
     /// Stores a Move's To and From squares, its PromotionTo piece, and whether or not it is an En Passant / Castle.

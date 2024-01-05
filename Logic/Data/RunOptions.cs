@@ -29,7 +29,7 @@
 #endif
 
 
-namespace LTChess.Logic.Data
+namespace Lizard.Logic.Data
 {
     public static class RunOptions
     {

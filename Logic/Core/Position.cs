@@ -1,10 +1,10 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-using LTChess.Logic.NN;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.Threads;
 
-namespace LTChess.Logic.Core
+namespace Lizard.Logic.Core
 {
     public unsafe partial class Position
     {

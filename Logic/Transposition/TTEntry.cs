@@ -1,9 +1,9 @@
 ﻿using System.Runtime.InteropServices;
 
-using static LTChess.Logic.Transposition.TranspositionTable;
+using static Lizard.Logic.Transposition.TranspositionTable;
 
 
-namespace LTChess.Logic.Transposition
+namespace Lizard.Logic.Transposition
 {
     /// <summary>
     /// Represents an entry within a transposition table. <br></br>

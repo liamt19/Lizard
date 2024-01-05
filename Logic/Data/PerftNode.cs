@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Data
+﻿namespace Lizard.Logic.Data
 {
     /// <summary>
     /// Represents a branch during perft

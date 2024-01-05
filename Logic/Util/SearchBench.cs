@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Util
+﻿namespace Lizard.Logic.Util
 {
     [SkipStaticConstructor]
     public static class SearchBench

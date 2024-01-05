@@ -1,6 +1,6 @@
-﻿using LTChess.Logic.NN;
+﻿using Lizard.Logic.NN;
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
     public static unsafe class Evaluation
     {

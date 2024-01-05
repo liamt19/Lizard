@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.NN
+﻿namespace Lizard.Logic.NN
 {
     public static class VSize
     {

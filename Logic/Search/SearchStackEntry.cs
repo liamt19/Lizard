@@ -1,9 +1,9 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-using LTChess.Logic.Search.Ordering;
+using Lizard.Logic.Search.Ordering;
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
     /// <summary>
     /// Used during a search to keep track of information from earlier plies/depths

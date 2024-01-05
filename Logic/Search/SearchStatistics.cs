@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
     /// <summary>
     /// Contains different statistics that are updated during a search, like the number of nodes that were discarded

@@ -1,9 +1,9 @@
 ﻿using System.Reflection;
 
-using LTChess.Logic.NN;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.Threads;
 
-namespace LTChess.Logic.UCI
+namespace Lizard.Logic.UCI
 {
     public unsafe class UCIClient
     {
@@ -134,9 +134,9 @@ namespace LTChess.Logic.UCI
             Active = true;
 
 #if DEV
-            SendString("id name LTChess " + EngineBuildVersion + " DEV");
+            SendString("id name Lizard " + EngineBuildVersion + " DEV");
 #else
-            SendString("id name LTChess " + EngineBuildVersion);
+            SendString("id name Lizard " + EngineBuildVersion);
 #endif
             SendString("id author Liam McGuire");
             SendString("info string Using Simple768 evaluation.");
