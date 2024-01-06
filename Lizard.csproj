@@ -124,20 +124,20 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE;BMI;PEXT;IS64BIT</DefineConstants>
     <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE;BMI;PEXT;IS64BIT</DefineConstants>
     <DebugType>embedded</DebugType>
     <Optimize>True</Optimize>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
     <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants)TRACE;BMI;PEXT;IS64BIT;DEV</DefineConstants>
+    <DefineConstants>$(DefineConstants);TRACE;BMI;PEXT;IS64BIT;DEV</DefineConstants>
     <DebugType>embedded</DebugType>
     <Optimize>True</Optimize>
   </PropertyGroup>

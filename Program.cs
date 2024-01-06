@@ -16,8 +16,14 @@ namespace Lizard
         private static Position p;
         private static SearchInformation info;
 
-        public static void Main()
+        public static void Main(string[] args)
         {
+            if (args.Length == 1 && args[0] == "bench")
+            {
+                SearchBench.Go(12, openBench: true);
+                Environment.Exit(1);
+            }
+
             InitializeAll();
 
             p = new Position(owner: SearchPool.MainThread);

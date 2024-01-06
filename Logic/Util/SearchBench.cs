@@ -4,7 +4,7 @@
     public static class SearchBench
     {
 
-        public static void Go(int depth = 12)
+        public static void Go(int depth = 12, bool openBench = false)
         {
             Position pos = new Position(InitialFEN, owner: SearchPool.MainThread);
 
@@ -28,16 +28,25 @@
 
                 ulong thisNodeCount = SearchPool.GetNodeCount();
                 totalNodes += thisNodeCount;
-                Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
+                if (!openBench)
+                {
+                    Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
+                }
 
                 TranspositionTable.Clear();
                 Search.Searches.HandleNewGame();
             }
             sw.Stop();
 
-            if (UCIClient.Active)
+            if (openBench)
             {
-                UCIClient.SendString("info string node " + totalNodes + " time " + Math.Round(sw.Elapsed.TotalMilliseconds) + " nps " + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps");
+                var time = ((int)(totalNodes / sw.Elapsed.TotalSeconds));
+                Console.WriteLine("info string " + sw.Elapsed.TotalSeconds + " seconds");
+                Console.WriteLine(totalNodes + " nodes " + string.Join("", time.ToString("N0").Where(char.IsDigit)) + " nps");
+            }
+            else if (UCIClient.Active)
+            {
+                UCIClient.SendString("info string nodes " + totalNodes + " time " + Math.Round(sw.Elapsed.TotalSeconds) + " nps " + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0"));
             }
             else
             {
