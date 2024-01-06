@@ -633,9 +633,12 @@ namespace Lizard.Logic.Search
                         //  This is for an extremely infrequent crash :(
                         throw new Exception(
                             "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
-                            "rmIndex is still -1. " +
+                            "rmIndex is still -1. legalMoves: " + legalMoves + ", playedMoves: " + playedMoves + " " +
                             "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
+                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" + 
+                            "MovesPlayed:" + Debug_GetMovesPlayed(ss) + "\n" +
+                            "tte: " + tte->ToString() + "\n" + 
+                            "killer0: " + (ss->Killer0.ToString()) + ", killer1: " + (ss->Killer0.ToString()));
                     }
 
                     RootMove rm;
@@ -646,9 +649,12 @@ namespace Lizard.Logic.Search
                     catch (Exception e)
                     {
                         throw new Exception("Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
-                            "rmIndex is " + rmIndex + ". " +
+                            "rmIndex is " + rmIndex + ". legalMoves: " + legalMoves + ", playedMoves: " + playedMoves + " " +
                             "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" + 
+                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" +
+                            "MovesPlayed:" + Debug_GetMovesPlayed(ss) + "\n" +
+                            "tte: " + tte->ToString() + "\n" +
+                            "killer0: " + (ss->Killer0.ToString()) + ", killer1: " + (ss->Killer0.ToString()) + "\n" +
                             "Actual exception: " + e.ToString() + "\n", e);
                     }
                     
