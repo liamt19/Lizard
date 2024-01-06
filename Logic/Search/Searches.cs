@@ -631,12 +631,27 @@ namespace Lizard.Logic.Search
                     else if (rmIndex == -1)
                     {
                         //  This is for an extremely infrequent crash :(
-                        Log("Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves!" +
-                        "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                        "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
+                        throw new Exception(
+                            "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
+                            "rmIndex is still -1. " +
+                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
+                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
                     }
 
-                    RootMove rm = thisThread.RootMoves[rmIndex];
+                    RootMove rm;
+                    try
+                    {
+                        rm = thisThread.RootMoves[rmIndex];
+                    }
+                    catch (Exception e)
+                    {
+                        throw new Exception("Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
+                            "rmIndex is " + rmIndex + ". " +
+                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
+                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" + 
+                            "Actual exception: " + e.ToString() + "\n", e);
+                    }
+                    
 
                     //  If AverageScore hasn't been set yet, give it the current score.
                     //  Otherwise, adjust the average up or down slightly.
