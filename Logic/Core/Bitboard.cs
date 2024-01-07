@@ -329,32 +329,5 @@
             }
             return mask;
         }
-
-        /// <summary>
-        /// Sets <paramref name="info"/> according to the number of pieces that attack the king of color <paramref name="ourColor"/>
-        /// </summary>
-        [MethodImpl(Inline)]
-        public void DetermineCheck(int ourColor, ref CheckInfo info)
-        {
-            int ourKing = KingIndex(ourColor);
-
-            ulong att = AttackersTo(ourKing, Occupancy) & Colors[Not(ourColor)];
-            switch (popcount(att))
-            {
-                case 0:
-                    info.InCheck = false;
-                    info.InDoubleCheck = false;
-                    info.idxChecker = SquareNB;
-                    break;
-                case 1:
-                    info.InCheck = true;
-                    info.idxChecker = lsb(att);
-                    break;
-                case 2:
-                    info.InDoubleCheck = true;
-                    info.idxChecker = lsb(att);
-                    break;
-            }
-        }
     }
 }
