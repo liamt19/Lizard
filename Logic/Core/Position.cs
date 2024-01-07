@@ -510,16 +510,28 @@ namespace Lizard.Logic.Core
                     "but there are no attackers to their king's square after the move was made!");
             }
 
-            CheckInfo.InCheck = move.CausesCheck;
-            CheckInfo.InDoubleCheck = move.CausesDoubleCheck;
-
-            //  move.SqChecker is (un)initialized as 0 if a move doesn't cause check, but we that to be 64 instead.
-            CheckInfo.idxChecker = move.CausesCheck ? move.SqChecker : SquareNB;
-
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = move.Checks ? bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor] : 0;
+            State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+            switch (popcount(State->Checkers))
+            {
+                case 0:
+                    CheckInfo.InCheck = false;
+                    CheckInfo.InDoubleCheck = false;
+                    CheckInfo.idxChecker = SquareNB;
+                    break;
+                case 1:
+                    CheckInfo.InCheck = true;
+                    CheckInfo.InDoubleCheck = false;
+                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    break;
+                case 2:
+                    CheckInfo.InCheck = false;
+                    CheckInfo.InDoubleCheck = true;
+                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    break;
+            }
 
             SetCheckInfo();
         }
@@ -707,6 +719,7 @@ namespace Lizard.Logic.Core
             State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Rook] = GetRookMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
+            State->CheckSquares[King] = 0;
         }
 
 
@@ -1220,7 +1233,23 @@ namespace Lizard.Logic.Core
             State->KingSquares[White] = bb.KingIndex(White);
             State->KingSquares[Black] = bb.KingIndex(Black);
 
-            this.bb.DetermineCheck(ToMove, ref CheckInfo);
+            ulong att = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
+            switch (popcount(att))
+            {
+                case 0:
+                    CheckInfo.InCheck = false;
+                    CheckInfo.InDoubleCheck = false;
+                    CheckInfo.idxChecker = SquareNB;
+                    break;
+                case 1:
+                    CheckInfo.InCheck = true;
+                    CheckInfo.idxChecker = lsb(att);
+                    break;
+                case 2:
+                    CheckInfo.InDoubleCheck = true;
+                    CheckInfo.idxChecker = lsb(att);
+                    break;
+            }
 
             SetState();
 

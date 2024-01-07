@@ -75,7 +75,6 @@
 
                     ref Move m = ref list[size++].Move;
                     m.SetNew(to - up, to);
-                    MakeCheck(Piece.Pawn, ref m);
                 }
 
                 while (twoMoves != 0)
@@ -84,7 +83,6 @@
 
                     ref Move m = ref list[size++].Move;
                     m.SetNew(to - up - up, to);
-                    MakeCheck(Piece.Pawn, ref m);
                 }
             }
 
@@ -132,7 +130,6 @@
                     ref Move m = ref list[size++].Move;
                     m.SetNew(to - up - Direction.WEST, to, capture: true);
 
-                    MakeCheck(Piece.Pawn, ref m);
                 }
 
                 while (capturesR != 0)
@@ -142,7 +139,6 @@
                     ref Move m = ref list[size++].Move;
                     m.SetNew(to - up - Direction.EAST, to, capture: true);
 
-                    MakeCheck(Piece.Pawn, ref m);
                 }
 
                 if (State->EPSquare != EPNone)
@@ -161,26 +157,6 @@
                         ref Move m = ref list[size++].Move;
                         m.SetNew(from, State->EPSquare);
                         m.EnPassant = true;
-
-                        ulong moveMask = SquareBB[from] | SquareBB[State->EPSquare];
-                        ulong occ = bb.Occupancy ^ moveMask ^ SquareBB[State->EPSquare - up];
-                        ulong pawnAttacks = PawnAttackMasks[Not(ToMove)][theirKing] & (bb.Pieces[Pawn] ^ moveMask);
-                        ulong colorMask = bb.Colors[ToMove] ^ moveMask;
-                        ulong attacks = (bb.AttackersToMajors(theirKing, occ) | pawnAttacks) & colorMask;
-
-                        switch (popcount(attacks))
-                        {
-                            case 0:
-                                break;
-                            case 1:
-                                m.CausesCheck = true;
-                                m.SqChecker = lsb(attacks);
-                                break;
-                            case 2:
-                                m.CausesDoubleCheck = true;
-                                m.SqChecker = lsb(attacks);
-                                break;
-                        }
                     }
                 }
             }
@@ -229,48 +205,6 @@
                     if ((them & SquareBB[promotionSquare]) != 0)
                     {
                         m.Capture = true;
-                    }
-
-                    if ((bb.AttackMask(promotionSquare, ToMove, promotionPiece, occupiedSquares ^ SquareBB[from]) & SquareBB[theirKing]) != 0)
-                    {
-                        m.CausesCheck = true;
-                        m.SqChecker = promotionSquare;
-                    }
-
-                    if ((State->BlockingPieces[theirColor] & SquareBB[from]) != 0)
-                    {
-                        //  This piece is blocking a check on their king
-                        if ((RayBB[from][promotionSquare] & SquareBB[theirKing]) == 0)
-                        {
-                            //  If it moved off of the ray that it was blocking the check on,
-                            //  then it is causing a discovery
-
-                            if (m.CausesCheck)
-                            {
-                                //  If the piece that had been blocking also moved to one of the CheckSquares,
-                                //  then this is actually double check.
-
-                                m.CausesCheck = false;
-                                m.CausesDoubleCheck = true;
-                            }
-                            else
-                            {
-                                m.CausesCheck = true;
-                            }
-
-                            if (EnableAssertions)
-                            {
-                                Assert((State->Xrays[ToMove] & XrayBB[theirKing][from]) != 0,
-                                    "The piece causing a discovered check should be aligned on the XrayBB between "
-                                    + theirKing + " and " + from + " (which is " + XrayBB[theirKing][from] + ")."
-                                    + "This ray should have shared a bit with something in State->Xrays[" + ColorToString(ToMove) + "] (which is " + State->Xrays[ToMove] + "),"
-                                    + "but these bitboards are 0 when AND'd! (should give an lsb of 0 <= bb <= 63, not 64 == SquareNB)");
-                            }
-
-                            //  The piece causing the discovery is the xrayer of our color 
-                            //  that is on the same ray that the piece we were moving shared with the king.
-                            m.SqChecker = lsb(State->Xrays[ToMove] & XrayBB[theirKing][from]);
-                        }
                     }
                 }
 
@@ -336,7 +270,6 @@
                     ref Move m = ref list[size++].Move;
                     m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
 
-                    MakeCheck(Piece.King, ref m);
                 }
 
                 if ((quiets || nonEvasions) && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
@@ -520,8 +453,6 @@
 
                     ref Move m = ref list[size++].Move;
                     m.SetNew(idx, to, capture: (them & SquareBB[to]) != 0);
-
-                    MakeCheck(pt, ref m);
                 }
             }
 
@@ -756,8 +687,6 @@
                 m.Capture = true;
             }
 
-            MakeCheck(bb.GetPieceAtIndex(m.From), ref m);
-
             return new ScoredMove(ref m);
         }
 
@@ -864,7 +793,6 @@
                     ref Move m = ref list[size++].Move;
                     m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
 
-                    MakeCheck(Piece.King, ref m);
                 }
 
                 if ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None)
@@ -978,7 +906,6 @@
                     ref Move m = ref list[size++].Move;
                     m.SetNew(idx, to, capture: (them & SquareBB[to]) != 0);
 
-                    MakeCheck(pt, ref m);
                 }
             }
 
@@ -1029,7 +956,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up, to);
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             while (twoMoves != 0)
@@ -1038,7 +964,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - up, to);
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             if (promotingPawns != 0)
@@ -1078,8 +1003,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - Direction.WEST, to, capture: true);
-
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             while (capturesR != 0)
@@ -1088,8 +1011,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - Direction.EAST, to, capture: true);
-
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             if (State->EPSquare != EPNone)
@@ -1227,7 +1148,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up, to);
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             while (twoMoves != 0)
@@ -1236,7 +1156,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - up, to);
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             if (promotingPawns != 0)
@@ -1273,8 +1192,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - Direction.WEST, to, capture: true);
-
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             while (capturesR != 0)
@@ -1283,8 +1200,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - Direction.EAST, to, capture: true);
-
-                MakeCheck(Piece.Pawn, ref m);
             }
 
             if (State->EPSquare != EPNone)
