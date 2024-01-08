@@ -45,7 +45,8 @@
                 }
                 else
                 {
-                    int contIdx = PieceToHistory.GetIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo);
+                    int pt = bb.GetPieceAtIndex(moveFrom);
+                    int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score = 2 * history.MainHistory[HistoryTable.HistoryIndex(pc, m)];
                     sm.Score += 2 * (*continuationHistory[0])[contIdx];
@@ -53,8 +54,7 @@
                     sm.Score += (*continuationHistory[3])[contIdx];
                     sm.Score += (*continuationHistory[5])[contIdx];
 
-                    if ((pos.State->CheckSquares[bb.GetPieceAtIndex(moveFrom)] & SquareBB[m.To]) != 0 ||
-                        ((pos.State->BlockingPieces[Not(pos.ToMove)] & SquareBB[m.From]) != 0))
+                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
                         sm.Score += 10000;
                     }

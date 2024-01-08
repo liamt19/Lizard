@@ -410,8 +410,8 @@ namespace Lizard.Logic.Search
                         skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
                     }
 
-                    bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0)
-                        || (((pos.State->BlockingPieces[Not(pos.ToMove)] & SquareBB[m.From]) != 0));
+                    bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
+
                     if (givesCheck || isCapture || skipQuiets)
                     {
                         if (!SEE_GE(pos, m, -ExchangeBase * depth))
@@ -915,8 +915,7 @@ namespace Lizard.Logic.Search
 
                 bool isCapture = m.Capture;
                 bool isPromotion = m.Promotion;
-                bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0) 
-                    || (((pos.State->BlockingPieces[Not(pos.ToMove)] & SquareBB[m.From]) != 0));
+                bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
