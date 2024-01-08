@@ -1265,24 +1265,6 @@ namespace Lizard.Logic.Core
             State->KingSquares[White] = bb.KingIndex(White);
             State->KingSquares[Black] = bb.KingIndex(Black);
 
-            //ulong att = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
-            //switch (popcount(att))
-            //{
-            //    case 0:
-            //        InCheck = false;
-            //        InDoubleCheck = false;
-            //        idxChecker = SquareNB;
-            //        break;
-            //    case 1:
-            //        InCheck = true;
-            //        idxChecker = lsb(att);
-            //        break;
-            //    case 2:
-            //        InDoubleCheck = true;
-            //        idxChecker = lsb(att);
-            //        break;
-            //}
-
             SetState();
 
             State->CapturedPiece = None;

@@ -25,14 +25,7 @@ namespace Lizard.Logic.Data
         public const int FlagCapture = 0b000001 << 26;
         public const int FlagEnPassant = 0b000010 << 26;
         public const int FlagCastle = 0b000100 << 26;
-        public const int FlagCheck = 0b001000 << 26;
-        public const int FlagDoubleCheck = 0b010000 << 26;
         public const int FlagPromotion = 0b100000 << 26;
-
-        /// <summary>
-        /// A mask of <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>
-        /// </summary>
-        private const int Mask_Check = 0b011000 << 26;
 
         /// <summary>
         /// A mask of <see cref="To"/> and <see cref="From"/>
