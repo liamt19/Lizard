@@ -365,7 +365,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(ref bb, ss, history, contHist, list, size, ttMove);
+            AssignScores(pos, ss, history, contHist, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -410,7 +410,9 @@ namespace Lizard.Logic.Search
                         skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
                     }
 
-                    if (m.CausesCheck || isCapture || skipQuiets)
+                    bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
+
+                    if (givesCheck || isCapture || skipQuiets)
                     {
                         if (!SEE_GE(pos, m, -ExchangeBase * depth))
                         {
@@ -891,7 +893,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(ref pos.bb, ss, history, contHist, list, size, ttMove, false);
+            AssignScores(pos, ss, history, contHist, list, size, ttMove, false);
 
             for (int i = 0; i < size; i++)
             {
@@ -913,7 +915,7 @@ namespace Lizard.Logic.Search
 
                 bool isCapture = m.Capture;
                 bool isPromotion = m.Promotion;
-                bool givesCheck = m.Checks;
+                bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.

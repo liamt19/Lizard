@@ -12,9 +12,10 @@
         /// An array of 6 pointers to <see cref="SearchStackEntry.ContinuationHistory"/>. This should be [ (ss - 1), (ss - 2), null, (ss - 4), null, (ss - 6) ].
         /// </param>
         /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
-        public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
+        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
                 ScoredMove* list, int size, CondensedMove ttMove, bool doKillers = true)
         {
+            ref Bitboard bb = ref pos.bb;
             int pc = bb.GetColorAtIndex(list[0].Move.From);
 
             for (int i = 0; i < size; i++)
@@ -44,7 +45,8 @@
                 }
                 else
                 {
-                    int contIdx = PieceToHistory.GetIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo);
+                    int pt = bb.GetPieceAtIndex(moveFrom);
+                    int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score = 2 * history.MainHistory[HistoryTable.HistoryIndex(pc, m)];
                     sm.Score += 2 * (*continuationHistory[0])[contIdx];
@@ -52,7 +54,7 @@
                     sm.Score += (*continuationHistory[3])[contIdx];
                     sm.Score += (*continuationHistory[5])[contIdx];
 
-                    if (m.Checks)
+                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
                         sm.Score += 10000;
                     }
@@ -114,12 +116,12 @@
         }
 
 
-        public static void AssignScores(ref Bitboard bb, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
+        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
                 Span<ScoredMove> list, int size, CondensedMove ttMove, bool doKillers = true)
         {
             fixed (ScoredMove* ptr = list)
             {
-                AssignScores(ref bb, ss, history, continuationHistory, ptr, size, ttMove, doKillers);
+                AssignScores(pos, ss, history, continuationHistory, ptr, size, ttMove, doKillers);
             }
         }
 

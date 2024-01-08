@@ -89,16 +89,6 @@ namespace Lizard.Logic.Data
         }
 
         /// <summary>
-        /// Gets or sets the square that this move causes check from.
-        /// </summary>
-        public int SqChecker
-        {
-            get => (_data >> 18) & 0x3F;
-            set => _data = (_data & ~(0x3F << 18)) | (value << 18);
-        }
-
-
-        /// <summary>
         /// Gets or sets whether this move is a capture or not.
         /// <br></br>
         /// Note that <see cref="EnPassant"/> and <see cref="Capture"/> are mutually exclusive, so en passant moves intentionally do not show up as captures.
@@ -129,24 +119,6 @@ namespace Lizard.Logic.Data
         }
 
         /// <summary>
-        /// Gets or sets whether this move puts the other player's king in check.
-        /// </summary>
-        public bool CausesCheck
-        {
-            get => (_data & FlagCheck) != 0;
-            set => _data = value ? (_data | FlagCheck) : (_data & ~FlagCheck);
-        }
-
-        /// <summary>
-        /// Gets or sets whether this move puts the other player's king in check from two pieces.
-        /// </summary>
-        public bool CausesDoubleCheck
-        {
-            get => (_data & FlagDoubleCheck) != 0;
-            set => _data ^= FlagDoubleCheck;
-        }
-
-        /// <summary>
         /// Gets or sets whether this pawn move is a promotion.
         /// </summary>
         public bool Promotion
@@ -154,20 +126,6 @@ namespace Lizard.Logic.Data
             get => (_data & FlagPromotion) != 0;
             set => _data ^= FlagPromotion;
         }
-
-        /// <summary>
-        /// Returns true if this move causes check or double check.
-        /// <br></br>
-        /// The setter will only clear the <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>, 
-        /// so doing <see cref="Checks"/> = <see langword="true"/> will change nothing.
-        /// </summary>
-        public bool Checks
-        {
-            get => (_data & Mask_Check) != 0;
-            set => _data &= ~Mask_Check;
-        }
-
-
 
         public Move(CondensedMove cm)
         {
@@ -314,12 +272,6 @@ namespace Lizard.Logic.Data
                     sb.Append("=" + PieceToFENChar(PromotionTo));
                 }
             }
-
-            if (CausesCheck || CausesDoubleCheck)
-            {
-                sb.Append('+');
-            }
-
 
             return sb.ToString();
         }
