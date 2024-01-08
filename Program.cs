@@ -470,6 +470,10 @@ namespace Lizard
                 {
                     info.MaxDepth = depth;
                 }
+                else if (param[i] == "nodes" && i < param.Length - 1 && ulong.TryParse(param[i + 1], out ulong reqNodes))
+                {
+                    info.MaxNodes = reqNodes;
+                }
             }
 
             SearchPool.StartSearch(p, ref info, setup);
