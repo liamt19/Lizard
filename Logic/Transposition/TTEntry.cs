@@ -15,7 +15,7 @@ namespace Lizard.Logic.Transposition
     [StructLayout(LayoutKind.Explicit, Pack = 2, Size = 10)]
     public struct TTEntry
     {
-        public static readonly TTEntry Null = new TTEntry(0, 0, TTNodeType.Invalid, 0, Move.Null);
+        public static readonly TTEntry Null = new TTEntry(0, 0, TTNodeType.Invalid, -DepthOffset, Move.Null);
 
         public const int KeyShift = 64 - (sizeof(ushort) * 8);
 
@@ -149,12 +149,9 @@ namespace Lizard.Logic.Transposition
 
         /// <summary>
         /// Converts the <paramref name="ttScore"/> retrieved from a TT hit to a usable score from the root position.
-        /// <para></para>
-        /// The returned score is also clamped by the root position's HalfmoveClock, so a mate score is treated as a non-mate score
-        /// if we might lose by the 50 move rule before that mate.
         /// </summary>
         [MethodImpl(Inline)]
-        public static short MakeNormalScore(short ttScore, int ply, int halfmoves)
+        public static short MakeNormalScore(short ttScore, int ply)
         {
             if (ttScore == ScoreNone)
             {
@@ -163,21 +160,11 @@ namespace Lizard.Logic.Transposition
 
             if (ttScore >= ScoreTTWin)
             {
-                if (ttScore >= ScoreMateMax && ScoreMate - ttScore > 99 - halfmoves)
-                {
-                    return ScoreMateMax - 1;
-                }
-
                 return (short)(ttScore - ply);
             }
 
             if (ttScore <= ScoreTTLoss)
             {
-                if (ttScore <= ScoreMatedMax && ScoreMate + ttScore > 99 - halfmoves)
-                {
-                    return ScoreMatedMax + 1;
-                }
-
                 return (short)(ttScore + ply);
             }
 
@@ -194,6 +181,11 @@ namespace Lizard.Logic.Transposition
         [MethodImpl(Inline)]
         public static short MakeTTScore(short score, int ply)
         {
+            if (score == ScoreNone)
+            {
+                return score;
+            }
+
             if (score >= ScoreTTWin)
             {
                 return (short)(score + ply);

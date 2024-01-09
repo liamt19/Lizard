@@ -147,7 +147,7 @@ namespace Lizard.Logic.Search
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
             }
 
-            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone;
+            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
 
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
@@ -796,7 +796,7 @@ namespace Lizard.Logic.Search
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
             int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
-            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply, pos.State->HalfmoveClock) : ScoreNone;
+            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             CondensedMove ttMove = ss->TTHit ? tte->BestMove : CondensedMove.Null;
             bool ttPV = ss->TTHit && tte->PV;
 
