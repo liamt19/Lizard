@@ -346,14 +346,12 @@ namespace Lizard.Logic.NN
                 //  This ain't pretty, but it is 15% faster than what it was before
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    whiteAccumulation[i] =
-                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
+                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
                         FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
                         FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
                         FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
 
-                    blackAccumulation[i] =
-                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
+                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
                         FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
                         FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
                         FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
@@ -367,14 +365,12 @@ namespace Lizard.Logic.NN
 
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    whiteAccumulation[i] =
-                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
+                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
                         FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
                         FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
                         FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
 
-                    blackAccumulation[i] =
-                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
+                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
                         FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
                         FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
                         FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
