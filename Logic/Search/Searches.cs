@@ -344,11 +344,6 @@ namespace Lizard.Logic.Search
 
             MovesLoop:
 
-            PieceToHistory*[] contHist = { (ss - 1)->ContinuationHistory, (ss - 2)->ContinuationHistory,
-                                            null                        , (ss - 4)->ContinuationHistory,
-                                            null                        , (ss - 6)->ContinuationHistory };
-
-
             int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
             int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
 
@@ -365,7 +360,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(pos, ss, history, contHist, list, size, ttMove);
+            AssignScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -881,11 +876,6 @@ namespace Lizard.Logic.Search
                 futilityBase = (short)(Math.Min(ss->StaticEval, bestScore) + ExchangeBase);
             }
 
-            PieceToHistory*[] contHist = { (ss - 1)->ContinuationHistory, (ss - 2)->ContinuationHistory,
-                                            null                        , (ss - 4)->ContinuationHistory,
-                                            null                        , (ss - 6)->ContinuationHistory };
-
-
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
             int legalMoves = 0;
             int movesMade = 0;
@@ -893,7 +883,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(pos, ss, history, contHist, list, size, ttMove, false);
+            AssignScores(pos, ss, history, list, size, ttMove, false);
 
             for (int i = 0; i < size; i++)
             {

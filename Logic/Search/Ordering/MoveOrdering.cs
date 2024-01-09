@@ -8,11 +8,8 @@
         /// </summary>
         /// <param name="ss">The entry containing Killer moves to prioritize</param>
         /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
-        /// <param name="continuationHistory">
-        /// An array of 6 pointers to <see cref="SearchStackEntry.ContinuationHistory"/>. This should be [ (ss - 1), (ss - 2), null, (ss - 4), null, (ss - 6) ].
-        /// </param>
         /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
-        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
+        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
                 ScoredMove* list, int size, CondensedMove ttMove, bool doKillers = true)
         {
             ref Bitboard bb = ref pos.bb;
@@ -49,10 +46,10 @@
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score = 2 * history.MainHistory[HistoryTable.HistoryIndex(pc, m)];
-                    sm.Score += 2 * (*continuationHistory[0])[contIdx];
-                    sm.Score += (*continuationHistory[1])[contIdx];
-                    sm.Score += (*continuationHistory[3])[contIdx];
-                    sm.Score += (*continuationHistory[5])[contIdx];
+                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
+                    sm.Score += (*(ss - 2)->ContinuationHistory)[contIdx];
+                    sm.Score += (*(ss - 4)->ContinuationHistory)[contIdx];
+                    sm.Score += (*(ss - 6)->ContinuationHistory)[contIdx];
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
@@ -116,12 +113,12 @@
         }
 
 
-        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history, in PieceToHistory*[] continuationHistory,
+        public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
                 Span<ScoredMove> list, int size, CondensedMove ttMove, bool doKillers = true)
         {
             fixed (ScoredMove* ptr = list)
             {
-                AssignScores(pos, ss, history, continuationHistory, ptr, size, ttMove, doKillers);
+                AssignScores(pos, ss, history, ptr, size, ttMove, doKillers);
             }
         }
 
