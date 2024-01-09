@@ -1081,13 +1081,15 @@ namespace Lizard.Logic.Search
             }
         }
 
+
+        private static readonly int[] ContinuationOffsets = [1, 2, 4, 6];
         /// <summary>
         /// Applies the <paramref name="bonus"/> to the continuation history for the previous 1, 2, 4, and 6 plies, 
         /// given the piece of type <paramref name="pt"/> and color <paramref name="pc"/> moving to the square <paramref name="sq"/>
         /// </summary>
         private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
         {
-            foreach (int i in new int[] { 1, 2, 4, 6 })
+            foreach (int i in ContinuationOffsets)
             {
                 if (ss->InCheck && i > 2)
                 {

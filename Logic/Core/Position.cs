@@ -1151,6 +1151,8 @@ namespace Lizard.Logic.Core
 
 
 
+        private static readonly char[] FENSeparators = ['/', ' '];
+
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
         /// </summary>
@@ -1159,7 +1161,7 @@ namespace Lizard.Logic.Core
         {
             try
             {
-                string[] splits = fen.Split(new char[] { '/', ' ' });
+                string[] splits = fen.Split(FENSeparators);
 
                 bb.Reset();
                 FullMoves = 1;

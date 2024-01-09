@@ -134,12 +134,9 @@ namespace Lizard.Logic.NN
                 _Biases[i] = br.ReadInt16();
             }
 
-            fixed (short* biasPtr = &_Biases[0])
+            for (int i = 0; i < totalBiases; i += VSize.Short)
             {
-                for (int i = 0; i < totalBiases; i += VSize.Short)
-                {
-                    LayerBiases[i / VSize.Short] = Vector256.Load(biasPtr + i * VSize.Short);
-                }
+                LayerBiases[i / VSize.Short] = Vector256.Create(_Biases, i);
             }
 
 #if DEBUG
