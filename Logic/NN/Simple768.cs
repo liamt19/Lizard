@@ -339,14 +339,25 @@ namespace Lizard.Logic.NN
             (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom);
             (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo);
 
-            MoveFeature(whiteAccumulation, wFrom, wTo);
-            MoveFeature(blackAccumulation, bFrom, bTo);
-
             if (theirPiece != None)
             {
                 (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
-                RemoveFeature(whiteAccumulation, wCap);
-                RemoveFeature(blackAccumulation, bCap);
+
+                //  This ain't pretty, but it is 15% faster than what it was before
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    whiteAccumulation[i] =
+                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
+                        FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+
+                    blackAccumulation[i] =
+                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
+                        FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
+                }
             }
             else if (m.EnPassant)
             {
@@ -354,8 +365,20 @@ namespace Lizard.Logic.NN
 
                 (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
 
-                RemoveFeature(whiteAccumulation, wCap);
-                RemoveFeature(blackAccumulation, bCap);
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    whiteAccumulation[i] =
+                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
+                        FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+
+                    blackAccumulation[i] =
+                        Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
+                        FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
+                }
             }
             else if (m.Castle)
             {
@@ -378,9 +401,34 @@ namespace Lizard.Logic.NN
                 (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFrom);
                 (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookTo);
 
-                MoveFeature(whiteAccumulation, wRookFrom, wRookTo);
-                MoveFeature(blackAccumulation, bRookFrom, bRookTo);
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(Avx2.Add(whiteAccumulation[i],
+                        FeatureWeights[(wRookTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wRookFrom * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
 
+                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(Avx2.Add(blackAccumulation[i],
+                        FeatureWeights[(bRookTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bRookFrom * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
+                }
+
+            }
+            else
+            {
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(whiteAccumulation[i],
+                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+
+                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(blackAccumulation[i],
+                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
+                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
+                }
             }
 
         }
