@@ -619,7 +619,7 @@ namespace Lizard.Logic.Search
                 if (isRoot)
                 {
                     //  Find the corresponding RootMove for the current move.
-                    int rmIndex = -1;
+                    int rmIndex = 0;
                     for (int j = 0; j < thisThread.RootMoves.Count; j++)
                     {
                         if (thisThread.RootMoves[j].Move == m)
@@ -629,43 +629,7 @@ namespace Lizard.Logic.Search
                         }
                     }
 
-                    if (EnableAssertions)
-                    {
-                        Assert(rmIndex != -1,
-                            "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves!" +
-                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]");
-                    }
-                    else if (rmIndex == -1)
-                    {
-                        //  This is for an extremely infrequent crash :(
-                        throw new Exception(
-                            "Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
-                            "rmIndex is still -1. legalMoves: " + legalMoves + ", playedMoves: " + playedMoves + " " +
-                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" + 
-                            "MovesPlayed:" + Debug_GetMovesPlayed(ss) + "\n" +
-                            "tte: " + tte->ToString() + "\n" + 
-                            "killer0: " + (ss->Killer0.ToString()) + ", killer1: " + (ss->Killer0.ToString()));
-                    }
-
-                    RootMove rm;
-                    try
-                    {
-                        rm = thisThread.RootMoves[rmIndex];
-                    }
-                    catch (Exception e)
-                    {
-                        throw new Exception("Move " + m + " wasn't in this thread's (" + thisThread.ToString() + ") RootMoves! " +
-                            "rmIndex is " + rmIndex + ". legalMoves: " + legalMoves + ", playedMoves: " + playedMoves + " " +
-                            "This call to Negamax used a NodeType of RootNode, so any moves encountered should have been placed in the following list: " +
-                            "[" + string.Join(", ", thisThread.RootMoves.Select(rootM => rootM.Move)) + "]\n" +
-                            "MovesPlayed:" + Debug_GetMovesPlayed(ss) + "\n" +
-                            "tte: " + tte->ToString() + "\n" +
-                            "killer0: " + (ss->Killer0.ToString()) + ", killer1: " + (ss->Killer0.ToString()) + "\n" +
-                            "Actual exception: " + e.ToString() + "\n", e);
-                    }
-                    
+                    RootMove rm = thisThread.RootMoves[rmIndex];
 
                     //  If AverageScore hasn't been set yet, give it the current score.
                     //  Otherwise, adjust the average up or down slightly.
