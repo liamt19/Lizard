@@ -50,7 +50,7 @@ namespace Lizard.Logic.Search
         /// The number of times that previous moves had their search depth extended by two.
         /// </summary>
         [FieldOffset(20)]
-        public int Extensions;
+        public int DoubleExtensions;
 
         /// <summary>
         /// The number of moves made by both players thus far, which is generally the depth of the search times two.
@@ -143,7 +143,7 @@ namespace Lizard.Logic.Search
 
             StatScore = 0;
             Ply = 0;
-            Extensions = 0;
+            DoubleExtensions = 0;
             StaticEval = ScoreNone;
 
             InCheck = false;

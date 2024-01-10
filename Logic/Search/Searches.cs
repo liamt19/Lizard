@@ -137,7 +137,7 @@ namespace Lizard.Logic.Search
             //  TODO: SPRT this with (ss + 2) instead
             (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
 
-            ss->Extensions = (ss - 1)->Extensions;
+            ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
 
             ss->StatScore = 0;
             ss->InCheck = pos.Checked;
@@ -170,9 +170,9 @@ namespace Lizard.Logic.Search
                 return ttScore;
             }
 
-            //  If we are in check, don't bother getting a static evaluation or pruning.
             if (ss->InCheck)
             {
+                //  If we are in check, don't bother getting a static evaluation or pruning.
                 ss->StaticEval = eval = ScoreNone;
                 goto MovesLoop;
             }
@@ -409,6 +409,8 @@ namespace Lizard.Logic.Search
 
                     if (givesCheck || isCapture || skipQuiets)
                     {
+                        //  Once we've found at least 1 move that doesn't lead to mate,
+                        //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
                         if (!SEE_GE(pos, m, -ExchangeBase * depth))
                         {
                             continue;
@@ -445,12 +447,15 @@ namespace Lizard.Logic.Search
 
                     if (score < singleBeta)
                     {
+                        //  This move seems to be good, so extend it.
                         extend = 1;
 
                         if (!isPV
                             && score < singleBeta - 20
-                            && ss->Extensions <= 8)
+                            && ss->DoubleExtensions <= 8)
                         {
+                            //  If this isn't a PV, and this move is was a good deal better than any other one,
+                            //  then extend by 2 so long as we've double extended less than 8 times.
                             extend = 2;
                         }
                     }
@@ -460,13 +465,14 @@ namespace Lizard.Logic.Search
                     }
                     else if (ttScore >= beta || ttScore <= alpha)
                     {
+                        //  This move is basically the opposite of singular, so reduce it instead.
                         extend = isPV ? -1 : -extend;
                     }
                 }
 
                 int histIdx = PieceToHistory.GetIndex(ourColor, thisPieceType, toSquare);
 
-                ss->Extensions = (ss - 1)->Extensions + (extend == 2 ? 1 : 0);
+                ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend == 2 ? 1 : 0);
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
@@ -564,10 +570,12 @@ namespace Lizard.Logic.Search
                         int bonus = 0;
                         if (score <= alpha)
                         {
+                            //  Apply a penalty to this continuation.
                             bonus = -StatBonus(newDepth);
                         }
                         else if (score >= beta)
                         {
+                            //  Apply a bonus to this continuation.
                             bonus = StatBonus(newDepth);
                         }
 
@@ -581,6 +589,8 @@ namespace Lizard.Logic.Search
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
+                    //  Do a new PV search here.
+
                     (ss + 1)->PV = PV;
                     (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth, false);
@@ -590,6 +600,7 @@ namespace Lizard.Logic.Search
 
                 if (isRoot)
                 {
+                    //  Update the NodeTM table with the number of nodes that were searched in this subtree.
                     thisThread.NodeTable[m.From][m.To] += thisThread.Nodes - prevNodes;
                 }
 
@@ -711,6 +722,7 @@ namespace Lizard.Logic.Search
 
                 if (m != bestMove)
                 {
+                    //  Add the move to the capture/quiet list.
                     if (isCapture && captureCount < 16)
                     {
                         captureMoves[captureCount++] = m;
@@ -782,7 +794,7 @@ namespace Lizard.Logic.Search
 
             int score = -ScoreMate - MaxPly;
             short bestScore = -ScoreInfinite;
-            short futilityBase = -ScoreInfinite;
+            short futility = -ScoreInfinite;
 
             short eval = ss->StaticEval;
 
@@ -853,7 +865,7 @@ namespace Lizard.Logic.Search
                     {
                         //  The previous move made was done in NMP (and nothing has changed since (ss - 1)),
                         //  so for simplicity we can use the previous static eval but negative.
-                        eval = ss->StaticEval = (short)-(ss - 1)->StaticEval;
+                        eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
                     }
                     else
                     {
@@ -873,7 +885,7 @@ namespace Lizard.Logic.Search
 
                 bestScore = eval;
 
-                futilityBase = (short)(Math.Min(ss->StaticEval, bestScore) + ExchangeBase);
+                futility = (short)(Math.Min(ss->StaticEval, bestScore) + ExchangeBase);
             }
 
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
@@ -920,7 +932,7 @@ namespace Lizard.Logic.Search
                 {
                     if (!(givesCheck || isPromotion)
                         && (prevSquare != m.To)
-                        && futilityBase > -ScoreWin)
+                        && futility > -ScoreWin)
                     {
                         if (legalMoves > 3 && !ss->InCheck)
                         {
@@ -929,17 +941,19 @@ namespace Lizard.Logic.Search
                             continue;
                         }
 
-                        short futilityValue = (short)(futilityBase + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
+                        short futilityValue = (short)(futility + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
 
                         if (futilityValue <= alpha)
                         {
+                            //  Our eval is low, and this move doesn't win us enough material to raise it above alpha.
                             bestScore = Math.Max(bestScore, futilityValue);
                             continue;
                         }
 
-                        if (futilityBase <= alpha && !SEE_GE(pos, m, 1))
+                        if (futility <= alpha && !SEE_GE(pos, m, 1))
                         {
-                            bestScore = Math.Max(bestScore, futilityBase);
+                            //  Our eval is low, and this move doesn't win us material
+                            bestScore = Math.Max(bestScore, futility);
                             continue;
                         }
                     }
@@ -952,6 +966,7 @@ namespace Lizard.Logic.Search
 
                     if (!ss->InCheck && !SEE_GE(pos, m, -90))
                     {
+                        //  This move loses a significant amount of material
                         continue;
                     }
                 }
@@ -988,6 +1003,7 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
+                            //  Beta cut
                             break;
                         }
                     }
