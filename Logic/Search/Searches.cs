@@ -407,6 +407,11 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
 
+                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
+                    {
+                        continue;
+                    }
+
                     if (givesCheck || isCapture || skipQuiets)
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
