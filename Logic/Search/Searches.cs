@@ -548,16 +548,7 @@ namespace Lizard.Logic.Search
 
                     if (score > alpha && newDepth > reducedDepth)
                     {
-                        /*
-                        Score of NoLMRNewDepthChange vs Baseline: 284 - 184 - 41  [0.598] 509
-                        ...      NoLMRNewDepthChange playing White: 164 - 78 - 13  [0.669] 255
-                        ...      NoLMRNewDepthChange playing Black: 120 - 106 - 28  [0.528] 254
-                        ...      White vs Black: 270 - 198 - 41  [0.571] 509
-                        Elo difference: 69.2 +/- 29.5, LOS: 100.0 %, DrawRatio: 8.1 %
-                        SPRT: llr 2.91 (100.8%), lbound -2.25, ubound 2.89 - H1 was accepted
-                        */
-#if SPRT_FAIL_LMR_NEWDEPTH_DIFF
-                        if (score > (bestScore + ExchangeBase))
+                        if (score > (bestScore + LMRExtensionThreshold))
                         {
                             newDepth++;
                         }
@@ -565,7 +556,6 @@ namespace Lizard.Logic.Search
                         {
                             newDepth--;
                         }
-#endif
 
                         if (newDepth < reducedDepth)
                         {

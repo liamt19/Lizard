@@ -119,6 +119,14 @@
 
 
         /// <summary>
+        /// If an LMR search returns a score that is above the current best score by this amount, 
+        /// the following verification search will be extended by 1.
+        /// </summary>
+        public static int LMRExtensionThreshold = 125;
+
+
+
+        /// <summary>
         /// If moves exceed this margin, they are treated as "good" in multiple places.
         /// </summary>
         public static int ExchangeBase = 200;
