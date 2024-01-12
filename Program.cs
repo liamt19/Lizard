@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.Search;
 using Lizard.Logic.Threads;
 
 namespace Lizard
@@ -464,6 +465,9 @@ namespace Lizard
                 Log("'go' commands involving perft must have a specified depth!");
                 return;
             }
+
+            TranspositionTable.Clear();
+            Searches.HandleNewGame();
 
             info = new SearchInformation(p, MaxDepth);
             info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
