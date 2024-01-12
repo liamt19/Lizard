@@ -854,7 +854,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(pos, ss, history, list, size, ttMove, false);
+            AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
