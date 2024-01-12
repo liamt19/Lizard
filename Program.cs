@@ -39,6 +39,18 @@ namespace Lizard
                 AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
 
+
+            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+                if (!SearchPool.StopThreads)
+                {
+                    //  If a search is ongoing, stop it instead of closing the console.
+                    SearchPool.StopThreads = true;
+                    e.Cancel = true;
+                }
+
+                //  Otherwise, e.Cancel == false and the program exits normally
+            };
+
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
 
