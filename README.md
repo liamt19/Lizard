@@ -16,7 +16,7 @@ who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). So
 
 ## Features
 ### NNUE Evaluation:
-Version 10.0 uses a 768 -> 1024 -> 1 neural network to evaluate positions, which was trained on 1.5 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
+Version 10.1 uses a 768 -> 1024 -> 1 neural network to evaluate positions, which was trained on 1.5 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
 
 In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
 For the sake of simplicity, this functionality is only possible on the [the HalfKA-HalfKP branch](../../tree/HalfKA-HalfKP).
@@ -34,10 +34,8 @@ For the sake of simplicity, this functionality is only possible on the [the Half
   - [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
 
 ## Status
-Version 10.0 uses its own NNUE evaluation, and began proper parameter testing with [SPRT](https://en.wikipedia.org/wiki/Sequential_probability_ratio_test).
-From my brief testing, it gains 42.1 +/- 21.5 ELO compared to 9.3.1.
+Version 10.1 fixes some fairly egregious mistakes in the search methods, and has some simplifications and performance improvements that have been on my to-do list for a while.
 
-Currently rated a bit above 2600 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
 
 ## Some spotty history:
 #### Version 9.3:
