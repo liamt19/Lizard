@@ -642,7 +642,7 @@ namespace Lizard.Logic.UCI
             Options[nameof(ProbCutBeta)].SetMinMax(125, 225);
             Options[nameof(ProbCutBetaImproving)].SetMinMax(50, 150);
             Options[nameof(ProbCutMinDepth)].SetMinMax(3, 7);
-            Options[nameof(LMRExtensionThreshold)].SetMinMax(50, 75);
+            Options[nameof(LMRExtensionThreshold)].SetMinMax(50, 200);
             Options[nameof(ExchangeBase)].SetMinMax(1, 500);
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
             Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);
