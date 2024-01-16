@@ -11,7 +11,7 @@ namespace Lizard.Logic.NN
     public static unsafe class Simple768
     {
         public const int InputSize = 768;
-        public const int HiddenSize = 1024;
+        public const int HiddenSize = 1536;
         public const int OutputBuckets = 1;
 
         private const int QA = 255;
@@ -25,7 +25,7 @@ namespace Lizard.Logic.NN
 #if DEV_NET
         public const string NetworkName = "net-wdl3-epoch20.bin";
 #else
-        public const string NetworkName = "net-epoch10.bin";
+        public const string NetworkName = "iguana-epoch10.bin";
 #endif
 
         /// <summary>
