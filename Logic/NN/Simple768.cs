@@ -146,9 +146,9 @@ namespace Lizard.Logic.NN
 #endif
         }
 
-        public static void RefreshAccumulator(Position pos) => RefreshAccumulator(pos, ref *pos.State->Accumulator);
-        public static void RefreshAccumulator(Position pos, ref Accumulator accumulator)
+        public static void RefreshAccumulator(Position pos)
         {
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
             Unsafe.CopyBlock(accumulator.White, FeatureBiases, sizeof(short) * HiddenSize);
@@ -167,10 +167,9 @@ namespace Lizard.Logic.NN
             }
         }
 
-        public static int GetEvaluation(Position pos) => GetEvaluation(pos, ref *pos.State->Accumulator);
-
-        public static int GetEvaluation(Position pos, ref Accumulator accumulator)
+        public static int GetEvaluation(Position pos)
         {
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             int output = 0;
 

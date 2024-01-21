@@ -194,7 +194,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this, ref *State->Accumulator);
+                Simple768.RefreshAccumulator(this);
             }
         }
 
@@ -1279,7 +1279,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this, ref *State->Accumulator);
+                Simple768.RefreshAccumulator(this);
             }
 
             return true;

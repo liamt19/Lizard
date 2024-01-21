@@ -266,7 +266,7 @@ namespace Lizard.Logic.UCI
 
                     }
 
-                    Simple768.RefreshAccumulator(info.Position, ref *info.Position.State->Accumulator);
+                    Simple768.RefreshAccumulator(info.Position);
                 }
                 else if (cmd == "go")
                 {
