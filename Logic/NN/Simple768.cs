@@ -26,15 +26,31 @@ namespace Lizard.Logic.NN
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
+        /// <para></para>
+        /// This is the 768 -> 1536 part of the architecture.
         /// </summary>
         public static Vector256<short>* FeatureWeights;
 
         /// <summary>
         /// The initial values that are placed into the accumulators.
+        /// <para></para>
+        /// When doing a full refresh, both accumulators are filled with these.
         /// </summary>
         public static Vector256<short>* FeatureBiases;
 
+        /// <summary>
+        /// The values that are multiplied with the SCRelu-activated output from the feature transformer 
+        /// to produce the final sum.
+        /// <para></para>
+        /// This is the (1536)x2 -> 1 part.
+        /// </summary>
         public static Vector256<short>* LayerWeights;
+
+        /// <summary>
+        /// The value(s) applied to the final output.
+        /// <para></para>
+        /// There is exactly 1 bias for each output bucket, so this currently contains only 1 number (followed by 15 zeroes).
+        /// </summary>
         public static Vector256<short>* LayerBiases;
 
         private const int FeatureWeightElements = InputSize * HiddenSize;
@@ -120,7 +136,9 @@ namespace Lizard.Logic.NN
                 LayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
             }
 
-            int totalBiases = Math.Max(LayerBiasElements, VSize.Short);
+            //  Round LayerBiasElements to the next highest multiple of VSize.Short
+            //  i.e. if LayerBiasElements is <= 15, totalBiases = 16.
+            int totalBiases = ((LayerBiasElements + VSize.Short - 1) / VSize.Short) * VSize.Short;
 
             short[] _Biases = new short[totalBiases];
             Array.Fill(_Biases, (short)0);
@@ -130,9 +148,9 @@ namespace Lizard.Logic.NN
                 _Biases[i] = br.ReadInt16();
             }
 
-            for (int i = 0; i < totalBiases; i += VSize.Short)
+            for (int i = 0; i < totalBiases / VSize.Short; i++)
             {
-                LayerBiases[i / VSize.Short] = Vector256.Create(_Biases, i);
+                LayerBiases[i] = Vector256.Create(_Biases, (i * VSize.Short));
             }
 
 #if DEBUG
