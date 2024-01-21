@@ -598,8 +598,9 @@ namespace Lizard.Logic.NN
             string fDir = Environment.CurrentDirectory;
             int epoch = 0;
             string[] nets = Directory.GetFiles(fDir, "*.bin");
+            doAll = doAll && nets.Length > 0;
 
-            Vector256<short>* featuresWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
+            Vector256<short>* tempFeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
 
         AllLoop:
 
@@ -615,13 +616,18 @@ namespace Lizard.Logic.NN
 
                 for (int j = 0; j < (FeatureWeightElements / VSize.Short); j++)
                 {
-                    featuresWeights[j] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                    tempFeatureWeights[j] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
                 }
+            }
+            else
+            {
+                //  Use the current network's weights
+                Unsafe.CopyBlock(tempFeatureWeights, FeatureWeights, sizeof(short) * FeatureWeightElements);
             }
 
             System.Drawing.Bitmap pic = new System.Drawing.Bitmap(xSize, ySize);
 
-            var FTWeights = (short*)featuresWeights;
+            var FTWeights = (short*)tempFeatureWeights;
 
             for (int perspective = 0; perspective < PerspNB; perspective++)
             {
@@ -634,12 +640,8 @@ namespace Lizard.Logic.NN
                         {
                             int sum = 0;
 
-                            (int wIdx, int bIdx) = FeatureIndex(pc, pt, sq);
-                            short* weights = (FTWeights + (wIdx * HiddenSize));
-                            if (pc == Black)
-                            {
-                                weights = (FTWeights + (bIdx * HiddenSize));
-                            }
+                            int idx = FeatureIndex(pc, pt, sq, perspective);
+                            short* weights = (FTWeights + (idx * HiddenSize));
 
                             for (int i = 0; i < HiddenSize; i++)
                             {
@@ -649,19 +651,7 @@ namespace Lizard.Logic.NN
                         }
 
                         int min = sums.Min();
-
-                        if (min < 0)
-                        {
-                            //  If there are negative weights, then move each weight up by the absolute value of the minimum.
-                            for (int sq = 0; sq < SquareNB; sq++)
-                            {
-                                //sums[sq] = sums[sq] + Math.Abs(min);
-                            }
-                        }
-
-                        min = sums.Min();
                         int max = sums.Max();
-
 
                         for (int sq = 0; sq < 64; sq++)
                         {
@@ -702,16 +692,16 @@ namespace Lizard.Logic.NN
 
             if (doAll)
             {
-                pic.Save(fDir + "\\weights_" + (epoch + 1) + ".png");
+                pic.Save(fDir + "\\feature_transformer_weights_" + (epoch + 1) + ".png");
                 epoch++;
                 goto AllLoop;
             }
             else
             {
-                pic.Save("ft_weights_pic.png");
+                pic.Save("feature_transformer_weights_pic.png");
             }
 
-            NativeMemory.AlignedFree(featuresWeights);
+            NativeMemory.AlignedFree(tempFeatureWeights);
 #endif
         }
 
@@ -741,7 +731,9 @@ namespace Lizard.Logic.NN
             string fDir = Environment.CurrentDirectory;
             int epoch = 0;
             string[] nets = Directory.GetFiles(fDir, "*.bin");
-            Vector256<short>* weights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
+            doAll = doAll && nets.Length > 0;
+
+            Vector256<short>* tempLayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
 
         AllLoop:
         
@@ -767,15 +759,20 @@ namespace Lizard.Logic.NN
 
                 for (int i = 0; i < (LayerWeightElements / VSize.Short); i++)
                 {
-                    weights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                    tempLayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
                 }
+            }
+            else
+            {
+                //  Use the current network's weights
+                Unsafe.CopyBlock(tempLayerWeights, LayerWeights, sizeof(short) * LayerWeightElements);
             }
 
             System.Drawing.Bitmap pic = new System.Drawing.Bitmap(xSize, ySize);
 
             for (int perspective = 0; perspective < 2; perspective++)
             {
-                var FCWeights = (short*)weights;
+                var FCWeights = (short*)tempLayerWeights;
                 int[] sums = new int[HiddenSize];
                 for (int i = 0; i < HiddenSize; i++)
                 {
@@ -822,16 +819,16 @@ namespace Lizard.Logic.NN
 
             if (doAll)
             {
-                pic.Save(fDir + "\\layers_" + (epoch + 1) + ".png");
+                pic.Save(fDir + "\\hidden_layer_weights_" + (epoch + 1) + ".png");
                 epoch++;
                 goto AllLoop;
             }
             else
             {
-                pic.Save("fc_weights_pic.png");
+                pic.Save("hidden_layer_weights_pic.png");
             }
 
-            NativeMemory.AlignedFree(weights);
+            NativeMemory.AlignedFree(tempLayerWeights);
 #endif
         }
 
