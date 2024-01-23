@@ -1,5 +1,4 @@
-﻿using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 using Lizard.Properties;
@@ -29,14 +28,14 @@ namespace Lizard.Logic.NN
         /// <para></para>
         /// This is the 768 -> 1536 part of the architecture.
         /// </summary>
-        public static Vector256<short>* FeatureWeights;
+        public static readonly Vector256<short>* FeatureWeights;
 
         /// <summary>
         /// The initial values that are placed into the accumulators.
         /// <para></para>
         /// When doing a full refresh, both accumulators are filled with these.
         /// </summary>
-        public static Vector256<short>* FeatureBiases;
+        public static readonly Vector256<short>* FeatureBiases;
 
         /// <summary>
         /// The values that are multiplied with the SCRelu-activated output from the feature transformer 
@@ -44,14 +43,14 @@ namespace Lizard.Logic.NN
         /// <para></para>
         /// This is the (1536)x2 -> 1 part.
         /// </summary>
-        public static Vector256<short>* LayerWeights;
+        public static readonly Vector256<short>* LayerWeights;
 
         /// <summary>
         /// The value(s) applied to the final output.
         /// <para></para>
         /// There is exactly 1 bias for each output bucket, so this currently contains only 1 number (followed by 15 zeroes).
         /// </summary>
-        public static Vector256<short>* LayerBiases;
+        public static readonly Vector256<short>* LayerBiases;
 
         private const int FeatureWeightElements = InputSize * HiddenSize;
         private const int FeatureBiasElements = HiddenSize;
@@ -61,18 +60,17 @@ namespace Lizard.Logic.NN
 
         static Simple768()
         {
-            Initialize();
-        }
-
-        public static void Initialize()
-        {
             FeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
             FeatureBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
 
             LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
             LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
 
+            Initialize();
+        }
 
+        public static void Initialize()
+        {
             Stream kpFile;
 
             string networkToLoad = @"nn.nnue";
@@ -180,8 +178,12 @@ namespace Lizard.Logic.NN
                 int pt = bb.GetPieceAtIndex(pieceIdx);
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
-                AddFeature(accumulator.White, FeatureIndex(pc, pt, pieceIdx, White));
-                AddFeature(accumulator.Black, FeatureIndex(pc, pt, pieceIdx, Black));
+                (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
+                    accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
+                }
             }
         }
 
@@ -287,7 +289,7 @@ namespace Lizard.Logic.NN
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
 
-            return (pc ^ perspective) * ColorStride + pt * PieceStride + (sq ^ perspective * 56);
+            return ((pc ^ perspective) * ColorStride + pt * PieceStride + (sq ^ perspective * 56)) * SIMD_CHUNKS;
         }
 
 
@@ -301,30 +303,9 @@ namespace Lizard.Logic.NN
             int whiteIndex = pc * ColorStride + pt * PieceStride + sq;
             int blackIndex = Not(pc) * ColorStride + pt * PieceStride + (sq ^ 56);
 
-            return (whiteIndex, blackIndex);
+            return (whiteIndex * SIMD_CHUNKS, blackIndex * SIMD_CHUNKS);
         }
 
-
-
-        [MethodImpl(Inline)]
-        private static void AddToAll(Vector256<short>* input, Vector256<short>* delta, int offset)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                input[i] = Avx2.Add(input[i], delta[offset + i]);
-            }
-        }
-
-
-
-        [MethodImpl(Inline)]
-        private static void SubtractFromAll(Vector256<short>* input, Vector256<short>* delta, int offset)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                input[i] = Avx2.Subtract(input[i], delta[offset + i]);
-            }
-        }
 
         public static void MakeMoveNN(Position pos, Move m)
         {
@@ -336,7 +317,7 @@ namespace Lizard.Logic.NN
             int moveTo = m.To;
             int moveFrom = m.From;
 
-            int us = bb.GetColorAtIndex(moveFrom);
+            int us = pos.ToMove;
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
 
             int them = Not(us);
@@ -345,7 +326,6 @@ namespace Lizard.Logic.NN
             var whiteAccumulation = (*accumulator)[White];
             var blackAccumulation = (*accumulator)[Black];
 
-
             (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom);
             (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo);
 
@@ -353,19 +333,15 @@ namespace Lizard.Logic.NN
             {
                 (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
 
-                //  This ain't pretty, but it is 15% faster than what it was before
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
-                        FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
 
-                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
-                        FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
-                }
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
             }
             else if (m.EnPassant)
             {
@@ -373,18 +349,15 @@ namespace Lizard.Logic.NN
 
                 (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
 
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(whiteAccumulation[i],
-                        FeatureWeights[(wCap * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
 
-                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(blackAccumulation[i],
-                        FeatureWeights[(bCap * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
-                }
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
             }
             else if (m.Castle)
             {
@@ -407,57 +380,56 @@ namespace Lizard.Logic.NN
                 (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFrom);
                 (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookTo);
 
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(Avx2.Add(whiteAccumulation[i],
-                        FeatureWeights[(wRookTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wRookFrom * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+                SubSubAddAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wRookFrom),
+                    (FeatureWeights + wTo),
+                    (FeatureWeights + wRookTo));
 
-                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(Avx2.Subtract(Avx2.Add(blackAccumulation[i],
-                        FeatureWeights[(bRookTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bRookFrom * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
-                }
-
+                SubSubAddAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bRookFrom),
+                    (FeatureWeights + bTo),
+                    (FeatureWeights + bRookTo));
             }
             else
             {
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    whiteAccumulation[i] = Avx2.Subtract(Avx2.Add(whiteAccumulation[i],
-                        FeatureWeights[(wTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(wFrom * SIMD_CHUNKS) + i]);
+                SubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wTo));
 
-                    blackAccumulation[i] = Avx2.Subtract(Avx2.Add(blackAccumulation[i],
-                        FeatureWeights[(bTo * SIMD_CHUNKS) + i]),
-                        FeatureWeights[(bFrom * SIMD_CHUNKS) + i]);
-                }
+                SubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bTo));
             }
-
         }
 
 
         [MethodImpl(Inline)]
-        private static void MoveFeature(Vector256<short>* accumulation, int indexFrom, int indexTo)
+        private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
         {
-            SubtractFromAll(accumulation, FeatureWeights, indexFrom * SIMD_CHUNKS);
-            AddToAll(accumulation, FeatureWeights, indexTo * SIMD_CHUNKS);
-        }
-
-
-        [MethodImpl(Inline)]
-        private static void AddFeature(Vector256<short>* accumulation, int index)
-        {
-            AddToAll(accumulation, FeatureWeights, index * SIMD_CHUNKS);
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]);
+            }
         }
 
         [MethodImpl(Inline)]
-        private static void RemoveFeature(Vector256<short>* accumulation, int index)
+        private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
         {
-            SubtractFromAll(accumulation, FeatureWeights, index * SIMD_CHUNKS);
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]), sub2[i]);
+            }
+        }
+
+        [MethodImpl(Inline)]
+        private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
+            }
         }
 
 
