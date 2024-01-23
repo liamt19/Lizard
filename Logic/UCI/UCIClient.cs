@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.UCI
@@ -266,7 +267,8 @@ namespace Lizard.Logic.UCI
 
                     }
 
-                    Simple768.RefreshAccumulator(info.Position);
+                    info.Position.State->Accumulator->RefreshPerspective[White] = true;
+                    info.Position.State->Accumulator->RefreshPerspective[Black] = true;
                 }
                 else if (cmd == "go")
                 {

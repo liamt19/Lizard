@@ -1,4 +1,5 @@
 ﻿using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
 
 namespace Lizard.Logic.Search
 {
@@ -11,7 +12,8 @@ namespace Lizard.Logic.Search
         [MethodImpl(Inline)]
         public static short GetEvaluation(in Position position)
         {
-            return (short)Simple768.GetEvaluation(position);
+            return (short)HalfKA_HM.GetEvaluation(position, true);
+            //return (short)Simple768.GetEvaluation(position);
         }
 
 

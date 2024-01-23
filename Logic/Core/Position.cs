@@ -2,6 +2,7 @@
 using System.Text;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.Core
@@ -167,7 +168,7 @@ namespace Lizard.Logic.Core
             if (UpdateNN)
             {
                 //  Create the accumulators now if we need to.
-                //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
+                //  This is actually a rather significant memory investment (each Accumulator needs 6,216 = ~6kb of memory)
                 //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
                 _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
                 Accumulator* accs = (Accumulator*)_accumulatorBlock;
@@ -194,7 +195,8 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this);
+                State->Accumulator->RefreshPerspective[White] = true;
+                State->Accumulator->RefreshPerspective[Black] = true;
             }
         }
 
@@ -290,7 +292,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.MakeMoveNN(this, move);
+                HalfKA_HM.MakeMove(this, move);
             }
 
             //  Move onto the next state
@@ -1279,7 +1281,8 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this);
+                State->Accumulator->RefreshPerspective[White] = true;
+                State->Accumulator->RefreshPerspective[Black] = true;
             }
 
             return true;

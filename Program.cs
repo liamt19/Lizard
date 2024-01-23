@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
 using Lizard.Logic.Search;
 using Lizard.Logic.Threads;
 
@@ -400,7 +401,7 @@ namespace Lizard
                         return;
                     }
 
-                    Simple768.TracePieceValues(pt, pc);
+                    HalfKA_HM.TracePieceValues(pt, pc);
                 }
                 else
                 {
@@ -409,7 +410,7 @@ namespace Lizard
             }
             else
             {
-                Simple768.Trace(p);
+                HalfKA_HM.Trace(p);
             }
         }
 
