@@ -9,6 +9,15 @@ using Lizard.Logic.NN;
 using Lizard.Logic.Search;
 using Lizard.Logic.Threads;
 
+using Lizard.Logic.Tablebase;
+using static Lizard.Logic.Tablebase.Fathom;
+using static Lizard.Logic.Tablebase.TBProbeHeader;
+using static Lizard.Logic.Tablebase.TBProbe;
+using static Lizard.Logic.Tablebase.TBProbeCore;
+using static Lizard.Logic.Tablebase.TBChess;
+using static Lizard.Logic.Tablebase.TBChessHeader;
+using static Lizard.Logic.Tablebase.TBConfig;
+
 namespace Lizard
 {
 
@@ -29,6 +38,25 @@ namespace Lizard
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
+
+
+            TBProbe.SetSyzygyPath("D:\\Programming\\Lizard\\Lizard.Engine\\bin\\x64\\Debug\\tb\\");
+            tb_init();
+
+            p.LoadFromFEN("4k3/8/4P3/4K3/8/8/8/8 w - - 0 1");
+            Log("wdl: " + GetWDLResult(tb_probe_wdl(p)));
+
+            p.TryMakeMove("Kd6");   //  Now only a draw with Kd8
+            Log("Should be a draw -> " + GetWDLResult(tb_probe_wdl(p)));
+
+            p.TryMakeMove("Kd8");
+            Log("Should be a draw -> " + GetWDLResult(tb_probe_wdl(p)));
+
+            p.LoadFromFEN("4k3/8/3KP3/8/8/8/8/8 b - - 1 1");
+            Log("Reset position, should still be a draw -> " + GetWDLResult(tb_probe_wdl(p)));
+
+            p.TryMakeMove("Kf8");
+            Log("White is winning now -> " + GetWDLResult(tb_probe_wdl(p)));
 
             DoInputLoop();
         }
