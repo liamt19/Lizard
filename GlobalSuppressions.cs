@@ -20,5 +20,4 @@ using System.Diagnostics.CodeAnalysis;
 
 
 
-[assembly: SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "I don't know if the GPL 3 lets me change this :)", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic.NN")]
 [assembly: SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Constants are more readable", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic.Transposition")]
