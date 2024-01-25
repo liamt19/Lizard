@@ -16,7 +16,6 @@ using System.Diagnostics.CodeAnalysis;
 
 
 
-[assembly: SuppressMessage("Performance", "CA1805:Do not initialize unnecessarily", Justification = "I'm sure this is fine :)", Scope = "member", Target = "~T:Lizard.Logic.Search.SearchStatistics")]
 [assembly: SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "This doesn't seem to be an issue", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
 
 

@@ -92,10 +92,6 @@
         private void PrintSearchInfo(ref SearchInformation info)
         {
             Log(FormatSearchInformationMultiPV(ref info));
-
-#if DEBUG
-            SearchStatistics.TakeSnapshot(SearchPool.GetNodeCount(), (ulong)info.TimeManager.GetSearchTime());
-#endif
         }
 
         /// <summary>

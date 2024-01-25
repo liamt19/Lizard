@@ -167,10 +167,6 @@ namespace Lizard
                 {
                     PrintSearchInfo();
                 }
-                else if (input.EqualsIgnoreCase("snapshots"))
-                {
-                    SearchStatistics.PrintSnapshots();
-                }
                 else if (input.StartsWithIgnoreCase("bench"))
                 {
                     HandleBenchCommand(input);
@@ -296,8 +292,6 @@ namespace Lizard
             Log(info.ToString());
             Log("\r\n");
             TranspositionTable.PrintClusterStatus();
-            Log("\r\n");
-            SearchStatistics.PrintStatistics();
         }
 
         /// <summary>
