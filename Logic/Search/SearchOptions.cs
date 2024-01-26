@@ -40,7 +40,7 @@
         /// <summary>
         /// The depth must be greater than or equal to this for singular extensions to be considered.
         /// </summary>
-        public static int SingularExtensionsMinDepth = 5;
+        public static int SingularExtensionsMinDepth = 6;
 
 
 
@@ -56,7 +56,7 @@
         /// at, which is calculated by adding this flat amount to a node's depth divided by this amount.
         /// i.e. R = <see cref="NullMovePruningMinDepth"/> + (depth / <see cref="NullMovePruningMinDepth"/>)
         /// </summary>
-        public static int NullMovePruningMinDepth = 3;
+        public static int NullMovePruningMinDepth = 5;
 
 
 
@@ -83,7 +83,7 @@
         /// <summary>
         /// This amount is added to reverse futility pruning's margin per depth.
         /// </summary>
-        public static int ReverseFutilityPruningPerDepth = 65;
+        public static int ReverseFutilityPruningPerDepth = 62;
 
         /// <summary>
         /// This amount is removed from the reverse futility pruning margin if the side to move is improving.
@@ -104,17 +104,17 @@
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
         /// </summary>
-        public static int ProbCutBeta = 175;
+        public static int ProbCutBeta = 172;
 
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is improving.
         /// </summary>
-        public static int ProbCutBetaImproving = 100;
+        public static int ProbCutBetaImproving = 96;
 
         /// <summary>
         /// The depth must be greater than or equal to this for ProbCut to be considered.
         /// </summary>
-        public static int ProbCutMinDepth = 5;
+        public static int ProbCutMinDepth = 3;
 
 
 
@@ -129,7 +129,7 @@
         /// <summary>
         /// If moves exceed this margin, they are treated as "good" in multiple places.
         /// </summary>
-        public static int ExchangeBase = 200;
+        public static int ExchangeBase = 199;
 
 
 
@@ -147,6 +147,6 @@
         /// Smaller margins will eliminate more nodes from the search (saves time), but if the margin is too small
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
-        public static int AspirationWindowMargin = 10;
+        public static int AspirationWindowMargin = 11;
     }
 }

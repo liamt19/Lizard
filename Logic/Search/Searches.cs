@@ -443,7 +443,7 @@ namespace Lizard.Logic.Search
                     && ((tte->Bound & BoundLower) != 0)
                     && tte->Depth >= depth - 3)
                 {
-                    int singleBeta = ttScore - (8 * depth / 9);
+                    int singleBeta = ttScore - depth;
                     int singleDepth = (depth - 1) / 2;
 
                     ss->Skip = m;
@@ -1085,7 +1085,7 @@ namespace Lizard.Logic.Search
         [MethodImpl(Inline)]
         private static int StatBonus(int depth)
         {
-            return Math.Min((250 * depth) - 100, 1700);
+            return Math.Min((252 * depth) - 87, 1685);
         }
 
         /// <summary>
