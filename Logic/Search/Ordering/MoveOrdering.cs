@@ -39,7 +39,7 @@
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                    sm.Score = (13 * GetPieceValue(capturedPiece)) + (history.CaptureHistory[capIdx] / 12);
+                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (history.CaptureHistory[capIdx] / OrderingHistoryDivisor);
                 }
                 else
                 {
@@ -54,7 +54,7 @@
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
-                        sm.Score += 10000;
+                        sm.Score += OrderingGivesCheckBonus;
                     }
                 }
             }
@@ -88,7 +88,7 @@
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                    sm.Score = (13 * GetPieceValue(capturedPiece)) + (history.CaptureHistory[capIdx] / 12);
+                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (history.CaptureHistory[capIdx] / OrderingHistoryDivisor);
                 }
                 else
                 {
@@ -103,7 +103,7 @@
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
-                        sm.Score += 10000;
+                        sm.Score += OrderingGivesCheckBonus;
                     }
                 }
             }

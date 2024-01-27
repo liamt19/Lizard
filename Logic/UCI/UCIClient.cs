@@ -318,6 +318,10 @@ namespace Lizard.Logic.UCI
                     }
 
                 }
+                else if (cmd == "tune")
+                {
+                    PrintSPSAParams();
+                }
             }
         }
 
@@ -635,34 +639,77 @@ namespace Lizard.Logic.UCI
             Options[nameof(Threads)].SetMinMax(1, 8);
             Options[nameof(MultiPV)].SetMinMax(1, 5);
             Options[nameof(Hash)].SetMinMax(1, 2048);
-            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(1, 16);
-            Options[nameof(NullMovePruningMinDepth)].SetMinMax(1, 16);
-            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(1, 16);
-            Options[nameof(ReverseFutilityPruningPerDepth)].SetMinMax(1, 200);
-            Options[nameof(ProbCutBeta)].SetMinMax(125, 225);
-            Options[nameof(ProbCutBetaImproving)].SetMinMax(50, 150);
-            Options[nameof(ProbCutMinDepth)].SetMinMax(3, 7);
-            Options[nameof(LMRExtensionThreshold)].SetMinMax(50, 200);
-            Options[nameof(ExchangeBase)].SetMinMax(1, 500);
-            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
-            Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);
 
-#if SPSA
-            Options[nameof(SPSA_SINGLE_NUMERATOR)].SetMinMax(1, 20);
-            Options[nameof(SPSA_SINGLE_MIN_DEPTH)].SetMinMax(1, 10);
-            Options[nameof(SPSA_SINGLE_BETA)].SetMinMax(0, 60);
+            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);
+            Options[nameof(SingularExtensionsNumerator)].AutoMinMax();
+            Options[nameof(SingularExtensionsBeta)].AutoMinMax();
 
-            Options[nameof(SPSA_STATBONUS_MULT)].SetMinMax(100, 400);
-            Options[nameof(SPSA_STATBONUS_SUB)].SetMinMax(0, 500);
-            Options[nameof(SPSA_STATBONUS_MIN)].SetMinMax(500, 3000);
+            Options[nameof(NMPMinDepth)].SetMinMax(1, 9);
+            Options[nameof(NMPReductionBase)].SetMinMax(1, 9);
+            Options[nameof(NMPReductionDivisor)].SetMinMax(1, 9);
 
-            Options[nameof(SPSA_RFP_MAX_DEPTH)].SetMinMax(4, 12);
-            Options[nameof(SPSA_RFP_PER_DEPTH)].SetMinMax(35, 95);
+            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 12);
+            Options[nameof(ReverseFutilityPruningPerDepth)].AutoMinMax();
 
-            Options[nameof(SPSA_EXCHANGE_BASE)].SetMinMax(80, 360);
+            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 8);
+            Options[nameof(ProbCutBeta)].AutoMinMax();
+            Options[nameof(ProbCutBetaImproving)].AutoMinMax();
 
-            Options[nameof(SPSA_ASPIRATION_MARGIN)].SetMinMax(5, 80);
-#endif
+            Options[nameof(LMRExtensionThreshold)].AutoMinMax();
+            Options[nameof(LMRExchangeBase)].AutoMinMax();
+
+            Options[nameof(HistoryReductionMultiplier)].SetMinMax(1, 9);
+
+            Options[nameof(FutilityExchangeBase)].AutoMinMax();
+
+            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
+            Options[nameof(AspirationWindowMargin)].AutoMinMax();
+
+            Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
+
+            Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
+            Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();
+            Options[nameof(OrderingHistoryDivisor)].AutoMinMax();
+
+            Options[nameof(StatBonusMult)].AutoMinMax();
+            Options[nameof(StatBonusSub)].AutoMinMax();
+            Options[nameof(StatBonusMin)].AutoMinMax();
+
+            Options[nameof(StatMalusMult)].AutoMinMax();
+            Options[nameof(StatMalusSub)].AutoMinMax();
+            Options[nameof(StatMalusMin)].AutoMinMax();
+
+
+
+            foreach (var optName in Options.Keys)
+            {
+                var opt = Options[optName];
+                if (opt.FieldHandle.FieldType != typeof(int))
+                {
+                    continue;
+                }
+
+                //  Ensure values are within [Min, Max] and Max > Min
+                int currValue = int.Parse(opt.DefaultValue);
+                if (currValue < opt.MinValue || currValue > opt.MaxValue || opt.MaxValue < opt.MinValue)
+                {
+                    Log($"Option '{optName}' has an invalid range! -> [{opt.MinValue} <= {opt.DefaultValue} <= {opt.MaxValue}]!");
+                }
+            }
+        }
+
+        public void PrintSPSAParams()
+        {
+            foreach (var optName in Options.Keys)
+            {
+                if (optName == nameof(SearchOptions.Threads) || optName == nameof(SearchOptions.MultiPV) || optName == nameof(SearchOptions.Hash))
+                {
+                    continue;
+                }
+
+                var opt = Options[optName];
+                SendString(opt.GetSPSAFormat());
+            }
         }
     }
 }

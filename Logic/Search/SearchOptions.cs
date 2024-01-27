@@ -42,6 +42,17 @@
         /// </summary>
         public static int SingularExtensionsMinDepth = 6;
 
+        /// <summary>
+        /// This number is multiplied by the depth to determine the singular beta value.
+        /// </summary>
+        public static int SingularExtensionsNumerator = 10;
+
+        /// <summary>
+        /// If the score from a singular search is below the singular beta value by this amount,
+        /// the depth will be extended by 2 instead of by 1.
+        /// </summary>
+        public static int SingularExtensionsBeta = 21;
+
 
 
         /// <summary>
@@ -54,9 +65,13 @@
         /// Nodes need to be at this depth of higher to be considered for pruning.
         /// This also influences the reduced depth that the following nodes are searched
         /// at, which is calculated by adding this flat amount to a node's depth divided by this amount.
-        /// i.e. R = <see cref="NullMovePruningMinDepth"/> + (depth / <see cref="NullMovePruningMinDepth"/>)
+        /// i.e. R = <see cref="NMPMinDepth"/> + (depth / <see cref="NMPMinDepth"/>)
         /// </summary>
-        public static int NullMovePruningMinDepth = 5;
+        public static int NMPMinDepth = 5;
+
+        public static int NMPReductionBase = 5;
+
+        public static int NMPReductionDivisor = 5;
 
 
 
@@ -124,12 +139,15 @@
         /// </summary>
         public static int LMRExtensionThreshold = 125;
 
+        public static int LMRExchangeBase = 200;
 
 
-        /// <summary>
-        /// If moves exceed this margin, they are treated as "good" in multiple places.
-        /// </summary>
-        public static int ExchangeBase = 199;
+
+        public static int HistoryReductionMultiplier = 4;
+
+
+
+        public static int FutilityExchangeBase = 200;
 
 
 
@@ -148,5 +166,27 @@
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
         public static int AspirationWindowMargin = 11;
+
+
+
+        public static int HistoryCaptureBonusMargin = 150;
+
+
+
+        public static int OrderingGivesCheckBonus = 10000;
+
+        public static int OrderingVictimValueMultiplier = 13;
+
+        public static int OrderingHistoryDivisor = 12;
+
+
+
+        public static int StatBonusMult = 252;
+        public static int StatBonusSub = 87;
+        public static int StatBonusMin = 1685;
+
+        public static int StatMalusMult = 350;
+        public static int StatMalusSub = 100;
+        public static int StatMalusMin = 1650;
     }
 }
