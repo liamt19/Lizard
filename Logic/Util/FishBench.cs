@@ -1,6 +1,6 @@
-﻿using LTChess.Properties;
+﻿using Lizard.Properties;
 
-namespace LTChess.Logic.Util
+namespace Lizard.Logic.Util
 {
     //  SkipStaticConstructor since this introduces some unnecessary strings
     [SkipStaticConstructor]

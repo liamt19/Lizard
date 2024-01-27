@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Data
+﻿namespace Lizard.Logic.Data
 {
     /// <summary>
     /// Stores the status of the position in terms of checks and double checks.

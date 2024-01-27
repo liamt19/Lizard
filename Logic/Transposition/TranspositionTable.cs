@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace LTChess.Logic.Transposition
+namespace Lizard.Logic.Transposition
 {
     public static unsafe class TranspositionTable
     {

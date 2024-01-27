@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace LTChess.Properties {
+namespace Lizard.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace LTChess.Properties {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("LTChess.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Lizard.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -63,19 +63,9 @@ namespace LTChess.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] net_epoch10 {
+        public static byte[] iguana_epoch10 {
             get {
-                object obj = ResourceManager.GetObject("net-epoch10", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        public static byte[] net_wdl3_epoch20 {
-            get {
-                object obj = ResourceManager.GetObject("net-wdl3-epoch20", resourceCulture);
+                object obj = ResourceManager.GetObject("iguana-epoch10", resourceCulture);
                 return ((byte[])(obj));
             }
         }

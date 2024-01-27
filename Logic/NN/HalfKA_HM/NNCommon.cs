@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.NN.HalfKA_HM
+﻿namespace Lizard.Logic.NN.HalfKA_HM
 {
     public static class NNCommon
     {

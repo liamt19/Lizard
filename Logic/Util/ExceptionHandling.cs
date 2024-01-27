@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Util
+﻿namespace Lizard.Logic.Util
 {
     public static class ExceptionHandling
     {

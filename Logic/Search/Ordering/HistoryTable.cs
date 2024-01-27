@@ -3,7 +3,7 @@
 
 using System.Runtime.InteropServices;
 
-namespace LTChess.Logic.Search.Ordering
+namespace Lizard.Logic.Search.Ordering
 {
     public unsafe struct HistoryTable
     {
@@ -18,7 +18,7 @@ namespace LTChess.Logic.Search.Ordering
 
         public readonly short* CaptureHistory;
         public const int CaptureClamp = 16384;
-        public const int CaptureHistoryElements = ColorNB * (PieceNB + 1) * SquareNB * (PieceNB + 1);
+        public const int CaptureHistoryElements = ColorNB * (PieceNB) * SquareNB * (PieceNB);
 
 
         /// <summary>
@@ -96,11 +96,11 @@ namespace LTChess.Logic.Search.Ordering
         [MethodImpl(Inline)]
         public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
         {
-            const int xMax = (PieceNB + 1) * ColorNB;
+            const int xMax = (PieceNB) * ColorNB;
             const int yMax = SquareNB;
             const int zMax = PieceNB;
 
-            int x = pt + ((PieceNB + 1) * pc);
+            int x = pt + ((PieceNB) * pc);
             int y = toSquare;
             int z = capturedPt;
 

@@ -1,4 +1,4 @@
-namespace LTChess.Logic.Variants
+namespace Lizard.Logic.Variants
 {
     /// <summary>
     /// TODO: Chess.com's Automate

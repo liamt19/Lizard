@@ -1,9 +1,8 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.Search.Ordering;
+using Lizard.Logic.Search.Ordering;
 
-
-namespace LTChess.Logic.Threads
+namespace Lizard.Logic.Threads
 {
     public unsafe class SearchThread : IDisposable
     {
@@ -435,6 +434,15 @@ namespace LTChess.Logic.Threads
                 {
                     CompletedDepth = RootDepth;
                 }
+            }
+
+            if (IsMain && RootDepth >= MaxDepth && info.MaxNodes != MaxSearchNodes && !SearchPool.StopThreads)
+            {
+                //  If this was a "go nodes x" command, it is possible for the main thread to hit the
+                //  maximum depth before hitting the requested node count (causing an infinite wait).
+
+                //  If this is the case, and we haven't been told to stop searching, then we need to stop now.
+                SearchPool.StopThreads = true;
             }
         }
 

@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace LTChess.Logic.Data
+namespace Lizard.Logic.Data
 {
 
     public unsafe struct Move
@@ -25,14 +25,7 @@ namespace LTChess.Logic.Data
         public const int FlagCapture = 0b000001 << 26;
         public const int FlagEnPassant = 0b000010 << 26;
         public const int FlagCastle = 0b000100 << 26;
-        public const int FlagCheck = 0b001000 << 26;
-        public const int FlagDoubleCheck = 0b010000 << 26;
         public const int FlagPromotion = 0b100000 << 26;
-
-        /// <summary>
-        /// A mask of <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>
-        /// </summary>
-        private const int Mask_Check = 0b011000 << 26;
 
         /// <summary>
         /// A mask of <see cref="To"/> and <see cref="From"/>
@@ -89,16 +82,6 @@ namespace LTChess.Logic.Data
         }
 
         /// <summary>
-        /// Gets or sets the square that this move causes check from.
-        /// </summary>
-        public int SqChecker
-        {
-            get => (_data >> 18) & 0x3F;
-            set => _data = (_data & ~(0x3F << 18)) | (value << 18);
-        }
-
-
-        /// <summary>
         /// Gets or sets whether this move is a capture or not.
         /// <br></br>
         /// Note that <see cref="EnPassant"/> and <see cref="Capture"/> are mutually exclusive, so en passant moves intentionally do not show up as captures.
@@ -129,24 +112,6 @@ namespace LTChess.Logic.Data
         }
 
         /// <summary>
-        /// Gets or sets whether this move puts the other player's king in check.
-        /// </summary>
-        public bool CausesCheck
-        {
-            get => (_data & FlagCheck) != 0;
-            set => _data = value ? (_data | FlagCheck) : (_data & ~FlagCheck);
-        }
-
-        /// <summary>
-        /// Gets or sets whether this move puts the other player's king in check from two pieces.
-        /// </summary>
-        public bool CausesDoubleCheck
-        {
-            get => (_data & FlagDoubleCheck) != 0;
-            set => _data ^= FlagDoubleCheck;
-        }
-
-        /// <summary>
         /// Gets or sets whether this pawn move is a promotion.
         /// </summary>
         public bool Promotion
@@ -154,20 +119,6 @@ namespace LTChess.Logic.Data
             get => (_data & FlagPromotion) != 0;
             set => _data ^= FlagPromotion;
         }
-
-        /// <summary>
-        /// Returns true if this move causes check or double check.
-        /// <br></br>
-        /// The setter will only clear the <see cref="CausesCheck"/> and <see cref="CausesDoubleCheck"/>, 
-        /// so doing <see cref="Checks"/> = <see langword="true"/> will change nothing.
-        /// </summary>
-        public bool Checks
-        {
-            get => (_data & Mask_Check) != 0;
-            set => _data &= ~Mask_Check;
-        }
-
-
 
         public Move(CondensedMove cm)
         {
@@ -314,12 +265,6 @@ namespace LTChess.Logic.Data
                     sb.Append("=" + PieceToFENChar(PromotionTo));
                 }
             }
-
-            if (CausesCheck || CausesDoubleCheck)
-            {
-                sb.Append('+');
-            }
-
 
             return sb.ToString();
         }

@@ -1,13 +1,11 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-using LTChess.Logic.NN;
-using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.HalfKP;
-using LTChess.Logic.NN.Simple768;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
+using Lizard.Logic.Threads;
 
-namespace LTChess.Logic.Core
+namespace Lizard.Logic.Core
 {
     public unsafe partial class Position
     {
@@ -26,8 +24,6 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int FullMoves = 1;
 
-        public CheckInfo CheckInfo;
-
         /// <summary>
         /// Set to the color of the player whose turn it is to move.
         /// </summary>
@@ -43,7 +39,30 @@ namespace LTChess.Logic.Core
         /// </summary>
         public int[] MaterialCountNonPawn;
 
-        public bool Checked => CheckInfo.InCheck || CheckInfo.InDoubleCheck;
+        /// <summary>
+        /// Set to true if the side to move is in check from a single piece.
+        /// <br></br>
+        /// If they are, the piece giving check is on the square <see cref="idxChecker"/>.
+        /// </summary>
+        public bool InCheck;
+
+        /// <summary>
+        /// Set to true if the side to move is in check from two pieces.
+        /// <br></br>
+        /// If they are, then one of the pieces giving check is on the square <see cref="idxChecker"/>.
+        /// </summary>
+        public bool InDoubleCheck;
+
+        /// <summary>
+        /// Set to the index of the piece giving check, 
+        /// or the piece with the lowest square index if there are two pieces giving check.
+        /// </summary>
+        public int idxChecker;
+
+        /// <summary>
+        /// Returns true if the side to move is either in check or in double check.
+        /// </summary>
+        public bool Checked => InCheck || InDoubleCheck;
 
 
         /// <summary>
@@ -111,8 +130,8 @@ namespace LTChess.Logic.Core
 
         /// <summary>
         /// Whether or not to incrementally update accumulators when making/unmaking moves.
-        /// This must be true if this position object is being used in a search, but
-        /// 
+        /// This must be true if this position object is being used in a search, 
+        /// but for purely perft this should be disabled for performance.
         /// </summary>
         public readonly bool UpdateNN;
 
@@ -149,10 +168,10 @@ namespace LTChess.Logic.Core
             if (UpdateNN)
             {
                 //  Create the accumulators now if we need to.
-                //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
+                //  This is actually a rather significant memory investment (each Accumulator needs 6,216 = ~6kb of memory)
                 //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
-                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(AccumulatorPSQT) * StateStackSize), AllocAlignment);
-                AccumulatorPSQT* accs = (AccumulatorPSQT*)_accumulatorBlock;
+                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
+                Accumulator* accs = (Accumulator*)_accumulatorBlock;
                 for (int i = 0; i < StateStackSize; i++)
                 {
                     (StateStack + i)->Accumulator = accs + i;
@@ -160,7 +179,7 @@ namespace LTChess.Logic.Core
 
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    *(StateStack + i)->Accumulator = new AccumulatorPSQT();
+                    *(StateStack + i)->Accumulator = new Accumulator();
                 }
             }
 
@@ -178,11 +197,6 @@ namespace LTChess.Logic.Core
             {
                 State->Accumulator->RefreshPerspective[White] = true;
                 State->Accumulator->RefreshPerspective[Black] = true;
-
-                if (UseSimple768)
-                {
-                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
-                }
             }
         }
 
@@ -276,19 +290,9 @@ namespace LTChess.Logic.Core
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
             Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
 
-            if (UseHalfKA && UpdateNN)
+            if (UpdateNN)
             {
                 HalfKA_HM.MakeMove(this, move);
-            }
-
-            if (UseHalfKP && UpdateNN)
-            {
-                HalfKP.MakeMoveNN(this, move);
-            }
-
-            if (UseSimple768 && UpdateNN)
-            {
-                Simple768.MakeMoveNN(this, move);
             }
 
             //  Move onto the next state
@@ -522,23 +526,28 @@ namespace LTChess.Logic.Core
                 MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
 
-            if (EnableAssertions && move.Checks)
-            {
-                Assert((bb.AttackersTo(State->KingSquares[Not(ToMove)], bb.Occupancy) & bb.Colors[ToMove]) != 0,
-                    "The move " + move + " is marked as causing " + (move.CausesDoubleCheck ? "double" : string.Empty) + " check, " +
-                    "but there are no attackers to their king's square after the move was made!");
-            }
-
-            CheckInfo.InCheck = move.CausesCheck;
-            CheckInfo.InDoubleCheck = move.CausesDoubleCheck;
-
-            //  move.SqChecker is (un)initialized as 0 if a move doesn't cause check, but we that to be 64 instead.
-            CheckInfo.idxChecker = move.CausesCheck ? move.SqChecker : SquareNB;
-
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = move.Checks ? bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor] : 0;
+            State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+            switch (popcount(State->Checkers))
+            {
+                case 0:
+                    InCheck = false;
+                    InDoubleCheck = false;
+                    idxChecker = SquareNB;
+                    break;
+                case 1:
+                    InCheck = true;
+                    InDoubleCheck = false;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+                case 2:
+                    InCheck = false;
+                    InDoubleCheck = true;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+            }
 
             SetCheckInfo();
         }
@@ -632,19 +641,19 @@ namespace LTChess.Logic.Core
             switch (popcount(State->Checkers))
             {
                 case 0:
-                    CheckInfo.InCheck = false;
-                    CheckInfo.InDoubleCheck = false;
-                    CheckInfo.idxChecker = SquareNB;
+                    InCheck = false;
+                    InDoubleCheck = false;
+                    idxChecker = SquareNB;
                     break;
                 case 1:
-                    CheckInfo.InCheck = true;
-                    CheckInfo.InDoubleCheck = false;
-                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    InCheck = true;
+                    InDoubleCheck = false;
+                    idxChecker = lsb(State->Checkers);
                     break;
                 case 2:
-                    CheckInfo.InCheck = false;
-                    CheckInfo.InDoubleCheck = true;
-                    CheckInfo.idxChecker = lsb(State->Checkers);
+                    InCheck = false;
+                    InDoubleCheck = true;
+                    idxChecker = lsb(State->Checkers);
                     break;
             }
 
@@ -706,6 +715,24 @@ namespace LTChess.Logic.Core
         public void SetState()
         {
             State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
+            switch (popcount(State->Checkers))
+            {
+                case 0:
+                    InCheck = false;
+                    InDoubleCheck = false;
+                    idxChecker = SquareNB;
+                    break;
+                case 1:
+                    InCheck = true;
+                    InDoubleCheck = false;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+                case 2:
+                    InCheck = false;
+                    InDoubleCheck = true;
+                    idxChecker = lsb(State->Checkers);
+                    break;
+            }
 
             SetCheckInfo();
 
@@ -726,6 +753,7 @@ namespace LTChess.Logic.Core
             State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Rook] = GetRookMoves(bb.Occupancy, kingSq);
             State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
+            State->CheckSquares[King] = 0;
         }
 
 
@@ -853,7 +881,7 @@ namespace LTChess.Logic.Core
                 return false;
             }
 
-            if (CheckInfo.InDoubleCheck && pt != Piece.King)
+            if (InDoubleCheck && pt != Piece.King)
             {
                 //	Must move king out of double check
                 return false;
@@ -868,7 +896,7 @@ namespace LTChess.Logic.Core
             int ourColor = bb.GetColorAtIndex(moveFrom);
             int theirColor = Not(ourColor);
 
-            if (CheckInfo.InCheck)
+            if (InCheck)
             {
                 //  We have 3 Options: block the check, take the piece giving check, or move our king out of it.
 
@@ -880,7 +908,7 @@ namespace LTChess.Logic.Core
                     return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[moveFrom]) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
                 }
 
-                int checker = CheckInfo.idxChecker;
+                int checker = idxChecker;
                 if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0)
                     || (move.EnPassant && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
@@ -1035,7 +1063,7 @@ namespace LTChess.Logic.Core
         public ulong Perft(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = PerftGenLegal(list);
+            int size = GenLegal(list);
 
             if (depth == 1)
             {
@@ -1065,7 +1093,7 @@ namespace LTChess.Logic.Core
 
             //  This needs to be a pointer since a Span is a ref local and they can't be used inside of lambda functions.
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = PerftGenLegal(list);
+            int size = GenLegal(list);
 
             ulong n = 0;
 
@@ -1125,6 +1153,8 @@ namespace LTChess.Logic.Core
 
 
 
+        private static readonly char[] FENSeparators = ['/', ' '];
+
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
         /// </summary>
@@ -1133,7 +1163,7 @@ namespace LTChess.Logic.Core
         {
             try
             {
-                string[] splits = fen.Split(new char[] { '/', ' ' });
+                string[] splits = fen.Split(FENSeparators);
 
                 bb.Reset();
                 FullMoves = 1;
@@ -1239,8 +1269,6 @@ namespace LTChess.Logic.Core
             State->KingSquares[White] = bb.KingIndex(White);
             State->KingSquares[Black] = bb.KingIndex(Black);
 
-            this.bb.DetermineCheck(ToMove, ref CheckInfo);
-
             SetState();
 
             State->CapturedPiece = None;
@@ -1255,16 +1283,6 @@ namespace LTChess.Logic.Core
             {
                 State->Accumulator->RefreshPerspective[White] = true;
                 State->Accumulator->RefreshPerspective[Black] = true;
-
-                if (UseSimple768)
-                {
-                    Simple768.RefreshAccumulator(this, ref *State->Accumulator);
-                }
-            }
-
-            if (EnableAssertions && (UseHalfKA || UseHalfKP))
-            {
-                Assert(popcount(bb.Occupancy) <= HalfKA_HM.MaxActiveDimensions, "ERROR FEN '" + fen + "' has more than " + HalfKA_HM.MaxActiveDimensions + " pieces, which isn't allowed with the HalfKA architecture!");
             }
 
             return true;

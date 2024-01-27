@@ -1,9 +1,9 @@
 ﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+using static Lizard.Logic.NN.HalfKA_HM.NNCommon;
 
-namespace LTChess.Logic.NN.HalfKA_HM.Layers
+namespace Lizard.Logic.NN.HalfKA_HM.Layers
 {
     /// <summary>
     /// This takes the place of AffineTransform's "large specialization".

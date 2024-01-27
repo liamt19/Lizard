@@ -1,12 +1,12 @@
 ﻿
 using System.Runtime.InteropServices;
 
-using LTChess.Logic.NN.HalfKA_HM.Layers;
+using Lizard.Logic.NN.HalfKA_HM.Layers;
 
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
+using static Lizard.Logic.NN.HalfKA_HM.HalfKA_HM;
+using static Lizard.Logic.NN.HalfKA_HM.NNCommon;
 
-namespace LTChess.Logic.NN.HalfKA_HM
+namespace Lizard.Logic.NN.HalfKA_HM
 {
     /// <summary>
     /// Represents the different feature layers for one bucket within the HalfKA architecture.

@@ -20,7 +20,7 @@
 
 using System.Text;
 
-namespace LTChess.Logic.Util
+namespace Lizard.Logic.NN.HalfKA_HM
 {
     /// <summary>
     /// Single-file utility to read and write integers in the LEB128 (7-bit little endian base-128) format.

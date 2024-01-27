@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace LTChess.Logic.Transposition
+namespace Lizard.Logic.Transposition
 {
     /// <summary>
     /// Contains 3 TTEntry's, all of which map to a particular index within the Transposition Table.

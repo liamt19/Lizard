@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Search
+﻿namespace Lizard.Logic.Search
 {
     public static class SearchOptions
     {
@@ -26,19 +26,6 @@
         /// The size in megabytes of the transposition table.
         /// </summary>
         public static int Hash = 32;
-
-
-
-        /// <summary>
-        /// For HalfKA, the NNUE evaluation has a 2 parts: PSQT and Positional. It is usually beneficial to give Positional slightly more weight.
-        /// <para></para>
-        /// The PSQT component comes from the FeatureTransformer and almost exclusively uses the values of pieces, 
-        /// plus a small amount for the square that piece is on.
-        /// <para></para>
-        /// The Positional component comes from the network layers (AffineTransform, ClippedReLU, ...) and gives a score based on
-        /// the relative positions of each piece on the board.
-        /// </summary>
-        public const bool FavorPositionalEval = true;
 
 
 
@@ -104,27 +91,38 @@
         private static int ReverseFutilityPruningImproving = 55;
 
 
-        /// <summary>
-        /// Whether or not to try a quiescence search rather than a normal one if the evaluation is extremely bad.
-        /// <para></para>
-        /// This can prevent moves which just straight up hang a piece from being searched at full depth.
-        /// </summary>
-        private const bool UseRazoring = false;
+
 
         /// <summary>
-        /// The depth must be less than or equal to this for razoring to be considered.
+        /// Whether or not to exclude nodes that give our opponent a seemingly good capture.
+        /// <br></br>
+        /// ProbCut will test all available captures with a reduced depth and a modified beta,
+        /// and if a cutoff occurs we can assume that it would cause a cutoff at the full depth and normal beta value.
         /// </summary>
-        private static int RazoringMaxDepth = 6;
+        public const bool UseProbCut = true;
 
         /// <summary>
-        /// This amount is added to razoring's margin per depth.
+        /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
         /// </summary>
-        private static int RazoringMargin = 275;
-
-        public const bool UseProbCut = false;
         public static int ProbCutBeta = 175;
+
+        /// <summary>
+        /// This margin is added to the current beta to determine the modified window if the side to move is improving.
+        /// </summary>
         public static int ProbCutBetaImproving = 100;
+
+        /// <summary>
+        /// The depth must be greater than or equal to this for ProbCut to be considered.
+        /// </summary>
         public static int ProbCutMinDepth = 5;
+
+
+
+        /// <summary>
+        /// If an LMR search returns a score that is above the current best score by this amount, 
+        /// the following verification search will be extended by 1.
+        /// </summary>
+        public static int LMRExtensionThreshold = 125;
 
 
 
@@ -150,24 +148,5 @@
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
         public static int AspirationWindowMargin = 10;
-
-#if SPSA
-        public static int SPSA_SINGLE_MIN_DEPTH = 5;
-        public static int SPSA_SINGLE_NUMERATOR = 8;
-        public static int SPSA_SINGLE_DENOMINATOR = 9;
-        public static int SPSA_SINGLE_BETA = 20;
-
-        public static int SPSA_STATBONUS_MULT = 250;
-        public static int SPSA_STATBONUS_SUB = 100;
-        public static int SPSA_STATBONUS_MIN = 1700;
-
-        public static int SPSA_RFP_MAX_DEPTH = 8;
-        public static int SPSA_RFP_PER_DEPTH = 65;
-
-        public static int SPSA_EXCHANGE_BASE = 200;
-
-        public static int SPSA_ASPIRATION_MARGIN = 30;
-#endif
-
     }
 }

@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Data
+﻿namespace Lizard.Logic.Data
 {
     /// <summary>
     /// Contains a <see cref="Data.Move"/> and a score.

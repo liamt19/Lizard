@@ -2,13 +2,12 @@
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-using LTChess.Properties;
+using Lizard.Properties;
 
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.SIMD;
+using static Lizard.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
+using static Lizard.Logic.NN.HalfKA_HM.NNCommon;
 
-namespace LTChess.Logic.NN.HalfKA_HM
+namespace Lizard.Logic.NN.HalfKA_HM
 {
     /// <summary>
     /// Uses SFNNv6/7/8 architectures.
@@ -16,10 +15,9 @@ namespace LTChess.Logic.NN.HalfKA_HM
     /// 
     /// To use a net from a different architecture, change <see cref="TransformedFeatureDimensions"/> to 1536/2048/2560 for 6/7/8.
     /// </summary>
-    [SkipStaticConstructor]
     public static unsafe class HalfKA_HM
     {
-        public const string NNV6_Sparse = @"nn-cd2ff4716c34.nnue";
+        public const string NNV7_Last = @"nn-b1e55edbea57.nnue";
         public const string NNV6_Sparse_LEB = @"nn-5af11540bbfe.nnue";
 
         public const string Name = "HalfKAv2_hm(Friend)";
@@ -38,25 +36,14 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
         private const int _TransformedFeaturesBufferLength = FeatureTransformer.BufferSize;
 
-        private static bool Initialized = false;
 
         static HalfKA_HM()
         {
-            if (!Initialized)
-            {
-                Initialize();
-            }
+            Initialize();
         }
 
         public static void Initialize()
         {
-            if (Initialized || !UseHalfKA)
-            {
-                return;
-            }
-
-            Initialized = true;
-
             //  Set up the network architecture layers
             LayerStack = new Network[LayerStacks];
             for (int i = 0; i < LayerStacks; i++)
@@ -160,11 +147,11 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// </summary>
         public static int GetEvaluation(Position pos, bool adjusted = false)
         {
-            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
+            ref Accumulator Accumulator = ref *pos.State->Accumulator;
             return GetEvaluation(pos, ref Accumulator, adjusted);
         }
 
-        public static int GetEvaluation(Position pos, ref AccumulatorPSQT accumulator, bool adjusted = false)
+        public static int GetEvaluation(Position pos, ref Accumulator accumulator, bool adjusted = false)
         {
             const int delta = 24;
 
@@ -203,7 +190,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
             int moveFrom = m.From;
             int moveTo = m.To;
 
-            AccumulatorPSQT* accumulator = pos.NextState->Accumulator;
+            Accumulator* accumulator = pos.NextState->Accumulator;
             pos.State->Accumulator->CopyTo(accumulator);
 
             int us = bb.GetColorAtIndex(moveFrom);
@@ -303,7 +290,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <summary>
         /// Removes the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
         /// </summary>
-        /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
+        /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         public static void RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
@@ -320,7 +307,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
-                psqtAccumulation[j] = Sub256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
+                psqtAccumulation[j] = Avx2.Subtract(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
             }
         }
 
@@ -328,7 +315,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// <summary>
         /// Adds the feature with the corresponding <paramref name="index"/> to the Accumulator side <paramref name="accumulation"/>.
         /// </summary>
-        /// <param name="accumulation">A reference to either <see cref="AccumulatorPSQT.White"/> or <see cref="AccumulatorPSQT.Black"/></param>
+        /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
         public static void AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
@@ -345,7 +332,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             for (int j = 0; j < PSQTBuckets / FeatureTransformer.PsqtTileHeight; j++)
             {
-                psqtAccumulation[j] = Add256(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
+                psqtAccumulation[j] = Avx2.Add(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
             }
 
         }
@@ -539,7 +526,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
 
-            ref AccumulatorPSQT Accumulator = ref *pos.State->Accumulator;
+            ref Accumulator Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {

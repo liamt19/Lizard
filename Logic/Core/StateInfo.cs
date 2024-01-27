@@ -1,8 +1,8 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.NN;
+using Lizard.Logic.NN;
 
-namespace LTChess.Logic.Core
+namespace Lizard.Logic.Core
 {
     /// <summary>
     /// Contains information for a single moment of a <see cref="Position"/>.
@@ -17,7 +17,7 @@ namespace LTChess.Logic.Core
         public static readonly nuint StateCopySize;
         static StateInfo()
         {
-            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(AccumulatorPSQT*));
+            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
 
             if (EnableAssertions)
             {
@@ -31,44 +31,44 @@ namespace LTChess.Logic.Core
         }
 
         [FieldOffset(0)]
-        public fixed ulong CheckSquares[PieceNB - 1];
-
-        [FieldOffset(40)]
-        public fixed int KingSquares[2];
+        public fixed ulong CheckSquares[PieceNB];
 
         [FieldOffset(48)]
+        public fixed int KingSquares[2];
+
+        [FieldOffset(56)]
         public fixed ulong BlockingPieces[2];
 
-        [FieldOffset(64)]
+        [FieldOffset(72)]
         public fixed ulong Pinners[2];
 
-        [FieldOffset(80)]
+        [FieldOffset(88)]
         public fixed ulong Xrays[2];
 
-        [FieldOffset(96)]
+        [FieldOffset(104)]
         public ulong Hash = 0;
 
-        [FieldOffset(104)]
+        [FieldOffset(112)]
         public ulong Checkers = 0;
 
-        [FieldOffset(112)]
+        [FieldOffset(120)]
         public CastlingStatus CastleStatus = CastlingStatus.None;
 
         /// <summary>
         /// The first number in the FEN, which starts at 0 and resets to 0 every time a pawn moves or a piece is captured.
         /// If this reaches 100, the game is a draw by the 50-move rule.
         /// </summary>
-        [FieldOffset(116)]
+        [FieldOffset(124)]
         public int HalfmoveClock = 0;
 
-        [FieldOffset(120)]
+        [FieldOffset(128)]
         public int EPSquare = EPNone;
 
-        [FieldOffset(124)]
+        [FieldOffset(132)]
         public int CapturedPiece = None;
 
-        [FieldOffset(128)]
-        public AccumulatorPSQT* Accumulator;
+        [FieldOffset(136)]
+        public Accumulator* Accumulator;
 
         public StateInfo()
         {

@@ -1,9 +1,10 @@
 ﻿using System.Reflection;
 
-using LTChess.Logic.NN.Simple768;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
+using Lizard.Logic.Threads;
 
-namespace LTChess.Logic.UCI
+namespace Lizard.Logic.UCI
 {
     public unsafe class UCIClient
     {
@@ -134,12 +135,12 @@ namespace LTChess.Logic.UCI
             Active = true;
 
 #if DEV
-            SendString("id name LTChess " + EngineBuildVersion + " DEV");
+            SendString("id name Lizard " + EngineBuildVersion + " DEV");
 #else
-            SendString("id name LTChess " + EngineBuildVersion);
+            SendString("id name Lizard " + EngineBuildVersion);
 #endif
             SendString("id author Liam McGuire");
-            SendString("info string Using " + (UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " evaluation.");
+            SendString("info string Using Simple768 evaluation.");
 
             foreach (string k in Options.Keys)
             {
@@ -266,16 +267,8 @@ namespace LTChess.Logic.UCI
 
                     }
 
-                    if (UseHalfKA || UseHalfKP)
-                    {
-                        info.Position.State->Accumulator->RefreshPerspective[White] = true;
-                        info.Position.State->Accumulator->RefreshPerspective[Black] = true;
-                    }
-
-                    if (UseSimple768)
-                    {
-                        Simple768.RefreshAccumulator(info.Position, ref *info.Position.State->Accumulator);
-                    }
+                    info.Position.State->Accumulator->RefreshPerspective[White] = true;
+                    info.Position.State->Accumulator->RefreshPerspective[Black] = true;
                 }
                 else if (cmd == "go")
                 {
@@ -527,7 +520,7 @@ namespace LTChess.Logic.UCI
             }
         }
 
-        public void HandleNewGame()
+        private void HandleNewGame()
         {
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
@@ -648,6 +641,10 @@ namespace LTChess.Logic.UCI
             Options[nameof(NullMovePruningMinDepth)].SetMinMax(1, 16);
             Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(1, 16);
             Options[nameof(ReverseFutilityPruningPerDepth)].SetMinMax(1, 200);
+            Options[nameof(ProbCutBeta)].SetMinMax(125, 225);
+            Options[nameof(ProbCutBetaImproving)].SetMinMax(50, 150);
+            Options[nameof(ProbCutMinDepth)].SetMinMax(3, 7);
+            Options[nameof(LMRExtensionThreshold)].SetMinMax(50, 200);
             Options[nameof(ExchangeBase)].SetMinMax(1, 500);
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(1, 16);
             Options[nameof(AspirationWindowMargin)].SetMinMax(1, 500);

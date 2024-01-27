@@ -2,11 +2,11 @@
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM;
-using static LTChess.Logic.NN.HalfKA_HM.NNCommon;
-using static LTChess.Logic.NN.SIMD;
+using static Lizard.Logic.NN.HalfKA_HM.HalfKA_HM;
+using static Lizard.Logic.NN.HalfKA_HM.NNCommon;
+using static Lizard.Logic.NN.HalfKA_HM.LEB128;
 
-namespace LTChess.Logic.NN.HalfKA_HM
+namespace Lizard.Logic.NN.HalfKA_HM
 {
     /// <summary>
     /// Handles Accumulator updates and refreshes, and translates the position into inputs for the network to use.
@@ -54,7 +54,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Takes the input from the <paramref name="accumulator"/> and places them into <paramref name="output"/>,
         /// refreshing the <paramref name="accumulator"/> if necessary.
         /// </summary>
-        public static int TransformFeatures(Position pos, Span<sbyte> output, ref AccumulatorPSQT accumulator, int bucket)
+        public static int TransformFeatures(Position pos, Span<sbyte> output, ref Accumulator accumulator, int bucket)
         {
             if (accumulator.RefreshPerspective[White])
             {
@@ -109,7 +109,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
         /// Finds the active features (existing pieces on the board) and updates the Accumulator to include those pieces.
         /// This is comparatively very slow, so it should only be done when absolutely necessary, like when our king moves.
         /// </summary>
-        public static void RefreshAccumulatorPerspective(Position pos, ref AccumulatorPSQT accumulator, int perspective)
+        public static void RefreshAccumulatorPerspective(Position pos, ref Accumulator accumulator, int perspective)
         {
             const int RelativeWeightIndex = (int)HalfDimensions / 16;
             const int RelativeTileHeight = TileHeight / 16;
@@ -148,7 +148,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
                     Vector256<short>* column = &Weights[offset];
                     for (int k = 0; k < NumRegs; k++)
                     {
-                        acc[k] = Add256(acc[k], column[k]);
+                        acc[k] = Avx2.Add(acc[k], column[k]);
                     }
                 }
 
@@ -178,7 +178,7 @@ namespace LTChess.Logic.NN.HalfKA_HM
 
                     for (int k = 0; k < NumPsqtRegs; k++)
                     {
-                        psq[k] = Add256(psq[k], PSQTWeights[index + (j * PsqtTileHeight)]);
+                        psq[k] = Avx2.Add(psq[k], PSQTWeights[index + (j * PsqtTileHeight)]);
                     }
                 }
 

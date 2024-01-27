@@ -1,4 +1,4 @@
-﻿namespace LTChess.Logic.Threads
+﻿namespace Lizard.Logic.Threads
 {
     /// <summary>
     /// 

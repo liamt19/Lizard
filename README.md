@@ -1,5 +1,5 @@
 <h1 align="center">
-LTChess - A C# chess engine
+Lizard - A C# chess engine
 </h1>
 
 <h2 align="center">
@@ -10,13 +10,16 @@ LTChess - A C# chess engine
 Creating this in my spare time, mainly using it to learn more about optimization and computer games. 
 I'm uploading it here so I can keep backups of it and not lose it when my laptop finally dies.
 
+**To the dozen or so people that saw this repo before version 10.0:** This was formerly named "LTChess". 
+This was an unfortunate choice of naming as that name was already taken by [Laurie Tunnicliffe](https://www.chessprogramming.org/Laurie_Tunnicliffe), 
+who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). Sorry Laurie!
 
 ## Features
 ### NNUE Evaluation:
-Version 9.3 uses a 768 -> 1024 -> 1 neural network to evaluate positions, which was trained on 1.5 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
+Version 10.1 uses a 768 -> 1024 -> 1 neural network to evaluate positions, which was trained on 1.5 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
 
 In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
-
+For the sake of simplicity, this functionality is only possible on the [the HalfKA-HalfKP branch](../../tree/HalfKA-HalfKP).
 
 
 ### Other things:
@@ -31,11 +34,14 @@ In addition, this engine can use [Stockfish neural networks](https://tests.stock
   - [History Heuristic](https://www.chessprogramming.org/History_Heuristic)
 
 ## Status
-Version 9.3 uses its own NNUE evaluation, and began proper parameter testing with [SPRT](https://en.wikipedia.org/wiki/Sequential_probability_ratio_test).
+Version 10.1 fixes some fairly egregious mistakes in the search methods, and has some simplifications and performance improvements that have been on my to-do list for a while.
 
-Currently rated a bit above 2600 bullet/blitz on [Lichess](https://lichess.org/@/LTChessBot).
 
 ## Some spotty history:
+#### Version 9.3:
+Uses its own NNUE evaluation, and began proper parameter testing with [SPRT](https://en.wikipedia.org/wiki/Sequential_probability_ratio_test).
+9.3.1 was the last version to be named "LTChess".
+
 #### Version 9.1:
 Some major speed improvements to both searches and move generation.
 It was rated a bit above 2500 bullet/blitz on Lichess.

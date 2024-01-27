@@ -5,11 +5,12 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-using LTChess.Logic.NN.HalfKA_HM;
-using LTChess.Logic.NN.Simple768;
-using LTChess.Logic.Threads;
+using Lizard.Logic.NN;
+using Lizard.Logic.NN.HalfKA_HM;
+using Lizard.Logic.Search;
+using Lizard.Logic.Threads;
 
-namespace LTChess
+namespace Lizard
 {
 
     public static unsafe class Program
@@ -17,8 +18,14 @@ namespace LTChess
         private static Position p;
         private static SearchInformation info;
 
-        public static void Main()
+        public static void Main(string[] args)
         {
+            if (args.Length == 1 && args[0] == "bench")
+            {
+                SearchBench.Go(12, openBench: true);
+                Environment.Exit(1);
+            }
+
             InitializeAll();
 
             p = new Position(owner: SearchPool.MainThread);
@@ -33,6 +40,18 @@ namespace LTChess
             {
                 AppDomain.CurrentDomain.UnhandledException += ExceptionHandling.CurrentDomain_UnhandledException;
             }
+
+
+            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+                if (!SearchPool.StopThreads)
+                {
+                    //  If a search is ongoing, stop it instead of closing the console.
+                    SearchPool.StopThreads = true;
+                    e.Cancel = true;
+                }
+
+                //  Otherwise, e.Cancel == false and the program exits normally
+            };
 
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
@@ -73,9 +92,9 @@ namespace LTChess
         private static void DoInputLoop()
         {
 #if DEV
-            Log("LTChess (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+            Log("Lizard (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
 #else
-            Log("LTChess version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
+            Log("Lizard version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
 #endif
 
             ThreadSetup setup = new ThreadSetup();
@@ -124,7 +143,7 @@ namespace LTChess
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    Log((UseHalfKA ? "HalfKA" : (UseHalfKP ? "HalfKP" : "Simple768")) + " Eval: " + Evaluation.GetEvaluation(p));
+                    Log("Simple768 Eval: " + Evaluation.GetEvaluation(p));
                 }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
@@ -166,7 +185,7 @@ namespace LTChess
                     Log(GetCompilerInfo());
                 }
 #if DEBUG
-                else if (input.EqualsIgnoreCase("draw nets") && UseSimple768)
+                else if (input.EqualsIgnoreCase("draw nets"))
                 {
                     Simple768.DrawFeatureWeightPic(true);
                     Simple768.DrawLayerWeightPic(true);
@@ -184,12 +203,6 @@ namespace LTChess
                         if (p.LoadFromFEN(input.Trim()))
                         {
                             Log("Loaded fen '" + p.GetFEN() + "'");
-
-                            if (UseHalfKA || UseHalfKP || UseSimple768)
-                            {
-                                p.State->Accumulator->RefreshPerspective[White] = true;
-                                p.State->Accumulator->RefreshPerspective[Black] = true;
-                            }
                         }
                     }
                     else
@@ -368,44 +381,36 @@ namespace LTChess
 
         private static void HandleTraceCommand(string input)
         {
-            if (UseHalfKA)
+            if (input.ContainsIgnoreCase("piece"))
             {
-                HalfKA_HM.Trace(p);
-            }
-
-            if (UseSimple768)
-            {
-                if (input.ContainsIgnoreCase("piece"))
+                string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (splits.Length == 4)
                 {
-                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (splits.Length == 4)
+                    int pc = StringToColor(splits[2]);
+
+                    if (pc == Color.ColorNB)
                     {
-                        int pc = StringToColor(splits[2]);
-
-                        if (pc == Color.ColorNB)
-                        {
-                            Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                            return;
-                        }
-
-                        int pt = StringToPiece(splits[3]);
-                        if (pt == Piece.None)
-                        {
-                            Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
-                            return;
-                        }
-
-                        Simple768.TracePieceValues(pt, pc);
+                        Log("Invalid color for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        return;
                     }
-                    else
+
+                    int pt = StringToPiece(splits[3]);
+                    if (pt == Piece.None)
                     {
-                        Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        Log("Invalid type for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
+                        return;
                     }
+
+                    HalfKA_HM.TracePieceValues(pt, pc);
                 }
                 else
                 {
-                    Simple768.Trace(p);
+                    Log("Invalid input for \"trace piece\" command! It should be formatted like \"trace piece black knight\".");
                 }
+            }
+            else
+            {
+                HalfKA_HM.Trace(p);
             }
         }
 
@@ -462,6 +467,9 @@ namespace LTChess
                 return;
             }
 
+            TranspositionTable.Clear();
+            Searches.HandleNewGame();
+
             info = new SearchInformation(p, MaxDepth);
             info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
 
@@ -478,6 +486,10 @@ namespace LTChess
                 else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
                 {
                     info.MaxDepth = depth;
+                }
+                else if (param[i] == "nodes" && i < param.Length - 1 && ulong.TryParse(param[i + 1], out ulong reqNodes))
+                {
+                    info.MaxNodes = reqNodes;
                 }
             }
 

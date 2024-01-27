@@ -3,14 +3,14 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
-using LTChess.Logic.Threads;
+using Lizard.Logic.Threads;
 
-namespace LTChess.Logic.Util
+namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "9.3.1";
-        public const string EngineTagLine = "A (somewhat) fresh start!";
+        public const string EngineBuildVersion = "10.1";
+        public const string EngineTagLine = "Late move pruning works better when you actually do the pruning!";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;

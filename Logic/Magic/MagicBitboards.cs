@@ -1,7 +1,16 @@
-﻿namespace LTChess.Logic.Magic
+﻿namespace Lizard.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {
+
+#if PEXT
+        public static FancyMagicSquare* FancyRookMagics;
+        public static FancyMagicSquare* FancyBishopMagics;
+
+        private static ulong* RookTable;
+        private static ulong* BishopTable;
+
+#else
         /// <summary>
         /// Contains bitboards whose bits are set where blockers for a rook on a given square could be
         /// </summary>
@@ -25,41 +34,167 @@
         private static ulong[][] BishopBlockerBoards = new ulong[64][];
         private static ulong[][] BishopAttackBoards = new ulong[64][];
 
-        public static FancyMagicSquare* FancyRookMagics;
-        public static FancyMagicSquare* FancyBishopMagics;
-        private static ulong* RookTable;
-        private static ulong* BishopTable;
-
         public static MagicSquare[] RookMagics;
         public static MagicSquare[] BishopMagics;
 
-        private static Random rand;
-
-        public static bool UseKnownMagics = true;
-
+#endif
 
         static MagicBitboards()
         {
+#if PEXT
+            if (!System.Runtime.Intrinsics.X86.Bmi2.X64.IsSupported)
+            {
+                Log("Warning: This binary was compiled with PEXT defined, but your CPU does not support Bmi2!");
+                Log("This means a non-intrinsic fallback will have to be used, which will probably be slower " +
+                    "than using the non-pext binary.");
+            }
+#endif
             Initialize();
         }
 
         public static void Initialize()
         {
+#if PEXT
             RookTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
             BishopTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+            FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
+            FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
+#else
+            GenAllBlockerBoards();
+            RookMagics = InitializeMagics(Piece.Rook);
+            BishopMagics = InitializeMagics(Piece.Bishop);
+#endif
+        }
 
-            if (HasPext)
-            {
-                FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
-                FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
+
+
+        /// <summary>
+        /// Returns all of the squares that a rook on <paramref name="idx"/> could move to.
+        /// <br></br>
+        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
+        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
+        /// Friendly pieces will need to be masked out so we aren't able to capture them.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static ulong GetRookMoves(ulong boardAll, int idx)
+        {
+#if PEXT
+            FancyMagicSquare m = FancyRookMagics[idx];
+            return m.attacks[pext(boardAll, m.mask)];
+#else
+            MagicSquare m = RookMagics[idx];
+            return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+#endif
             }
-            else
+
+        /// <summary>
+        /// Returns all of the squares that a bishop on <paramref name="idx"/> could move to.
+        /// <br></br>
+        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
+        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
+        /// Friendly pieces will need to be masked out so we aren't able to capture them.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static ulong GetBishopMoves(ulong boardAll, int idx)
+        {
+#if PEXT
+            FancyMagicSquare m = FancyBishopMagics[idx];
+            return m.attacks[pext(boardAll, m.mask)];
+#else
+            MagicSquare m = BishopMagics[idx];
+            return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+#endif
+        }
+
+#if PEXT
+        /// <summary>
+        /// Sets up the "fancy" magic squares for the given piece type <paramref name="pt"/>.
+        /// <br></br>
+        /// If your CPU supports Bmi2, then it is able to use ParallelBitExtract to calculate attack indices
+        /// rather than having to mask the board occupancy, multiply that by the magic number, and bit shift.
+        /// 
+        /// <para></para>
+        /// 
+        /// Using Pext with move generation is about 5% faster in my testing, which adds up over time.
+        /// </summary>
+        private static FancyMagicSquare* InitializeFancyMagics(int pt, ulong* table)
+        {
+            FancyMagicSquare* magicArray = (FancyMagicSquare*)AlignedAllocZeroed((nuint)(sizeof(FancyMagicSquare) * 64), AllocAlignment);
+
+            ulong b;
+            int size = 0;
+            for (int sq = A1; sq <= H8; sq++)
             {
-                rand = new Random();
-                GenAllBlockerBoards();
-                RookMagics = InitializeMagics(Piece.Rook);
-                BishopMagics = InitializeMagics(Piece.Bishop);
+                ref FancyMagicSquare m = ref magicArray[sq];
+                m.mask = GetBlockerMask(pt, sq);
+                m.shift = (int)(64 - popcount(m.mask));
+                if (sq == A1)
+                {
+                    m.attacks = (ulong*)(table + 0);
+                }
+                else
+                {
+                    m.attacks = magicArray[sq - 1].attacks + size;
+                }
+
+                b = 0;
+                size = 0;
+                do
+                {
+                    m.attacks[pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
+                    size++;
+                    b = (b - m.mask) & m.mask;
+                }
+                while (b != 0);
             }
+
+            return magicArray;
+        }
+
+#else
+
+        private static MagicSquare[] InitializeMagics(int pt)
+        {
+            ulong[] blockerMasks = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
+            ulong[][] blockerBoards = (pt == Piece.Bishop) ? BishopBlockerBoards : RookBlockerBoards;
+            ulong[][] attackBoards = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
+            int[] bits = (pt == Piece.Bishop) ? BishopBits : RookBits;
+            ulong[] magics = (pt == Piece.Bishop) ? BishopMagicNumbers : RookMagicNumbers;
+
+            MagicSquare[] magicArray = new MagicSquare[64];
+
+            for (int sq = A1; sq <= H8; sq++)
+            {
+                MagicSquare newMagic = new MagicSquare
+                {
+                    number = magics[sq],
+                    shift = 64 - bits[sq],
+                    mask = blockerMasks[sq],
+                    attacks = new ulong[1 << bits[sq]]
+                };
+
+                //  Check every combination of blockers
+                for (int blockerIndex = 0; blockerIndex < blockerBoards[sq].Length; blockerIndex++)
+                {
+                    ulong indexMap = blockerBoards[sq][blockerIndex] * newMagic.number;
+                    ulong attackIndex = indexMap >> newMagic.shift;
+
+                    //  This magic doesn't work
+                    if (newMagic.attacks[attackIndex] != 0 && newMagic.attacks[attackIndex] != attackBoards[sq][blockerIndex])
+                    {
+                        Assert(false,
+                            "Magic number for " + pt + " on " + sq + " should have worked, but doesn't!");
+                        break;
+                    }
+
+                    //  Magic works for this blocker index, so add the attack to the square.
+                    newMagic.attacks[attackIndex] = attackBoards[sq][blockerIndex];
+                }
+
+                magicArray[sq] = newMagic;
+            }
+
+            return magicArray;
         }
 
         private static void GenAllBlockerBoards()
@@ -117,173 +252,37 @@
             }
         }
 
-        /// <summary>
-        /// Returns all of the squares that a rook on <paramref name="idx"/> could move to.
-        /// <br></br>
-        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
-        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
-        /// Friendly pieces will need to be masked out so we aren't able to capture them.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong GetRookMoves(ulong boardAll, int idx)
-        {
-            if (HasPext)
-            {
-                FancyMagicSquare m = FancyRookMagics[idx];
-                return m.attacks[pext(boardAll, m.mask)];
-            }
-            else
-            {
-                MagicSquare m = RookMagics[idx];
-                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
-            }
-        }
 
-        /// <summary>
-        /// Returns all of the squares that a bishop on <paramref name="idx"/> could move to.
-        /// <br></br>
-        /// <paramref name="boardAll"/> should be a mask of every piece on the board, 
-        /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
-        /// Friendly pieces will need to be masked out so we aren't able to capture them.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static ulong GetBishopMoves(ulong boardAll, int idx)
-        {
-            if (HasPext)
-            {
-                FancyMagicSquare m = FancyBishopMagics[idx];
-                return m.attacks[pext(boardAll, m.mask)];
-            }
-            else
-            {
-                MagicSquare m = BishopMagics[idx];
-                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
-            }
-        }
+        private static int[] RookBits = {
+            12, 11, 11, 11, 11, 11, 11, 12,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            12, 11, 11, 11, 11, 11, 11, 12,
+        };
 
-        /// <summary>
-        /// Sets up the "fancy" magic squares for the given piece type <paramref name="pt"/>.
-        /// <br></br>
-        /// If your CPU supports Bmi2, then it is able to use ParallelBitExtract to calculate attack indices
-        /// rather than having to mask the board occupancy, multiply that by the magic number, and bit shift.
-        /// 
-        /// <para></para>
-        /// 
-        /// Using Pext with move generation is about 5% faster in my testing, which adds up over time.
-        /// </summary>
-        private static FancyMagicSquare* InitializeFancyMagics(int pt, ulong* table)
-        {
-            FancyMagicSquare* magicArray = (FancyMagicSquare*)AlignedAllocZeroed((nuint)(sizeof(FancyMagicSquare) * 64), AllocAlignment);
+        private static int[] BishopBits = {
+            6, 5, 5, 5, 5, 5, 5, 6,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            5, 5, 7, 7, 7, 7, 5, 5,
+            5, 5, 7, 9, 9, 7, 5, 5,
+            5, 5, 7, 9, 9, 7, 5, 5,
+            5, 5, 7, 7, 7, 7, 5, 5,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            6, 5, 5, 5, 5, 5, 5, 6,
+        };
 
-            ulong b;
-            int size = 0;
-            for (int sq = A1; sq <= H8; sq++)
-            {
-                ref FancyMagicSquare m = ref magicArray[sq];
-                m.mask = GetBlockerMask(pt, sq);
-                m.shift = (int)(64 - popcount(m.mask));
-                if (sq == A1)
-                {
-                    m.attacks = (ulong*)(table + 0);
-                }
-                else
-                {
-                    m.attacks = magicArray[sq - 1].attacks + size;
-                }
-
-                b = 0;
-                size = 0;
-                do
-                {
-                    m.attacks[pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
-                    size++;
-                    b = (b - m.mask) & m.mask;
-                }
-                while (b != 0);
-            }
-
-            return magicArray;
-        }
-
-        private static MagicSquare[] InitializeMagics(int pt)
-        {
-            ulong[] blockerMasks = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
-            ulong[][] blockerBoards = (pt == Piece.Bishop) ? BishopBlockerBoards : RookBlockerBoards;
-            ulong[][] attackBoards = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
-            int[] bits = (pt == Piece.Bishop) ? BishopBits : RookBits;
-            ulong[] BetterMagics = (pt == Piece.Bishop) ? BetterBishopMagics : BetterRookMagics;
-            ulong[] KnownMagics = (pt == Piece.Bishop) ? KnownBishopMagics : KnownRookMagics;
-
-            MagicSquare[] magicArray = new MagicSquare[64];
-
-            for (int sq = A1; sq <= H8; sq++)
-            {
-                MagicSquare newMagic = new MagicSquare
-                {
-                    shift = 64 - bits[sq],
-                    mask = blockerMasks[sq],
-                    attacks = new ulong[1 << bits[sq]]
-                };
-
-                bool MagicWorks = false;
-                while (MagicWorks == false)
-                {
-                    MagicWorks = true;
-
-                    if (BetterMagics[sq] != 0)
-                    {
-                        newMagic.number = BetterMagics[sq];
-                        newMagic.shift++;
-                        newMagic.attacks = new ulong[1 << (bits[sq] - 1)];
-                    }
-                    else if (UseKnownMagics)
-                    {
-                        newMagic.number = KnownMagics[sq];
-                    }
-                    else
-                    {
-                        //  Try a new magic number
-                        newMagic.number = NewMagicNumber();
-                    }
-
-                    //  Check every combination of blockers
-                    for (int blockerIndex = 0; blockerIndex < blockerBoards[sq].Length; blockerIndex++)
-                    {
-                        ulong indexMap = blockerBoards[sq][blockerIndex] * newMagic.number;
-                        ulong attackIndex = indexMap >> newMagic.shift;
-
-                        //  This magic doesn't work
-                        if (newMagic.attacks[attackIndex] != 0 && newMagic.attacks[attackIndex] != attackBoards[sq][blockerIndex])
-                        {
-                            Array.Clear(newMagic.attacks);
-                            MagicWorks = false;
-                            break;
-                        }
-
-                        //  Magic works for this blocker index, so add the attack to the square.
-                        newMagic.attacks[attackIndex] = attackBoards[sq][blockerIndex];
-                    }
-                }
-
-                magicArray[sq] = newMagic;
-            }
-
-            return magicArray;
-        }
-
-        private static ulong NewMagicNumber()
-        {
-            //  It is faster to & together multiple numbers since we want numbers with fewer 1 bits than 0 bits.
-            //  3 seems like the sweet spot?
-            return rand.NextUlong() & rand.NextUlong() & rand.NextUlong();
-        }
+#endif
 
         /// <summary>
         /// Returns a mask containing every square the piece on <paramref name="idx"/> can move to on the board <paramref name="occupied"/>.
         /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
         /// except for A8 and H1.
         /// </summary>
-        public static ulong SlidingAttacks(int pt, int idx, ulong occupied)
+        private static ulong SlidingAttacks(int pt, int idx, ulong occupied)
         {
             ulong mask = 0UL;
 
@@ -334,7 +333,7 @@
         /// Excludes all edges of the board unless the piece is on that edge. So a rook on A1 has every bit along the A file and 1st rank set,
         /// except for A8 and H1.
         /// </summary>
-        public static ulong GetBlockerMask(int pt, int idx)
+        private static ulong GetBlockerMask(int pt, int idx)
         {
             ulong mask = (pt == Piece.Bishop) ? BishopRay(idx) : RookRay(idx);
 
@@ -394,89 +393,30 @@
 
         }
 
-        private static int[] RookBits = {
-            12, 11, 11, 11, 11, 11, 11, 12,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            12, 11, 11, 11, 11, 11, 11, 12,
-        };
 
-        private static int[] BishopBits = {
-            6, 5, 5, 5, 5, 5, 5, 6,
-            5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 7, 7, 7, 7, 5, 5,
-            5, 5, 7, 9, 9, 7, 5, 5,
-            5, 5, 7, 9, 9, 7, 5, 5,
-            5, 5, 7, 7, 7, 7, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5,
-            6, 5, 5, 5, 5, 5, 5, 6,
-        };
 
-        /// <summary>
-        /// https://www.chessprogramming.org/Best_Magics_so_far
-        /// All of the non-zero numbers here use 1 fewer bit than normal.
-        /// </summary>
-        private static ulong[] BetterRookMagics =
+        private static readonly ulong[] RookMagicNumbers =
         {
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0x48FFFE99FECFAA00, 0x48FFFE99FECFAA00, 0x497FFFADFF9C2E00, 0x613FFFDDFFCE9200, 0xffffffe9ffe7ce00, 0xfffffff5fff3e600, 0x0003ff95e5e6a4c0, 0x510FFFF5F63C96A0,
-            0xEBFFFFB9FF9FC526, 0x61FFFEDDFEEDAEAE, 0x53BFFFEDFFDEB1A2, 0x127FFFB9FFDFB5F6, 0x411FFFDDFFDBF4D6, 0, 0x0003ffef27eebe74, 0x7645FFFECBFEA79E,
+            0x1080002084104000, 0x004000B002200840, 0x0480200080300018, 0x0500042010010008, 0x0480140080180086, 0x8080020013800400, 0x0100020007000184, 0x01000200E0864100,
+            0x08008000C0002082, 0x800200420A608102, 0x0022004091820420, 0x0211000820100302, 0x002080040080C800, 0x2000800200800400, 0x0084000201080410, 0x4046000200840043,
+            0x0040008002842040, 0x090282802000C000, 0x8100150041022000, 0x18400A0020420010, 0x00000D0010080100, 0x1244808004000200, 0x0400040006281011, 0x10020A0010408401,
+            0x0200408200210201, 0x0000400080201082, 0x0010200100110044, 0x8310008900210030, 0x0208008500185100, 0x2004008080020004, 0x4023100400020801, 0x0841002500004A8A,
+            0x0840002042800480, 0x0040100800200023, 0x0081100080802000, 0xCC401042020020C8, 0x0000080082800400, 0x0001000401000608, 0x18000A0104001810, 0x5000114882000401,
+            0x0001804000238000, 0x0C90002004484000, 0x000A001042820021, 0x0202100008008080, 0x043268000C008080, 0x000C0010A0140108, 0x01901026182C0001, 0x2430008245020034,
+            0x48FFFE99FECFAA00, 0x48FFFE99FECFAA00, 0x497FFFADFF9C2E00, 0x613FFFDDFFCE9200, 0xFFFFFFE9FFE7CE00, 0xFFFFFFF5FFF3E600, 0x0003FF95E5E6A4C0, 0x510FFFF5F63C96A0,
+            0xEBFFFFB9FF9FC526, 0x61FFFEDDFEEDAEAE, 0x53BFFFEDFFDEB1A2, 0x127FFFB9FFDFB5F6, 0x411FFFDDFFDBF4D6, 0x020100080A64000F, 0x0003FFEF27EEBE74, 0x7645FFFECBFEA79E,
         };
 
-
-        /// <summary>
-        /// https://www.chessprogramming.org/Best_Magics_so_far
-        /// All of the non-zero numbers here use 1 fewer bit than normal.
-        /// </summary>
-        private static ulong[] BetterBishopMagics =
+        private static readonly ulong[] BishopMagicNumbers =
         {
-            0xffedf9fd7cfcffff, 0xfc0962854a77f576, 0, 0, 0, 0, 0xfc0a66c64a7ef576, 0x7ffdfdfcbd79ffff,
-            0xfc0846a64a34fff6, 0xfc087a874a3cf7f6, 0, 0, 0, 0, 0xfc0864ae59b4ff76, 0x3c0860af4b35ff76,
-            0x73C01AF56CF4CFFB, 0x41A01CFAD64AAFFC, 0, 0, 0, 0, 0x7c0c028f5b34ff76, 0xfc0a028e5ab4df76,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0xDCEFD9B54BFCC09F, 0xF95FFA765AFD602B, 0, 0, 0, 0, 0x43ff9a5cf4ca0c01, 0x4BFFCD8E7C587601,
-            0xfc0ff2865334f576, 0xfc0bf6ce5924f576, 0, 0, 0, 0, 0xc3ffb7dc36ca8c89, 0xc3ff8a54f4ca2c89,
-            0xfffffcfcfd79edff, 0xfc0863fccb147576, 0, 0, 0, 0, 0xfc087e8e4bb2f736, 0x43ff9e4ef4ca2c89,
+            0xFFEDF9FD7CFCFFFF, 0xFC0962854A77F576, 0x804200860088A020, 0x0004040080280011, 0x0004104500041401, 0x500A021044200010, 0xFC0A66C64A7EF576, 0x7FFDFDFCBD79FFFF,
+            0xFC0846A64A34FFF6, 0xFC087A874A3CF7F6, 0x180430A082014008, 0x9008040400800400, 0xA600040308340808, 0x0010020222200A00, 0xFC0864AE59B4FF76, 0x3C0860AF4B35FF76,
+            0x73C01AF56CF4CFFB, 0x41A01CFAD64AAFFC, 0x2108021000401022, 0x0008004220244045, 0x6012001012100031, 0x1002000088010800, 0x7C0C028F5B34FF76, 0xFC0A028E5AB4DF76,
+            0x00A0200110043909, 0x001008000202040C, 0x0804100012088012, 0x8010C88008020040, 0x0040840200802000, 0x0012022004100804, 0x100A0E0100A19011, 0x0204004058210400,
+            0x6A30980506481001, 0x3420901081050400, 0x0002020100020804, 0x5000020081080181, 0x54042100300C0040, 0x0002480040460044, 0x58502A020194C900, 0x0A0204050000208C,
+            0xDCEFD9B54BFCC09F, 0xF95FFA765AFD602B, 0x0113140201080804, 0x6001004202813802, 0x0400601410400405, 0x0001810102000100, 0x43FF9A5CF4CA0C01, 0x4BFFCD8E7C587601,
+            0xFC0FF2865334F576, 0xFC0BF6CE5924F576, 0x0102010041100810, 0x0202000020881080, 0x0302004110824100, 0xA084C00803010000, 0xC3FFB7DC36CA8C89, 0xC3FF8A54F4CA2C89,
+            0xFFFFFCFCFD79EDFF, 0xFC0863FCCB147576, 0x0100112201048800, 0x0800000080208838, 0x8080200010020202, 0x42002C0484080201, 0xFC087E8E4BB2F736, 0x43FF9E4EF4CA2C89,
         };
-
-
-        /// <summary>
-        /// Magics I've already found so we don't waste time at startup...
-        /// </summary>
-        private static ulong[] KnownRookMagics =
-        {
-            0x1080002084104000, 0x4000B002200840, 0x480200080300018, 0x500042010010008, 0x480140080180086, 0x8080020013800400, 0x100020007000184, 0x1000200E0864100,
-            0x8008000C0002082, 0x800200420A608102, 0x22004091820420, 0x211000820100302, 0x2080040080C800, 0x2000800200800400, 0x84000201080410, 0x4046000200840043,
-            0x40008002842040, 0x90282802000C000, 0x8100150041022000, 0x18400A0020420010, 0xD0010080100, 0x1244808004000200, 0x400040006281011, 0x10020A0010408401,
-            0x200408200210201, 0x400080201082, 0x10200100110044, 0x8310008900210030, 0x208008500185100, 0x2004008080020004, 0x4023100400020801, 0x841002500004A8A,
-            0x840002042800480, 0x40100800200023, 0x81100080802000, 0xCC401042020020C8, 0x80082800400, 0x1000401000608, 0x18000A0104001810, 0x5000114882000401,
-            0x1804000238000, 0xC90002004484000, 0xA001042820021, 0x202100008008080, 0x43268000C008080, 0xC0010A0140108, 0x1901026182C0001, 0x2430008245020034,
-            0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0x20100080A64000F, 0, 0,
-        };
-
-        private static ulong[] KnownBishopMagics =
-        {
-            0, 0, 0x804200860088A020, 0x4040080280011, 0x4104500041401, 0x500A021044200010, 0, 0,
-            0, 0, 0x180430A082014008, 0x9008040400800400, 0xA600040308340808, 0x10020222200A00, 0, 0,
-            0, 0, 0x2108021000401022, 0x8004220244045, 0x6012001012100031, 0x1002000088010800, 0, 0,
-            0xA0200110043909, 0x1008000202040C, 0x804100012088012, 0x8010C88008020040, 0x40840200802000, 0x12022004100804, 0x100A0E0100A19011, 0x204004058210400,
-            0x6A30980506481001, 0x3420901081050400, 0x2020100020804, 0x5000020081080181, 0x54042100300C0040, 0x2480040460044, 0x58502A020194C900, 0xA0204050000208C,
-            0, 0, 0x113140201080804, 0x6001004202813802, 0x400601410400405, 0x1810102000100, 0, 0,
-            0, 0, 0x102010041100810, 0x202000020881080, 0x302004110824100, 0xA084C00803010000, 0, 0,
-            0, 0, 0x100112201048800, 0x800000080208838, 0x8080200010020202, 0x42002C0484080201, 0, 0,
-        };
-
-
     }
 }

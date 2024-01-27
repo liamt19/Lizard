@@ -1,10 +1,10 @@
 ﻿using System.Runtime.InteropServices;
 
-using LTChess.Logic.Search.Ordering;
+using Lizard.Logic.Search.Ordering;
 
-using static LTChess.Logic.Search.MovePicker.MovePickerStage;
+using static Lizard.Logic.Search.MovePicker.MovePickerStage;
 
-namespace LTChess.Logic.Search
+namespace Lizard.Logic.Search
 {
 
     public unsafe class MovePicker
@@ -80,34 +80,6 @@ namespace LTChess.Logic.Search
             //  The second move is at killers[2] instead of killers[1].
             k0 = *(killers + 0);
             k1 = *(killers + 2);
-
-            /***
-             *  Previously, all legal moves were generated and compared against the set of killer moves (i.e. moveList[i].Equals(killer0)),
-             *  and if the Move moveList[i] was equal then it would be given a score accordingly. There wasn't any "returning", the entire
-             *  list of moves was just sorted in place each time we tried a new move
-             *  
-             *  But moves are now generated in stages, and since we can't be certain which stage a killer move would be generated in
-             *  we instead just try the killers in their own stage, and return them if they are pseudo-legal.
-             *  
-             *  One issue with this approach is that a killer move might have caused check in the position it was generated in,
-             *  but doesn't cause check in the position that we are currently looking at.
-             *  We don't want to just discard them altogether though since they might still be good moves irrespective of them causing check,
-             *  so before they are returned we call MakeCheck on them.
-             *  
-             **/
-            k0.Checks = false;
-            k1.Checks = false;
-
-            if (EnableAssertions)
-            {
-                Assert(!k0.Capture,
-                    "MovePicker(" + pos.GetFEN() + ") was given the Killer0 move " + k0 + " = " + k0.ToString(pos) + " which is a capture! " +
-                    "(Killer moves should never be captures)");
-
-                Assert(!k1.Capture,
-                    "MovePicker(" + pos.GetFEN() + ") was given the Killer1 move " + k1 + " = " + k1.ToString(pos) + " which is a capture! " +
-                    "(Killer moves should never be captures)");
-            }
 
             this.moveBufferStart = moveBuffer;
             this.depth = depth;
@@ -277,45 +249,12 @@ namespace LTChess.Logic.Search
                     if (killerNumber == 0 && KillerWorks(killerNumber))
                     {
                         killerNumber++;
-                        if (k0.Promotion)
-                        {
-                            pos.MakeCheckPromotion(ref k0);
-                        }
-                        else if (k0.EnPassant)
-                        {
-                            pos.MakeCheckEnPassant(ref k0);
-                        }
-                        else if (k0.Castle)
-                        {
-                            pos.MakeCheckCastle(ref k0);
-                        }
-                        else
-                        {
-                            pos.MakeCheck(pos.bb.GetPieceAtIndex(k0.From), ref k0);
-                        }
-
                         return k0;
                     }
 
                     if (killerNumber == 1 && KillerWorks(killerNumber))
                     {
                         killerNumber++;
-                        if (k1.Promotion)
-                        {
-                            pos.MakeCheckPromotion(ref k1);
-                        }
-                        else if (k1.EnPassant)
-                        {
-                            pos.MakeCheckEnPassant(ref k1);
-                        }
-                        else if (k1.Castle)
-                        {
-                            pos.MakeCheckCastle(ref k1);
-                        }
-                        else
-                        {
-                            pos.MakeCheck(pos.bb.GetPieceAtIndex(k1.From), ref k1);
-                        }
                         return k1;
                     }
 
@@ -548,7 +487,7 @@ namespace LTChess.Logic.Search
                                   (*continuations[3])[contIdx] +
                                   (*continuations[5])[contIdx];
 
-                if (iter->Move.Checks)
+                if ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(iter->Move.From)] & SquareBB[iter->Move.To]) != 0)
                 {
                     iter->Score += 10000;
                 }
