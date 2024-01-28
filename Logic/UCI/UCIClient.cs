@@ -636,6 +636,9 @@ namespace Lizard.Logic.UCI
                 Options.Add(fieldName, opt);
             }
 
+            SetSPSAOutputParams();
+
+
             Options[nameof(Threads)].SetMinMax(1, 8);
             Options[nameof(MultiPV)].SetMinMax(1, 5);
             Options[nameof(Hash)].SetMinMax(1, 2048);
@@ -709,6 +712,23 @@ namespace Lizard.Logic.UCI
 
                 var opt = Options[optName];
                 SendString(opt.GetSPSAFormat());
+            }
+        }
+
+        private void SetSPSAOutputParams()
+        {
+            string output = 
+                "" +
+                "SingularExtensionsMinDepth, 7\r\nSingularExtensionsNumerator, 9\r\nSingularExtensionsBeta, 21\r\nNMPMinDepth, 5\r\nNMPReductionBase, 5\r\nNMPReductionDivisor, 5\r\nReverseFutilityPruningMaxDepth, 8\r\nReverseFutilityPruningPerDepth, 56\r\nProbCutBeta, 178\r\nProbCutBetaImproving, 96\r\nProbCutMinDepth, 2\r\nLMRExtensionThreshold, 123\r\nLMRExchangeBase, 217\r\nHistoryReductionMultiplier, 5\r\nFutilityExchangeBase, 198\r\nExtraCutNodeReductionMinDepth, 6\r\nAspirationWindowMargin, 11\r\nHistoryCaptureBonusMargin, 157\r\nOrderingGivesCheckBonus, 10070\r\nOrderingVictimValueMultiplier, 13\r\nOrderingHistoryDivisor, 12\r\nStatBonusMult, 203\r\nStatBonusSub, 91\r\nStatBonusMin, 1821\r\nStatMalusMult, 387\r\nStatMalusSub, 103\r\nStatMalusMin, 1658" +
+                "";
+
+            var lines = output.Split("\r\n");
+
+            foreach (string line in lines)
+            {
+                var splits = line.Split(", ");
+                Options[splits[0]].DefaultValue = splits[1];
+                Options[splits[0]].RefreshBackingField();
             }
         }
     }

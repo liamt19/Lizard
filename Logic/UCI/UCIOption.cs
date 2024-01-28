@@ -42,6 +42,23 @@ namespace Lizard.Logic.UCI
             MaxValue = (int)(v * (1 + AutoMinMaxMultiplier));
         }
 
+        public void RefreshBackingField()
+        {
+            if (FieldHandle == null)
+            {
+                return;
+            }
+
+            if (FieldHandle.FieldType == typeof(int))
+            {
+                FieldHandle.SetValue(null, int.Parse(DefaultValue));
+            }
+            else if (FieldHandle.FieldType == typeof(bool))
+            {
+                FieldHandle.SetValue(null, bool.Parse(DefaultValue));
+            }
+        }
+
 
         public string GetSPSAFormat()
         {
