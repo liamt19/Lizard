@@ -20,7 +20,7 @@ namespace Lizard.Logic.UCI
         /// </summary>
         private const bool WriteToConcurrentLogs = false;
 
-        private Dictionary<string, UCIOption> Options;
+        private static Dictionary<string, UCIOption> Options;
 
         private static object LogFileLock = new object();
 
@@ -615,7 +615,7 @@ namespace Lizard.Logic.UCI
             LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
         }
 
-        private void ProcessUCIOptions()
+        public static void ProcessUCIOptions()
         {
             Options = new Dictionary<string, UCIOption>();
 
@@ -715,7 +715,7 @@ namespace Lizard.Logic.UCI
             }
         }
 
-        private void SetSPSAOutputParams()
+        private static void SetSPSAOutputParams()
         {
             string output = 
                 "" +
