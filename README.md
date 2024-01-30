@@ -6,13 +6,22 @@ Lizard - A C# chess engine
 <img src="./Resources/logo.png" width="500">
 </h2>
 
-## Info
 Creating this in my spare time, mainly using it to learn more about optimization and computer games. 
 I'm uploading it here so I can keep backups of it and not lose it when my laptop finally dies.
 
 **To the dozen or so people that saw this repo before version 10.0:** This was formerly named "LTChess". 
 This was an unfortunate choice of naming as that name was already taken by [Laurie Tunnicliffe](https://www.chessprogramming.org/Laurie_Tunnicliffe), 
 who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). Sorry Laurie!
+
+## Ratings
+<div align="center">
+
+| Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | Notes |
+| ---- | ------------ | ---- | ---- | --- |
+| 10.0 | Jan. 4 2024  | 3363 | 3407 | First non-Stockfish NNUE |
+| 10.1 | Jan. 13 2024 | 3418 | -    | Various improvements to search |
+
+</div>
 
 ## Features
 ### NNUE Evaluation:
