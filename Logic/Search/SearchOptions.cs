@@ -40,12 +40,12 @@
         /// <summary>
         /// The depth must be greater than or equal to this for singular extensions to be considered.
         /// </summary>
-        public static int SingularExtensionsMinDepth = 6;
+        public static int SingularExtensionsMinDepth = 7;
 
         /// <summary>
         /// This number is multiplied by the depth to determine the singular beta value.
         /// </summary>
-        public static int SingularExtensionsNumerator = 10;
+        public static int SingularExtensionsNumerator = 9;
 
         /// <summary>
         /// If the score from a singular search is below the singular beta value by this amount,
@@ -98,7 +98,7 @@
         /// <summary>
         /// This amount is added to reverse futility pruning's margin per depth.
         /// </summary>
-        public static int ReverseFutilityPruningPerDepth = 62;
+        public static int ReverseFutilityPruningPerDepth = 56;
 
         /// <summary>
         /// This amount is removed from the reverse futility pruning margin if the side to move is improving.
@@ -119,7 +119,7 @@
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
         /// </summary>
-        public static int ProbCutBeta = 172;
+        public static int ProbCutBeta = 178;
 
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is improving.
@@ -129,7 +129,7 @@
         /// <summary>
         /// The depth must be greater than or equal to this for ProbCut to be considered.
         /// </summary>
-        public static int ProbCutMinDepth = 3;
+        public static int ProbCutMinDepth = 2;
 
 
 
@@ -137,17 +137,17 @@
         /// If an LMR search returns a score that is above the current best score by this amount, 
         /// the following verification search will be extended by 1.
         /// </summary>
-        public static int LMRExtensionThreshold = 125;
+        public static int LMRExtensionThreshold = 123;
 
-        public static int LMRExchangeBase = 200;
-
-
-
-        public static int HistoryReductionMultiplier = 4;
+        public static int LMRExchangeBase = 217;
 
 
 
-        public static int FutilityExchangeBase = 200;
+        public static int HistoryReductionMultiplier = 5;
+
+
+
+        public static int FutilityExchangeBase = 198;
 
 
 
@@ -169,11 +169,11 @@
 
 
 
-        public static int HistoryCaptureBonusMargin = 150;
+        public static int HistoryCaptureBonusMargin = 157;
 
 
 
-        public static int OrderingGivesCheckBonus = 10000;
+        public static int OrderingGivesCheckBonus = 10070;
 
         public static int OrderingVictimValueMultiplier = 13;
 
@@ -181,12 +181,12 @@
 
 
 
-        public static int StatBonusMult = 252;
-        public static int StatBonusSub = 87;
-        public static int StatBonusMin = 1685;
+        public static int StatBonusMult = 203;
+        public static int StatBonusSub = 91;
+        public static int StatBonusMin = 1821;
 
-        public static int StatMalusMult = 350;
-        public static int StatMalusSub = 100;
-        public static int StatMalusMin = 1650;
+        public static int StatMalusMult = 387;
+        public static int StatMalusSub = 103;
+        public static int StatMalusMin = 1658;
     }
 }
