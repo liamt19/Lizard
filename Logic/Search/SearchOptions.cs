@@ -40,7 +40,18 @@
         /// <summary>
         /// The depth must be greater than or equal to this for singular extensions to be considered.
         /// </summary>
-        public static int SingularExtensionsMinDepth = 6;
+        public static int SingularExtensionsMinDepth = 7;
+
+        /// <summary>
+        /// This number is multiplied by the depth to determine the singular beta value.
+        /// </summary>
+        public static int SingularExtensionsNumerator = 9;
+
+        /// <summary>
+        /// If the score from a singular search is below the singular beta value by this amount,
+        /// the depth will be extended by 2 instead of by 1.
+        /// </summary>
+        public static int SingularExtensionsBeta = 21;
 
 
 
@@ -54,9 +65,19 @@
         /// Nodes need to be at this depth of higher to be considered for pruning.
         /// This also influences the reduced depth that the following nodes are searched
         /// at, which is calculated by adding this flat amount to a node's depth divided by this amount.
-        /// i.e. R = <see cref="NullMovePruningMinDepth"/> + (depth / <see cref="NullMovePruningMinDepth"/>)
+        /// i.e. R = <see cref="NMPMinDepth"/> + (depth / <see cref="NMPMinDepth"/>)
         /// </summary>
-        public static int NullMovePruningMinDepth = 5;
+        public static int NMPMinDepth = 5;
+
+        /// <summary>
+        /// The base reduction is always set to this amount.
+        /// </summary>
+        public static int NMPReductionBase = 5;
+
+        /// <summary>
+        /// The reduction is increased by the current depth divided by this amount.
+        /// </summary>
+        public static int NMPReductionDivisor = 5;
 
 
 
@@ -83,13 +104,7 @@
         /// <summary>
         /// This amount is added to reverse futility pruning's margin per depth.
         /// </summary>
-        public static int ReverseFutilityPruningPerDepth = 62;
-
-        /// <summary>
-        /// This amount is removed from the reverse futility pruning margin if the side to move is improving.
-        /// </summary>
-        private static int ReverseFutilityPruningImproving = 55;
-
+        public static int ReverseFutilityPruningPerDepth = 56;
 
 
 
@@ -104,7 +119,7 @@
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
         /// </summary>
-        public static int ProbCutBeta = 172;
+        public static int ProbCutBeta = 178;
 
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is improving.
@@ -114,7 +129,7 @@
         /// <summary>
         /// The depth must be greater than or equal to this for ProbCut to be considered.
         /// </summary>
-        public static int ProbCutMinDepth = 3;
+        public static int ProbCutMinDepth = 2;
 
 
 
@@ -122,14 +137,31 @@
         /// If an LMR search returns a score that is above the current best score by this amount, 
         /// the following verification search will be extended by 1.
         /// </summary>
-        public static int LMRExtensionThreshold = 125;
+        public static int LMRExtensionThreshold = 123;
+
+        /// <summary>
+        /// In Negamax, non-evasion moves that lose (this amount * depth) will be skipped.
+        /// <para></para>
+        /// This generally prunes moves that hang a piece.
+        /// </summary>
+        public static int LMRExchangeBase = 217;
 
 
 
         /// <summary>
-        /// If moves exceed this margin, they are treated as "good" in multiple places.
+        /// For LMR, the reduction of a move is modified by it's history divided by (4096 * this value).
         /// </summary>
-        public static int ExchangeBase = 199;
+        public static int HistoryReductionMultiplier = 5;
+
+
+
+        /// <summary>
+        /// The margin to add to the current best score in QSearch.
+        /// <para></para>
+        /// This is used to determine the minimum score a move must have to NOT be considered futile,
+        /// as low scoring moves are generally a waste of time to search.
+        /// </summary>
+        public static int FutilityExchangeBase = 198;
 
 
 
@@ -148,5 +180,65 @@
         /// we will be forced to redo the search which can waste more time than it saves at high depths.
         /// </summary>
         public static int AspirationWindowMargin = 11;
+
+
+
+        /// <summary>
+        /// The best move will get a slightly larger bonus if it's score is this much above beta.
+        /// </summary>
+        public static int HistoryCaptureBonusMargin = 157;
+
+
+
+        /// <summary>
+        /// Quiet moves that give check will be given this additional bonus.
+        /// </summary>
+        public static int OrderingGivesCheckBonus = 10070;
+
+        /// <summary>
+        /// The multiplier for the value of a piece being captured to add to a capturing move's score.
+        /// <para></para>
+        /// This establishes a good baseline for a move's value, and is then modified by history.
+        /// </summary>
+        public static int OrderingVictimValueMultiplier = 13;
+
+        /// <summary>
+        /// The multiplier for the CaptureHistory heuristic to add to that move's score.
+        /// </summary>
+        public static int OrderingHistoryDivisor = 12;
+
+
+
+        /// <summary>
+        /// The value multiplied by the depth
+        /// </summary>
+        public static int StatBonusMult = 203;
+
+        /// <summary>
+        /// The value to subtract from (StatBonusMult * depth)
+        /// </summary>
+        public static int StatBonusSub = 91;
+
+        /// <summary>
+        /// The maximum value that a bonus can be.
+        /// </summary>
+        public static int StatBonusMax = 1821;
+
+
+
+        /// <summary>
+        /// The value to multiply by the depth
+        /// </summary>
+        public static int StatMalusMult = 387;
+
+        /// <summary>
+        /// The value to subtract from (StatMalusMult * depth)
+        /// </summary>
+        public static int StatMalusSub = 103;
+
+        /// <summary>
+        /// The maximum value that a malus can be.
+        /// </summary>
+        public static int StatMalusMax = 1658;
     }
 }

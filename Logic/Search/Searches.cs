@@ -244,14 +244,14 @@ namespace Lizard.Logic.Search
             //  and we have non-pawn material (important for Zugzwang).
             if (UseNullMovePruning
                 && !isPV
-                && depth >= NullMovePruningMinDepth
+                && depth >= NMPMinDepth
                 && eval >= beta
                 && eval >= ss->StaticEval
                 && !doSkip
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.MaterialCountNonPawn[pos.ToMove] > 0)
             {
-                int reduction = NullMovePruningMinDepth + (depth / NullMovePruningMinDepth);
+                int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
 
@@ -416,7 +416,7 @@ namespace Lizard.Logic.Search
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
                         //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -ExchangeBase * depth))
+                        if (!SEE_GE(pos, m, -LMRExchangeBase * depth))
                         {
                             continue;
                         }
@@ -443,7 +443,7 @@ namespace Lizard.Logic.Search
                     && ((tte->Bound & BoundLower) != 0)
                     && tte->Depth >= depth - 3)
                 {
-                    int singleBeta = ttScore - depth;
+                    int singleBeta = ttScore - (SingularExtensionsNumerator * depth / 10);
                     int singleDepth = (depth - 1) / 2;
 
                     ss->Skip = m;
@@ -456,7 +456,7 @@ namespace Lizard.Logic.Search
                         extend = 1;
 
                         if (!isPV
-                            && score < singleBeta - 20
+                            && score < singleBeta - SingularExtensionsBeta
                             && ss->DoubleExtensions <= 8)
                         {
                             //  If this isn't a PV, and this move is was a good deal better than any other one,
@@ -518,23 +518,12 @@ namespace Lizard.Logic.Search
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
                         R--;
 
-                    /*
-                    Score of NoContHistReduction vs Baseline: 170 - 107 - 219  [0.564] 496
-                    ...      NoContHistReduction playing White: 147 - 14 - 87  [0.768] 248
-                    ...      NoContHistReduction playing Black: 23 - 93 - 132  [0.359] 248
-                    ...      White vs Black: 240 - 37 - 219  [0.705] 496
-                    Elo difference: 44.4 +/- 22.9, LOS: 100.0 %, DrawRatio: 44.2 %
-                    SPRT: llr 2.93 (101.2%), lbound -2.25, ubound 2.89 - H1 was accepted
-                     */
-#if SPRT_FAIL_CONT_HIST
                     ss->StatScore = 2 * history.MainHistory[HistoryTable.HistoryIndex(ourColor, m)] +
-                                        (*contHist[0])[histIdx] +
-                                        (*contHist[1])[histIdx] +
-                                        (*contHist[3])[histIdx];
+                                        (*(ss - 1)->ContinuationHistory)[histIdx] +
+                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
+                                        (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (ss->StatScore / 10000);
-                    //  TODO: If this ever works again, 16384 works better.
-#endif
+                    R -= (ss->StatScore / (4096 * HistoryReductionMultiplier));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth]
                     int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth + 1);
@@ -844,7 +833,7 @@ namespace Lizard.Logic.Search
 
                 bestScore = eval;
 
-                futility = (short)(Math.Min(ss->StaticEval, bestScore) + ExchangeBase);
+                futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
             }
 
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
@@ -1023,6 +1012,7 @@ namespace Lizard.Logic.Search
             int capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             int quietMoveBonus = StatBonus(depth + 1);
+            int quietMovePenalty = StatMalus(depth);
 
             if (bestMove.Capture)
             {
@@ -1032,20 +1022,21 @@ namespace Lizard.Logic.Search
             else
             {
 
-                int captureBonus = (bestScore > beta + 150) ? quietMoveBonus : StatBonus(depth);
+                int bestMoveBonus = (bestScore > beta + HistoryCaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
 
                 if (ss->Killer0 != bestMove)
                 {
                     ss->Killer1 = ss->Killer0;
                     ss->Killer0 = bestMove;
                 }
-                history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), captureBonus, HistoryTable.MainHistoryClamp);
+                history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), bestMoveBonus, HistoryTable.MainHistoryClamp);
+                UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, m), -captureBonus, HistoryTable.MainHistoryClamp);
-                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -captureBonus);
+                    history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, m), -quietMovePenalty, HistoryTable.MainHistoryClamp);
+                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -quietMovePenalty);
                 }
             }
 
@@ -1085,7 +1076,16 @@ namespace Lizard.Logic.Search
         [MethodImpl(Inline)]
         private static int StatBonus(int depth)
         {
-            return Math.Min((252 * depth) - 87, 1685);
+            return Math.Min((StatBonusMult * depth) - StatBonusSub, StatBonusMax);
+        }
+
+        /// <summary>
+        /// Calculates a penalty, given the current <paramref name="depth"/>.
+        /// </summary>
+        [MethodImpl(Inline)]
+        private static int StatMalus(int depth)
+        {
+            return Math.Min((StatMalusMult * depth) - StatMalusSub, StatMalusMax);
         }
 
         /// <summary>
