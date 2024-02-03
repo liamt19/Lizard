@@ -149,6 +149,8 @@ namespace Lizard.Logic.UCI
 
             LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
 
+            //  In case a "ucinewgame" isn't sent for the first game
+            HandleNewGame();
             InputLoop();
         }
 
@@ -281,6 +283,7 @@ namespace Lizard.Logic.UCI
                 else if (cmd == "leave")
                 {
                     LogString("[INFO]: Leaving");
+                    Active = false;
                     return;
                 }
                 else if (cmd == "setoption")

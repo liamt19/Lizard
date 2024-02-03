@@ -484,9 +484,10 @@ namespace Lizard.Logic.Search
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                thisThread.Nodes++;
+
                 pos.MakeMove(m);
 
-                thisThread.Nodes++;
                 playedMoves++;
                 ulong prevNodes = thisThread.Nodes;
 
