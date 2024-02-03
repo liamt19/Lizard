@@ -312,6 +312,8 @@ namespace Lizard.Logic.Search
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                     ss->CurrentMove = m;
                     ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][m.Capture ? 1 : 0][histIdx];
+                    thisThread.Nodes++;
+
                     pos.MakeMove(m);
 
                     score = -QSearch<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
