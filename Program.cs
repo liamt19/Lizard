@@ -56,29 +56,7 @@ namespace Lizard
             Thread.CurrentThread.Name = "MainThread";
 
             Utilities.CheckConcurrency();
-
-            //  Note Assembly.GetExecutingAssembly().GetTypes() can't be used with AOT compilation,
-            //  so if you are trying to use AOT this needs to be skipped. (It isn't needed for AOT anyway)
-            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
-            {
-                //  Don't run the constructors of NN classes.
-                if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
-
-                //  Don't bother with types that are named similar to:
-                //  "<>c__DisplayClass4_0" (lambda functions)
-                //  "__StaticArrayInitTypeSize=16" (static int[] type stuff)
-                if (type.Name.StartsWith('<') || type.Name.StartsWith('_')) continue;
-
-                try
-                {
-                    RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-                }
-                catch (TypeInitializationException e)
-                {
-                    Log("InitializeAll for type " + type.FullName + " failed: ");
-                    Log(e.ToString());
-                }
-            }
+            Utilities.InitializeStaticConstructors();
 
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,

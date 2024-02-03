@@ -182,6 +182,45 @@ namespace Lizard.Logic.Util
             }
         }
 
+        /// <summary>
+        /// Runs the static constructor of every class, unless the class is marked with the <see cref="SkipStaticConstructorAttribute"/>.
+        /// <br></br>
+        /// If PUBLISH_AOT is defined, this returns immediately since it isn't necessary.
+        /// </summary>
+        public static void InitializeStaticConstructors()
+        {
+            //  Note Assembly.GetExecutingAssembly().GetTypes() can't be used with AOT compilation,
+            //  so if PUBLISH_AOT is defined this needs to be skipped. (It isn't needed for AOT anyway)
+
+            //  This is because the AOT compiler can't guarantee what types are in the assembly until it is compiled,
+            //  so it doesn't let you get a list of them (via GetExecutingAssembly().GetTypes()) or run their constructors.
+
+#if PUBLISH_AOT
+            return;
+#endif
+
+            foreach (Type type in System.Reflection.Assembly.GetExecutingAssembly().GetTypes())
+            {
+                //  Don't run the constructors of NN classes.
+                if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
+
+                //  Don't bother with types that are named similar to:
+                //  "<>c__DisplayClass4_0" (lambda functions)
+                //  "__StaticArrayInitTypeSize=16" (static int[] type stuff)
+                if (type.Name.StartsWith('<') || type.Name.StartsWith('_')) continue;
+
+                try
+                {
+                    System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
+                }
+                catch (TypeInitializationException e)
+                {
+                    Log("InitializeAll for type " + type.FullName + " failed: ");
+                    Log(e.ToString());
+                }
+            }
+        }
+
 
         public static string GetCompilerInfo()
         {
