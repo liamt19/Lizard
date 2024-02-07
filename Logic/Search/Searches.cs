@@ -496,7 +496,7 @@ namespace Lizard.Logic.Search
                     (ss + 1)->PV = null;
                 }
 
-                int newDepth = depth - 1 + extend;
+                int newDepth = depth + extend;
 
                 if (depth >= 2
                     && legalMoves >= 2
@@ -528,28 +528,24 @@ namespace Lizard.Logic.Search
 
                     R -= (ss->StatScore / (4096 * HistoryReductionMultiplier));
 
-                    //  Clamp the reduction so that the new depth is somewhere in [1, depth]
-                    int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth + 1);
+                    //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
+                    //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
+                    //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
+                    R = Math.Clamp(R, 1, newDepth);
+                    int reducedDepth = (newDepth - R);
 
                     score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
-                    if (EnableAssertions)
-                    {
-                        Assert(score is > -ScoreInfinite and < ScoreInfinite,
-                            "The returned score = " + score + " from a LMR search was OOB! (should be " + (-ScoreInfinite) + " < score < " + ScoreInfinite);
-                    }
 
-                    if (score > alpha && newDepth > reducedDepth)
+                    //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
+                    //  before updating this move's continuation history.
+                    if (score > alpha && R > 1)
                     {
-                        if (score > (bestScore + LMRExtensionThreshold))
-                        {
-                            newDepth++;
-                        }
-                        else if (score < (bestScore + newDepth))
-                        {
-                            newDepth--;
-                        }
+                        //  This is mainly SF's idea about a verification search, and updating
+                        //  the continuation histories based on the result of this search.
+                        newDepth += (score > (bestScore + LMRExtensionThreshold)) ? 1 : 0;
+                        newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
-                        if (newDepth < reducedDepth)
+                        if (newDepth - 1 > reducedDepth)
                         {
                             score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
@@ -558,12 +554,12 @@ namespace Lizard.Logic.Search
                         if (score <= alpha)
                         {
                             //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth);
+                            bonus = -StatBonus(newDepth - 1);
                         }
                         else if (score >= beta)
                         {
                             //  Apply a bonus to this continuation.
-                            bonus = StatBonus(newDepth);
+                            bonus = StatBonus(newDepth - 1);
                         }
 
                         UpdateContinuations(ss, ourColor, thisPieceType, m.To, bonus);
@@ -571,16 +567,16 @@ namespace Lizard.Logic.Search
                 }
                 else if (!isPV || legalMoves > 1)
                 {
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                 }
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
                     //  Do a new PV search here.
-
+                    //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV = PV;
                     (ss + 1)->PV[0] = Move.Null;
-                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth, false);
+                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth - 1, false);
                 }
 
                 pos.UnmakeMove(m);
