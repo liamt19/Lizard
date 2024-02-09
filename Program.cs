@@ -77,7 +77,7 @@ namespace Lizard
             ThreadSetup setup = new ThreadSetup();
             while (true)
             {
-                string input = Console.ReadLine();
+                string input = ReadInput();
                 if (input == null || input.Length == 0)
                 {
                     continue;

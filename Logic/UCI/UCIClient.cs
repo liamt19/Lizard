@@ -110,7 +110,7 @@ namespace Lizard.Logic.UCI
         /// <returns>The remaining words in the input, which are parameters for the command</returns>
         private string[] ReceiveString(out string cmd)
         {
-            string input = Console.ReadLine();
+            string input = ReadInput();
             if (input == null || input.Length == 0)
             {
                 cmd = ":(";
