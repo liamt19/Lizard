@@ -229,7 +229,7 @@ namespace Lizard.Logic.Search
                 && (eval >= beta)
                 && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
             {
-                return eval;
+                return (eval + beta) / 2;
             }
 
 
