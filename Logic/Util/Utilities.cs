@@ -849,27 +849,6 @@ namespace Lizard.Logic.Util
         }
 
 
-
-        /// <summary>
-        /// Does what <see cref="Console.ReadLine()"/> does, but with a larger buffer.
-        /// <para></para>
-        /// Console.ReadLine() has a buffer of 256 (UTF-16?) characters, which is only large enough to handle
-        /// "position startpos moves ..." commands containing fewer than 404 moves.
-        /// A buffer of 20000 bytes is large enough to handle about 1994 moves, which should be plenty.
-        /// <para></para>
-        /// Thanks to <see href="https://github.com/eduherminio"/> for spotting this
-        /// </summary>
-        public static string ReadInput()
-        {
-            Span<byte> bytes = stackalloc byte[20000];
-            using Stream inputStream = Console.OpenStandardInput();
-            int outputLength = inputStream.Read(bytes);
-
-            return System.Text.Encoding.UTF8.GetString(bytes[..outputLength]).TrimEnd();
-        }
-
-
-
         /// <summary>
         /// Sorts the <paramref name="items"/> between the starting index <paramref name="offset"/> and last index <paramref name="end"/>
         /// using <typeparamref name="T"/>'s CompareTo method. This is done in a stable manner so long as the CompareTo method returns

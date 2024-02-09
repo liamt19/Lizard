@@ -4,6 +4,7 @@
 
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Search;
@@ -52,6 +53,14 @@ namespace Lizard
                 //  Otherwise, e.Cancel == false and the program exits normally
             };
 
+
+            //  Console.ReadLine() has a buffer of 256 (UTF-16?) characters, which is only large enough to handle
+            //  "position startpos moves ..." commands containing fewer than 404 moves.
+            //  This should double the amount that Console.ReadLine() can handle.
+            //  Thanks to https://github.com/eduherminio for spotting this
+            Console.SetIn(new StreamReader(Console.OpenStandardInput(), Encoding.UTF8, false, 2048 * 4));
+
+
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
 
@@ -77,7 +86,7 @@ namespace Lizard
             ThreadSetup setup = new ThreadSetup();
             while (true)
             {
-                string input = ReadInput();
+                string input = Console.ReadLine();
                 if (input == null || input.Length == 0)
                 {
                     continue;
