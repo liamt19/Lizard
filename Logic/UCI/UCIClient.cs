@@ -108,13 +108,13 @@ namespace Lizard.Logic.UCI
         /// </summary>
         /// <param name="cmd">Set to the command, which is the first word in the input</param>
         /// <returns>The remaining words in the input, which are parameters for the command</returns>
-        private string[] ReceiveString(out string cmd)
+        private static string[] ReceiveString(out string cmd)
         {
             string input = Console.ReadLine();
             if (input == null || input.Length == 0)
             {
                 cmd = ":(";
-                return new string[0];
+                return Array.Empty<string>();
             }
 
             string[] splits = input.Split(" ");
@@ -525,7 +525,7 @@ namespace Lizard.Logic.UCI
             }
         }
 
-        private void HandleNewGame()
+        private static void HandleNewGame()
         {
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
@@ -703,7 +703,7 @@ namespace Lizard.Logic.UCI
             }
         }
 
-        public void PrintSPSAParams()
+        public static void PrintSPSAParams()
         {
             foreach (var optName in Options.Keys)
             {

@@ -13,11 +13,19 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Globalization", "CA1305:Specify IFormatProvider", Justification = "Most strings (FEN, UCI, etc.) are in English", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 [assembly: SuppressMessage("Globalization", "CA1307:Specify StringComparison for clarity", Justification = "Most strings (FEN, UCI, etc.) are in English", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 [assembly: SuppressMessage("Globalization", "CA1311:Specify a culture or use an invariant version", Justification = "Piece names are always in English", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+[assembly: SuppressMessage("Globalization", "CA1310:Specify StringComparison for correctness", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 
 
 
-[assembly: SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "This doesn't seem to be an issue", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
+[assembly: SuppressMessage("Performance", "CA1810:Initialize reference type static fields inline", Justification = "This doesn't seem to be an issue", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+[assembly: SuppressMessage("Performance", "CA1815:Override equals and operator equals on value types", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
+[assembly: SuppressMessage("Performance", "CA1805:Do not initialize unnecessarily", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
 
 
 
-[assembly: SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Constants are more readable", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic.Transposition")]
+[assembly: SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Constants are more readable", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+
+
+
+[assembly: SuppressMessage("Usage", "CA2211:Non-constant fields should not be visible", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+[assembly: SuppressMessage("Usage", "CA2201:Do not raise reserved exception types", Scope = "namespaceanddescendants", Target = "~N:Lizard")]

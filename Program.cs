@@ -573,7 +573,7 @@ namespace Lizard
 
                 try
                 {
-                    if (input.Length > 5 && int.TryParse(input.Substring(input.IndexOf("bench") + 6), out int newDepth))
+                    if (input.Length > 5 && int.TryParse(input.AsSpan(input.IndexOf("bench") + 6), out int newDepth))
                     {
                         depth = newDepth;
                     }
