@@ -1,4 +1,13 @@
-﻿using System.Text;
+﻿
+
+#define MP_NM
+//#undef MP_NM
+
+#define MP_QS
+//#undef MP_QS
+
+
+using System.Text;
 
 using Lizard.Logic.Search.Ordering;
 using Lizard.Logic.Threads;
@@ -301,20 +310,20 @@ namespace Lizard.Logic.Search
 
                 for (int i = 0; i < numCaps; i++)
                 {
-                    Move m = OrderNextMove(captures, numCaps, i);
-                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, seeThreshold))
+                    Move cm = OrderNextMove(captures, numCaps, i);
+                    if (!pos.IsLegal(cm) || !SEE_GE(pos, cm, seeThreshold))
                     {
                         //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
                         continue;
                     }
 
-                    int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
-                    prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
-                    ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None) ? 1 : 0][histIdx];
+                    int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(cm.From), cm.To);
+                    prefetch(TranspositionTable.GetCluster(pos.HashAfter(cm)));
+                    ss->CurrentMove = cm;
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(cm.To) != None) ? 1 : 0][histIdx];
                     thisThread.Nodes++;
 
-                    pos.MakeMove(m);
+                    pos.MakeMove(cm);
 
                     score = -QSearch<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
 
@@ -324,7 +333,7 @@ namespace Lizard.Logic.Search
                         score = -Negamax<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, depth - 4, !cutNode);
                     }
 
-                    pos.UnmakeMove(m);
+                    pos.UnmakeMove(cm);
 
                     if (score >= probBeta)
                     {
@@ -361,12 +370,28 @@ namespace Lizard.Logic.Search
             bool skipQuiets = false;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+
+#if MP_NM
+            Move* killers = &ss->Killer0;
+
+            PieceToHistory*[] contHist = { (ss - 1)->ContinuationHistory, (ss - 2)->ContinuationHistory,
+                                            null                        , (ss - 4)->ContinuationHistory,
+                                            null                        , (ss - 6)->ContinuationHistory };
+
+            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, SquareNB);
+
+            Move m;
+            while ((m = mp.NextMove(skipQuiets)) != Move.Null)
+            {
+
+#else
             int size = pos.GenPseudoLegal(list);
             AssignScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
+#endif
 
                 if (m == ss->Skip)
                 {
@@ -387,7 +412,7 @@ namespace Lizard.Logic.Search
                 }
 
 
-                bool isCapture = (bb.GetPieceAtIndex(m.To) != None);
+                bool isCapture = bb.GetPieceAtIndex(m.To) != None;
                 int toSquare = m.To;
                 int thisPieceType = bb.GetPieceAtIndex(m.From);
 
@@ -409,10 +434,12 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
 
+#if !MP_NM
                     if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
                     {
                         continue;
                     }
+#endif
 
                     if (givesCheck || isCapture || skipQuiets)
                     {
@@ -840,13 +867,31 @@ namespace Lizard.Logic.Search
             int movesMade = 0;
             int checkEvasions = 0;
 
+
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+
+#if MP_QS
+            //  Killer0's 4 byte move is followed by a 4 byte buffer, and Killer1's move and buffer immediately follows that.
+            //  This is less of a headache to deal with constantly converting ScoredMove's to Move's and vice versa,
+            //  but we also need to be much more careful about accessing this pointer (since the Move*[1] is the junk data in Killer0's buffer)
+            Move* killers = &ss->Killer0;
+
+            PieceToHistory*[] contHist = { (ss - 1)->ContinuationHistory, (ss - 2)->ContinuationHistory,
+                                            null                        , (ss - 4)->ContinuationHistory,
+                                            null                        , (ss - 6)->ContinuationHistory };
+
+            MovePicker mp = new MovePicker(pos, history.MainHistory, history.CaptureHistory, contHist, killers, list, depth, ttMove, prevSquare);
+            Move m;
+            while ((m = mp.NextMove()) != Move.Null) 
+            {
+#else
+
             int size = pos.GenPseudoLegal(list);
             AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
-
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -866,12 +911,14 @@ namespace Lizard.Logic.Search
                 bool isPromotion = m.Promotion;
                 bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
+#if !MP_QS
                 //  Captures and moves made while in check are always OK.
                 //  Moves that give check are only OK if the depth is above the threshold.
                 if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
                 {
                     continue;
                 }
+#endif
 
                 movesMade++;
 

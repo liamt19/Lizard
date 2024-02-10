@@ -89,11 +89,11 @@ namespace Lizard.Logic.Search
                           (depth > 0 ? NegamaxTT :
                                        QuiesceTT);
 
-            if (!ttMove.Equals(Move.Null))
+            if (ttMove != Move.Null)
             {
                 //  We have a ttMove, so try to convert it to a normal move.
                 TTMove = new ScoredMove(ref ttMove);
-                if (!this.pos.IsPseudoLegal(TTMove.Move))
+                if (!this.pos.IsPseudoLegal(ttMove))
                 {
                     //  The ttMove we got isn't pseudo-legal, so skip the TT stage.
                     stage++;
@@ -186,42 +186,6 @@ namespace Lizard.Logic.Search
                     genSize = pos.GenAll<GenLoud>(currentMove);
 
                     lastMove = currentMove + genSize;
-
-                    if (EnableAssertions)
-                    {
-                        for (ScoredMove* iter = currentMove; iter != lastMove; iter++)
-                        {
-                            Move m = iter->Move;
-                            if (pos.bb.GetPieceAtIndex(m.To) != None)
-                            {
-                                Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[m.To]) != 0,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "' " +
-                                    "marked as a capture, but " + ColorToString(Not(pos.ToMove)) + " doesn't have a piece on " + IndexToString(m.To) + "!");
-                            }
-                            else if (m.EnPassant)
-                            {
-                                int up = ShiftUpDir(pos.ToMove);
-                                Assert(m.To == pos.State->EPSquare, "GenAll<GenLoud> generated an en passant move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "but the move's To square should be " + IndexToString(pos.State->EPSquare) + ", not " + IndexToString(m.To));
-
-                                int epPawnSquare = m.To - up;
-
-                                Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[epPawnSquare]) != 0,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "marked as an en passant, but " + ColorToString(Not(pos.ToMove)) + " doesn't have a pawn to be captured on " + IndexToString(epPawnSquare) + "!");
-                            }
-                            else if (m.Promotion)
-                            {
-                                Assert(m.PromotionTo == Queen,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "but GenLoud is only supposed to generate queen promotions for non-captures!");
-                            }
-                            else
-                            {
-                                Assert(false, "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', which isn't a capture, queen promotion, or en passant!");
-                            }
-                        }
-                    }
 
                     ScoreCaptures();
                     PartialSort(currentMove, lastMove);
@@ -462,11 +426,13 @@ namespace Lizard.Logic.Search
                     }
 
                     //  For non-capture queen promotions
-                    capturedPiece = Rook;
+                    capturedPiece = m.PromotionTo;
                 }
 
                 int capIdx = HistoryTable.CapIndex(pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                iter->Score = (13 * GetPieceValue(capturedPiece)) + (captureHistory[capIdx] / 12);
+                
+                //iter->Score = (13 * GetPieceValue(capturedPiece)) + (captureHistory[capIdx] / 12);
+                iter->Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + (captureHistory[capIdx] / OrderingHistoryDivisor);
             }
         }
 
@@ -474,7 +440,8 @@ namespace Lizard.Logic.Search
         {
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
+                int pt = pos.bb.GetPieceAtIndex(iter->Move.From);
+                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pt, iter->Move.To);
 
                 iter->Score = (2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
                               (2 * (*continuations[0])[contIdx]) +
@@ -482,9 +449,9 @@ namespace Lizard.Logic.Search
                                   (*continuations[3])[contIdx] +
                                   (*continuations[5])[contIdx];
 
-                if ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(iter->Move.From)] & SquareBB[iter->Move.To]) != 0)
+                if ((pos.State->CheckSquares[pt] & SquareBB[iter->Move.To]) != 0)
                 {
-                    iter->Score += 10000;
+                    iter->Score += OrderingGivesCheckBonus;
                 }
             }
 
