@@ -128,7 +128,7 @@
                     int to = poplsb(&capturesL);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.WEST, to, capture: true);
+                    m.SetNew(to - up - Direction.WEST, to);
 
                 }
 
@@ -137,7 +137,7 @@
                     int to = poplsb(&capturesR);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.EAST, to, capture: true);
+                    m.SetNew(to - up - Direction.EAST, to);
 
                 }
 
@@ -201,11 +201,6 @@
                 {
                     ref Move m = ref list[size++].Move;
                     m.SetNew(from, promotionSquare, promotionPiece);
-
-                    if ((them & SquareBB[promotionSquare]) != 0)
-                    {
-                        m.Capture = true;
-                    }
                 }
 
                 return size;
@@ -268,7 +263,7 @@
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to, (them & SquareBB[to]) != 0);
+                    m.SetNew(ourKing, to);
 
                 }
 
@@ -425,7 +420,7 @@
                     int to = poplsb(&moves);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to, capture: (them & SquareBB[to]) != 0);
+                    m.SetNew(idx, to);
                 }
             }
 
@@ -645,22 +640,5 @@
         }
 #endif
 
-        [MethodImpl(Inline)]
-        public ScoredMove CondensedToNormalMove(CondensedMove cm)
-        {
-            Move m = new Move(cm);
-
-            if (m.Promotion && bb.GetPieceAtIndex(m.From) != Pawn)
-            {
-                m.Promotion = false;
-            }
-
-            if (bb.GetPieceAtIndex(m.To) != None)
-            {
-                m.Capture = true;
-            }
-
-            return new ScoredMove(ref m);
-        }
     }
 }

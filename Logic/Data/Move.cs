@@ -5,7 +5,7 @@ namespace Lizard.Logic.Data
 
     public unsafe struct Move
     {
-        public static readonly Move Null = new Move(A1, A1);
+        public static readonly Move Null = new Move();
 
         //  6 bits for: From, To, SqChecker
         //  
@@ -15,32 +15,27 @@ namespace Lizard.Logic.Data
         //  6 bits for the 6 move flags.
         //  
         //  Total of 26, padded to 32.
-        private int _data;
-        public int Data
+        private ushort _data;
+        public ushort Data
         {
             get => _data;
             set => _data = value;
         }
 
-        public const int FlagCapture = 0b000001 << 26;
-        public const int FlagEnPassant = 0b000010 << 26;
-        public const int FlagCastle = 0b000100 << 26;
-        public const int FlagPromotion = 0b100000 << 26;
+
+
+        public const int FlagEnPassant = 0b000001 << 14;
+        public const int FlagCastle = 0b000010 << 14;
+        public const int FlagPromotion = 0b000011 << 14;
+
+        private const int SpecialFlagsMask = 0b000011 << 14;
+
 
         /// <summary>
         /// A mask of <see cref="To"/> and <see cref="From"/>
         /// </summary>
         private const int Mask_ToFrom = 0xFFF;
 
-        /// <summary>
-        /// A mask of <see cref="To"/>, <see cref="From"/>, and <see cref="PromotionTo"/>
-        /// </summary>
-        private const int Mask_Condensed_EQ = 0x3FFF;
-
-        /// <summary>
-        /// A mask of <see cref="To"/>, <see cref="From"/>, <see cref="PromotionTo"/>, and <see cref="Castle"/>
-        /// </summary>
-        private const int Mask_EQ = 0x10003FFF;
 
         /// <summary>
         /// Gets or sets the square that this piece is moving to.
@@ -49,7 +44,7 @@ namespace Lizard.Logic.Data
         {
             //  Reminder to future self: This is a property, and calling move.get_To() 157,582,869 times at depth 15 is a no-no.
             get => _data & 0x3F;
-            set => _data = (_data & ~0x3F) | value;
+            set => _data = (ushort)((_data & ~0x3F) | value);
         }
 
         /// <summary>
@@ -59,7 +54,7 @@ namespace Lizard.Logic.Data
         {
             //  Reminder to future self: This is a property, and calling move.get_From() 124,310,980 times at depth 15 is a no-no.
             get => (_data >> 6) & 0x3F;
-            set => _data = (_data & ~(0x3F << 6)) | (value << 6);
+            set => _data = (ushort)((_data & ~(0x3F << 6)) | (value << 6));
         }
 
         /// <summary>
@@ -78,19 +73,7 @@ namespace Lizard.Logic.Data
         public int PromotionTo
         {
             get => ((_data >> 12) & 0x3) + 1;
-            set => _data = (_data & ~(0x3 << 12)) | ((value - 1) << 12);
-        }
-
-        /// <summary>
-        /// Gets or sets whether this move is a capture or not.
-        /// <br></br>
-        /// Note that <see cref="EnPassant"/> and <see cref="Capture"/> are mutually exclusive, so en passant moves intentionally do not show up as captures.
-        /// I'm defining captures as only moves that take an opponent's piece on the <see cref="To"/> square, and en passant moves don't do that.
-        /// </summary>
-        public bool Capture
-        {
-            get => (_data & FlagCapture) != 0;
-            set => _data ^= FlagCapture;
+            set => _data = (ushort)((_data & ~(0x3 << 12)) | ((value - 1) << 12));
         }
 
         /// <summary>
@@ -98,7 +81,7 @@ namespace Lizard.Logic.Data
         /// </summary>
         public bool EnPassant
         {
-            get => (_data & FlagEnPassant) != 0;
+            get => (_data & SpecialFlagsMask) == FlagEnPassant;
             set => _data ^= FlagEnPassant;
         }
 
@@ -107,7 +90,7 @@ namespace Lizard.Logic.Data
         /// </summary>
         public bool Castle
         {
-            get => (_data & FlagCastle) != 0;
+            get => (_data & SpecialFlagsMask) == FlagCastle;
             set => _data ^= FlagCastle;
         }
 
@@ -116,49 +99,14 @@ namespace Lizard.Logic.Data
         /// </summary>
         public bool Promotion
         {
-            get => (_data & FlagPromotion) != 0;
+            get => (_data & SpecialFlagsMask) == FlagPromotion;
             set => _data ^= FlagPromotion;
         }
 
-        public Move(CondensedMove cm)
-        {
-            ushort condData = cm.Data;
-            _data = condData & Mask_ToFrom;
 
-            int rank = GetIndexRank(cm.To);
-            if ((rank == 0 || rank == 7) && cm.PromotionTo != 0)
-            {
-                this.PromotionTo = cm.PromotionTo;
-                this.Promotion = true;
-            }
+        public void SetNew(int from, int to) => _data = (ushort)(to | (from << 6));
 
-            if (cm.EnPassant)
-            {
-                this.EnPassant = true;
-            }
-
-            if (cm.Castle)
-            {
-                this.Castle = true;
-            }
-        }
-
-        public Move(int from, int to)
-        {
-            _data = to | (from << 6);
-        }
-
-        public Move(int from, int to, int promotionTo)
-        {
-            _data = to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion;
-        }
-
-
-        public void SetNew(int from, int to) => _data = to | (from << 6);
-
-        public void SetNew(int from, int to, bool capture = false) => _data = to | (from << 6) | (capture ? FlagCapture : 0);
-
-        public void SetNew(int from, int to, int promotionTo) => _data = to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion;
+        public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
 
 
         [MethodImpl(Inline)]
@@ -286,17 +234,10 @@ namespace Lizard.Logic.Data
             //  This meant that every time we did move.Equals(other) the generated IL had ~8 extra instructions,
             //  plus a pair of lengthy "box/unbox" instructions since a Move is a value type being passes as an object.
 
-            return (move.Data & Mask_EQ) == (Data & Mask_EQ);
+            return (move.Data == Data);
         }
 
-        /// <summary>
-        /// Returns true if the <see cref="CondensedMove"/> <paramref name="move"/> has the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public bool Equals(CondensedMove move)
-        {
-            return (move.GetToFromPromotion == (Data & Mask_Condensed_EQ)) && move.Castle == Castle;
-        }
+
 
         [MethodImpl(Inline)]
         public bool Equals(ScoredMove move)

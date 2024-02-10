@@ -3,7 +3,6 @@
     public class RootMove : IComparable<RootMove>
     {
         public Move Move;
-        public CondensedMove CondMove;
 
         public int Score;
         public int PreviousScore;
@@ -16,7 +15,6 @@
         public RootMove(Move move, int score = -ScoreInfinite)
         {
             Move = move;
-            CondMove = new CondensedMove(Move);
             Score = score;
             PreviousScore = score;
             AverageScore = score;

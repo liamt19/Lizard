@@ -151,7 +151,7 @@ namespace Lizard.Logic.Search
 
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
-            CondensedMove ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : CondensedMove.Null);
+            Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
             //  For TT hits, we can accept and return the TT score if:
             //  We aren't in a PV node,
@@ -224,7 +224,7 @@ namespace Lizard.Logic.Search
                 && !ss->TTPV
                 && !doSkip
                 && depth <= ReverseFutilityPruningMaxDepth
-                && ttMove.Equals(CondensedMove.Null)
+                && ttMove.Equals(Move.Null)
                 && (eval < ScoreAssuredWin)
                 && (eval >= beta)
                 && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
@@ -311,7 +311,7 @@ namespace Lizard.Logic.Search
                     int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][m.Capture ? 1 : 0][histIdx];
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None) ? 1 : 0][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -334,7 +334,7 @@ namespace Lizard.Logic.Search
             }
 
 
-            if (ttMove.Equals(CondensedMove.Null)
+            if (ttMove.Equals(Move.Null)
                 && cutNode
                 && depth >= ExtraCutNodeReductionMinDepth)
             {
@@ -387,7 +387,7 @@ namespace Lizard.Logic.Search
                 }
 
 
-                bool isCapture = m.Capture;
+                bool isCapture = (bb.GetPieceAtIndex(m.To) != None);
                 int toSquare = m.To;
                 int thisPieceType = bb.GetPieceAtIndex(m.From);
 
@@ -751,7 +751,7 @@ namespace Lizard.Logic.Search
             ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
             int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
-            CondensedMove ttMove = ss->TTHit ? tte->BestMove : CondensedMove.Null;
+            Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
             bool ttPV = ss->TTHit && tte->PV;
 
             Move* PV = stackalloc Move[MaxPly];
@@ -862,7 +862,7 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
 
-                bool isCapture = m.Capture;
+                bool isCapture = (pos.bb.GetPieceAtIndex(m.To) != None);
                 bool isPromotion = m.Promotion;
                 bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
@@ -1013,7 +1013,7 @@ namespace Lizard.Logic.Search
             int quietMoveBonus = StatBonus(depth + 1);
             int quietMovePenalty = StatMalus(depth);
 
-            if (bestMove.Capture)
+            if (capturedPiece != None)
             {
                 int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
                 history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
@@ -1023,11 +1023,12 @@ namespace Lizard.Logic.Search
 
                 int bestMoveBonus = (bestScore > beta + HistoryCaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
 
-                if (ss->Killer0 != bestMove)
+                if (ss->Killer0 != bestMove && !bestMove.EnPassant)
                 {
                     ss->Killer1 = ss->Killer0;
                     ss->Killer0 = bestMove;
                 }
+
                 history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), bestMoveBonus, HistoryTable.MainHistoryClamp);
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
 

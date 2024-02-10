@@ -26,7 +26,7 @@ namespace Lizard.Logic.Transposition
         public int _ScoreStatEval;      //  4 = 16 bits + 16 bits
 
         [FieldOffset(4)]
-        public CondensedMove BestMove;  //  2 = 16 bits
+        public Move BestMove;           //  2 = 16 bits
 
         [FieldOffset(6)]
         public ushort Key;              //  2 = 16 bits
@@ -99,7 +99,7 @@ namespace Lizard.Logic.Transposition
             this.AgePVType = 0;
             this.Depth = (sbyte)depth;
 
-            this.BestMove = new CondensedMove(move);
+            this.BestMove = move;
         }
 
         [MethodImpl(Inline)]
@@ -109,7 +109,7 @@ namespace Lizard.Logic.Transposition
         }
 
         [MethodImpl(Inline)]
-        public void Update(ulong key, short score, TTNodeType nodeType, int depth, CondensedMove move, short statEval, bool isPV = false)
+        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
         {
             if (!move.IsNull() || (ushort)key != this.Key)
             {
@@ -134,18 +134,6 @@ namespace Lizard.Logic.Transposition
             }
         }
 
-        [MethodImpl(Inline)]
-        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
-        {
-            if (move.IsNull())
-            {
-                Update(key, score, nodeType, depth, CondensedMove.Null, statEval, isPV);
-            }
-            else
-            {
-                Update(key, score, nodeType, depth, new CondensedMove(move), statEval, isPV);
-            }
-        }
 
         /// <summary>
         /// Converts the <paramref name="ttScore"/> retrieved from a TT hit to a usable score from the root position.

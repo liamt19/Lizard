@@ -393,7 +393,7 @@ namespace Lizard.Logic.Core
                 }
             }
 
-            if (move.Capture)
+            if (theirPiece != None)
             {
                 //  Remove their piece, and update the hash
                 bb.RemovePiece(moveTo, theirColor, theirPiece);
@@ -773,7 +773,7 @@ namespace Lizard.Logic.Core
             int us = bb.GetColorAtIndex(from);
             int ourPiece = bb.GetPieceAtIndex(from);
 
-            if (m.Capture)
+            if (bb.GetPieceAtIndex(to) != None)
             {
                 if (EnableAssertions)
                 {
@@ -820,7 +820,8 @@ namespace Lizard.Logic.Core
                 return false;
             }
 
-            if (bb.GetPieceAtIndex(moveTo) != None && (move.Capture == false || (pc == bb.GetColorAtIndex(moveTo))))
+            //if (bb.GetPieceAtIndex(moveTo) != None && (move.Capture == false || (pc == bb.GetColorAtIndex(moveTo))))
+            if (bb.GetPieceAtIndex(moveTo) != None && (pc == bb.GetColorAtIndex(moveTo)))
             {
                 //  There is a piece on the square we are moving to, but this move wasn't generated as a capture
                 //  or the piece on the To square is the same color as the one that is moving.
@@ -883,12 +884,6 @@ namespace Lizard.Logic.Core
             {
                 //	Must move king out of double check
                 return false;
-            }
-
-            if (EnableAssertions)
-            {
-                Assert(move.Capture == false || bb.GetPieceAtIndex(moveTo) != Piece.None,
-                    "IsLegal(" + move.ToString() + " = " + move.ToString(this) + ") is trying to capture a piece on an empty square!");
             }
 
             int ourColor = bb.GetColorAtIndex(moveFrom);
