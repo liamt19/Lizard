@@ -110,6 +110,8 @@ namespace Lizard.Logic.Core
             }
         }
 
+        public bool CanCastle() => ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None);
+
 
 
         private readonly nint _accumulatorBlock = nint.Zero;

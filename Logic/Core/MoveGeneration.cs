@@ -267,7 +267,7 @@
 
                 }
 
-                if ((quiets || nonEvasions) && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
+                if ((quiets || nonEvasions) && CanCastle())
                 {
                     //  Only do castling moves if we are doing non-captures or we aren't in check.
                     size = GenCastlingMoves(list, size);

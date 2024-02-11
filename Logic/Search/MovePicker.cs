@@ -453,6 +453,11 @@ namespace Lizard.Logic.Search
                 {
                     iter->Score += OrderingGivesCheckBonus;
                 }
+
+                if (iter->Move.Castle)
+                {
+                    iter->Score += OrderingGivesCheckBonus * 100;
+                }
             }
 
         }

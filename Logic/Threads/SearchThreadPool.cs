@@ -87,6 +87,9 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public void StartSearch(Position rootPosition, ref SearchInformation rootInfo, ThreadSetup setup)
         {
+            TranspositionTable.Clear();
+            SearchPool.Clear();
+
             MainThread.WaitForThreadFinished();
 
             StopThreads = false;
