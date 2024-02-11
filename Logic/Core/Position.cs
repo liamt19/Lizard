@@ -939,6 +939,20 @@ namespace Lizard.Logic.Core
                     {
                         return false;
                     }
+
+                    int kingSq = moveTo switch
+                    {
+                        C1 => D1,
+                        G1 => F1,
+                        C8 => D8,
+                        G8 => F8,
+                        _ => moveFrom,
+                    };
+
+                    if ((bb.AttackersTo(kingSq, bb.Occupancy) & bb.Colors[Not(ToMove)]) != 0)
+                    {
+                        return false;
+                    }
                 }
 
                 //  We can move anywhere as long as it isn't attacked by them.

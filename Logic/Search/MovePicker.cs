@@ -410,12 +410,16 @@ namespace Lizard.Logic.Search
                 Move m = iter->Move;
                 int moveTo = m.To;
                 int moveFrom = m.From;
+                int capturedPiece = Pawn;
 
-                int capturedPiece = pos.bb.GetPieceAtIndex(moveTo);
-                if (m.EnPassant)
+                if (bb.GetPieceAtIndex(moveTo) != None)
                 {
-                    capturedPiece = Pawn;
+                    capturedPiece = pos.bb.GetPieceAtIndex(moveTo);
                 }
+                //else if (m.EnPassant)
+                //{
+                //    capturedPiece = Pawn;
+                //}
                 else if (m.Promotion)
                 {
                     if (EnableAssertions)
@@ -452,11 +456,6 @@ namespace Lizard.Logic.Search
                 if ((pos.State->CheckSquares[pt] & SquareBB[iter->Move.To]) != 0)
                 {
                     iter->Score += OrderingGivesCheckBonus;
-                }
-
-                if (iter->Move.Castle)
-                {
-                    iter->Score += OrderingGivesCheckBonus * 100;
                 }
             }
 

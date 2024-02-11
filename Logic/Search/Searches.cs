@@ -383,7 +383,6 @@ namespace Lizard.Logic.Search
             Move m;
             while ((m = mp.NextMove(skipQuiets)) != Move.Null)
             {
-
 #else
             int size = pos.GenPseudoLegal(list);
             AssignScores(pos, ss, history, list, size, ttMove);
