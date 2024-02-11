@@ -6,7 +6,7 @@
 
 //#define SKIP_INIT_IN_DEBUG
 
-#define ENABLE_ASSERTIONS
+//#define ENABLE_ASSERTIONS
 
 
 #if USE_SKIP_INIT

@@ -282,8 +282,8 @@
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.WK)
                         && (occ & WhiteKingsideMask) == 0
-                        && (bb.AttackersTo(F1, occ) & them) == 0
-                        && (bb.AttackersTo(G1, occ) & them) == 0
+                        //&& (bb.AttackersTo(F1, occ) & them) == 0
+                        //&& (bb.AttackersTo(G1, occ) & them) == 0
                         && (bb.Pieces[Rook] & SquareBB[H1] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
@@ -293,8 +293,8 @@
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
                         && (occ & WhiteQueensideMask) == 0
-                        && (bb.AttackersTo(C1, occ) & them) == 0
-                        && (bb.AttackersTo(D1, occ) & them) == 0
+                        //&& (bb.AttackersTo(C1, occ) & them) == 0
+                        //&& (bb.AttackersTo(D1, occ) & them) == 0
                         && (bb.Pieces[Rook] & SquareBB[A1] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
@@ -306,8 +306,8 @@
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.BK)
                         && (occ & BlackKingsideMask) == 0
-                        && (bb.AttackersTo(F8, occ) & them) == 0
-                        && (bb.AttackersTo(G8, occ) & them) == 0
+                        //&& (bb.AttackersTo(F8, occ) & them) == 0
+                        //&& (bb.AttackersTo(G8, occ) & them) == 0
                         && (bb.Pieces[Rook] & SquareBB[H8] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
@@ -317,8 +317,8 @@
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
                         && (occ & BlackQueensideMask) == 0
-                        && (bb.AttackersTo(C8, occ) & them) == 0
-                        && (bb.AttackersTo(D8, occ) & them) == 0
+                        //&& (bb.AttackersTo(C8, occ) & them) == 0
+                        //&& (bb.AttackersTo(D8, occ) & them) == 0
                         && (bb.Pieces[Rook] & SquareBB[A8] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
