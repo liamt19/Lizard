@@ -46,8 +46,6 @@ namespace Lizard.Logic.Search
         private ScoredMove TTMove;
         private int previousSquare;
 
-        private readonly CondensedMove TTCondMove;
-
         private int stage;
 
         private ScoredMove* moveBufferStart;
@@ -64,7 +62,7 @@ namespace Lizard.Logic.Search
 
         public MovePicker(Position pos, short* mainHistory, short* captureHistory, PieceToHistory*[] contHist,
                           Move* killers, ScoredMove* moveBuffer, int depth,
-                          CondensedMove ttMove, int previousSquare = SquareNB)
+                          Move ttMove, int previousSquare = SquareNB)
         {
             this.pos = pos;
 
@@ -83,7 +81,6 @@ namespace Lizard.Logic.Search
 
             this.moveBufferStart = moveBuffer;
             this.depth = depth;
-            this.TTCondMove = ttMove;
             this.previousSquare = previousSquare;
 
             //  If we are in check at any depth, we only look at evasions.
@@ -92,10 +89,10 @@ namespace Lizard.Logic.Search
                           (depth > 0 ? NegamaxTT :
                                        QuiesceTT);
 
-            if (TTCondMove.Equals(CondensedMove.Null))
+            if (!ttMove.Equals(Move.Null))
             {
                 //  We have a ttMove, so try to convert it to a normal move.
-                TTMove = this.pos.CondensedToNormalMove(TTCondMove);
+                TTMove = new ScoredMove(ref ttMove);
                 if (!this.pos.IsPseudoLegal(TTMove.Move))
                 {
                     //  The ttMove we got isn't pseudo-legal, so skip the TT stage.
@@ -195,7 +192,7 @@ namespace Lizard.Logic.Search
                         for (ScoredMove* iter = currentMove; iter != lastMove; iter++)
                         {
                             Move m = iter->Move;
-                            if (m.Capture)
+                            if (pos.bb.GetPieceAtIndex(m.To) != None)
                             {
                                 Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[m.To]) != 0,
                                     "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "' " +
@@ -442,22 +439,20 @@ namespace Lizard.Logic.Search
 
         public void ScoreCaptures()
         {
+            ref Bitboard bb = ref pos.bb;
+
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
                 Move m = iter->Move;
                 int moveTo = m.To;
                 int moveFrom = m.From;
 
-                int capturedPiece;
-                if (m.Capture)
-                {
-                    capturedPiece = pos.bb.GetPieceAtIndex(moveTo);
-                }
-                else if (m.EnPassant)
+                int capturedPiece = pos.bb.GetPieceAtIndex(moveTo);
+                if (m.EnPassant)
                 {
                     capturedPiece = Pawn;
                 }
-                else
+                else if (m.Promotion)
                 {
                     if (EnableAssertions)
                     {
@@ -467,7 +462,7 @@ namespace Lizard.Logic.Search
                     }
 
                     //  For non-capture queen promotions
-                    capturedPiece = None;
+                    capturedPiece = Rook;
                 }
 
                 int capIdx = HistoryTable.CapIndex(pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
@@ -500,7 +495,7 @@ namespace Lizard.Logic.Search
             ref Bitboard bb = ref pos.bb;
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                if (iter->Move.Capture || iter->Move.EnPassant)
+                if ((bb.GetPieceAtIndex(iter->Move.To) != None) || iter->Move.EnPassant)
                 {
                     int capturedPiece = iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To);
                     iter->Score = GetPieceValue(capturedPiece) + 10000;

@@ -8,10 +8,10 @@
         /// </summary>
         /// <param name="ss">The entry containing Killer moves to prioritize</param>
         /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
-        /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
+        /// <param name="ttMove">The <see cref="Move"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
         [MethodImpl(Inline)]
         public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
-                ScoredMove* list, int size, CondensedMove ttMove)
+                ScoredMove* list, int size, Move ttMove)
         {
             ref Bitboard bb = ref pos.bb;
             int pc = pos.ToMove;
@@ -35,7 +35,7 @@
                 {
                     sm.Score = int.MaxValue - 2000000;
                 }
-                else if (m.Capture)
+                else if (bb.GetPieceAtIndex(moveTo) != None)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
@@ -65,10 +65,10 @@
         /// ignoring any killer moves placed in the <paramref name="ss"/> entry.
         /// </summary>
         /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
-        /// <param name="ttMove">The <see cref="CondensedMove"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
+        /// <param name="ttMove">The <see cref="Move"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
         [MethodImpl(Inline)]
         public static void AssignQuiescenceScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
-                ScoredMove* list, int size, CondensedMove ttMove)
+                ScoredMove* list, int size, Move ttMove)
         {
             ref Bitboard bb = ref pos.bb;
             int pc = pos.ToMove;
@@ -84,7 +84,7 @@
                 {
                     sm.Score = int.MaxValue - 100000;
                 }
-                else if (m.Capture)
+                else if (bb.GetPieceAtIndex(moveTo) != None)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
