@@ -828,7 +828,8 @@ namespace Lizard.Logic.Util
             }
             else
             {
-                return "cp " + score;
+                const double NormalizeEvalFactor = 2.4;
+                return "cp " + (int)(score / NormalizeEvalFactor);
             }
         }
 
