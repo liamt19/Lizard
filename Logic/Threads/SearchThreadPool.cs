@@ -2,6 +2,18 @@
 
 namespace Lizard.Logic.Threads
 {
+    /// <summary>
+    /// Keeps track of a number of SearchThreads and provides methods to start and wait for them to finish.
+    /// 
+    /// <para></para>
+    /// Some of the thread logic in this class is based on Stockfish's Thread class
+    /// (StartThreads, WaitForSearchFinished, and the general concepts in StartSearch), the sources of which are here:
+    /// <br></br>
+    /// https://github.com/official-stockfish/Stockfish/blob/master/src/thread.cpp
+    /// <br></br>
+    /// https://github.com/official-stockfish/Stockfish/blob/master/src/thread.h
+    /// 
+    /// </summary>
     public unsafe class SearchThreadPool
     {
         /// <summary>

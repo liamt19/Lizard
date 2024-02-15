@@ -11,6 +11,8 @@ namespace Lizard.Logic.Transposition
     /// <para></para>
     /// Setting Pack=1/2 causes the struct to NOT pad itself with an extra 2 bytes, so its size would increase from 10 -> 12. 
     /// Each TTCluster contains 3 TTEntry, and TTClusters are meant to align on 32 byte boundaries, so we need this to be 10 bytes max.
+    /// <para></para>
+    /// The replacement strategy and depth logic are inspired by Stockfish and Berserk.
     /// </summary>
     [StructLayout(LayoutKind.Explicit, Pack = 2, Size = 10)]
     public struct TTEntry

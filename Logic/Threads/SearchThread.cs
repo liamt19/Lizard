@@ -4,6 +4,21 @@ using Lizard.Logic.Search.Ordering;
 
 namespace Lizard.Logic.Threads
 {
+
+    /// <summary>
+    /// Represents a thread that performs searches. 
+    /// 
+    /// <para></para>
+    /// Much of the actual thread logic in this class is based on Stockfish's Thread class
+    /// (namely PrepareToSearch, WaitForThreadFinished, MainThreadSearch, and IdleLoop), the source of which is here:
+    /// <br></br>
+    /// https://github.com/official-stockfish/Stockfish/blob/master/src/thread.cpp
+    /// <para></para>
+    /// 
+    /// The main differences are in using dumbed-down, explicit versions of condition_variable::wait()
+    /// and having to deal with spurious wakeups because of that.
+    /// 
+    /// </summary>
     public unsafe class SearchThread : IDisposable
     {
         public const int CheckupMax = 512;
