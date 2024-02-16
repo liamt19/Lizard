@@ -19,7 +19,8 @@ namespace Lizard.Logic.NN
 
         public const int OutputScale = 400;
 
-        public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
+        public static readonly int SIMD_CHUNKS;
+        private static readonly int ShortSize;
 
         public const string NetworkName = "iguana-epoch10.bin";
 
@@ -60,6 +61,17 @@ namespace Lizard.Logic.NN
 
         static Simple768()
         {
+            ShortSize = VSize.Short;
+
+            if (Avx512BW.IsSupported)
+            {
+                ShortSize = Vector512<short>.Count;
+                Console.WriteLine("Using Avx512!");
+            }
+
+            SIMD_CHUNKS = HiddenSize / ShortSize;
+           
+
             FeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
             FeatureBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
 
@@ -162,7 +174,20 @@ namespace Lizard.Logic.NN
 #endif
         }
 
+        [MethodImpl(Inline)]
         public static void RefreshAccumulator(Position pos)
+        {
+            if (Avx512BW.IsSupported)
+            {
+                RefreshAccumulator512(pos);
+            }
+            else
+            {
+                RefreshAccumulator256(pos);
+            }
+        }
+
+        public static void RefreshAccumulator256(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
@@ -187,98 +212,106 @@ namespace Lizard.Logic.NN
             }
         }
 
+        public static void RefreshAccumulator512(Position pos)
+        {
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
+            ref Bitboard bb = ref pos.bb;
+
+            Vector512<short>* wAcc = (Vector512<short>*)accumulator.White;
+            Vector512<short>* bAcc = (Vector512<short>*)accumulator.Black;
+            Vector512<short>* featureWeights = (Vector512<short>*)FeatureWeights;
+
+            Unsafe.CopyBlock(wAcc, FeatureBiases, sizeof(short) * HiddenSize);
+            Unsafe.CopyBlock(bAcc, FeatureBiases, sizeof(short) * HiddenSize);
+
+            ulong occ = bb.Occupancy;
+            while (occ != 0)
+            {
+                int pieceIdx = poplsb(&occ);
+
+                int pt = bb.GetPieceAtIndex(pieceIdx);
+                int pc = bb.GetColorAtIndex(pieceIdx);
+
+                (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
+                for (int i = 0; i < SIMD_CHUNKS; i++)
+                {
+                    wAcc[i] = Avx512BW.Add(wAcc[i], featureWeights[wIdx + i]);
+                    bAcc[i] = Avx512BW.Add(bAcc[i], featureWeights[bIdx + i]);
+                }
+            }
+        }
+
+
+        [MethodImpl(Inline)]
         public static int GetEvaluation(Position pos)
+        {
+            return Avx512BW.IsSupported ? GetEvaluation512(pos) : GetEvaluation256(pos);
+        }
+
+        public static int GetEvaluation256(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             Vector256<short> ClampMax = Vector256.Create((short)QA);
-            int output = 0;
+            Vector256<int> normalSum = Vector256<int>.Zero;
 
-            if (AvxVnni.IsSupported)
+            for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<int> vnniSum = Vector256<int>.Zero;
+                //  Clamp each feature between [0, QA]
+                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
 
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    //  Clamp each feature between [0, QA]
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                //  Multiply the clamped feature by its corresponding weight.
+                //  We can do this with short values since the weights are always between [-127, 127]
+                //  (and the product will always be < short.MaxValue) so this will never overflow.
+                Vector256<short> mult = clamp * LayerWeights[i];
 
-                    //  Multiply the clamped feature by its corresponding weight.
-                    //  We can do this with short values since the weights are always between [-127, 127]
-                    //  (and the product will always be < short.MaxValue) so this will never overflow.
-                    Vector256<short> mult = clamp * LayerWeights[i];
-
-
-                    //  We can use VPDPWSSD to do the multiplication of mult and clamp,
-                    //  as well as the horizontal accumulation of it into the sum in a single instruction.
-
-                    //  Since the accumulation is happening via 32-bit integers,
-                    //  we would only need to worry about overflowing if we were summing short.MaxValue 2^16 times.
-                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
-                }
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
-                }
-
-                output = SumVector256NoHadd(vnniSum);
-            }
-            else
-            {
-                Vector256<int> normalSum = Vector256<int>.Zero;
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    //  Clamp each feature between [0, QA]
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
-
-                    //  Multiply the clamped feature by its corresponding weight.
-                    //  We can do this with short values since the weights are always between [-127, 127]
-                    //  (and the product will always be < short.MaxValue) so this will never overflow.
-                    Vector256<short> mult = clamp * LayerWeights[i];
-
-
-                    //  We want _mm256_mullo_epi32(_mm256_cvtepi16_epi32(_mm256_castsi256_si128(mult)), ...) here
-                    //  Vector256.Widen(mult) generates almost exactly the same code but I'd rather write it out
-                    //  so I can be disappointed when the JIT decides to use other intrinsics.
-
-                    //  With this approach we will need to widen both vectors before doing the squared part of the activation
-                    //  so that this multiplication step is done with integers and not shorts.
-                    Vector256<int> loMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
-
-                    Vector256<int> hiMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
-
-                    //  Add the sum of loMult and hiMult to the summation vector.
-                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
-                }
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-
-                    Vector256<int> loMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
-
-                    Vector256<int> hiMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
-
-                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
-                }
-
-                //  Now sum the summation vector, preferably without vphaddd (which Vector256.Sum appears to use)
-                //  because it can be quite a bit slower on some architectures.
-                output = SumVector256NoHadd(normalSum);
+                //  Multiply a final time and add the result to the summation vector.
+                //  MultiplyAddAdjacent ensures that the element-wise multiplication doesn't overflow,
+                //  so we don't need to widen this.
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
             }
 
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
+                Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+            }
+
+            //  Now sum the summation vector, preferably without vphaddd (which Vector256.Sum appears to use)
+            //  because it can be quite a bit slower on some architectures.
+            int output = SumVector256NoHadd(normalSum);
+
+            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+        }
+
+
+        public static int GetEvaluation512(Position pos)
+        {
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
+            Vector512<short> ClampMax = Vector512.Create((short)QA);
+            Vector512<int> normalSum = Vector512<int>.Zero;
+
+            Vector512<short>* acc = (Vector512<short>*)accumulator[pos.ToMove];
+            Vector512<short>* layerWeights = (Vector512<short>*)LayerWeights;
+
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                Vector512<short> clamp = Vector512.Min(ClampMax, Vector512.Max(Vector512<short>.Zero, acc[i]));
+                Vector512<short> mult = clamp * layerWeights[i];
+                normalSum = Vector512.Add(normalSum, Avx512BW.MultiplyAddAdjacent(mult, clamp));
+            }
+
+            acc = (Vector512<short>*)accumulator[Not(pos.ToMove)];
+
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                Vector512<short> clamp = Vector512.Min(ClampMax, Vector512.Max(Vector512<short>.Zero, acc[i]));
+                //Vector512<short> clampAv = Avx512BW.Min(ClampMax, Avx512BW.Max(Vector512<short>.Zero, acc[i]));
+                Vector512<short> mult = clamp * layerWeights[i + SIMD_CHUNKS];
+                normalSum = Vector512.Add(normalSum, Avx512BW.MultiplyAddAdjacent(mult, clamp));
+            }
+
+            int output = Vector512.Sum(normalSum);
             return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
         }
 
@@ -307,7 +340,118 @@ namespace Lizard.Logic.NN
         }
 
 
+        [MethodImpl(Inline)]
         public static void MakeMoveNN(Position pos, Move m)
+        {
+            if (Avx512BW.IsSupported)
+            {
+                MakeMoveNN512(pos, m);
+            }
+            else
+            {
+                MakeMoveNN256(pos, m);
+            }
+        }
+
+        public static void MakeMoveNN512(Position pos, Move m)
+        {
+            ref Bitboard bb = ref pos.bb;
+
+            Accumulator* accumulator = pos.NextState->Accumulator;
+            pos.State->Accumulator->CopyTo(accumulator);
+
+            int moveTo = m.To;
+            int moveFrom = m.From;
+
+            int us = pos.ToMove;
+            int ourPiece = bb.GetPieceAtIndex(moveFrom);
+
+            int them = Not(us);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            Vector512<short>* whiteAccumulation = (Vector512<short>*)(*accumulator)[White];
+            Vector512<short>* blackAccumulation = (Vector512<short>*)(*accumulator)[Black];
+            Vector512<short>* featureWeights = (Vector512<short>*)FeatureWeights;
+
+            (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom);
+            (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo);
+
+            if (theirPiece != None)
+            {
+                (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
+
+                SubSubAdd(whiteAccumulation,
+                    (featureWeights + wFrom),
+                    (featureWeights + wCap),
+                    (featureWeights + wTo));
+
+                SubSubAdd(blackAccumulation,
+                    (featureWeights + bFrom),
+                    (featureWeights + bCap),
+                    (featureWeights + bTo));
+            }
+            else if (m.EnPassant)
+            {
+                int idxPawn = moveTo - ShiftUpDir(us);
+
+                (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
+
+                SubSubAdd(whiteAccumulation,
+                    (featureWeights + wFrom),
+                    (featureWeights + wCap),
+                    (featureWeights + wTo));
+
+                SubSubAdd(blackAccumulation,
+                    (featureWeights + bFrom),
+                    (featureWeights + bCap),
+                    (featureWeights + bTo));
+            }
+            else if (m.Castle)
+            {
+                int rookFrom = moveTo switch
+                {
+                    C1 => A1,
+                    G1 => H1,
+                    C8 => A8,
+                    _ => H8,    //  G8 => H8
+                };
+
+                int rookTo = moveTo switch
+                {
+                    C1 => D1,
+                    G1 => F1,
+                    C8 => D8,
+                    _ => F8,    //  G8 => F8
+                };
+
+                (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFrom);
+                (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookTo);
+
+                SubSubAddAdd(whiteAccumulation,
+                    (featureWeights + wFrom),
+                    (featureWeights + wRookFrom),
+                    (featureWeights + wTo),
+                    (featureWeights + wRookTo));
+
+                SubSubAddAdd(blackAccumulation,
+                    (featureWeights + bFrom),
+                    (featureWeights + bRookFrom),
+                    (featureWeights + bTo),
+                    (featureWeights + bRookTo));
+            }
+            else
+            {
+                SubAdd(whiteAccumulation,
+                    (featureWeights + wFrom),
+                    (featureWeights + wTo));
+
+                SubAdd(blackAccumulation,
+                    (featureWeights + bFrom),
+                    (featureWeights + bTo));
+            }
+        }
+
+        public static void MakeMoveNN256(Position pos, Move m)
         {
             ref Bitboard bb = ref pos.bb;
 
@@ -429,6 +573,34 @@ namespace Lizard.Logic.NN
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
+            }
+        }
+
+
+        [MethodImpl(Inline)]
+        private static void SubAdd(Vector512<short>* src, Vector512<short>* sub1, Vector512<short>* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx512BW.Subtract(Avx512BW.Add(src[i], add1[i]), sub1[i]);
+            }
+        }
+
+        [MethodImpl(Inline)]
+        private static void SubSubAdd(Vector512<short>* src, Vector512<short>* sub1, Vector512<short>* sub2, Vector512<short>* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx512BW.Subtract(Avx512BW.Subtract(Avx512BW.Add(src[i], add1[i]), sub1[i]), sub2[i]);
+            }
+        }
+
+        [MethodImpl(Inline)]
+        private static void SubSubAddAdd(Vector512<short>* src, Vector512<short>* sub1, Vector512<short>* sub2, Vector512<short>* add1, Vector512<short>* add2)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx512BW.Subtract(Avx512BW.Subtract(Avx512BW.Add(Avx512BW.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
 
