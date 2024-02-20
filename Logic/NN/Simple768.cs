@@ -191,93 +191,31 @@ namespace Lizard.Logic.NN
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             Vector256<short> ClampMax = Vector256.Create((short)QA);
-            int output = 0;
+            Vector256<int> normalSum = Vector256<int>.Zero;
 
-            if (AvxVnni.IsSupported)
+            for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<int> vnniSum = Vector256<int>.Zero;
+                //  Clamp each feature between [0, QA]
+                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
 
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    //  Clamp each feature between [0, QA]
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                //  Multiply the clamped feature by its corresponding weight.
+                //  We can do this with short values since the weights are always between [-127, 127]
+                //  (and the product will always be < short.MaxValue) so this will never overflow.
+                Vector256<short> mult = clamp * LayerWeights[i];
 
-                    //  Multiply the clamped feature by its corresponding weight.
-                    //  We can do this with short values since the weights are always between [-127, 127]
-                    //  (and the product will always be < short.MaxValue) so this will never overflow.
-                    Vector256<short> mult = clamp * LayerWeights[i];
-
-
-                    //  We can use VPDPWSSD to do the multiplication of mult and clamp,
-                    //  as well as the horizontal accumulation of it into the sum in a single instruction.
-
-                    //  Since the accumulation is happening via 32-bit integers,
-                    //  we would only need to worry about overflowing if we were summing short.MaxValue 2^16 times.
-                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
-                }
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-                    vnniSum = AvxVnni.MultiplyWideningAndAdd(vnniSum, mult, clamp);
-                }
-
-                output = SumVector256NoHadd(vnniSum);
+                //  We can use VPMADDWD to do the multiplication of mult and clamp, and add it to the sum.
+                //  MADD multiplies and sums adjacent pairs of 16-bit integers into 32-bit integers, so this doesn't overflow either.
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
             }
-            else
+
+            for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<int> normalSum = Vector256<int>.Zero;
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    //  Clamp each feature between [0, QA]
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
-
-                    //  Multiply the clamped feature by its corresponding weight.
-                    //  We can do this with short values since the weights are always between [-127, 127]
-                    //  (and the product will always be < short.MaxValue) so this will never overflow.
-                    Vector256<short> mult = clamp * LayerWeights[i];
-
-
-                    //  We want _mm256_mullo_epi32(_mm256_cvtepi16_epi32(_mm256_castsi256_si128(mult)), ...) here
-                    //  Vector256.Widen(mult) generates almost exactly the same code but I'd rather write it out
-                    //  so I can be disappointed when the JIT decides to use other intrinsics.
-
-                    //  With this approach we will need to widen both vectors before doing the squared part of the activation
-                    //  so that this multiplication step is done with integers and not shorts.
-                    Vector256<int> loMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
-
-                    Vector256<int> hiMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
-
-                    //  Add the sum of loMult and hiMult to the summation vector.
-                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
-                }
-
-                for (int i = 0; i < SIMD_CHUNKS; i++)
-                {
-                    Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                    Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-
-                    Vector256<int> loMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetLower().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetLower().AsInt16()));
-
-                    Vector256<int> hiMult = Avx2.MultiplyLow(
-                        Avx2.ConvertToVector256Int32(mult.GetUpper().AsInt16()),
-                        Avx2.ConvertToVector256Int32(clamp.GetUpper().AsInt16()));
-
-                    normalSum = Avx2.Add(normalSum, Avx2.Add(loMult, hiMult));
-                }
-
-                //  Now sum the summation vector, preferably without vphaddd (which Vector256.Sum appears to use)
-                //  because it can be quite a bit slower on some architectures.
-                output = SumVector256NoHadd(normalSum);
+                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
+                Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
             }
+
+            int output = SumVector256NoHadd(normalSum);
 
             return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
         }
