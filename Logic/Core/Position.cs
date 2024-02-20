@@ -29,11 +29,6 @@ namespace Lizard.Logic.Core
         public int ToMove;
 
         /// <summary>
-        /// The sum of all material in the position, indexed by piece color.
-        /// </summary>
-        public int[] MaterialCount;
-
-        /// <summary>
         /// The sum of the non-pawn material in the position, indexed by piece color.
         /// </summary>
         public int[] MaterialCountNonPawn;
@@ -148,7 +143,6 @@ namespace Lizard.Logic.Core
         /// </summary>
         public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread? owner = null)
         {
-            MaterialCount = new int[2];
             MaterialCountNonPawn = new int[2];
 
             this.UpdateNN = createAccumulators;
@@ -360,13 +354,13 @@ namespace Lizard.Logic.Core
                 //  Remove all of our castling rights
                 if (ourColor == Color.White)
                 {
-                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK | CastlingStatus.WQ);
-                    State->CastleStatus &= ~(CastlingStatus.WK | CastlingStatus.WQ);
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.White);
+                    State->CastleStatus &= ~CastlingStatus.White;
                 }
                 else
                 {
-                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK | CastlingStatus.BQ);
-                    State->CastleStatus &= ~(CastlingStatus.BK | CastlingStatus.BQ);
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.Black);
+                    State->CastleStatus &= ~CastlingStatus.Black;
                 }
             }
             else if (ourPiece == Piece.Rook && State->CastleStatus != CastlingStatus.None)
@@ -423,8 +417,6 @@ namespace Lizard.Logic.Core
                     }
                 }
 
-                MaterialCount[theirColor] -= GetPieceValue(theirPiece);
-
                 if (theirPiece != Pawn)
                 {
                     MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
@@ -469,8 +461,6 @@ namespace Lizard.Logic.Core
 
                     //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
                     State->CapturedPiece = Piece.Pawn;
-
-                    MaterialCount[theirColor] -= GetPieceValue(Piece.Pawn);
                 }
                 else if ((moveTo ^ moveFrom) == 16)
                 {
@@ -519,8 +509,6 @@ namespace Lizard.Logic.Core
                 State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
                 State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
-                MaterialCount[ourColor] -= GetPieceValue(Piece.Pawn);
-                MaterialCount[ourColor] += GetPieceValue(move.PromotionTo);
                 MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
 
@@ -572,9 +560,6 @@ namespace Lizard.Logic.Core
 
                 bb.AddPiece(moveTo, ourColor, ourPiece);
 
-                MaterialCount[ourColor] -= GetPieceValue(move.PromotionTo);
-                MaterialCount[ourColor] += GetPieceValue(Piece.Pawn);
-
                 MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
             }
             else if (move.Castle)
@@ -612,15 +597,12 @@ namespace Lizard.Logic.Core
 
                     int idxPawn = moveTo + ShiftUpDir(ToMove);
                     bb.AddPiece(idxPawn, theirColor, Piece.Pawn);
-
-                    MaterialCount[theirColor] += GetPieceValue(Piece.Pawn);
                 }
                 else
                 {
                     //  Otherwise it was a capture, so put the captured piece back
                     bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
 
-                    MaterialCount[theirColor] += GetPieceValue(State->CapturedPiece);
                     if (State->CapturedPiece != Pawn)
                     {
                         MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
@@ -1266,11 +1248,8 @@ namespace Lizard.Logic.Core
 
             State->CapturedPiece = None;
 
-            MaterialCount[Color.White] = bb.MaterialCount(Color.White);
-            MaterialCount[Color.Black] = bb.MaterialCount(Color.Black);
-
-            MaterialCountNonPawn[White] = MaterialCount[White] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[White] & bb.Pieces[Pawn]));
-            MaterialCountNonPawn[Black] = MaterialCount[Black] - (GetPieceValue(Pawn) * (int)popcount(bb.Colors[Black] & bb.Pieces[Pawn]));
+            MaterialCountNonPawn[Color.White] = bb.MaterialCount(Color.White, true);
+            MaterialCountNonPawn[Color.Black] = bb.MaterialCount(Color.Black, true);
 
             if (UpdateNN)
             {
