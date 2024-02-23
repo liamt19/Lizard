@@ -129,7 +129,7 @@ namespace Lizard
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    Log("Simple768 Eval: " + Evaluation.GetEvaluation(p));
+                    Log("Simple768 Eval: " + NNUE.GetEvaluation(p));
                 }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
@@ -287,7 +287,7 @@ namespace Lizard
         /// </summary>
         private static void HandleEvalAllCommand()
         {
-            Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + Evaluation.GetEvaluation(p));
+            Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + NNUE.GetEvaluation(p));
             Log("\r\nMove evaluations (" + ColorToString(p.ToMove) + "'s perspective):");
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -300,7 +300,7 @@ namespace Lizard
                 p.MakeMove(m);
                 int moveEval = 0;
 
-                moveEval = Evaluation.GetEvaluation(p);
+                moveEval = NNUE.GetEvaluation(p);
 
                 p.UnmakeMove(m);
                 scoreList.Add((m, moveEval));
@@ -381,7 +381,7 @@ namespace Lizard
                         return;
                     }
 
-                    Simple768.TracePieceValues(pt, pc);
+                    NNUE.TracePieceValues(pt, pc);
                 }
                 else
                 {
@@ -390,7 +390,7 @@ namespace Lizard
             }
             else
             {
-                Simple768.Trace(p);
+                NNUE.Trace(p);
             }
         }
 

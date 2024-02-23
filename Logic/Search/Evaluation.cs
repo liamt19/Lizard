@@ -4,18 +4,6 @@ namespace Lizard.Logic.Search
 {
     public static unsafe class Evaluation
     {
-
-        /// <summary>
-        /// Returns the evaluation of the position relative to <paramref name="pc"/>, which is the side to move.
-        /// </summary>
-        [MethodImpl(Inline)]
-        public static short GetEvaluation(in Position position)
-        {
-            return (short)Simple768.GetEvaluation(position);
-        }
-
-
-
         [MethodImpl(Inline)]
         public static int MakeMateScore(int ply)
         {

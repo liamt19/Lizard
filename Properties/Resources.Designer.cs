@@ -63,6 +63,16 @@ namespace Lizard.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        public static byte[] gila_epoch11 {
+            get {
+                object obj = ResourceManager.GetObject("gila-epoch11", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         public static byte[] iguana_epoch10 {
             get {
                 object obj = ResourceManager.GetObject("iguana-epoch10", resourceCulture);

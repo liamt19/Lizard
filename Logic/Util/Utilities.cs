@@ -849,6 +849,12 @@ namespace Lizard.Logic.Util
             return div;
         }
 
+        public static int ConvertRange(int originalStart, int originalEnd, int newStart, int newEnd, int value)
+        {
+            double scale = (double)(newEnd - newStart) / (originalEnd - originalStart);
+            return (int)(newStart + (value - originalStart) * scale);
+        }
+
 
         /// <summary>
         /// Sorts the <paramref name="items"/> between the starting index <paramref name="offset"/> and last index <paramref name="end"/>
