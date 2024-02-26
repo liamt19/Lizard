@@ -188,7 +188,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this);
+                NNUE.RefreshAccumulator(this);
             }
         }
 
@@ -284,7 +284,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.MakeMoveNN(this, move);
+                NNUE.MakeMove(this, move);
             }
 
             //  Move onto the next state
@@ -1111,7 +1111,7 @@ namespace Lizard.Logic.Core
 
             if (depth == 0)
             {
-                return (long)Evaluation.GetEvaluation(this);
+                return (long)NNUE.GetEvaluation(this);
             }
 
             long n = 0;
@@ -1253,7 +1253,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                Simple768.RefreshAccumulator(this);
+                NNUE.RefreshAccumulator(this);
             }
 
             return true;

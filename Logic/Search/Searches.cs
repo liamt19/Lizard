@@ -1,5 +1,6 @@
 ﻿using System.Text;
 
+using Lizard.Logic.NN;
 using Lizard.Logic.Search.Ordering;
 using Lizard.Logic.Threads;
 
@@ -116,7 +117,7 @@ namespace Lizard.Logic.Search
                     else
                     {
                         //  If we aren't in check, then just return the static eval instead of a draw score for consistency.
-                        return Evaluation.GetEvaluation(pos);
+                        return NNUE.GetEvaluation(pos);
                     }
 
                 }
@@ -187,7 +188,7 @@ namespace Lizard.Logic.Search
             {
                 //  Use the static evaluation from the TT if it had one, or get a new one.
                 //  We don't overwrite that TT's StatEval score yet though.
-                eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : Evaluation.GetEvaluation(pos);
+                eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -198,7 +199,7 @@ namespace Lizard.Logic.Search
             else
             {
                 //  Get the static evaluation and store it in the empty TT slot.
-                eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
+                eval = ss->StaticEval = NNUE.GetEvaluation(pos);
             }
 
             if (ss->Ply >= 2)
@@ -769,7 +770,7 @@ namespace Lizard.Logic.Search
 
             if (ss->Ply >= MaxSearchStackPly - 1)
             {
-                return ss->InCheck ? ScoreDraw : Evaluation.GetEvaluation(pos);
+                return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
             }
 
             if (isPV)
@@ -797,7 +798,7 @@ namespace Lizard.Logic.Search
                     if (eval == ScoreNone)
                     {
                         //  If the TT hit didn't have a static eval, get one now.
-                        eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
+                        eval = ss->StaticEval = NNUE.GetEvaluation(pos);
                     }
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
@@ -816,7 +817,7 @@ namespace Lizard.Logic.Search
                     }
                     else
                     {
-                        eval = ss->StaticEval = Evaluation.GetEvaluation(pos);
+                        eval = ss->StaticEval = NNUE.GetEvaluation(pos);
                     }
                 }
 
