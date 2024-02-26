@@ -115,6 +115,45 @@ namespace Lizard.Logic.Data
             return (_data & Mask_ToFrom) == 0;
         }
 
+        public int CastlingKingSquare
+        {
+            get
+            {
+                if (From < A2)
+                {
+                    return (To > From) ? G1 : C1;
+                }
+
+                return (To > From) ? G8 : C8;
+            }
+        }
+
+        public int CastlingRookSquare
+        {
+            get
+            {
+                if (From < A2)
+                {
+                    return (To > From) ? F1 : D1;
+                }
+
+                return (To > From) ? F8 : D8;
+            }
+        }
+
+        public CastlingStatus RelevantCastlingRight
+        {
+            get
+            {
+                if (From < A2)
+                {
+                    return (To > From) ? CastlingStatus.WK : CastlingStatus.WQ;
+                }
+
+                return (To > From) ? CastlingStatus.BK : CastlingStatus.BQ;
+            }
+        }
+
         /// <summary>
         /// Returns the generic string representation of a move, which is just the move's From square, the To square,
         /// and the piece that the move is promoting to if applicable.
@@ -122,10 +161,15 @@ namespace Lizard.Logic.Data
         /// For example, the opening moves "e4 e5, Nf3 Nc6, ..." would be "e2e4 e7e5, g1f3 b8c6, ..."
         /// </summary>
         [MethodImpl(Inline)]
-        public string SmithNotation()
+        public string SmithNotation(bool is960 = false)
         {
             IndexToCoord(From, out int fx, out int fy);
             IndexToCoord(To, out int tx, out int ty);
+
+            if (Castle && !is960)
+            {
+                tx = (tx > fx) ? Files.G : Files.C;
+            }
 
             if (Promotion)
             {
@@ -217,10 +261,16 @@ namespace Lizard.Logic.Data
             return sb.ToString();
         }
 
+
         [MethodImpl(Inline)]
+        public string ToString(bool is960 = false)
+        {
+            return SmithNotation(is960);
+        }
+
         public override string ToString()
         {
-            return SmithNotation();
+            return ToString(false);
         }
 
 
