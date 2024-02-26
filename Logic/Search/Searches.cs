@@ -447,7 +447,7 @@ namespace Lizard.Logic.Search
                     && tte->Depth >= depth - 3)
                 {
                     int singleBeta = ttScore - (SingularExtensionsNumerator * depth / 10);
-                    int singleDepth = (depth - 1) / 2;
+                    int singleDepth = (depth + SingularExtensionsDepthAugment) / 2;
 
                     ss->Skip = m;
                     score = Negamax<NonPVNode>(ref info, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
@@ -1121,11 +1121,11 @@ namespace Lizard.Logic.Search
             int from = m.From;
             int to = m.To;
 
-            int swap = EvaluationConstants.SEEValues[bb.PieceTypes[to]] - threshold;
+            int swap = GetSEEValue(bb.PieceTypes[to]) - threshold;
             if (swap < 0)
                 return false;
 
-            swap = EvaluationConstants.SEEValues[bb.PieceTypes[from]] - swap;
+            swap = GetSEEValue(bb.PieceTypes[from]) - swap;
             if (swap <= 0)
                 return true;
 

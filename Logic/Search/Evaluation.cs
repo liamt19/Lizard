@@ -37,5 +37,25 @@ namespace Lizard.Logic.Search
 
             return 0;
         }
+
+        [MethodImpl(Inline)]
+        public static int GetSEEValue(int pt)
+        {
+            switch (pt)
+            {
+                case Pawn:
+                    return SEEValue_Pawn;
+                case Knight:
+                    return SEEValue_Knight;
+                case Bishop:
+                    return SEEValue_Bishop;
+                case Rook:
+                    return SEEValue_Rook;
+                case Queen:
+                    return SEEValue_Queen;
+                default:
+                    return 0;
+            }
+        }
     }
 }

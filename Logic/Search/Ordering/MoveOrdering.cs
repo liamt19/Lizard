@@ -122,12 +122,12 @@
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
 
-                sm.Score = EvaluationConstants.SEEValues[m.EnPassant ? Pawn : bb.GetPieceAtIndex(m.To)];
+                sm.Score = GetSEEValue(m.EnPassant ? Pawn : bb.GetPieceAtIndex(m.To));
                 if (m.Promotion)
                 {
                     //  Gives promotions a higher score than captures.
                     //  We can assume a queen promotion is better than most captures.
-                    sm.Score += EvaluationConstants.SEEValues[Queen] + 1;
+                    sm.Score += GetSEEValue(Queen) + 1;
                 }
             }
         }
