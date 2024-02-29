@@ -104,13 +104,11 @@ namespace Lizard.Logic.Transposition
             this.BestMove = move;
         }
 
-        [MethodImpl(Inline)]
         public static ushort MakeKey(ulong posHash)
         {
             return (ushort)posHash;
         }
 
-        [MethodImpl(Inline)]
         public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
         {
             if (!move.IsNull() || (ushort)key != this.Key)
@@ -140,7 +138,6 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Converts the <paramref name="ttScore"/> retrieved from a TT hit to a usable score from the root position.
         /// </summary>
-        [MethodImpl(Inline)]
         public static short MakeNormalScore(short ttScore, int ply)
         {
             if (ttScore == ScoreNone)
@@ -168,7 +165,6 @@ namespace Lizard.Logic.Transposition
         /// This is not correct since a mate in 1 could be delayed by a few moves to make it a mate in mate in 2/3/... instead, so what we really
         /// care about is the number of plies from the current position and not the number of plies when the score was calculated.
         /// </summary>
-        [MethodImpl(Inline)]
         public static short MakeTTScore(short score, int ply)
         {
             if (score == ScoreNone)

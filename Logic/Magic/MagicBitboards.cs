@@ -75,7 +75,6 @@
         /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
         /// Friendly pieces will need to be masked out so we aren't able to capture them.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong GetRookMoves(ulong boardAll, int idx)
         {
 #if PEXT
@@ -94,7 +93,6 @@
         /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
         /// Friendly pieces will need to be masked out so we aren't able to capture them.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong GetBishopMoves(ulong boardAll, int idx)
         {
 #if PEXT

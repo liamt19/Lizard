@@ -111,7 +111,7 @@
     <!-- Quick JIT for loops will be disabled if TieredCompilationQuickJit is disabled above, but disable it here just in case.  
          This really doesn't appear to have any redeeming qualities.
     -->
-    <TieredCompilationQuickJitForLoops>false</TieredCompilationQuickJitForLoops>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
 
   </PropertyGroup>
 

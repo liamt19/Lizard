@@ -1074,7 +1074,6 @@ namespace Lizard.Logic.Search
         /// <summary>
         /// Calculates a bonus, given the current <paramref name="depth"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int StatBonus(int depth)
         {
             return Math.Min((StatBonusMult * depth) - StatBonusSub, StatBonusMax);
@@ -1083,7 +1082,6 @@ namespace Lizard.Logic.Search
         /// <summary>
         /// Calculates a penalty, given the current <paramref name="depth"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int StatMalus(int depth)
         {
             return Math.Min((StatMalusMult * depth) - StatMalusSub, StatMalusMax);
@@ -1093,7 +1091,6 @@ namespace Lizard.Logic.Search
         /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
         /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int GetReverseFutilityMargin(int depth, bool improving)
         {
             return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;

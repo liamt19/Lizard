@@ -55,7 +55,6 @@
             BlackHash = rand.NextUlong();
         }
 
-        [MethodImpl(Inline)]
         public static ulong GetHash(Position position)
         {
             ref Bitboard bb = ref position.bb;
@@ -111,7 +110,6 @@
         /// Updates the hash by moving the piece of type <paramref name="pt"/> and color <paramref name="color"/> from <paramref name="from"/> to <paramref name="to"/>.
         /// If the move is a capture, ZobristToggleSquare needs to be done as well.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ZobristMove(this ref ulong hash, int from, int to, int color, int pt)
         {
             if (EnableAssertions)
@@ -128,7 +126,6 @@
         /// <summary>
         /// Adds or removes the piece of type <paramref name="pt"/> and color <paramref name="color"/> at index <paramref name="idx"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ZobristToggleSquare(this ref ulong hash, int color, int pt, int idx)
         {
             if (EnableAssertions)
@@ -144,7 +141,6 @@
         /// <summary>
         /// Updates the castling status of the hash, and doesn't change anything if the castling status hasn't changed
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ZobristCastle(this ref ulong hash, CastlingStatus prev, CastlingStatus toRemove)
         {
             ulong change = (ulong)(prev & toRemove);
@@ -157,7 +153,6 @@
         /// <summary>
         /// Sets the En Passant status of the hash, which is set to the <paramref name="file"/> of the pawn that moved two squares previously
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ZobristEnPassant(this ref ulong hash, int file)
         {
             hash ^= EnPassantFileHashes[file];
@@ -166,7 +161,6 @@
         /// <summary>
         /// Called each time White makes a move, which updates the hash to show that it's black to move now
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ZobristChangeToMove(this ref ulong hash)
         {
             hash ^= BlackHash;
