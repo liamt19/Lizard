@@ -1,11 +1,11 @@
 
 ifndef EXE
-    EXE = Lizard
+	EXE = Lizard
 endif
 
 #	I had issues with $(CC) not being defined (or being defined as "cc"?), so for now this will require dotnet to be in your path
 ifndef CC
-    CC = dotnet
+	CC = dotnet
 endif
 
 #	self-contained              .NET Core won't need to be installed to run the binary
@@ -21,16 +21,16 @@ BUILD_OPTS = --self-contained -v quiet --property WarningLevel=0 -o ./ -c Releas
 #	Try building the non-AOT version first, and then try to build the AOT version if possible.
 #   This recipe should always work, but AOT requires some additional setup so the aot recipe may fail.
 release:
-    dotnet publish . $(BUILD_OPTS) -p:DefineConstants="$(DefineConstants)PEXT"
-    -rmdir /s /q .\bin\Release
-    $(MAKE) aot
+	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="$(DefineConstants)PEXT"
+	-rmdir /s /q .\bin\Release
+	$(MAKE) aot
 
 
 #	Replaces PublishSingleFile with PublishAOT
 #	-p:DebugType=embedded apparently just... doesn't embed it? So this will delete the pdb as well.	
 #	https://github.com/dotnet/sdk/issues/35798
 aot:
-    -dotnet publish . $(BUILD_OPTS) -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="$(DefineConstants)PUBLISH_AOT%3BPEXT"
-    -rmdir /s /q .\bin\Release\native
-    -rmdir /s /q .\bin\Release
-    -del .\Lizard.pdb
+	-dotnet publish . $(BUILD_OPTS) -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="$(DefineConstants)PUBLISH_AOT%3BPEXT"
+	-rmdir /s /q .\bin\Release\native
+	-rmdir /s /q .\bin\Release
+	-del .\Lizard.pdb
