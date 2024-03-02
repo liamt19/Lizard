@@ -355,7 +355,6 @@ namespace Lizard.Logic.Search
 
             bool didSkip = false;
 
-            Move* PV = stackalloc Move[MaxPly];
             Move* captureMoves = stackalloc Move[16];
             Move* quietMoves = stackalloc Move[16];
 
@@ -494,7 +493,7 @@ namespace Lizard.Logic.Search
 
                 if (isPV)
                 {
-                    (ss + 1)->PV = null;
+                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
                 }
 
                 int newDepth = depth + extend;
@@ -575,7 +574,6 @@ namespace Lizard.Logic.Search
                 {
                     //  Do a new PV search here.
                     //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
-                    (ss + 1)->PV = PV;
                     (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth - 1, false);
                 }
@@ -755,10 +753,8 @@ namespace Lizard.Logic.Search
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
             bool ttPV = ss->TTHit && tte->PV;
 
-            Move* PV = stackalloc Move[MaxPly];
             if (isPV)
             {
-                (ss + 1)->PV = PV;
                 ss->PV[0] = Move.Null;
             }
 
