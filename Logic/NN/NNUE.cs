@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         {
             if (SimpleNet)
             {
-                return (short) Simple768.GetEvaluation(pos);
+                return (short) Simple768.GetEvaluationUnrolled(pos);
             }
 
             return (short) Bucketed768.GetEvaluation(pos);

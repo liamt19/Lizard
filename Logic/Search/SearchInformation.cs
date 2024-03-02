@@ -78,7 +78,6 @@
             return si;
         }
 
-        [MethodImpl(Inline)]
         public void SetMoveTime(int moveTime)
         {
             TimeManager.MaxSearchTime = moveTime;
@@ -88,7 +87,6 @@
         /// <summary>
         /// Prints out the "info depth (number) ..." string
         /// </summary>
-        [MethodImpl(Inline)]
         private void PrintSearchInfo(ref SearchInformation info)
         {
             Log(FormatSearchInformationMultiPV(ref info));
@@ -97,7 +95,6 @@
         /// <summary>
         /// Prints the best move from a search.
         /// </summary>
-        [MethodImpl(Inline)]
         private void PrintBestMove(ref SearchInformation info)
         {
             Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;

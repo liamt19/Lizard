@@ -79,7 +79,6 @@
         /// <summary>
         /// Returns true if White or Black has a piece on <paramref name="idx"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public bool Occupied(int idx)
         {
             return PieceTypes[idx] != Piece.None;
@@ -88,7 +87,6 @@
         /// <summary>
         /// Adds a piece of type <paramref name="pt"/> and color <paramref name="pc"/> on the square <paramref name="idx"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public void AddPiece(int idx, int pc, int pt)
         {
             PieceTypes[idx] = pt;
@@ -108,7 +106,6 @@
         /// <summary>
         /// Removes the piece of type <paramref name="pt"/> and color <paramref name="pc"/> on the square <paramref name="idx"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public void RemovePiece(int idx, int pc, int pt)
         {
             PieceTypes[idx] = Piece.None;
@@ -132,7 +129,6 @@
         /// <param name="to">The square the piece is moving to</param>
         /// <param name="pieceColor">The color of the piece that is moving</param>
         /// <param name="pieceType">The type of the piece that is moving</param>
-        [MethodImpl(Inline)]
         public void MoveSimple(int from, int to, int pieceColor, int pieceType)
         {
             RemovePiece(from, pieceColor, pieceType);
@@ -142,7 +138,6 @@
         /// <summary>
         /// Returns the <see cref="Color"/> of the piece on the square <paramref name="idx"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public int GetColorAtIndex(int idx)
         {
             return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
@@ -151,7 +146,6 @@
         /// <summary>
         /// Returns the type of the <see cref="Piece"/> on the square <paramref name="idx"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public int GetPieceAtIndex(int idx)
         {
             return PieceTypes[idx];
@@ -160,7 +154,6 @@
         /// <summary>
         /// Returns true if the square <paramref name="idx"/> has a piece of the <see cref="Color"/> <paramref name="pc"/> on it.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsColorSet(int pc, int idx)
         {
             return (Colors[pc] & SquareBB[idx]) != 0;
@@ -169,7 +162,6 @@
         /// <summary>
         /// Returns a mask with a single bit set at the index of the <see cref="Color"/> <paramref name="pc"/>'s king.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong KingMask(int pc)
         {
             return Colors[pc] & Pieces[Piece.King];
@@ -178,7 +170,6 @@
         /// <summary>
         /// Returns the index of the square that the <see cref="Color"/> <paramref name="pc"/>'s king is on.
         /// </summary>
-        [MethodImpl(Inline)]
         public int KingIndex(int pc)
         {
             if (EnableAssertions)
@@ -194,7 +185,6 @@
         /// <summary>
         /// Returns the sum of the <see cref="Piece"/> values for the <see cref="Color"/> <paramref name="pc"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public int MaterialCount(int pc, bool excludePawns = false)
         {
             int mat = 0;
@@ -223,7 +213,6 @@
         /// <paramref name="xrayers"/> is a mask for blockers that are the opposite color of <paramref name="pc"/>.
         /// These are pieces that would cause a discovery if they move off of the ray.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong BlockingPieces(int pc, ulong* pinners, ulong* xrayers)
         {
             ulong blockers = 0UL;
@@ -273,7 +262,6 @@
         /// Returns a ulong with bits set at the positions of any piece that can attack the square <paramref name="idx"/>, 
         /// given the board occupancy <paramref name="occupied"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong AttackersTo(int idx, ulong occupied)
         {
             return (GetBishopMoves(occupied, idx) & (Pieces[Bishop] | Pieces[Queen]))
@@ -287,7 +275,6 @@
         /// Returns a ulong with bits set at the positions of every Knight, Bishop, Rook, and Queen that can attack the square <paramref name="idx"/>, 
         /// given the board occupancy <paramref name="occupied"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong AttackersToMajors(int idx, ulong occupied)
         {
             return (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
@@ -299,7 +286,6 @@
         /// Returns a mask of the squares that a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
         /// on the square <paramref name="idx"/> attacks, given the board occupancy <paramref name="occupied"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong AttackMask(int idx, int pc, int pt, ulong occupied)
         {
             return pt switch
@@ -317,7 +303,6 @@
         /// <summary>
         /// Returns a mask of all of the squares that pieces of type <paramref name="pt"/> and color <paramref name="pc"/> attack.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong AttackMask(int pc, int pt)
         {
             ulong mask = 0;

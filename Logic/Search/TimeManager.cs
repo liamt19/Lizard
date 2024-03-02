@@ -70,28 +70,22 @@
             PlayerTime = SearchConstants.MaxSearchTime;
         }
 
-        [MethodImpl(Inline)]
         public void StartTimer() => TotalSearchTime.Start();
 
-        [MethodImpl(Inline)]
         public void StopTimer() => TotalSearchTime.Stop();
 
-        [MethodImpl(Inline)]
         public void ResetTimer() => TotalSearchTime.Reset();
 
-        [MethodImpl(Inline)]
         public void RestartTimer() => TotalSearchTime.Restart();
 
         /// <summary>
         /// Returns the current search time in milliseconds.
         /// </summary>
-        [MethodImpl(Inline)]
         public double GetSearchTime() => TotalSearchTime.Elapsed.TotalMilliseconds;
 
         /// <summary>
         /// Returns true if we have searched for our maximum allotted time
         /// </summary>
-        [MethodImpl(Inline)]
         public bool CheckUp()
         {
             double currentTime = GetSearchTime();
@@ -117,7 +111,6 @@
         /// This currently prioritizes early game moves since each search is given a percentage of the player's remaining time,
         /// which works well since there are more pieces and therefore more moves that need to be considered in the early/midgame.
         /// </summary>
-        [MethodImpl(Inline)]
         public void MakeMoveTime()
         {
             int newSearchTime = PlayerIncrement + (PlayerTime / 2);
