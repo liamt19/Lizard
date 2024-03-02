@@ -89,6 +89,11 @@
     <TieredCompilationQuickJit>true</TieredCompilationQuickJit>
 
 
+    <!-- Currently better than nothing if there are no [MethodImpl(MethodImplOptions.AggressiveInlining)] attributes.
+    -->
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    
+
     <!-- If true, GC collections will be less frequent but more intensive and can take place on multiple threads (like an additional 12).
          The process RAM usage will greatly increase before dropping sharply, as opposed to workstation GC which remains fairly constant.
          This can help prevent some of the otherwise frequent ~10-15 ms pauses and defer them until a good time.
@@ -97,21 +102,6 @@
          so if you have plenty of RAM available, this may improve performance.
     -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
-
-    
-    
-    
-    
-
-
-    <!-- ################################################## -->
-    <!-- ##########   Bad Switches (no touchy)   ########## -->
-    <!-- ################################################## -->
-
-    <!-- Quick JIT for loops will be disabled if TieredCompilationQuickJit is disabled above, but disable it here just in case.  
-         This really doesn't appear to have any redeeming qualities.
-    -->
-    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
 
   </PropertyGroup>
 
