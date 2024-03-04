@@ -188,6 +188,11 @@
 
 
 
+        public static int MaxCaptureHistoryMoves = 16;
+        public static int MaxQuietHistoryMoves = 16;
+
+        public static int SkipNMQuietsMinDepth = 8;
+
         /// <summary>
         /// The best move will get a slightly larger bonus if it's score is this much above beta.
         /// </summary>

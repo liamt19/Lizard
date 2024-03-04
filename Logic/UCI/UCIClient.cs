@@ -671,7 +671,11 @@ namespace Lizard.Logic.UCI
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
             Options[nameof(AspirationWindowMargin)].AutoMinMax();
 
+            Options[nameof(MaxCaptureHistoryMoves)].SetMinMax(6, 34);
+            Options[nameof(MaxQuietHistoryMoves)].AutoMinMax();
             Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
+
+            Options[nameof(SkipNMQuietsMinDepth)].AutoMinMax();
 
             Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
             Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();

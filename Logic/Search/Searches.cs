@@ -355,8 +355,8 @@ namespace Lizard.Logic.Search
 
             bool didSkip = false;
 
-            Move* captureMoves = stackalloc Move[16];
-            Move* quietMoves = stackalloc Move[16];
+            Move* captureMoves = stackalloc Move[MaxCaptureHistoryMoves];
+            Move* quietMoves = stackalloc Move[MaxQuietHistoryMoves];
 
             bool skipQuiets = false;
 
@@ -409,7 +409,7 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
 
-                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
+                    if (skipQuiets && depth <= SkipNMQuietsMinDepth && !(givesCheck || isCapture))
                     {
                         continue;
                     }
@@ -669,11 +669,11 @@ namespace Lizard.Logic.Search
                 if (m != bestMove)
                 {
                     //  Add the move to the capture/quiet list.
-                    if (isCapture && captureCount < 16)
+                    if (isCapture && captureCount < MaxCaptureHistoryMoves)
                     {
                         captureMoves[captureCount++] = m;
                     }
-                    else if (!isCapture && quietCount < 16)
+                    else if (!isCapture && quietCount < MaxQuietHistoryMoves)
                     {
                         quietMoves[quietCount++] = m;
                     }
