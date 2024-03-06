@@ -863,13 +863,6 @@ namespace Lizard.Logic.Search
                 bool isPromotion = m.Promotion;
                 bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
-                //  Captures and moves made while in check are always OK.
-                //  Moves that give check are only OK if the depth is above the threshold.
-                if (!(isCapture || ss->InCheck || (givesCheck && ttDepth > DepthQNoChecks)))
-                {
-                    continue;
-                }
-
                 movesMade++;
 
                 if (bestScore > ScoreTTLoss)
