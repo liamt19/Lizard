@@ -459,11 +459,11 @@ namespace Lizard.Logic.Search
 
                         if (!isPV
                             && score < singleBeta - SingularExtensionsBeta
-                            && ss->DoubleExtensions <= 8)
+                            && ss->DoubleExtensions <= 12)
                         {
                             //  If this isn't a PV, and this move is was a good deal better than any other one,
                             //  then extend it so long as we've extended fewer than 8 times.
-                            extend = 2 + (score < singleBeta - 110 && !isCapture ? 1 : 0);
+                            extend = 2 + (score < singleBeta - 200 && !isCapture ? 1 : 0);
                         }
                     }
                     else if (singleBeta >= beta)
