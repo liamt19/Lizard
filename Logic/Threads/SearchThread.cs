@@ -323,11 +323,9 @@ namespace Lizard.Logic.Threads
             {
                 (ss + i)->Clear();
                 (ss + i)->Ply = (short)i;
+                (ss + i)->PV = (Move*)AlignedAllocZeroed((nuint)(MaxPly * sizeof(Move)), AllocAlignment);
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
-
-            Move* PV = stackalloc Move[MaxPly];
-            ss->PV = PV;
 
             for (int sq = 0; sq < SquareNB; sq++)
             {

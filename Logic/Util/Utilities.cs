@@ -88,7 +88,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void Log(string s)
         {
             if (!UCIClient.Active)
@@ -112,7 +111,6 @@ namespace Lizard.Logic.Util
         /// <br></br>
         /// I'd rather force it to collect during an opponent's turn than have it decide to collect during our own.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void ForceGC()
         {
             GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
@@ -278,7 +276,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the <see cref="Direction"/> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int ShiftUpDir(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
 
         /// <summary>
@@ -286,7 +283,6 @@ namespace Lizard.Logic.Util
         /// So Forward(Color.White) with a bitboard that has A2 set will return one with A3 set,
         /// and Forward(Color.Black) returns one with A1 set instead.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong Forward(int color, ulong b)
         {
             return (color == Color.White) ? Shift(Direction.NORTH, b) : Shift(Direction.SOUTH, b);
@@ -297,7 +293,6 @@ namespace Lizard.Logic.Util
         /// So Backward(Color.White) with a bitboard that has A2 set will return one with A1 set,
         /// and Backward(Color.Black) returns one with A3 set instead.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong Backward(int color, ulong b)
         {
             if (color == Color.White)
@@ -311,7 +306,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong Shift(int dir, ulong b)
         {
             return dir == Direction.NORTH ? b << 8
@@ -332,7 +326,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns a ulong with bits set along whichever file <paramref name="idx"/> is in.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong GetFileBB(int idx)
         {
             return FileABB << GetIndexFile(idx);
@@ -341,7 +334,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong GetRankBB(int idx)
         {
             return Rank1BB << (8 * GetIndexRank(idx));
@@ -353,7 +345,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the opposite of <paramref name="color"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int Not(int color)
         {
             return color ^ 1;
@@ -363,7 +354,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the name of the <paramref name="color"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static string ColorToString(int color)
         {
             return color switch
@@ -377,7 +367,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the numerical value of the <paramref name="colorName"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int StringToColor(string colorName)
         {
             return colorName.ToLower() switch
@@ -391,7 +380,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the name of the piece of type <paramref name="n"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static string PieceToString(int n)
         {
             return n switch
@@ -409,7 +397,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the type of the piece called <paramref name="pieceName"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int StringToPiece(string pieceName)
         {
             return pieceName.ToLower() switch
@@ -427,7 +414,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the first letter of the name of the piece of type <paramref name="pieceType"/>, so PieceToFENChar(0 [Piece.Pawn]) returns 'P'.
         /// </summary>
-        [MethodImpl(Inline)]
         public static char PieceToFENChar(int pieceType)
         {
             return pieceType switch
@@ -445,7 +431,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the numerical piece type of the piece given its FEN character <paramref name="fenChar"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int FENToPiece(char fenChar)
         {
             return char.ToLower(fenChar) switch
@@ -465,7 +450,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns a random ulong using the Random instance <paramref name="random"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static ulong NextUlong(this Random random)
         {
             Span<byte> arr = new byte[8];
@@ -475,7 +459,6 @@ namespace Lizard.Logic.Util
         }
 
 
-        [MethodImpl(Inline)]
         public static bool DirectionOK(int sq, int dir)
         {
             if (sq + dir < A1 || sq + dir > H8)
@@ -495,31 +478,26 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the letter of the file numbered <paramref name="fileNumber"/>, so GetFileChar(0) returns 'a'.
         /// </summary>
-        [MethodImpl(Inline)]
         public static char GetFileChar(int fileNumber) => (char)(97 + fileNumber);
 
         /// <summary>
         /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetFileInt(char fileLetter) => fileLetter - 97;
 
         /// <summary>
         /// Returns the file (x coordinate) for the index, which is between A=0 and H=7.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetIndexFile(int index) => index & 7;
 
         /// <summary>
         /// Returns the rank (y coordinate) for the index, which is between 0 and 7.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetIndexRank(int index) => index >> 3;
 
         /// <summary>
         /// Sets <paramref name="x"/> to the file of <paramref name="index"/>, and <paramref name="y"/> to its rank.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void IndexToCoord(in int index, out int x, out int y)
         {
             x = index % 8;
@@ -529,7 +507,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the index of the square with the rank <paramref name="x"/> and file <paramref name="y"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int CoordToIndex(int x, int y)
         {
             return (y * 8) + x;
@@ -538,7 +515,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the rank and file of the square <paramref name="idx"/>, which looks like "a1" or "e4".
         /// </summary>
-        [MethodImpl(Inline)]
         public static string IndexToString(int idx)
         {
             return "" + GetFileChar(GetIndexFile(idx)) + (GetIndexRank(idx) + 1);
@@ -548,7 +524,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the index of the square <paramref name="s"/>, which should look like "a1" or "e4".
         /// </summary>
-        [MethodImpl(Inline)]
         public static int StringToIndex(string s)
         {
             return CoordToIndex(GetFileInt(s[0]), int.Parse(s[1].ToString()) - 1);
@@ -809,7 +784,6 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns an appropriately formatted string representing the Score, which is either "cp #" or "mate #".
         /// </summary>
-        [MethodImpl(Inline)]
         public static string FormatMoveScore(int score)
         {
             if (Evaluation.IsScoreMate(score))
@@ -842,7 +816,6 @@ namespace Lizard.Logic.Util
             return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
         }
 
-        [MethodImpl(Inline)]
         public static double InCentipawns(double score)
         {
             double div = Math.Round(score / 100, 2);

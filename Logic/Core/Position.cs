@@ -282,7 +282,6 @@ namespace Lizard.Logic.Core
         /// If <see cref="UpdateNN"/> is true, this method will also update the NNUE networks.
         /// </summary>
         /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
-        [MethodImpl(Inline)]
         public void MakeMove(Move move)
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
@@ -555,7 +554,6 @@ namespace Lizard.Logic.Core
             SetCheckInfo();
         }
 
-        [MethodImpl(Inline)]
         public void UnmakeMove(Move move)
         {
             int moveFrom = move.From;
@@ -668,7 +666,6 @@ namespace Lizard.Logic.Core
         /// Performs a null move, which only updates the EnPassantTarget (since it is always reset to 64 when a move is made) 
         /// and position hash accordingly.
         /// </summary>
-        [MethodImpl(Inline)]
         public void MakeNullMove()
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
@@ -698,7 +695,6 @@ namespace Lizard.Logic.Core
         /// <summary>
         /// Undoes a null move, which returns EnPassantTarget and the hash to their previous values.
         /// </summary>
-        [MethodImpl(Inline)]
         public void UnmakeNullMove()
         {
             State--;
@@ -739,7 +735,6 @@ namespace Lizard.Logic.Core
 
 
 
-        [MethodImpl(Inline)]
         public void SetState()
         {
             State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
@@ -768,7 +763,6 @@ namespace Lizard.Logic.Core
         }
 
 
-        [MethodImpl(Inline)]
         public void SetCheckInfo()
         {
             State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black], &State->Xrays[Black]);
@@ -812,7 +806,6 @@ namespace Lizard.Logic.Core
         /// This is only used for prefetching the <see cref="TTCluster"/>, and if the move actually 
         /// is an en passant or castle then the prefetch won't end up helping anyways.
         /// </summary>
-        [MethodImpl(Inline)]
         public ulong HashAfter(Move m)
         {
             ulong hash = State->Hash;
@@ -850,7 +843,6 @@ namespace Lizard.Logic.Core
         /// Returns true if the move <paramref name="move"/> is pseudo-legal.
         /// Only determines if there is a piece at move.From and the piece at move.To isn't the same color.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsPseudoLegal(in Move move)
         {
             int moveTo = move.To;
@@ -910,13 +902,11 @@ namespace Lizard.Logic.Core
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the current position.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
             int moveFrom = move.From;
@@ -1057,7 +1047,6 @@ namespace Lizard.Logic.Core
 
 
 
-        [MethodImpl(Inline)]
         public bool IsDraw()
         {
             return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
@@ -1068,7 +1057,6 @@ namespace Lizard.Logic.Core
         /// Checks if the position is currently drawn by insufficient material.
         /// This generally only happens for KvK, KvKB, and KvKN endgames.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsInsufficientMaterial()
         {
             if ((bb.Pieces[Piece.Queen] | bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Pawn]) != 0)
@@ -1090,7 +1078,6 @@ namespace Lizard.Logic.Core
         /// Only considers moves made past the last time the HalfMoves clock was reset,
         /// which occurs when captures are made or a pawn moves.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool IsThreefoldRepetition()
         {
             //  At least 8 moves must be made before a draw can occur.
@@ -1128,7 +1115,6 @@ namespace Lizard.Logic.Core
             return false;
         }
 
-        [MethodImpl(Inline)]
         public bool IsFiftyMoveDraw()
         {
             return State->HalfmoveClock >= 100;
@@ -1141,7 +1127,6 @@ namespace Lizard.Logic.Core
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
         /// <param name="depth">The number of moves that will be made from the starting position. Depth 1 returns the current number of legal moves.</param>
-        [MethodImpl(Inline)]
         public ulong Perft(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -1235,7 +1220,6 @@ namespace Lizard.Logic.Core
 
         private Stopwatch PerftTimer = new Stopwatch();
         private const int PerftParallelMinDepth = 6;
-        [MethodImpl(Inline)]
         public ulong PerftParallel(int depth, bool isRoot = false)
         {
             if (isRoot)
@@ -1280,7 +1264,6 @@ namespace Lizard.Logic.Core
         /// Same as perft but returns the evaluation at each of the leaves. 
         /// Only for benchmarking/debugging.
         /// </summary>
-        [MethodImpl(Inline)]
         public long PerftNN(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];

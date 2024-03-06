@@ -364,7 +364,6 @@
         /// The moves are placed into the array that <paramref name="pseudo"/> points to, 
         /// and the number of moves that were created is returned.
         /// </summary>
-        [MethodImpl(Inline)]
         public int GenPseudoLegal(ScoredMove* pseudo)
         {
             return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo) :
@@ -425,7 +424,6 @@
         /// <summary>
         /// <inheritdoc cref="GenLegal(ScoredMove*)"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public int GenLegal(Span<ScoredMove> legal)
         {
             //  The Span that this method receives is almost certainly already pinned (created via 'stackalloc'),
@@ -440,7 +438,6 @@
         /// <summary>
         /// <inheritdoc cref="GenPseudoLegal(ScoredMove*)"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public int GenPseudoLegal(Span<ScoredMove> pseudo)
         {
             fixed (ScoredMove* ptr = pseudo)

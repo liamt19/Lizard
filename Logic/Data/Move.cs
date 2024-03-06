@@ -109,7 +109,6 @@ namespace Lizard.Logic.Data
         public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
 
 
-        [MethodImpl(Inline)]
         public bool IsNull()
         {
             return (_data & Mask_ToFrom) == 0;
@@ -160,7 +159,6 @@ namespace Lizard.Logic.Data
         /// <br></br>
         /// For example, the opening moves "e4 e5, Nf3 Nc6, ..." would be "e2e4 e7e5, g1f3 b8c6, ..."
         /// </summary>
-        [MethodImpl(Inline)]
         public string SmithNotation(bool is960 = false)
         {
             IndexToCoord(From, out int fx, out int fy);
@@ -181,7 +179,6 @@ namespace Lizard.Logic.Data
             }
         }
 
-        [MethodImpl(Inline)]
         public string ToString(Position position)
         {
             StringBuilder sb = new StringBuilder();
@@ -261,8 +258,6 @@ namespace Lizard.Logic.Data
             return sb.ToString();
         }
 
-
-        [MethodImpl(Inline)]
         public string ToString(bool is960 = false)
         {
             return SmithNotation(is960);
@@ -277,7 +272,6 @@ namespace Lizard.Logic.Data
         /// <summary>
         /// Returns true if the <see cref="Move"/> <paramref name="move"/> has the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
         /// </summary>
-        [MethodImpl(Inline)]
         public bool Equals(Move move)
         {
             //  Today we learned that the JIT doesn't appear to create separate paths for Equals(object) and Equals(Move/CondensedMove).
@@ -289,32 +283,27 @@ namespace Lizard.Logic.Data
 
 
 
-        [MethodImpl(Inline)]
         public bool Equals(ScoredMove move)
         {
             return move.Move.Equals(this);
         }
 
 
-        [MethodImpl(Inline)]
         public static bool operator ==(Move left, Move right)
         {
             return left.Equals(right);
         }
 
-        [MethodImpl(Inline)]
         public static bool operator !=(Move left, Move right)
         {
             return !left.Equals(right);
         }
 
-        [MethodImpl(Inline)]
         public static bool operator ==(Move left, ScoredMove right)
         {
             return left.Equals(right);
         }
 
-        [MethodImpl(Inline)]
         public static bool operator !=(Move left, ScoredMove right)
         {
             return !left.Equals(right);

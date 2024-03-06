@@ -9,7 +9,6 @@
         /// <param name="ss">The entry containing Killer moves to prioritize</param>
         /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
         /// <param name="ttMove">The <see cref="Move"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
-        [MethodImpl(Inline)]
         public static void AssignScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
                 ScoredMove* list, int size, Move ttMove)
         {
@@ -66,7 +65,6 @@
         /// </summary>
         /// <param name="history">A reference to a <see cref="HistoryTable"/> with MainHistory/CaptureHistory scores.</param>
         /// <param name="ttMove">The <see cref="Move"/> retrieved from the TT probe, or Move.Null if the probe missed (ss->ttHit == false). </param>
-        [MethodImpl(Inline)]
         public static void AssignQuiescenceScores(Position pos, SearchStackEntry* ss, in HistoryTable history,
                 ScoredMove* list, int size, Move ttMove)
         {
@@ -137,7 +135,6 @@
         /// Passes over the list of <paramref name="moves"/>, bringing the move with the highest <see cref="ScoredMove.Score"/>
         /// within the range of <paramref name="listIndex"/> and <paramref name="size"/> to the front and returning it.
         /// </summary>
-        [MethodImpl(Inline)]
         public static Move OrderNextMove(ScoredMove* moves, int size, int listIndex)
         {
             int max = int.MinValue;

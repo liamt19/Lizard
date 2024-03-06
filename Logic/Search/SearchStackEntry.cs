@@ -89,7 +89,7 @@ namespace Lizard.Logic.Search
 
 
         /// <summary>
-        /// A pointer to a <see langword="stackalloc"/>'d array of <see cref="Move"/>, which represents the current PV.
+        /// A pointer to an array of <see cref="Move"/> created with <see cref="AlignedAllocZeroed"/>, which represents the current PV.
         /// <para></para>
         /// This must be set on a per-thread basis, and before that thread's search begins.
         /// </summary>
@@ -149,7 +149,12 @@ namespace Lizard.Logic.Search
             InCheck = false;
             TTPV = false;
             TTHit = false;
-            PV = null;
+
+            if (PV != null)
+            {
+                NativeMemory.AlignedFree(PV);
+                PV = null;
+            }
 
             Killer0 = Move.Null;
             Killer1 = Move.Null;

@@ -288,7 +288,6 @@ namespace Lizard.Logic.NN
             return (output / QA + LayerBiases[0][outputBucket]) * OutputScale / QAB;
         }
 
-        [MethodImpl(Inline)]
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
         {
             const int ColorStride = 64 * 6;
@@ -309,7 +308,6 @@ namespace Lizard.Logic.NN
             return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * SIMD_CHUNKS;
         }
 
-        [MethodImpl(Inline)]
         private static (int, int) FeatureIndex(int pc, int pt, int sq, int wk, int bk)
         {
             const int ColorStride = 64 * 6;
@@ -452,7 +450,6 @@ namespace Lizard.Logic.NN
         }
 
 
-        [MethodImpl(Inline)]
         private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -461,7 +458,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-        [MethodImpl(Inline)]
         private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -470,7 +466,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-        [MethodImpl(Inline)]
         private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -481,7 +476,6 @@ namespace Lizard.Logic.NN
 
 
 
-        [MethodImpl(Inline)]
         private static int SumVector256NoHadd(Vector256<int> vect)
         {
             Vector128<int> lo = vect.GetLower();

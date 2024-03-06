@@ -7,7 +7,7 @@ using Lizard.Properties;
 namespace Lizard.Logic.NN
 {
     [SkipStaticConstructor]
-    public static unsafe class Simple768
+    public static unsafe partial class Simple768
     {
         public const int InputSize = 768;
         public const int HiddenSize = 1536;
@@ -221,7 +221,6 @@ namespace Lizard.Logic.NN
         }
 
 
-        [MethodImpl(Inline)]
         private static int FeatureIndex(int pc, int pt, int sq, int perspective)
         {
             const int ColorStride = 64 * 6;
@@ -232,7 +231,6 @@ namespace Lizard.Logic.NN
 
 
 
-        [MethodImpl(Inline)]
         private static (int, int) FeatureIndex(int pc, int pt, int sq)
         {
             const int ColorStride = 64 * 6;
@@ -293,15 +291,15 @@ namespace Lizard.Logic.NN
             {
                 (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
 
-                SubSubAdd(whiteAccumulation,
-                    (FeatureWeights + wFrom),
-                    (FeatureWeights + wCap),
-                    (FeatureWeights + wTo));
+                SubSubAdd((short*)whiteAccumulation,
+                    (short*)(FeatureWeights + wFrom),
+                    (short*)(FeatureWeights + wCap),
+                    (short*)(FeatureWeights + wTo));
 
-                SubSubAdd(blackAccumulation,
-                    (FeatureWeights + bFrom),
-                    (FeatureWeights + bCap),
-                    (FeatureWeights + bTo));
+                SubSubAdd((short*)blackAccumulation,
+                    (short*)(FeatureWeights + bFrom),
+                    (short*)(FeatureWeights + bCap),
+                    (short*)(FeatureWeights + bTo));
             }
             else if (m.EnPassant)
             {
@@ -309,30 +307,28 @@ namespace Lizard.Logic.NN
 
                 (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
 
-                SubSubAdd(whiteAccumulation,
-                    (FeatureWeights + wFrom),
-                    (FeatureWeights + wCap),
-                    (FeatureWeights + wTo));
+                SubSubAdd((short*)whiteAccumulation,
+                    (short*)(FeatureWeights + wFrom),
+                    (short*)(FeatureWeights + wCap),
+                    (short*)(FeatureWeights + wTo));
 
-                SubSubAdd(blackAccumulation,
-                    (FeatureWeights + bFrom),
-                    (FeatureWeights + bCap),
-                    (FeatureWeights + bTo));
+                SubSubAdd((short*)blackAccumulation,
+                    (short*)(FeatureWeights + bFrom),
+                    (short*)(FeatureWeights + bCap),
+                    (short*)(FeatureWeights + bTo));
             }
             else
             {
-                SubAdd(whiteAccumulation,
-                    (FeatureWeights + wFrom),
-                    (FeatureWeights + wTo));
+                SubAdd((short*)whiteAccumulation, 
+                    (short*)(FeatureWeights + wFrom), 
+                    (short*)(FeatureWeights + wTo));
 
-                SubAdd(blackAccumulation,
-                    (FeatureWeights + bFrom),
-                    (FeatureWeights + bTo));
+                SubAdd((short*)blackAccumulation, 
+                    (short*)(FeatureWeights + bFrom), 
+                    (short*)(FeatureWeights + bTo));
             }
         }
 
-
-        [MethodImpl(Inline)]
         private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -341,7 +337,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-        [MethodImpl(Inline)]
         private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -350,7 +345,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-        [MethodImpl(Inline)]
         private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
@@ -361,7 +355,6 @@ namespace Lizard.Logic.NN
 
 
 
-        [MethodImpl(Inline)]
         private static int SumVector256NoHadd(Vector256<int> vect)
         {
             Vector128<int> lo = vect.GetLower();

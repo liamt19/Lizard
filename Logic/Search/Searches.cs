@@ -355,7 +355,6 @@ namespace Lizard.Logic.Search
 
             bool didSkip = false;
 
-            Move* PV = stackalloc Move[MaxPly];
             Move* captureMoves = stackalloc Move[16];
             Move* quietMoves = stackalloc Move[16];
 
@@ -493,7 +492,7 @@ namespace Lizard.Logic.Search
 
                 if (isPV)
                 {
-                    (ss + 1)->PV = null;
+                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
                 }
 
                 int newDepth = depth + extend;
@@ -574,7 +573,6 @@ namespace Lizard.Logic.Search
                 {
                     //  Do a new PV search here.
                     //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
-                    (ss + 1)->PV = PV;
                     (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth - 1, false);
                 }
@@ -754,10 +752,8 @@ namespace Lizard.Logic.Search
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
             bool ttPV = ss->TTHit && tte->PV;
 
-            Move* PV = stackalloc Move[MaxPly];
             if (isPV)
             {
-                (ss + 1)->PV = PV;
                 ss->PV[0] = Move.Null;
             }
 
@@ -1073,7 +1069,6 @@ namespace Lizard.Logic.Search
         /// <summary>
         /// Calculates a bonus, given the current <paramref name="depth"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int StatBonus(int depth)
         {
             return Math.Min((StatBonusMult * depth) - StatBonusSub, StatBonusMax);
@@ -1082,7 +1077,6 @@ namespace Lizard.Logic.Search
         /// <summary>
         /// Calculates a penalty, given the current <paramref name="depth"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int StatMalus(int depth)
         {
             return Math.Min((StatMalusMult * depth) - StatMalusSub, StatMalusMax);
@@ -1092,7 +1086,6 @@ namespace Lizard.Logic.Search
         /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
         /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
-        [MethodImpl(Inline)]
         private static int GetReverseFutilityMargin(int depth, bool improving)
         {
             return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;

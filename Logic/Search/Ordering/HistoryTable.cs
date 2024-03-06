@@ -69,13 +69,11 @@ namespace Lizard.Logic.Search.Ordering
         /// Applies the <paramref name="bonus"/> to the score at the specified <paramref name="index"/> in the short* <paramref name="field"/>.
         /// This <paramref name="bonus"/> is clamped by the value of <paramref name="clamp"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public void ApplyBonus(short* field, int index, int bonus, int clamp)
         {
             field[index] += (short)(bonus - (field[index] * Math.Abs(bonus) / clamp));
         }
 
-        [MethodImpl(Inline)]
         public static int HistoryIndex(int pc, Move m)
         {
             if (EnableAssertions)
@@ -93,7 +91,6 @@ namespace Lizard.Logic.Search.Ordering
         /// This just calculates the flattened 3D array index for 
         /// <see cref="CaptureHistory"/>[<paramref name="pt"/> + <paramref name="pc"/>][<paramref name="toSquare"/>][<paramref name="capturedPt"/>].
         /// </summary>
-        [MethodImpl(Inline)]
         public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
         {
             const int xMax = (PieceNB) * ColorNB;
@@ -186,7 +183,6 @@ namespace Lizard.Logic.Search.Ordering
         /// Returns the index of the score in the History array for a piece of color <paramref name="pc"/> 
         /// and type <paramref name="pt"/> moving to the square <paramref name="sq"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetIndex(int pc, int pt, int sq)
         {
             if (EnableAssertions)
@@ -209,7 +205,6 @@ namespace Lizard.Logic.Search.Ordering
         /// <summary>
         /// Fills this instance's array with the value of <see cref="FillValue"/>.
         /// </summary>
-        [MethodImpl(Inline)]
         public void Clear()
         {
             NativeMemory.Clear(_History, ByteSize);
@@ -280,7 +275,6 @@ namespace Lizard.Logic.Search.Ordering
         }
 
 
-        [MethodImpl(Inline)]
         public void Clear()
         {
             for (nuint i = 0; i < Length; i++)

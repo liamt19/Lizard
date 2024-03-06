@@ -73,7 +73,6 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Reinitializes each <see cref="TTCluster"/> within the table.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void Clear()
         {
             SearchPool.MainThread.WaitForThreadFinished();
@@ -91,7 +90,6 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Returns a pointer to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
         /// </summary>
-        [MethodImpl(Inline)]
         public static TTCluster* GetCluster(ulong hash)
         {
             return Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64));
@@ -156,7 +154,6 @@ namespace Lizard.Logic.Transposition
         /// This is done on every call to <see cref="Threads.SearchThread.MainThreadSearch"/> to prevent the transposition table
         /// from spilling into another search.
         /// </summary>
-        [MethodImpl(Inline)]
         public static void TTUpdate()
         {
             Age += TT_AGE_INC;
@@ -172,7 +169,6 @@ namespace Lizard.Logic.Transposition
         /// A hashfull of 400 means that there were 1200 TTEntry's with the correct age out of the first 3000, so we can estimate that 
         /// about 40% of the entire TT has valid entries in it.
         /// </summary>
-        [MethodImpl(Inline)]
         public static int GetHashFull()
         {
             int entries = 0;
