@@ -471,10 +471,10 @@
         public int GenPseudoLegalQS(ScoredMove* pseudo, int ttDepth)
         {
             return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo) :
-                                            GenAllQS<GenNonEvasions>(pseudo, ttDepth);
+                                            GenAllQS(pseudo, ttDepth);
         }
 
-        public int GenAllQS<GenType>(ScoredMove* list, int ttDepth, int size = 0) where GenType : MoveGenerationType
+        public int GenAllQS(ScoredMove* list, int ttDepth, int size = 0)
         {
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
@@ -681,19 +681,6 @@
 
                 ref Move m = ref list[size++].Move;
                 m.SetNew(to - up - Direction.EAST, to);
-            }
-
-            if (State->EPSquare != EPNone)
-            {
-                ulong mask = notPromotingPawns & PawnAttackMasks[theirColor][State->EPSquare];
-                while (mask != 0)
-                {
-                    int from = poplsb(&mask);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(from, State->EPSquare);
-                    m.EnPassant = true;
-                }
             }
 
             return size;
