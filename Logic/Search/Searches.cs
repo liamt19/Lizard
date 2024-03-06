@@ -462,8 +462,8 @@ namespace Lizard.Logic.Search
                             && ss->DoubleExtensions <= 8)
                         {
                             //  If this isn't a PV, and this move is was a good deal better than any other one,
-                            //  then extend by 2 so long as we've double extended less than 8 times.
-                            extend = 2;
+                            //  then extend it so long as we've extended fewer than 8 times.
+                            extend = 2 + (score < singleBeta - 110 && !isCapture ? 1 : 0);
                         }
                     }
                     else if (singleBeta >= beta)
@@ -479,7 +479,7 @@ namespace Lizard.Logic.Search
 
                 int histIdx = PieceToHistory.GetIndex(ourColor, thisPieceType, toSquare);
 
-                ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend == 2 ? 1 : 0);
+                ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend >= 2 ? 1 : 0);
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
