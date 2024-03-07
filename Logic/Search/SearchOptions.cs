@@ -29,6 +29,10 @@
 
 
 
+        public static bool UCI_Chess960 = false;
+
+
+
         /// <summary>
         /// Whether or not to extend searches if there is only one good move in a position.
         /// <para></para>

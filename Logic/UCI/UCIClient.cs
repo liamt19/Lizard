@@ -178,6 +178,8 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "position")
                 {
+                    pos.IsChess960 = UCI_Chess960;
+
                     info = new SearchInformation(pos, DefaultSearchDepth);
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;

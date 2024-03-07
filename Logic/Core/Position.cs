@@ -261,18 +261,22 @@ namespace Lizard.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
+
                 if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
                 {
                     move = m;
                     return true;
                 }
-                if (i == size - 1)
+
+                if (m.Castle && m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
                 {
-                    Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
+                    move = m;
+                    return true;
                 }
             }
 
+            Log("No move '" + moveStr + "' found, try one of the following: ");
+            Log(Stringify(list, this) + "\r\n" + Stringify(list));
             move = Move.Null;
             return false;
         }
