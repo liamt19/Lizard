@@ -987,7 +987,7 @@ namespace Lizard.Logic.Core
 
             int count = 0;
             StateInfo* temp = State;
-            for (int i = 0; i < GamePly - 1; i += 2)
+            while (true)
             {
                 if (temp->Hash == currHash)
                 {
@@ -999,7 +999,7 @@ namespace Lizard.Logic.Core
                     }
                 }
 
-                if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart)
+                if (temp - 1 <= StartingState)
                 {
                     break;
                 }
