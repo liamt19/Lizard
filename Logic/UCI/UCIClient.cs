@@ -510,7 +510,7 @@ namespace Lizard.Logic.UCI
                     LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal for FEN '" + info.Position.GetFEN() + "'");
                 }
 
-                SendString("bestmove " + bestThreadMove.ToString());
+                SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
                 LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + FormatCurrentTime());
             }
             else

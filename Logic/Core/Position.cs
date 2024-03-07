@@ -262,13 +262,7 @@ namespace Lizard.Logic.Core
             {
                 Move m = list[i].Move;
 
-                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
-                {
-                    move = m;
-                    return true;
-                }
-
-                if (m.Castle && m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
                 {
                     move = m;
                     return true;
