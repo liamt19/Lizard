@@ -278,7 +278,6 @@
 
             int GenCastlingMoves(ScoredMove* list, int size)
             {
-                const bool IsChess960 = false;
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.WK)

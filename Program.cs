@@ -230,6 +230,7 @@ namespace Lizard
             //  The Position "p" has UpdateNN == true, which we don't want
             //  for purely Perft usage.
             Position pos = new Position(p.GetFEN(), false, null);
+            pos.IsChess960 = p.IsChess960;
 
             Stopwatch sw = Stopwatch.StartNew();
 
