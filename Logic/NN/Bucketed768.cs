@@ -377,21 +377,10 @@ namespace Lizard.Logic.NN
                 }
                 else if (m.Castle)
                 {
-                    int rookFromSq = moveTo switch
-                    {
-                        C1 => A1,
-                        G1 => H1,
-                        C8 => A8,
-                        _ => H8,    //  G8 => H8
-                    };
+                    int rookFromSq = moveTo;
+                    int rookToSq = m.CastlingRookSquare;
 
-                    int rookToSq = moveTo switch
-                    {
-                        C1 => D1,
-                        G1 => F1,
-                        C8 => D8,
-                        _ => F8,    //  G8 => F8
-                    };
+                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare, theirKing, them);
 
                     int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
                     int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);

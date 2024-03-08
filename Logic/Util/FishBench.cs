@@ -82,6 +82,5 @@ namespace Lizard.Logic.Util
             Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
             return nodesCorrect;
         }
-
     }
 }

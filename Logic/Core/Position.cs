@@ -130,6 +130,11 @@ namespace Lizard.Logic.Core
         public readonly bool UpdateNN;
 
 
+        public int[] CastlingRookSquares;
+        public ulong[] CastlingRookPaths;
+
+        public bool IsChess960 = false;
+
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
         /// <br></br>
@@ -144,6 +149,9 @@ namespace Lizard.Logic.Core
         public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread? owner = null)
         {
             MaterialCountNonPawn = new int[2];
+            CastlingRookSquares = new int[(int)CastlingStatus.All];
+            CastlingRookPaths = new ulong[(int)CastlingStatus.All];
+
 
             this.UpdateNN = createAccumulators;
             this.Owner = owner;
@@ -227,7 +235,7 @@ namespace Lizard.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
                 {
                     MakeMove(m);
                     return true;
@@ -253,18 +261,16 @@ namespace Lizard.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
+
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
                 {
                     move = m;
                     return true;
                 }
-                if (i == size - 1)
-                {
-                    Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
-                }
             }
 
+            Log("No move '" + moveStr + "' found, try one of the following: ");
+            Log(Stringify(list, this) + "\r\n" + Stringify(list));
             move = Move.Null;
             return false;
         }
@@ -311,7 +317,7 @@ namespace Lizard.Logic.Core
                 Assert(ourPiece != Piece.None,
                     "Move " + move.ToString() + " in FEN '" + GetFEN() + "' doesn't have a piece on the From square!");
 
-                Assert(theirPiece == None || ourColor != bb.GetColorAtIndex(moveTo),
+                Assert(theirPiece == None || (ourColor != bb.GetColorAtIndex(moveTo) || move.Castle),
                     "Move " + move.ToString(this) + " in FEN '" + GetFEN() + "' is trying to capture our own " + PieceToString(theirPiece) + " on " + IndexToString(moveTo));
 
                 Assert(theirPiece != King,
@@ -324,30 +330,16 @@ namespace Lizard.Logic.Core
 
             if (ourPiece == Piece.King)
             {
-                State->KingSquares[ourColor] = moveTo;
-
                 if (move.Castle)
                 {
                     //  Move our rook and update the hash
-                    switch (moveTo)
-                    {
-                        case C1:
-                            bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
-                            State->Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
-                            break;
-                        case G1:
-                            bb.MoveSimple(H1, F1, ourColor, Piece.Rook);
-                            State->Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
-                            break;
-                        case C8:
-                            bb.MoveSimple(A8, D8, ourColor, Piece.Rook);
-                            State->Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
-                            break;
-                        default:
-                            bb.MoveSimple(H8, F8, ourColor, Piece.Rook);
-                            State->Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
-                            break;
-                    }
+                    theirPiece = None;
+                    DoCastling(ourColor, moveFrom, moveTo, undo: false);
+                    State->KingSquares[ourColor] = move.CastlingKingSquare;
+                }
+                else
+                {
+                    State->KingSquares[ourColor] = moveTo;
                 }
 
                 //  Remove all of our castling rights
@@ -365,24 +357,26 @@ namespace Lizard.Logic.Core
             else if (ourPiece == Piece.Rook && State->CastleStatus != CastlingStatus.None)
             {
                 //  If we just moved a rook, update st->CastleStatus
-                switch (moveFrom)
+
+                if (moveFrom == CastlingRookSquares[(int)CastlingStatus.WQ])
                 {
-                    case A1:
-                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
-                        State->CastleStatus &= ~CastlingStatus.WQ;
-                        break;
-                    case H1:
-                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
-                        State->CastleStatus &= ~CastlingStatus.WK;
-                        break;
-                    case A8:
-                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
-                        State->CastleStatus &= ~CastlingStatus.BQ;
-                        break;
-                    case H8:
-                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
-                        State->CastleStatus &= ~CastlingStatus.BK;
-                        break;
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                    State->CastleStatus &= ~CastlingStatus.WQ;
+                }
+                else if (moveFrom == CastlingRookSquares[(int)CastlingStatus.WK])
+                {
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                    State->CastleStatus &= ~CastlingStatus.WK;
+                }
+                else if (moveFrom == CastlingRookSquares[(int)CastlingStatus.BQ])
+                {
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                    State->CastleStatus &= ~CastlingStatus.BQ;
+                }
+                else if (moveFrom == CastlingRookSquares[(int)CastlingStatus.BK])
+                {
+                    State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                    State->CastleStatus &= ~CastlingStatus.BK;
                 }
             }
 
@@ -395,24 +389,25 @@ namespace Lizard.Logic.Core
                 if (theirPiece == Piece.Rook)
                 {
                     //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
-                    switch (moveTo)
+                    if (moveTo == CastlingRookSquares[(int)CastlingStatus.WQ])
                     {
-                        case A1:
-                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
-                            State->CastleStatus &= ~CastlingStatus.WQ;
-                            break;
-                        case H1:
-                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
-                            State->CastleStatus &= ~CastlingStatus.WK;
-                            break;
-                        case A8:
-                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
-                            State->CastleStatus &= ~CastlingStatus.BQ;
-                            break;
-                        case H8:
-                            State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
-                            State->CastleStatus &= ~CastlingStatus.BK;
-                            break;
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WQ);
+                        State->CastleStatus &= ~CastlingStatus.WQ;
+                    }
+                    else if (moveTo == CastlingRookSquares[(int)CastlingStatus.WK])
+                    {
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.WK);
+                        State->CastleStatus &= ~CastlingStatus.WK;
+                    }
+                    else if (moveTo == CastlingRookSquares[(int)CastlingStatus.BQ])
+                    {
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BQ);
+                        State->CastleStatus &= ~CastlingStatus.BQ;
+                    }
+                    else if (moveTo == CastlingRookSquares[(int)CastlingStatus.BK])
+                    {
+                        State->Hash.ZobristCastle(State->CastleStatus, CastlingStatus.BK);
+                        State->CastleStatus &= ~CastlingStatus.BK;
                     }
                 }
 
@@ -484,9 +479,11 @@ namespace Lizard.Logic.Core
                 State->HalfmoveClock = 0;
             }
 
-
-            bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
-            State->Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
+            if (!move.Castle)
+            {
+                bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
+                State->Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
+            }
 
             if (EnableAssertions)
             {
@@ -562,29 +559,15 @@ namespace Lizard.Logic.Core
             }
             else if (move.Castle)
             {
-                //  Put the rook back
-                if (moveTo == C1)
-                {
-                    bb.MoveSimple(D1, A1, ourColor, Piece.Rook);
-                }
-                else if (moveTo == G1)
-                {
-                    bb.MoveSimple(F1, H1, ourColor, Piece.Rook);
-                }
-                else if (moveTo == C8)
-                {
-                    bb.MoveSimple(D8, A8, ourColor, Piece.Rook);
-                }
-                else
-                {
-                    //  moveTo == G8
-                    bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
-                }
-
+                //  Put both pieces back
+                DoCastling(ourColor, moveFrom, moveTo, undo: true);
             }
 
-            //  Put our piece back to the square it came from.
-            bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+            if (!move.Castle)
+            {
+                //  Put our piece back to the square it came from.
+                bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
+            }
 
             if (State->CapturedPiece != Piece.None)
             {
@@ -680,7 +663,37 @@ namespace Lizard.Logic.Core
             ToMove = Not(ToMove);
         }
 
+        /// <summary>
+        /// Moves the king and rook for castle moves, and updates the position hash accordingly.
+        /// Adapted from https://github.com/official-stockfish/Stockfish/blob/632f1c21cd271e7c4c242fdafa328a55ec63b9cb/src/position.cpp#L931
+        /// </summary>
+        public void DoCastling(int ourColor, int from, int to, bool undo = false)
+        {
+            bool kingSide = to > from;
+            int rfrom = to;
+            int rto = (kingSide ? Squares.F1 : Squares.D1) ^ (ourColor * 56);
+            to = (kingSide ? Squares.G1 : Squares.C1) ^ (ourColor * 56);
 
+            if (undo)
+            {
+                bb.RemovePiece(to, ourColor, King);
+                bb.RemovePiece(rto, ourColor, Rook);
+
+                bb.AddPiece(from, ourColor, King);
+                bb.AddPiece(rfrom, ourColor, Rook);
+            }
+            else
+            {
+                bb.RemovePiece(from, ourColor, King);
+                bb.RemovePiece(rfrom, ourColor, Rook);
+
+                bb.AddPiece(to, ourColor, King);
+                bb.AddPiece(rto, ourColor, Rook);
+
+                State->Hash.ZobristMove(from, to, ourColor, Piece.King);
+                State->Hash.ZobristMove(rfrom, rto, ourColor, Piece.Rook);
+            }
+        }
 
 
 
@@ -730,6 +743,25 @@ namespace Lizard.Logic.Core
             State->CheckSquares[King] = 0;
         }
 
+        [MethodImpl(Inline)]
+        public void SetCastlingStatus(int c, int rfrom)
+        {
+            int kfrom = bb.KingIndex(c);
+
+            CastlingStatus cr = (c == White && kfrom < rfrom) ? CastlingStatus.WK :
+                                (c == Black && kfrom < rfrom) ? CastlingStatus.BK :
+                                (c == White) ?                  CastlingStatus.WQ :
+                                                                CastlingStatus.BQ;
+
+            CastlingRookSquares[(int)cr] = rfrom;
+
+            int kto = ((cr & CastlingStatus.Kingside) != CastlingStatus.None ? G1 : C1) ^ (56 * c);
+            int rto = ((cr & CastlingStatus.Kingside) != CastlingStatus.None ? F1 : D1) ^ (56 * c);
+
+            CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB[kfrom] | SquareBB[rfrom]);
+
+            State->CastleStatus |= cr;
+        }
 
 
         /// <summary>
@@ -791,14 +823,14 @@ namespace Lizard.Logic.Core
             int pc = bb.GetColorAtIndex(moveFrom);
             if (pc != ToMove)
             {
+                //  This isn't our piece, so we can't move it.
                 return false;
             }
 
-            //if (bb.GetPieceAtIndex(moveTo) != None && (move.Capture == false || (pc == bb.GetColorAtIndex(moveTo))))
-            if (bb.GetPieceAtIndex(moveTo) != None && (pc == bb.GetColorAtIndex(moveTo)))
+            if (bb.GetPieceAtIndex(moveTo) != None && pc == bb.GetColorAtIndex(moveTo) && !move.Castle)
             {
-                //  There is a piece on the square we are moving to, but this move wasn't generated as a capture
-                //  or the piece on the To square is the same color as the one that is moving.
+                //  There is a piece on the square we are moving to, and it is ours, so we can't capture it.
+                //  The one exception is castling, which is encoded as king captures rook.
                 return false;
             }
 
@@ -891,24 +923,36 @@ namespace Lizard.Logic.Core
             {
                 if (move.Castle)
                 {
-                    int rookSquare = moveTo switch
-                    {
-                        C1 => A1,
-                        G1 => H1,
-                        C8 => A8,
-                        G8 => H8,
-                        _ => moveFrom,
-                    };
+                    var thisCr = move.RelevantCastlingRight;
+                    int rookSq = CastlingRookSquares[(int)thisCr];
 
-                    if (EnableAssertions)
+                    if ((SquareBB[rookSq] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
                     {
-                        Assert(rookSquare != moveFrom, "IsLegal(" + move + ") is a castle, but the To square wasn't C1/G1 or C8/G8!");
-                    }
-
-                    if ((SquareBB[rookSquare] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
-                    {
+                        //  There isn't a rook on the square that we are trying to castle towards.
                         return false;
                     }
+
+                    if (IsChess960 && (State->BlockingPieces[ourColor] & SquareBB[moveTo]) != 0)
+                    {
+                        //  This rook was blocking a check, and it would put our king in check
+                        //  once the rook and king switched places
+                        return false;
+                    }
+
+                    int kingTo = (moveTo > moveFrom ? G1 : C1) ^ (ourColor * 56);
+                    ulong them = bb.Colors[theirColor];
+                    int dir = (moveFrom < kingTo) ? -1 : 1;
+                    for (int sq = kingTo; sq != moveFrom; sq += dir)
+                    {
+                        if ((bb.AttackersTo(sq, bb.Occupancy) & them) != 0)
+                        {
+                            //  Moving here would put us in check
+                            return false;
+                        }
+                    }
+
+                    return ((bb.AttackersTo(kingTo, bb.Occupancy ^ SquareBB[ourKing]) & bb.Colors[theirColor])
+                           | (NeighborsMask[kingTo] & SquareBB[theirKing])) == 0;
                 }
 
                 //  We can move anywhere as long as it isn't attacked by them.
@@ -1013,7 +1057,6 @@ namespace Lizard.Logic.Core
         {
             return State->HalfmoveClock >= 100;
         }
-
 
 
         /// <summary>
@@ -1170,16 +1213,34 @@ namespace Lizard.Logic.Core
                     //	castling availability
                     else if (i == 9)
                     {
-                        if (splits[i].Contains('-'))
+                        State->CastleStatus = CastlingStatus.None;
+
+                        foreach (char ch in splits[i])
                         {
-                            State->CastleStatus = CastlingStatus.None;
-                        }
-                        else
-                        {
-                            State->CastleStatus |= splits[i].Contains('K') ? CastlingStatus.WK : 0;
-                            State->CastleStatus |= splits[i].Contains('Q') ? CastlingStatus.WQ : 0;
-                            State->CastleStatus |= splits[i].Contains('k') ? CastlingStatus.BK : 0;
-                            State->CastleStatus |= splits[i].Contains('q') ? CastlingStatus.BQ : 0;
+                            int rsq = SquareNB;
+                            int color = char.IsUpper(ch) ? White : Black;
+                            char upper = char.ToUpper(ch);
+
+                            if (upper == 'K')
+                            {
+                                for (rsq = (H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; --rsq) { }
+                            }
+                            else if (upper == 'Q')
+                            {
+                                for (rsq = (A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; ++rsq) { }
+                            }
+                            else if (upper >= 'A' && upper <= 'H')
+                            {
+                                IsChess960 = true;
+
+                                rsq = CoordToIndex((int)upper - 'A', (0 ^ (color * 7)));
+                            }
+                            else
+                            {
+                                continue;
+                            }
+
+                            SetCastlingStatus(color, rsq);
                         }
                     }
                     //	en passant target or last double pawn move
@@ -1315,31 +1376,30 @@ namespace Lizard.Logic.Core
 
             fen.Append(ToMove == Color.White ? " w " : " b ");
 
-            bool CanC = false;
-            if (State->CastleStatus.HasFlag(CastlingStatus.WK))
+            if (State->CastleStatus != CastlingStatus.None)
             {
-                fen.Append('K');
-                CanC = true;
+                if (State->CastleStatus.HasFlag(CastlingStatus.WK))
+                {
+                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WK])) : 'K');
+                }
+                if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
+                {
+                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WQ])) : 'Q');
+                }
+                if (State->CastleStatus.HasFlag(CastlingStatus.BK))
+                {
+                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BK])) : 'k');
+                }
+                if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
+                {
+                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BQ])) : 'q');
+                }
             }
-            if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
-            {
-                fen.Append('Q');
-                CanC = true;
-            }
-            if (State->CastleStatus.HasFlag(CastlingStatus.BK))
-            {
-                fen.Append('k');
-                CanC = true;
-            }
-            if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
-            {
-                fen.Append('q');
-                CanC = true;
-            }
-            if (!CanC)
+            else
             {
                 fen.Append('-');
             }
+
             if (State->EPSquare != EPNone)
             {
                 fen.Append(" " + IndexToString(State->EPSquare));

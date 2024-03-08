@@ -312,7 +312,7 @@ namespace Lizard.Logic.Search
                     int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None) ? 1 : 0][histIdx];
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None && !m.Castle) ? 1 : 0][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -386,9 +386,8 @@ namespace Lizard.Logic.Search
                         "but it isn't pseudo-legal!");
                 }
 
-
-                bool isCapture = (bb.GetPieceAtIndex(m.To) != None);
                 int toSquare = m.To;
+                bool isCapture = (bb.GetPieceAtIndex(toSquare) != None && !m.Castle);
                 int thisPieceType = bb.GetPieceAtIndex(m.From);
 
                 legalMoves++;
@@ -859,7 +858,7 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
 
-                bool isCapture = (pos.bb.GetPieceAtIndex(m.To) != None);
+                bool isCapture = (pos.bb.GetPieceAtIndex(m.To) != None && !m.Castle);
                 bool isPromotion = m.Promotion;
                 bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
 
@@ -1010,7 +1009,7 @@ namespace Lizard.Logic.Search
             int quietMoveBonus = StatBonus(depth + 1);
             int quietMovePenalty = StatMalus(depth);
 
-            if (capturedPiece != None)
+            if (capturedPiece != None && !bestMove.Castle)
             {
                 int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
                 history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);

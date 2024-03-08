@@ -265,7 +265,29 @@ namespace Lizard.Logic.NN
             (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom);
             (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo);
 
-            if (theirPiece != None)
+            if (m.Castle)
+            {
+                int rookFrom = moveTo;
+                int rookTo = m.CastlingRookSquare;
+
+                (wTo, bTo) = FeatureIndex(us, ourPiece, m.CastlingKingSquare);
+
+                (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFrom);
+                (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookTo);
+
+                SubSubAddAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wRookFrom),
+                    (FeatureWeights + wTo),
+                    (FeatureWeights + wRookTo));
+
+                SubSubAddAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bRookFrom),
+                    (FeatureWeights + bTo),
+                    (FeatureWeights + bRookTo));
+            }
+            else if (theirPiece != None)
             {
                 (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
 
@@ -294,39 +316,6 @@ namespace Lizard.Logic.NN
                     (short*)(FeatureWeights + bFrom),
                     (short*)(FeatureWeights + bCap),
                     (short*)(FeatureWeights + bTo));
-            }
-            else if (m.Castle)
-            {
-                int rookFrom = moveTo switch
-                {
-                    C1 => A1,
-                    G1 => H1,
-                    C8 => A8,
-                    _ => H8,    //  G8 => H8
-                };
-
-                int rookTo = moveTo switch
-                {
-                    C1 => D1,
-                    G1 => F1,
-                    C8 => D8,
-                    _ => F8,    //  G8 => F8
-                };
-
-                (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFrom);
-                (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookTo);
-
-                SubSubAddAdd(whiteAccumulation,
-                    (FeatureWeights + wFrom),
-                    (FeatureWeights + wRookFrom),
-                    (FeatureWeights + wTo),
-                    (FeatureWeights + wRookTo));
-
-                SubSubAddAdd(blackAccumulation,
-                    (FeatureWeights + bFrom),
-                    (FeatureWeights + bRookFrom),
-                    (FeatureWeights + bTo),
-                    (FeatureWeights + bRookTo));
             }
             else
             {

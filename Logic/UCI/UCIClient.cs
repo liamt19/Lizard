@@ -178,6 +178,8 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "position")
                 {
+                    pos.IsChess960 = UCI_Chess960;
+
                     info = new SearchInformation(pos, DefaultSearchDepth);
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;
@@ -508,7 +510,7 @@ namespace Lizard.Logic.UCI
                     LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal for FEN '" + info.Position.GetFEN() + "'");
                 }
 
-                SendString("bestmove " + bestThreadMove.ToString());
+                SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
                 LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + FormatCurrentTime());
             }
             else

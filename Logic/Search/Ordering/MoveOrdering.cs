@@ -34,7 +34,7 @@
                 {
                     sm.Score = int.MaxValue - 2000000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None)
+                else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
@@ -82,7 +82,7 @@
                 {
                     sm.Score = int.MaxValue - 100000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None)
+                else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     int capIdx = HistoryTable.CapIndex(pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);

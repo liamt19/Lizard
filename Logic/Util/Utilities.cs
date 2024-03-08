@@ -768,7 +768,7 @@ namespace Lizard.Logic.Util
                         break;
                     }
 
-                    sb.Append(" " + rm.PV[j]);
+                    sb.Append(" " + rm.PV[j].ToString(info.Position.IsChess960));
                 }
 
 

@@ -48,6 +48,9 @@
         White = WK | WQ,
         Black = BK | BQ,
 
+        Kingside = WK | BK,
+        Queenside = WQ | BQ,
+
         All = WK | WQ | BK | BQ,
     }
 
