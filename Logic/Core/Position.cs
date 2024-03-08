@@ -235,7 +235,7 @@ namespace Lizard.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString().ToLower().Equals(moveStr.ToLower()))
+                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
                 {
                     MakeMove(m);
                     return true;
@@ -330,34 +330,12 @@ namespace Lizard.Logic.Core
 
             if (ourPiece == Piece.King)
             {
-                //State->KingSquares[ourColor] = moveTo;
-
                 if (move.Castle)
                 {
                     //  Move our rook and update the hash
                     theirPiece = None;
                     DoCastling(ourColor, moveFrom, moveTo, undo: false);
                     State->KingSquares[ourColor] = move.CastlingKingSquare;
-
-                    //switch (moveTo)
-                    //{
-                    //    case C1:
-                    //        bb.MoveSimple(A1, D1, ourColor, Piece.Rook);
-                    //        State->Hash.ZobristMove(A1, D1, ourColor, Piece.Rook);
-                    //        break;
-                    //    case G1:
-                    //        bb.MoveSimple(H1, F1, ourColor, Piece.Rook);
-                    //        State->Hash.ZobristMove(H1, F1, ourColor, Piece.Rook);
-                    //        break;
-                    //    case C8:
-                    //        bb.MoveSimple(A8, D8, ourColor, Piece.Rook);
-                    //        State->Hash.ZobristMove(A8, D8, ourColor, Piece.Rook);
-                    //        break;
-                    //    default:
-                    //        bb.MoveSimple(H8, F8, ourColor, Piece.Rook);
-                    //        State->Hash.ZobristMove(H8, F8, ourColor, Piece.Rook);
-                    //        break;
-                    //}
                 }
                 else
                 {
@@ -581,27 +559,8 @@ namespace Lizard.Logic.Core
             }
             else if (move.Castle)
             {
-                //  Put the rook back
+                //  Put both pieces back
                 DoCastling(ourColor, moveFrom, moveTo, undo: true);
-
-                //if (moveTo == C1)
-                //{
-                //    bb.MoveSimple(D1, A1, ourColor, Piece.Rook);
-                //}
-                //else if (moveTo == G1)
-                //{
-                //    bb.MoveSimple(F1, H1, ourColor, Piece.Rook);
-                //}
-                //else if (moveTo == C8)
-                //{
-                //    bb.MoveSimple(D8, A8, ourColor, Piece.Rook);
-                //}
-                //else
-                //{
-                //    //  moveTo == G8
-                //    bb.MoveSimple(F8, H8, ourColor, Piece.Rook);
-                //}
-
             }
 
             if (!move.Castle)
@@ -704,6 +663,10 @@ namespace Lizard.Logic.Core
             ToMove = Not(ToMove);
         }
 
+        /// <summary>
+        /// Moves the king and rook for castle moves, and updates the position hash accordingly.
+        /// Adapted from https://github.com/official-stockfish/Stockfish/blob/632f1c21cd271e7c4c242fdafa328a55ec63b9cb/src/position.cpp#L931
+        /// </summary>
         public void DoCastling(int ourColor, int from, int to, bool undo = false)
         {
             bool kingSide = to > from;
@@ -798,8 +761,6 @@ namespace Lizard.Logic.Core
             CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB[kfrom] | SquareBB[rfrom]);
 
             State->CastleStatus |= cr;
-
-            //Log("Set cr for " + Enum.GetName(typeof(CastlingStatus), cr));
         }
 
 
@@ -962,8 +923,6 @@ namespace Lizard.Logic.Core
             {
                 if (move.Castle)
                 {
-                    //var thisCr = ((moveTo > moveFrom) ? CastlingStatus.Kingside : CastlingStatus.Queenside)
-                    //           & ((ourColor == White) ? CastlingStatus.White : CastlingStatus.Black);
                     var thisCr = move.RelevantCastlingRight;
                     int rookSq = CastlingRookSquares[(int)thisCr];
 
@@ -995,30 +954,6 @@ namespace Lizard.Logic.Core
                     return ((bb.AttackersTo(kingTo, bb.Occupancy ^ SquareBB[ourKing]) & bb.Colors[theirColor])
                            | (NeighborsMask[kingTo] & SquareBB[theirKing])) == 0;
                 }
-
-                /*
-                if (move.Castle)
-                {
-                    int rookSquare = moveTo switch
-                    {
-                        C1 => A1,
-                        G1 => H1,
-                        C8 => A8,
-                        G8 => H8,
-                        _ => moveFrom,
-                    };
-
-                    if (EnableAssertions)
-                    {
-                        Assert(rookSquare != moveFrom, "IsLegal(" + move + ") is a castle, but the To square wasn't C1/G1 or C8/G8!");
-                    }
-
-                    if ((SquareBB[rookSquare] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
-                    {
-                        return false;
-                    }
-                }
-                 */
 
                 //  We can move anywhere as long as it isn't attacked by them.
 
@@ -1124,8 +1059,6 @@ namespace Lizard.Logic.Core
         }
 
 
-        public static Move[] perft_moves = new Move[16];
-
         /// <summary>
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
@@ -1144,79 +1077,9 @@ namespace Lizard.Logic.Core
             for (int i = 0; i < size; i++)
             {
                 Move m = list[i].Move;
-
-
-
-                StateInfo temp = new StateInfo();
-                Unsafe.CopyBlock(&temp, State, (uint)StateInfo.StateCopySize);
-                var tempa = idxChecker;
-                var tempb = Checked;
-                ulong[] col = [bb.Colors[0], bb.Colors[1]];
-                ulong[] pcs = [bb.Pieces[0], bb.Pieces[1], bb.Pieces[2], bb.Pieces[3], bb.Pieces[4], bb.Pieces[King]];
-                int[] pts = new int[64];
-                for (int j = 0; j < 64; j++)
-                {
-                    pts[j] = bb.PieceTypes[j];
-                }
-
                 MakeMove(m);
-                perft_moves[depth] = m;
-
                 n += Perft(depth - 1);
                 UnmakeMove(m);
-
-
-
-
-                if (temp.EPSquare != State->EPSquare)
-                {
-                    Log("EPSquare");
-                }
-
-                if (temp.KingSquares[0] != State->KingSquares[0] || temp.KingSquares[1] != State->KingSquares[1])
-                {
-                    Log("KingSquares");
-                }
-
-                for (int z = 0; z <= 5; z++)
-                {
-                    if (temp.CheckSquares[z] != State->CheckSquares[z])
-                    {
-                        Log("Checksquares" + z);
-                    }
-                }
-
-
-                if (idxChecker != tempa)
-                {
-                    Log("idxChecker");
-                }
-
-                if (Checked != tempb)
-                {
-                    Log("Checked");
-                }
-
-                if (col[0] != bb.Colors[0] || col[1] != bb.Colors[1])
-                {
-                    Log("Colors");
-                }
-
-                for (int j = 0; j < 6; j++)
-                {
-                    if (pcs[j] != bb.Pieces[j])
-                    {
-                        Log("Pieces");
-                    }
-                }
-
-                for (int j = 0; j < 64; j++)
-                {
-                    if (pts[j] != bb.PieceTypes[j])
-                    {
-                        Log("Types");
-                    }
-                }
             }
             return n;
         }

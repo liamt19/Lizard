@@ -241,7 +241,6 @@ namespace Lizard
             {
                 Move m = list[i].Move;
                 pos.MakeMove(m);
-                Position.perft_moves[depth] = m;
                 ulong result = depth > 1 ? pos.Perft(depth - 1) : 1;
                 pos.UnmakeMove(m);
                 Log(m.ToString() + ": " + result);
