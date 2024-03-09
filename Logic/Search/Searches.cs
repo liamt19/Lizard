@@ -954,7 +954,7 @@ namespace Lizard.Logic.Search
             TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
 
-            tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, ss->TTPV);
 
             if (EnableAssertions)
             {
