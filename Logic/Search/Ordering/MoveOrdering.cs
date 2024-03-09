@@ -94,10 +94,8 @@
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score = 2 * history.MainHistory[HistoryTable.HistoryIndex(pc, m)];
-                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
+                    sm.Score += (*(ss - 1)->ContinuationHistory)[contIdx];
                     sm.Score += (*(ss - 2)->ContinuationHistory)[contIdx];
-                    sm.Score += (*(ss - 4)->ContinuationHistory)[contIdx];
-                    sm.Score += (*(ss - 6)->ContinuationHistory)[contIdx];
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
