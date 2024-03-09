@@ -19,14 +19,15 @@ who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). So
 | Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | Notes |
 | ---- | ------------ | ---- | ---- | --- |
 | 10.0 | Jan. 4 2024  | 3365 | 3406 | First non-Stockfish NNUE |
-| 10.1 | Jan. 13 2024 | 3426 | -    | Various improvements to search |
-| 10.2 | Feb. 9 2024 | 3498 | -    | Larger network, more tunes |
+| 10.1 | Jan. 13 2024 | 3427 | -    | Various improvements to search |
+| 10.2 | Feb. 9 2024 | 3500 | 3585    | Larger network, more tunes |
+| 10.3 | Mar. 8 2024 | TBD | TBD    | Significant speedups, FRC support |
 
 </div>
 
 ## Features
 ### NNUE Evaluation:
-Version 10.2 uses a (768 -> 1536)x2 -> 1 neural network to evaluate positions, which was trained on 2 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
+Version 10.3 uses a (768 -> 1536)x2 -> 1 neural network to evaluate positions, which was trained on 2 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
 
 In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
 For the sake of simplicity, this functionality is only possible on the [the HalfKA-HalfKP branch](../../tree/HalfKA-HalfKP).
