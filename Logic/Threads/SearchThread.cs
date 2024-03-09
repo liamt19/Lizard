@@ -422,6 +422,12 @@ namespace Lizard.Logic.Threads
                     //  In that case, we replace the current bestmove with the last depth's bestmove
                     //  so that the move we send is based on an entire depth being searched instead of only a portion of it.
                     RootMoves[0] = lastBestRootMove;
+
+                    for (int i = -10; i < MaxSearchStackPly; i++)
+                    {
+                        NativeMemory.AlignedFree((ss + i)->PV);
+                    }
+
                     return;
                 }
 
@@ -456,6 +462,11 @@ namespace Lizard.Logic.Threads
 
                 //  If this is the case, and we haven't been told to stop searching, then we need to stop now.
                 SearchPool.StopThreads = true;
+            }
+
+            for (int i = -10; i < MaxSearchStackPly; i++)
+            {
+                NativeMemory.AlignedFree((ss + i)->PV);
             }
         }
 
