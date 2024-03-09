@@ -643,9 +643,9 @@ namespace Lizard.Logic.UCI
 
             //SetSPSAOutputParams();
 
-            Options[nameof(Threads)].SetMinMax(1, 8);
+            Options[nameof(Threads)].SetMinMax(1, 512);
             Options[nameof(MultiPV)].SetMinMax(1, 5);
-            Options[nameof(Hash)].SetMinMax(1, 2048);
+            Options[nameof(Hash)].SetMinMax(1, 1048576);
 
             Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);
             Options[nameof(SingularExtensionsNumerator)].AutoMinMax();
@@ -721,7 +721,7 @@ namespace Lizard.Logic.UCI
         {
             foreach (var optName in Options.Keys)
             {
-                if (optName == nameof(SearchOptions.Threads) || optName == nameof(SearchOptions.MultiPV) || optName == nameof(SearchOptions.Hash))
+                if (optName == nameof(SearchOptions.Threads) || optName == nameof(SearchOptions.MultiPV) || optName == nameof(SearchOptions.Hash) || optName == nameof(SearchOptions.UCI_Chess960))
                 {
                     continue;
                 }

@@ -63,7 +63,7 @@ namespace Lizard.Logic.Transposition
             }
 
             ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*)AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
+            Clusters = (TTCluster*)AlignedAllocZeroed(((nuint)sizeof(TTCluster) * (nuint)ClusterCount), AllocAlignment);
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();
