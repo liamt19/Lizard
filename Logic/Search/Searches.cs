@@ -67,18 +67,14 @@ namespace Lizard.Logic.Search
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
 
-            ulong posHash = pos.State->Hash;
-
             Move bestMove = Move.Null;
 
-            int ourColor = pos.ToMove;
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
-
+            short eval = ss->StaticEval;
             int startingAlpha = alpha;
 
-            short eval = ss->StaticEval;
-
+            int ourColor = pos.ToMove;
             bool doSkip = ss->Skip != Move.Null;
             bool improving = false;
 
@@ -142,7 +138,7 @@ namespace Lizard.Logic.Search
 
             ss->StatScore = 0;
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
+            ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
             if (!doSkip)
             {
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
@@ -386,11 +382,12 @@ namespace Lizard.Logic.Search
                         "but it isn't pseudo-legal!");
                 }
 
-                int toSquare = m.To;
-                bool isCapture = (bb.GetPieceAtIndex(toSquare) != None && !m.Castle);
-                int thisPieceType = bb.GetPieceAtIndex(m.From);
-
                 legalMoves++;
+
+                int toSquare = m.To;
+                int thisPieceType = bb.GetPieceAtIndex(m.From);
+                bool isCapture = (bb.GetPieceAtIndex(toSquare) != None && !m.Castle);
+
                 int extend = 0;
 
                 //  If this isn't a root node,
@@ -706,7 +703,7 @@ namespace Lizard.Logic.Search
                 TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
                           ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
 
-                tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), bound, depth,
+                tte->Update(pos.State->Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth,
                     (bound == TTNodeType.Beta) ? Move.Null : bestMove, ss->StaticEval, ss->TTPV);
             }
 
@@ -733,30 +730,30 @@ namespace Lizard.Logic.Search
             }
 
             Position pos = info.Position;
+            ref Bitboard bb = ref pos.bb;
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
+
             Move bestMove = Move.Null;
 
             int score = -ScoreMate - MaxPly;
-            short bestScore = -ScoreInfinite;
-            short futility = -ScoreInfinite;
-
+            int bestScore = -ScoreInfinite;
             short eval = ss->StaticEval;
-
             int startingAlpha = alpha;
+
+            short futility = -ScoreInfinite;
 
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
             int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
-            bool ttPV = ss->TTHit && tte->PV;
 
             if (isPV)
             {
                 ss->PV[0] = Move.Null;
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
-
 
             if (pos.IsDraw())
             {
@@ -766,11 +763,6 @@ namespace Lizard.Logic.Search
             if (ss->Ply >= MaxSearchStackPly - 1)
             {
                 return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
-            }
-
-            if (isPV)
-            {
-                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
 
             if (!isPV
@@ -833,7 +825,6 @@ namespace Lizard.Logic.Search
 
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
             int legalMoves = 0;
-            int movesMade = 0;
             int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -858,16 +849,16 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
 
-                bool isCapture = (pos.bb.GetPieceAtIndex(m.To) != None && !m.Castle);
-                bool isPromotion = m.Promotion;
-                bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
-
-                movesMade++;
+                int toSquare = m.To;
+                int thisPieceType = bb.GetPieceAtIndex(m.From);
+                bool isCapture = (bb.GetPieceAtIndex(toSquare) != None && !m.Castle);
 
                 if (bestScore > ScoreTTLoss)
                 {
-                    if (!(givesCheck || isPromotion)
-                        && (prevSquare != m.To)
+                    bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
+
+                    if (!(givesCheck || m.Promotion)
+                        && (prevSquare != toSquare)
                         && futility > -ScoreWin)
                     {
                         if (legalMoves > 3 && !ss->InCheck)
@@ -877,7 +868,7 @@ namespace Lizard.Logic.Search
                             continue;
                         }
 
-                        short futilityValue = (short)(futility + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
+                        short futilityValue = (short)(futility + GetPieceValue(bb.GetPieceAtIndex(toSquare)));
 
                         if (futilityValue <= alpha)
                         {
@@ -912,7 +903,7 @@ namespace Lizard.Logic.Search
                     checkEvasions++;
                 }
 
-                int histIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(m.From), m.To);
+                int histIdx = PieceToHistory.GetIndex(pos.ToMove, thisPieceType, toSquare);
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
@@ -954,7 +945,7 @@ namespace Lizard.Logic.Search
             TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
 
-            tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.State->Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
 
             if (EnableAssertions)
             {
