@@ -247,7 +247,6 @@ namespace Lizard.Logic.Search
                 && !isPV
                 && depth >= NMPMinDepth
                 && eval >= beta
-                && eval >= ss->StaticEval
                 && !doSkip
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.MaterialCountNonPawn[pos.ToMove] > 0)
