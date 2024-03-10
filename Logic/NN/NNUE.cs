@@ -26,7 +26,7 @@ namespace Lizard.Logic.NN
                 return (short) Simple768.GetEvaluationUnrolled(pos);
             }
 
-            return (short) Bucketed768.GetEvaluation(pos);
+            return (short) Bucketed768.GetEvaluationUnrolled(pos);
         }
 
         public static void MakeMove(Position pos, Move m)
