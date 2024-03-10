@@ -3,11 +3,12 @@ using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using Lizard.Properties;
 
+using static Lizard.Logic.NN.FunUnrollThings;
 
 namespace Lizard.Logic.NN
 {
     [SkipStaticConstructor]
-    public static unsafe class Bucketed768
+    public static unsafe partial class Bucketed768
     {
         private const int InputBuckets = 5;
         public const int InputSize = 768;
@@ -370,10 +371,10 @@ namespace Lizard.Logic.NN
                 {
                     int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
 
-                    SubSubAdd(theirAccumulation,
-                        (FeatureWeights + from),
-                        (FeatureWeights + cap),
-                        (FeatureWeights + to));
+                    SubSubAdd((short*)theirAccumulation,
+                        (short*)(FeatureWeights + from),
+                        (short*)(FeatureWeights + cap),
+                        (short*)(FeatureWeights + to));
                 }
                 else if (m.Castle)
                 {
@@ -393,9 +394,9 @@ namespace Lizard.Logic.NN
                 }
                 else
                 {
-                    SubAdd(theirAccumulation,
-                        (FeatureWeights + from),
-                        (FeatureWeights + to));
+                    SubAdd((short*)theirAccumulation,
+                        (short*)(FeatureWeights + from),
+                        (short*)(FeatureWeights + to));
                 }
             }
             else
@@ -410,15 +411,15 @@ namespace Lizard.Logic.NN
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    SubSubAdd(whiteAccumulation,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wCap),
-                        (FeatureWeights + wTo));
+                    SubSubAdd((short*)whiteAccumulation,
+                        (short*)(FeatureWeights + wFrom),
+                        (short*)(FeatureWeights + wCap),
+                        (short*)(FeatureWeights + wTo));
 
-                    SubSubAdd(blackAccumulation,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bCap),
-                        (FeatureWeights + bTo));
+                    SubSubAdd((short*)blackAccumulation,
+                        (short*)(FeatureWeights + bFrom),
+                        (short*)(FeatureWeights + bCap),
+                        (short*)(FeatureWeights + bTo));
                 }
                 else if (m.EnPassant)
                 {
@@ -426,45 +427,29 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    SubSubAdd(whiteAccumulation,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wCap),
-                        (FeatureWeights + wTo));
+                    SubSubAdd((short*)whiteAccumulation,
+                        (short*)(FeatureWeights + wFrom),
+                        (short*)(FeatureWeights + wCap),
+                        (short*)(FeatureWeights + wTo));
 
-                    SubSubAdd(blackAccumulation,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bCap),
-                        (FeatureWeights + bTo));
+                    SubSubAdd((short*)blackAccumulation,
+                        (short*)(FeatureWeights + bFrom),
+                        (short*)(FeatureWeights + bCap),
+                        (short*)(FeatureWeights + bTo));
                 }
                 else
                 {
-                    SubAdd(whiteAccumulation,
-                        (FeatureWeights + wFrom),
-                        (FeatureWeights + wTo));
+                    SubAdd((short*)whiteAccumulation,
+                        (short*)(FeatureWeights + wFrom),
+                        (short*)(FeatureWeights + wTo));
 
-                    SubAdd(blackAccumulation,
-                        (FeatureWeights + bFrom),
-                        (FeatureWeights + bTo));
+                    SubAdd((short*)blackAccumulation,
+                        (short*)(FeatureWeights + bFrom),
+                        (short*)(FeatureWeights + bTo));
                 }
             }
         }
 
-
-        private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                src[i] = Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]);
-            }
-        }
-
-        private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]), sub2[i]);
-            }
-        }
 
         private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
         {
