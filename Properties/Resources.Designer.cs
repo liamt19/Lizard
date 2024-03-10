@@ -69,5 +69,15 @@ namespace Lizard.Properties {
                 return ((byte[])(obj));
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        public static byte[] iguana_epoch10_params {
+            get {
+                object obj = ResourceManager.GetObject("iguana-epoch10-params", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
     }
 }

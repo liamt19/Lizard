@@ -19,23 +19,23 @@ namespace Lizard.Logic.NN
 
         public const int OutputScale = 400;
 
-        public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
+        public const int SIMD_CHUNKS = HiddenSize / VSize.Float;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "iguana-epoch10-params.bin";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
         /// <para></para>
         /// This is the 768 -> 1536 part of the architecture.
         /// </summary>
-        public static readonly Vector256<short>* FeatureWeights;
+        public static readonly Vector256<float>* FeatureWeights;
 
         /// <summary>
         /// The initial values that are placed into the accumulators.
         /// <para></para>
         /// When doing a full refresh, both accumulators are filled with these.
         /// </summary>
-        public static readonly Vector256<short>* FeatureBiases;
+        public static readonly Vector256<float>* FeatureBiases;
 
         /// <summary>
         /// The values that are multiplied with the SCRelu-activated output from the feature transformer 
@@ -43,14 +43,14 @@ namespace Lizard.Logic.NN
         /// <para></para>
         /// This is the (1536)x2 -> 1 part.
         /// </summary>
-        public static readonly Vector256<short>* LayerWeights;
+        public static readonly Vector256<float>* LayerWeights;
 
         /// <summary>
         /// The value(s) applied to the final output.
         /// <para></para>
         /// There is exactly 1 bias for each output bucket, so this currently contains only 1 number (followed by 15 zeroes).
         /// </summary>
-        public static readonly Vector256<short>* LayerBiases;
+        public static readonly Vector256<float>* LayerBiases;
 
         private const int FeatureWeightElements = InputSize * HiddenSize;
         private const int FeatureBiasElements = HiddenSize;
@@ -60,11 +60,11 @@ namespace Lizard.Logic.NN
 
         static Simple768()
         {
-            FeatureWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
-            FeatureBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
+            FeatureWeights = (Vector256<float>*)AlignedAllocZeroed(sizeof(float) * FeatureWeightElements);
+            FeatureBiases = (Vector256<float>*)AlignedAllocZeroed(sizeof(float) * FeatureBiasElements);
 
-            LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
-            LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
+            LayerWeights = (Vector256<float>*)AlignedAllocZeroed(sizeof(float) * LayerWeightElements);
+            LayerBiases = (Vector256<float>*)AlignedAllocZeroed(sizeof(float) * (nuint)Math.Max(LayerBiasElements, VSize.Float));
 
             Initialize();
         }
@@ -109,7 +109,7 @@ namespace Lizard.Logic.NN
 
             using BinaryReader br = new BinaryReader(kpFile);
             var stream = br.BaseStream;
-            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements * OutputBuckets + LayerBiasElements);
+            long toRead = sizeof(float) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements * OutputBuckets + LayerBiasElements);
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -119,36 +119,36 @@ namespace Lizard.Logic.NN
                 Environment.Exit(-1);
             }
 
-            for (int i = 0; i < FeatureWeightElements / VSize.Short; i++)
+            for (int i = 0; i < FeatureWeightElements / VSize.Float; i++)
             {
-                FeatureWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                FeatureWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsSingle();
             }
 
-            for (int i = 0; i < FeatureBiasElements / VSize.Short; i++)
+            for (int i = 0; i < FeatureBiasElements / VSize.Float; i++)
             {
-                FeatureBiases[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                FeatureBiases[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsSingle();
             }
 
-            for (int i = 0; i < LayerWeightElements / VSize.Short; i++)
+            for (int i = 0; i < LayerWeightElements / VSize.Float; i++)
             {
-                LayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
+                LayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsSingle();
             }
 
             //  Round LayerBiasElements to the next highest multiple of VSize.Short
             //  i.e. if LayerBiasElements is <= 15, totalBiases = 16.
-            int totalBiases = ((LayerBiasElements + VSize.Short - 1) / VSize.Short) * VSize.Short;
+            int totalBiases = ((LayerBiasElements + VSize.Float - 1) / VSize.Float) * VSize.Float;
 
-            short[] _Biases = new short[totalBiases];
-            Array.Fill(_Biases, (short)0);
+            float[] _Biases = new float[totalBiases];
+            Array.Fill(_Biases, (float)0);
 
             for (int i = 0; i < LayerBiasElements; i++)
             {
-                _Biases[i] = br.ReadInt16();
+                _Biases[i] = br.ReadSingle();
             }
 
-            for (int i = 0; i < totalBiases / VSize.Short; i++)
+            for (int i = 0; i < totalBiases / VSize.Float; i++)
             {
-                LayerBiases[i] = Vector256.Create(_Biases, (i * VSize.Short));
+                LayerBiases[i] = Vector256.Create(_Biases, (i * VSize.Float));
             }
 
 #if DEBUG
@@ -167,8 +167,8 @@ namespace Lizard.Logic.NN
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            Unsafe.CopyBlock(accumulator.White, FeatureBiases, sizeof(short) * HiddenSize);
-            Unsafe.CopyBlock(accumulator.Black, FeatureBiases, sizeof(short) * HiddenSize);
+            Unsafe.CopyBlock(accumulator.White, FeatureBiases, sizeof(float) * HiddenSize);
+            Unsafe.CopyBlock(accumulator.Black, FeatureBiases, sizeof(float) * HiddenSize);
 
             ulong occ = bb.Occupancy;
             while (occ != 0)
@@ -181,8 +181,8 @@ namespace Lizard.Logic.NN
                 (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
-                    accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
+                    accumulator.White[i] = Avx.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
+                    accumulator.Black[i] = Avx.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
                 }
             }
         }
@@ -190,34 +190,24 @@ namespace Lizard.Logic.NN
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            Vector256<short> ClampMax = Vector256.Create((short)QA);
-            Vector256<int> normalSum = Vector256<int>.Zero;
+            Vector256<float> sum = Vector256<float>.Zero;
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                //  Clamp each feature between [0, QA]
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
-
-                //  Multiply the clamped feature by its corresponding weight.
-                //  We can do this with short values since the weights are always between [-127, 127]
-                //  (and the product will always be < short.MaxValue) so this will never overflow.
-                Vector256<short> mult = clamp * LayerWeights[i];
-
-                //  We can use VPMADDWD to do the multiplication of mult and clamp, and add it to the sum.
-                //  MADD multiplies and sums adjacent pairs of 16-bit integers into 32-bit integers, so this doesn't overflow either.
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                Vector256<float> clamp = Avx2.Min(Vector256<float>.One, Avx2.Max(Vector256<float>.Zero, accumulator[pos.ToMove][i]));
+                clamp *= clamp;
+                sum = Avx2.Add(sum, Avx2.Multiply(clamp, LayerWeights[i]));
             }
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                Vector256<float> clamp = Avx2.Min(Vector256<float>.One, Avx2.Max(Vector256<float>.Zero, accumulator[Not(pos.ToMove)][i]));
+                clamp *= clamp;
+                sum = Avx2.Add(sum, Avx2.Multiply(clamp, LayerWeights[i + SIMD_CHUNKS]));
             }
 
-            int output = SumVector256NoHadd(normalSum);
-
-            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+            int retVal = (int)(OutputScale * (Vector256.Sum(sum) + LayerBiases[0][0]));
+            return retVal;
         }
 
 
@@ -291,15 +281,15 @@ namespace Lizard.Logic.NN
             {
                 (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
 
-                SubSubAdd((short*)whiteAccumulation,
-                    (short*)(FeatureWeights + wFrom),
-                    (short*)(FeatureWeights + wCap),
-                    (short*)(FeatureWeights + wTo));
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
 
-                SubSubAdd((short*)blackAccumulation,
-                    (short*)(FeatureWeights + bFrom),
-                    (short*)(FeatureWeights + bCap),
-                    (short*)(FeatureWeights + bTo));
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
             }
             else if (m.EnPassant)
             {
@@ -307,29 +297,29 @@ namespace Lizard.Logic.NN
 
                 (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
 
-                SubSubAdd((short*)whiteAccumulation,
-                    (short*)(FeatureWeights + wFrom),
-                    (short*)(FeatureWeights + wCap),
-                    (short*)(FeatureWeights + wTo));
+                SubSubAdd(whiteAccumulation,
+                    (FeatureWeights + wFrom),
+                    (FeatureWeights + wCap),
+                    (FeatureWeights + wTo));
 
-                SubSubAdd((short*)blackAccumulation,
-                    (short*)(FeatureWeights + bFrom),
-                    (short*)(FeatureWeights + bCap),
-                    (short*)(FeatureWeights + bTo));
+                SubSubAdd(blackAccumulation,
+                    (FeatureWeights + bFrom),
+                    (FeatureWeights + bCap),
+                    (FeatureWeights + bTo));
             }
             else
             {
-                SubAdd((short*)whiteAccumulation, 
-                    (short*)(FeatureWeights + wFrom), 
-                    (short*)(FeatureWeights + wTo));
+                SubAdd(whiteAccumulation, 
+                    (FeatureWeights + wFrom), 
+                    (FeatureWeights + wTo));
 
-                SubAdd((short*)blackAccumulation, 
-                    (short*)(FeatureWeights + bFrom), 
-                    (short*)(FeatureWeights + bTo));
+                SubAdd(blackAccumulation, 
+                    (FeatureWeights + bFrom), 
+                    (FeatureWeights + bTo));
             }
         }
 
-        private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
+        private static void SubAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -337,7 +327,7 @@ namespace Lizard.Logic.NN
             }
         }
 
-        private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
+        private static void SubSubAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* sub2, Vector256<float>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -345,7 +335,7 @@ namespace Lizard.Logic.NN
             }
         }
 
-        private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
+        private static void SubSubAddAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* sub2, Vector256<float>* add1, Vector256<float>* add2)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -643,10 +633,10 @@ namespace Lizard.Logic.NN
 
         private static void NetStats(string layerName, void* layer, int n)
         {
-            long avg = 0;
-            int max = int.MinValue;
-            int min = int.MaxValue;
-            short* ptr = (short*)layer;
+            float avg = 0;
+            float max = float.MinValue;
+            float min = float.MaxValue;
+            float* ptr = (float*)layer;
             for (int i = 0; i < n; i++)
             {
                 if (ptr[i] > max)

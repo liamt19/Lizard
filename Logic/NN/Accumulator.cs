@@ -12,24 +12,24 @@ namespace Lizard.Logic.NN
         //  as an error when this uses a primary constructor with "size" as a parameter.
         //  https://github.com/dotnet/roslyn/issues/69663
 
-        public const int ByteSize = Simple768.HiddenSize * sizeof(short);
+        public const int ByteSize = Simple768.HiddenSize * sizeof(float);
 
-        public static int VectorCount => Simple768.HiddenSize / VSize.Short;
+        public static int VectorCount => Simple768.HiddenSize / VSize.Float;
 
-        public readonly Vector256<short>* White;
-        public readonly Vector256<short>* Black;
+        public readonly Vector256<float>* White;
+        public readonly Vector256<float>* Black;
 
         public fixed bool NeedsRefresh[2];
 
         public Accumulator()
         {
-            White = (Vector256<short>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-            Black = (Vector256<short>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+            White = (Vector256<float>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+            Black = (Vector256<float>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
 
             NeedsRefresh[Color.White] = NeedsRefresh[Color.Black] = true;
         }
 
-        public Vector256<short>* this[int perspective] => (perspective == Color.White) ? White : Black;
+        public Vector256<float>* this[int perspective] => (perspective == Color.White) ? White : Black;
 
         public void CopyTo(Accumulator* target)
         {

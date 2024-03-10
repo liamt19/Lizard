@@ -207,8 +207,8 @@ namespace Lizard.Logic.NN
                 (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx, wk, bk);
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
-                    accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
+                    //accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
+                    //accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
                 }
             }
 
@@ -236,7 +236,7 @@ namespace Lizard.Logic.NN
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    ourAccumulation[i] = Avx2.Add(ourAccumulation[i], FeatureWeights[idx + i]);
+                    //ourAccumulation[i] = Avx2.Add(ourAccumulation[i], FeatureWeights[idx + i]);
                 }
             }
 
@@ -245,6 +245,8 @@ namespace Lizard.Logic.NN
 
         public static int GetEvaluation(Position pos)
         {
+            return 1;
+            /*
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             if (accumulator.NeedsRefresh[White])
             {
@@ -286,6 +288,7 @@ namespace Lizard.Logic.NN
             int output = SumVector256NoHadd(normalSum);
 
             return (output / QA + LayerBiases[0][outputBucket]) * OutputScale / QAB;
+            */
         }
 
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
@@ -337,6 +340,7 @@ namespace Lizard.Logic.NN
 
         public static void MakeMove(Position pos, Move m)
         {
+            /*
             ref Bitboard bb = ref pos.bb;
 
             Accumulator* accumulator = pos.NextState->Accumulator;
@@ -447,6 +451,7 @@ namespace Lizard.Logic.NN
                         (FeatureWeights + bTo));
                 }
             }
+            */
         }
 
 

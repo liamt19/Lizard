@@ -25,5 +25,7 @@
 
         ///<summary> == 32 </summary>
         public const int Byte = Vector256Size / sizeof(byte);
+
+        public const int Float = Vector256Size / sizeof(float);
     }
 }

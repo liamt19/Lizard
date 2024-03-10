@@ -632,7 +632,7 @@ namespace Lizard.Logic.NN
 
             int output = SumVector256NoHadd(normalSum);
 
-            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+            return 1;//(output / QA + LayerBiases[0][0]) * OutputScale / QAB;
         }
 
     }
