@@ -4,7 +4,7 @@ namespace Lizard.Logic.NN
     public static unsafe class NNUE
     {
 
-        public static readonly bool SimpleNet = false;
+        public static readonly bool SimpleNet = true;
 
 
         public static void RefreshAccumulator(Position pos)
