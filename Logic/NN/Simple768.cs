@@ -3,6 +3,7 @@ using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using Lizard.Properties;
 
+using static Lizard.Logic.NN.FunUnrollThings;
 
 namespace Lizard.Logic.NN
 {
@@ -326,22 +327,6 @@ namespace Lizard.Logic.NN
                 SubAdd((short*)blackAccumulation, 
                     (short*)(FeatureWeights + bFrom), 
                     (short*)(FeatureWeights + bTo));
-            }
-        }
-
-        private static void SubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                src[i] = Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]);
-            }
-        }
-
-        private static void SubSubAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]), sub2[i]);
             }
         }
 

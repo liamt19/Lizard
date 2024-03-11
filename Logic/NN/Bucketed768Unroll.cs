@@ -1,21 +1,35 @@
 ﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
+using System.Runtime.InteropServices;
+using Lizard.Properties;
 
 namespace Lizard.Logic.NN
 {
-    public static unsafe partial class Simple768
+    public static unsafe partial class Bucketed768
     {
-
         public static int GetEvaluationUnrolled(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
+
+            if (accumulator.NeedsRefresh[White])
+            {
+                RefreshAccumulatorPerspective(pos, White);
+            }
+
+            if (accumulator.NeedsRefresh[Black])
+            {
+                RefreshAccumulatorPerspective(pos, Black);
+            }
+
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             Vector256<int> normalSum = Vector256<int>.Zero;
 
+            int outputBucket = (int)((popcount(pos.bb.Occupancy) - 2) / 4);
+
             var ourData = (short*)(accumulator[pos.ToMove]);
-            var ourWeights = (short*)(LayerWeights);
+            var ourWeights = (short*)(LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)));
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);
-            var theirWeights = (short*)(LayerWeights + SIMD_CHUNKS);
+            var theirWeights = (short*)(LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)) + SIMD_CHUNKS);
 
 
             Vector256<short> clamp_us_0 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 0)));
@@ -433,7 +447,7 @@ namespace Lizard.Logic.NN
 
             int output = SumVector256NoHadd(normalSum);
 
-            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+            return (output / QA + LayerBiases[0][outputBucket]) * OutputScale / QAB;
         }
 
     }
