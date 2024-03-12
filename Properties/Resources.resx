@@ -124,4 +124,7 @@
   <data name="skink-epoch15" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\skink-epoch15.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="yoshie-network" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\yoshie-network.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
 </root>

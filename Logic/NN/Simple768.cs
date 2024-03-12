@@ -11,10 +11,10 @@ namespace Lizard.Logic.NN
     public static unsafe partial class Simple768
     {
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
-        public const int OutputBuckets = 1;
+        public const int HiddenSize = 1024;
+        public const int OutputBuckets = 8;
 
-        private const int QA = 255;
+        private const int QA = 181;
         private const int QB = 64;
         private const int QAB = QA * QB;
 
@@ -22,7 +22,7 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "yoshie-network.bin";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -56,7 +56,7 @@ namespace Lizard.Logic.NN
         private const int FeatureWeightElements = InputSize * HiddenSize;
         private const int FeatureBiasElements = HiddenSize;
 
-        private const int LayerWeightElements = HiddenSize * 2;
+        private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
         static Simple768()
@@ -110,7 +110,7 @@ namespace Lizard.Logic.NN
 
             using BinaryReader br = new BinaryReader(kpFile);
             var stream = br.BaseStream;
-            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements * OutputBuckets + LayerBiasElements);
+            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements);
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
@@ -134,6 +134,11 @@ namespace Lizard.Logic.NN
             {
                 LayerWeights[i] = Vector256.Create(br.ReadInt64(), br.ReadInt64(), br.ReadInt64(), br.ReadInt64()).AsInt16();
             }
+
+            //  These weights are stored in column major order, but they are easier to use in row major order.
+            //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
+            //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
+            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
 
             //  Round LayerBiasElements to the next highest multiple of VSize.Short
             //  i.e. if LayerBiasElements is <= 15, totalBiases = 16.
@@ -357,7 +362,24 @@ namespace Lizard.Logic.NN
             return Sse2.ConvertToInt32(sum128);
         }
 
+        /// <summary>
+        /// Transposes the weights stored in <paramref name="block"/>
+        /// </summary>
+        private static void TransposeLayerWeights(short* block, int columnLength, int rowLength)
+        {
+            short* temp = stackalloc short[columnLength * rowLength];
+            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * rowLength));
 
+            for (int bucket = 0; bucket < rowLength; bucket++)
+            {
+                short* thisBucket = block + (bucket * columnLength);
+
+                for (int i = 0; i < columnLength; i++)
+                {
+                    thisBucket[i] = temp[(rowLength * i) + bucket];
+                }
+            }
+        }
 
 
 
