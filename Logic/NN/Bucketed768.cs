@@ -28,7 +28,7 @@ namespace Lizard.Logic.NN
         /// (768x5 -> 1536)x2 -> 8
         /// 
         /// </summary>
-        public const string NetworkName = "anole-epoch7.bin";
+        public const string NetworkName = "anole-epoch11.bin";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
