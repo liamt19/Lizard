@@ -20,6 +20,7 @@ namespace Lizard.Logic.NN
         private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
+        private const bool SelectOutputBucket = (OutputBuckets != 1);
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
