@@ -3,41 +3,60 @@ namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
     {
+        public enum NetworkArch
+        {
+            Simple768,
+            Bucketed768,
+            Layered768
+        }
 
-        public static readonly bool SimpleNet = true;
+        public static readonly NetworkArch NetArch = NetworkArch.Layered768;
 
 
         public static void RefreshAccumulator(Position pos)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArch.Simple768)
             {
                 Simple768.RefreshAccumulator(pos);
             }
-            else
+            else if (NetArch == NetworkArch.Bucketed768)
             {
                 Bucketed768.RefreshAccumulator(pos);
+            }
+            else
+            {
+                Layered768.RefreshAccumulator(pos);
             }
         }
 
         public static short GetEvaluation(Position pos)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArch.Simple768)
             {
                 return (short) Simple768.GetEvaluationUnrolled(pos);
             }
 
-            return (short) Bucketed768.GetEvaluationUnrolled(pos);
+            if (NetArch == NetworkArch.Bucketed768)
+            {
+                return (short)Bucketed768.GetEvaluationUnrolled(pos);
+            }
+
+            return (short)Layered768.GetEvaluation(pos);
         }
 
         public static void MakeMove(Position pos, Move m)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArch.Simple768)
             {
                 Simple768.MakeMove(pos, m);
             }
-            else
+            else if (NetArch == NetworkArch.Bucketed768)
             {
                 Bucketed768.MakeMove(pos, m);
+            }
+            else
+            {
+                Layered768.MakeMove(pos, m);
             }
         }
 
