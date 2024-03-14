@@ -22,7 +22,7 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "basilisk-epoch9.bin";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
