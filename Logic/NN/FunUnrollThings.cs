@@ -71,6 +71,10 @@ namespace Lizard.Logic.NN
             Avx2.Store(src + 976, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 976), Avx2.LoadVector256(add1 + 976)), Avx2.LoadVector256(sub1 + 976)));
             Avx2.Store(src + 992, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 992), Avx2.LoadVector256(add1 + 992)), Avx2.LoadVector256(sub1 + 992)));
             Avx2.Store(src + 1008, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1008), Avx2.LoadVector256(add1 + 1008)), Avx2.LoadVector256(sub1 + 1008)));
+
+            if ((NNUE.SimpleNet && Simple768.HiddenSize <= 1024) || (!NNUE.SimpleNet && Bucketed768.HiddenSize <= 1024))
+                return;
+
             Avx2.Store(src + 1024, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1024), Avx2.LoadVector256(add1 + 1024)), Avx2.LoadVector256(sub1 + 1024)));
             Avx2.Store(src + 1040, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1040), Avx2.LoadVector256(add1 + 1040)), Avx2.LoadVector256(sub1 + 1040)));
             Avx2.Store(src + 1056, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1056), Avx2.LoadVector256(add1 + 1056)), Avx2.LoadVector256(sub1 + 1056)));
@@ -171,6 +175,10 @@ namespace Lizard.Logic.NN
             Avx2.Store(src + 976, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 976), Avx2.LoadVector256(add1 + 976)), Avx2.LoadVector256(sub1 + 976)), Avx2.LoadVector256(sub2 + 976)));
             Avx2.Store(src + 992, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 992), Avx2.LoadVector256(add1 + 992)), Avx2.LoadVector256(sub1 + 992)), Avx2.LoadVector256(sub2 + 992)));
             Avx2.Store(src + 1008, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1008), Avx2.LoadVector256(add1 + 1008)), Avx2.LoadVector256(sub1 + 1008)), Avx2.LoadVector256(sub2 + 1008)));
+
+            if ((NNUE.SimpleNet && Simple768.HiddenSize <= 1024) || (!NNUE.SimpleNet && Bucketed768.HiddenSize <= 1024))
+                return;
+
             Avx2.Store(src + 1024, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1024), Avx2.LoadVector256(add1 + 1024)), Avx2.LoadVector256(sub1 + 1024)), Avx2.LoadVector256(sub2 + 1024)));
             Avx2.Store(src + 1040, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1040), Avx2.LoadVector256(add1 + 1040)), Avx2.LoadVector256(sub1 + 1040)), Avx2.LoadVector256(sub2 + 1040)));
             Avx2.Store(src + 1056, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1056), Avx2.LoadVector256(add1 + 1056)), Avx2.LoadVector256(sub1 + 1056)), Avx2.LoadVector256(sub2 + 1056)));
