@@ -1,7 +1,4 @@
-﻿
-#define CONST
-
-using System.Runtime.Intrinsics;
+﻿using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using Lizard.Properties;
@@ -18,11 +15,8 @@ namespace Lizard.Logic.NN.Layered
         public int WeightCount => InputDimensions * OutputDimensions;
         public int BiasCount => OutputDimensions;
 
-        //public float* Weights;
-        //public float* Biases;
-
-        public float[] Weights;
-        public float[] Biases;
+        public float* Weights;
+        public float* Biases;
 
         public Layer(int inputDimensions, int outputDimensions)
         {
@@ -32,11 +26,8 @@ namespace Lizard.Logic.NN.Layered
 
         public void ReadWeights(BinaryReader br)
         {
-            //Weights = (float*)AlignedAllocZeroed((nuint) (sizeof(float) * WeightCount));
-            //Biases = (float*)AlignedAllocZeroed((nuint) (sizeof(float) * BiasCount));
-
-            Weights = new float[WeightCount];
-            Biases = new float[BiasCount];
+            Weights = (float*)AlignedAllocZeroed((nuint) (sizeof(float) * WeightCount));
+            Biases = (float*)AlignedAllocZeroed((nuint) (sizeof(float) * BiasCount));
 
             for (int i = 0; i < WeightCount; i++)
             {
@@ -51,24 +42,24 @@ namespace Lizard.Logic.NN.Layered
 
         public void Forward(float* input, float* output)
         {
-            Span<float> temp = stackalloc float[BiasCount];
-            for (int i = 0; i < BiasCount; i++)
+            float* temp = stackalloc float[BiasCount];
+            for (int i = 0; i < BiasCount; i += VSize.Float)
             {
-                temp[i] = Biases[i];
+                Avx2.Store(temp + i, Avx2.LoadVector256(Biases + i));
             }
 
             for (int i = 0; i < InputDimensions; ++i)
             {
+                int idx = (i * OutputDimensions);
                 for (int j = 0; j < OutputDimensions; ++j)
                 {
-                    int idx = (i * OutputDimensions) + j;
-                    temp[j] += input[i] * Weights[idx];
+                    temp[j] += input[i] * Weights[idx + j];
                 }
             }
 
-            for (int i = 0; i < OutputDimensions; i++)
+            for (int i = 0; i < OutputDimensions; i += VSize.Float)
             {
-                output[i] = float.Clamp(temp[i], 0, 1);
+                Avx2.Store(output + i, Avx2.Min(Avx2.Max(Avx2.LoadVector256(temp + i), Vector256<float>.Zero), Vector256<float>.One));
             }
         }
     }

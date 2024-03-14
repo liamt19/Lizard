@@ -172,27 +172,28 @@ namespace Lizard.Logic.NN
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            var us = (float*)accumulator[pos.ToMove];
-            var them = (float*)accumulator[Not(pos.ToMove)];
+            var us = (Vector256<float>*)accumulator[pos.ToMove];
+            var them = (Vector256<float>*)accumulator[Not(pos.ToMove)];
 
             int bufferSize = Layer1.InputDimensions + Layer1.OutputDimensions + Layer2.InputDimensions + Layer2.OutputDimensions;
             float* buffer = stackalloc float[bufferSize];
 
-            for (int i = 0; i < HiddenSize; i++)
+            Vector256<float>* bufferVec = (Vector256<float>*)buffer;
+            for (int i = 0; i < HiddenSize / VSize.Float; i++)
             {
-                var activated = Math.Min(Math.Max(us[i], 0), 1);
+                var activated = Avx2.Min(Avx2.Max(us[i], Vector256<float>.Zero), Vector256<float>.One);
                 activated *= activated;
-                buffer[i] += activated;
+                bufferVec[i] += activated;
             }
 
-            for (int i = 0; i < HiddenSize; i++)
+            for (int i = 0; i < HiddenSize / VSize.Float; i++)
             {
-                var activated = Math.Min(Math.Max(them[i], 0), 1);
+                var activated = Avx2.Min(Avx2.Max(them[i], Vector256<float>.Zero), Vector256<float>.One);
                 activated *= activated;
-                buffer[i + HiddenSize] += activated;
+                bufferVec[i + (HiddenSize / VSize.Float)] += activated;
             }
 
-            float* L1_out = buffer + ((HiddenSize * 2));
+            float* L1_out = buffer + (HiddenSize * 2);
             float* L2_out = L1_out + Layer1.OutputDimensions;
             float* finalOut = L2_out;
             Layer1.Forward(buffer, L1_out);
