@@ -13,7 +13,7 @@ namespace Lizard.Logic.NN
     {
         private const int InputBuckets = 5;
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
+        public const int HiddenSize = 1024;
         private const int OutputBuckets = 8;
 
         private const int QA = 255;
@@ -27,10 +27,10 @@ namespace Lizard.Logic.NN
 
         /// <summary>
         /// 
-        /// (768x5 -> 1536)x2 -> 8
+        /// (768x5 -> 1024)x2 -> 8
         /// 
         /// </summary>
-        public const string NetworkName = "skink-epoch15.bin";
+        public const string NetworkName = "tokay-epoch13.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
