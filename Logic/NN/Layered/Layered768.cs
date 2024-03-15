@@ -5,6 +5,7 @@ using Lizard.Properties;
 
 using static Lizard.Logic.NN.FunUnrollThings;
 using Lizard.Logic.NN.Layered;
+using System.Reflection;
 
 namespace Lizard.Logic.NN
 {
@@ -24,6 +25,7 @@ namespace Lizard.Logic.NN
         public const int SIMD_CHUNKS = HiddenSize / VSize.Float;
 
         public const string NetworkName = "params.bin";
+        private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -66,14 +68,22 @@ namespace Lizard.Logic.NN
             Layer2 = new Layer(L2_IN, L2_OUT);
             Layers = [ Layer1, Layer2 ];
 
-            Initialize();
+            string networkToLoad = DefaultNetwork;
+
+            try
+            {
+                var evalFile = Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile;
+                networkToLoad = evalFile;
+            }
+            catch { }
+
+            Initialize(networkToLoad);
         }
 
-        public static void Initialize()
+        public static void Initialize(string networkToLoad)
         {
             Stream kpFile;
 
-            string networkToLoad = @"nn.nnue";
             if (File.Exists(networkToLoad))
             {
                 kpFile = File.OpenRead(networkToLoad);
