@@ -1,4 +1,5 @@
-﻿using System.Runtime.Intrinsics;
+﻿using System.Reflection;
+using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using Lizard.Properties;
@@ -68,16 +69,14 @@ namespace Lizard.Logic.NN
             LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
             LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
 
-            var envVars = Environment.GetEnvironmentVariables();
-            File.WriteAllText("env.txt", string.Join("\n", envVars.Keys.Cast<string>().Select(k => k + "=" + envVars[k])));
-
-
             string networkToLoad = DefaultNetwork;
-            if (envVars.Keys.Cast<string>().Contains("EVALFILE"))
+
+            try
             {
-                File.AppendAllText("env.txt", $"\nEVALFILE == {envVars}");
-                networkToLoad = (string)envVars["EVALFILE"];
+                var evalFile = Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile;
+                networkToLoad = evalFile;
             }
+            catch { }
 
             Initialize(networkToLoad);
         }
