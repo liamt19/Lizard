@@ -23,6 +23,7 @@ namespace Lizard.Logic.NN
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
         public const string NetworkName = "iguana-epoch10.bin";
+        private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -67,14 +68,24 @@ namespace Lizard.Logic.NN
             LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
             LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
 
-            Initialize();
+            var envVars = Environment.GetEnvironmentVariables();
+            File.WriteAllText("env.txt", string.Join("\n", envVars.Keys.Cast<string>().Select(k => k + "=" + envVars[k])));
+
+
+            string networkToLoad = DefaultNetwork;
+            if (envVars.Keys.Cast<string>().Contains("EVALFILE"))
+            {
+                File.AppendAllText("env.txt", $"\nEVALFILE == {envVars}");
+                networkToLoad = (string)envVars["EVALFILE"];
+            }
+
+            Initialize(networkToLoad);
         }
 
-        public static void Initialize()
+        public static void Initialize(string networkToLoad)
         {
             Stream kpFile;
 
-            string networkToLoad = @"nn.nnue";
             if (File.Exists(networkToLoad))
             {
                 kpFile = File.OpenRead(networkToLoad);
