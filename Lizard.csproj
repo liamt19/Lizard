@@ -15,7 +15,7 @@
     <DebugType>portable</DebugType>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
-    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <GenerateDependencyFile>False</GenerateDependencyFile>
 
     <AssemblyVersion>1.0.0</AssemblyVersion>
@@ -110,7 +110,17 @@
     <ilcArg Include="--Ot" />
     <ilcArg Include="--instruction-set=sse,sse2,sse3,ssse3,sse4.1,sse4.2,avx,avx2,bmi,bmi2,lzcnt,popcnt,avxvnni" />
   </ItemGroup>
- 
+
+  <!-- If "-p:EVALFILE=(path to network here...)" is passed during the MSBuild, this will set the EvalFile
+       parameter to the path that was passed and subsequently used to load the network from that file.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
+      <_Parameter1>$(EVALFILE)</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+  
+  
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <PlatformTarget>x64</PlatformTarget>

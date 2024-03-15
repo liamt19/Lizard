@@ -1,4 +1,5 @@
-﻿using System.Runtime.Intrinsics;
+﻿using System.Reflection;
+using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.Runtime.InteropServices;
 using Lizard.Properties;
@@ -20,6 +21,7 @@ namespace Lizard.Logic.NN
         private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
+        private const bool SelectOutputBucket = (OutputBuckets != 1);
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
@@ -29,6 +31,7 @@ namespace Lizard.Logic.NN
         /// 
         /// </summary>
         public const string NetworkName = "skink-epoch15.bin";
+        private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -85,14 +88,22 @@ namespace Lizard.Logic.NN
             LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
             LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
 
-            Initialize();
+            string networkToLoad = DefaultNetwork;
+
+            try
+            {
+                var evalFile = Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile;
+                networkToLoad = evalFile;
+            }
+            catch { }
+
+            Initialize(networkToLoad);
         }
 
-        public static void Initialize()
+        public static void Initialize(string networkToLoad)
         {
             Stream kpFile;
 
-            string networkToLoad = @"nn.nnue";
             if (File.Exists(networkToLoad))
             {
                 kpFile = File.OpenRead(networkToLoad);
