@@ -8,6 +8,10 @@ ifndef CC
 	CC = dotnet
 endif
 
+ifndef EVALFILE
+	EVALFILE = nn.nnue
+endif
+
 #	self-contained              .NET Core won't need to be installed to run the binary
 #	-v quiet                    Silences CS#### warnings during building (e.g. "CS0162: Unreachable code detected")
 #	--property WarningLevel=0   Silences CS#### warnings during building
@@ -20,8 +24,8 @@ BUILD_OPTS = --self-contained -v quiet --property WarningLevel=0 -o ./ -c Releas
 
 #	Try building the non-AOT version first, and then try to build the AOT version if possible.
 #   This recipe should always work, but AOT requires some additional setup so the aot recipe may fail.
-release:
-	EVALFILE = $(EVALFILE)
+release: 
+	set EVALFILE = $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="$(DefineConstants)PEXT"
 	-rmdir /s /q .\bin\Release
 	$(MAKE) aot
@@ -30,8 +34,8 @@ release:
 #	Replaces PublishSingleFile with PublishAOT
 #	-p:DebugType=embedded apparently just... doesn't embed it? So this will delete the pdb as well.	
 #	https://github.com/dotnet/sdk/issues/35798
-aot:
-	-EVALFILE = $(EVALFILE)
+aot: 
+	set EVALFILE = $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="$(DefineConstants)PUBLISH_AOT%3BPEXT"
 	-rmdir /s /q .\bin\Release\native
 	-rmdir /s /q .\bin\Release
