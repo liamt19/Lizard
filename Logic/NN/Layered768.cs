@@ -222,8 +222,8 @@ namespace Lizard.Logic.NN
             var w = (Vector256<float>*)accumulator.White;
             var b = (Vector256<float>*)accumulator.Black;
 
-            Unsafe.CopyBlock(w, FeatureBiases, sizeof(float) * HiddenSize);
-            Unsafe.CopyBlock(b, FeatureBiases, sizeof(float) * HiddenSize);
+            Unsafe.CopyBlock(w, FeatureBiases, sizeof(float) * FeatureBiasElements);
+            Unsafe.CopyBlock(b, FeatureBiases, sizeof(float) * FeatureBiasElements);
 
             int wk = pos.State->KingSquares[White];
             int bk = pos.State->KingSquares[Black];
@@ -252,7 +252,7 @@ namespace Lizard.Logic.NN
             ref Bitboard bb = ref pos.bb;
 
             var ourAccumulation = (Vector256<float>*) (accumulator[perspective]);
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(float) * FeatureBiasElements);
 
             int ourKing = pos.State->KingSquares[perspective];
 
@@ -290,12 +290,12 @@ namespace Lizard.Logic.NN
             return (int)ForwardOutput(x2);
 #else
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            if (accumulator.NeedsRefresh[White])
+            if (true || accumulator.NeedsRefresh[White])
             {
                 RefreshAccumulatorPerspective(pos, White);
             }
 
-            if (accumulator.NeedsRefresh[Black])
+            if (true || accumulator.NeedsRefresh[Black])
             {
                 RefreshAccumulatorPerspective(pos, Black);
             }
@@ -304,9 +304,11 @@ namespace Lizard.Logic.NN
             var them = (Vector256<float>*)accumulator[Not(pos.ToMove)];
 
 
-            const int BufferSize = N_HIDDEN + N_L1 * 2 + N_L2;
-            float* buffer = stackalloc float[BufferSize];
-            Vector256<float>* bufferVec = (Vector256<float>*)buffer;
+            float* x0 = stackalloc float[N_HIDDEN];
+            float* x1 = stackalloc float[16];
+            float* x2 = stackalloc float[32];
+
+            Vector256<float>* bufferVec = (Vector256<float>*)x0;
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -314,12 +316,9 @@ namespace Lizard.Logic.NN
                 bufferVec[i + SIMD_CHUNKS] = Avx2.Max(them[i], Vector256<float>.Zero);
             }
 
-            float* L1_out = buffer + N_HIDDEN;
-            float* L2_out = L1_out + N_L1;
-
-            ForwardL1(buffer, L1_out);
-            ForwardL2(L1_out, L2_out);
-            return (int)ForwardOutput(L2_out);
+            ForwardL1(x0, x1);
+            ForwardL2(x1, x2);
+            return (int)ForwardOutput(x2);
 #endif
 
 
@@ -377,6 +376,7 @@ namespace Lizard.Logic.NN
 
         public static void MakeMove(Position pos, Move m)
         {
+            return;
             ref Bitboard bb = ref pos.bb;
 
             Accumulator* accumulator = pos.NextState->Accumulator;
