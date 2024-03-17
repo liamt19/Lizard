@@ -226,6 +226,75 @@ namespace Lizard.Logic.NN
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1488, Avx2.MultiplyLow(clamp_us_1488, Avx2.LoadAlignedVector256(ourWeights + 1488))));
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1504, Avx2.MultiplyLow(clamp_us_1504, Avx2.LoadAlignedVector256(ourWeights + 1504))));
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1520, Avx2.MultiplyLow(clamp_us_1520, Avx2.LoadAlignedVector256(ourWeights + 1520))));
+
+                Vector256<short> clamp_us_1536 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1536)));
+                Vector256<short> clamp_us_1552 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1552)));
+                Vector256<short> clamp_us_1568 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1568)));
+                Vector256<short> clamp_us_1584 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1584)));
+                Vector256<short> clamp_us_1600 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1600)));
+                Vector256<short> clamp_us_1616 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1616)));
+                Vector256<short> clamp_us_1632 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1632)));
+                Vector256<short> clamp_us_1648 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1648)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1536, Avx2.MultiplyLow(clamp_us_1536, Avx2.LoadAlignedVector256(ourWeights + 1536))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1552, Avx2.MultiplyLow(clamp_us_1552, Avx2.LoadAlignedVector256(ourWeights + 1552))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1568, Avx2.MultiplyLow(clamp_us_1568, Avx2.LoadAlignedVector256(ourWeights + 1568))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1584, Avx2.MultiplyLow(clamp_us_1584, Avx2.LoadAlignedVector256(ourWeights + 1584))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1600, Avx2.MultiplyLow(clamp_us_1600, Avx2.LoadAlignedVector256(ourWeights + 1600))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1616, Avx2.MultiplyLow(clamp_us_1616, Avx2.LoadAlignedVector256(ourWeights + 1616))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1632, Avx2.MultiplyLow(clamp_us_1632, Avx2.LoadAlignedVector256(ourWeights + 1632))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1648, Avx2.MultiplyLow(clamp_us_1648, Avx2.LoadAlignedVector256(ourWeights + 1648))));
+
+                Vector256<short> clamp_us_1664 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1664)));
+                Vector256<short> clamp_us_1680 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1680)));
+                Vector256<short> clamp_us_1696 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1696)));
+                Vector256<short> clamp_us_1712 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1712)));
+                Vector256<short> clamp_us_1728 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1728)));
+                Vector256<short> clamp_us_1744 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1744)));
+                Vector256<short> clamp_us_1760 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1760)));
+                Vector256<short> clamp_us_1776 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1776)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1664, Avx2.MultiplyLow(clamp_us_1664, Avx2.LoadAlignedVector256(ourWeights + 1664))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1680, Avx2.MultiplyLow(clamp_us_1680, Avx2.LoadAlignedVector256(ourWeights + 1680))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1696, Avx2.MultiplyLow(clamp_us_1696, Avx2.LoadAlignedVector256(ourWeights + 1696))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1712, Avx2.MultiplyLow(clamp_us_1712, Avx2.LoadAlignedVector256(ourWeights + 1712))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1728, Avx2.MultiplyLow(clamp_us_1728, Avx2.LoadAlignedVector256(ourWeights + 1728))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1744, Avx2.MultiplyLow(clamp_us_1744, Avx2.LoadAlignedVector256(ourWeights + 1744))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1760, Avx2.MultiplyLow(clamp_us_1760, Avx2.LoadAlignedVector256(ourWeights + 1760))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1776, Avx2.MultiplyLow(clamp_us_1776, Avx2.LoadAlignedVector256(ourWeights + 1776))));
+
+                Vector256<short> clamp_us_1792 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1792)));
+                Vector256<short> clamp_us_1808 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1808)));
+                Vector256<short> clamp_us_1824 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1824)));
+                Vector256<short> clamp_us_1840 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1840)));
+                Vector256<short> clamp_us_1856 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1856)));
+                Vector256<short> clamp_us_1872 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1872)));
+                Vector256<short> clamp_us_1888 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1888)));
+                Vector256<short> clamp_us_1904 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1904)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1792, Avx2.MultiplyLow(clamp_us_1792, Avx2.LoadAlignedVector256(ourWeights + 1792))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1808, Avx2.MultiplyLow(clamp_us_1808, Avx2.LoadAlignedVector256(ourWeights + 1808))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1824, Avx2.MultiplyLow(clamp_us_1824, Avx2.LoadAlignedVector256(ourWeights + 1824))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1840, Avx2.MultiplyLow(clamp_us_1840, Avx2.LoadAlignedVector256(ourWeights + 1840))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1856, Avx2.MultiplyLow(clamp_us_1856, Avx2.LoadAlignedVector256(ourWeights + 1856))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1872, Avx2.MultiplyLow(clamp_us_1872, Avx2.LoadAlignedVector256(ourWeights + 1872))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1888, Avx2.MultiplyLow(clamp_us_1888, Avx2.LoadAlignedVector256(ourWeights + 1888))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1904, Avx2.MultiplyLow(clamp_us_1904, Avx2.LoadAlignedVector256(ourWeights + 1904))));
+
+                Vector256<short> clamp_us_1920 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1920)));
+                Vector256<short> clamp_us_1936 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1936)));
+                Vector256<short> clamp_us_1952 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1952)));
+                Vector256<short> clamp_us_1968 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1968)));
+                Vector256<short> clamp_us_1984 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 1984)));
+                Vector256<short> clamp_us_2000 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 2000)));
+                Vector256<short> clamp_us_2016 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 2016)));
+                Vector256<short> clamp_us_2032 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(ourData + 2032)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1920, Avx2.MultiplyLow(clamp_us_1920, Avx2.LoadAlignedVector256(ourWeights + 1920))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1936, Avx2.MultiplyLow(clamp_us_1936, Avx2.LoadAlignedVector256(ourWeights + 1936))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1952, Avx2.MultiplyLow(clamp_us_1952, Avx2.LoadAlignedVector256(ourWeights + 1952))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1968, Avx2.MultiplyLow(clamp_us_1968, Avx2.LoadAlignedVector256(ourWeights + 1968))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_1984, Avx2.MultiplyLow(clamp_us_1984, Avx2.LoadAlignedVector256(ourWeights + 1984))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_2000, Avx2.MultiplyLow(clamp_us_2000, Avx2.LoadAlignedVector256(ourWeights + 2000))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_2016, Avx2.MultiplyLow(clamp_us_2016, Avx2.LoadAlignedVector256(ourWeights + 2016))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_us_2032, Avx2.MultiplyLow(clamp_us_2032, Avx2.LoadAlignedVector256(ourWeights + 2032))));
+
             }
 
             #endregion
@@ -439,6 +508,74 @@ namespace Lizard.Logic.NN
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1488, Avx2.MultiplyLow(clamp_them_1488, Avx2.LoadAlignedVector256(theirWeights + 1488))));
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1504, Avx2.MultiplyLow(clamp_them_1504, Avx2.LoadAlignedVector256(theirWeights + 1504))));
                 normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1520, Avx2.MultiplyLow(clamp_them_1520, Avx2.LoadAlignedVector256(theirWeights + 1520))));
+
+                Vector256<short> clamp_them_1536 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1536)));
+                Vector256<short> clamp_them_1552 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1552)));
+                Vector256<short> clamp_them_1568 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1568)));
+                Vector256<short> clamp_them_1584 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1584)));
+                Vector256<short> clamp_them_1600 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1600)));
+                Vector256<short> clamp_them_1616 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1616)));
+                Vector256<short> clamp_them_1632 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1632)));
+                Vector256<short> clamp_them_1648 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1648)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1536, Avx2.MultiplyLow(clamp_them_1536, Avx2.LoadAlignedVector256(theirWeights + 1536))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1552, Avx2.MultiplyLow(clamp_them_1552, Avx2.LoadAlignedVector256(theirWeights + 1552))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1568, Avx2.MultiplyLow(clamp_them_1568, Avx2.LoadAlignedVector256(theirWeights + 1568))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1584, Avx2.MultiplyLow(clamp_them_1584, Avx2.LoadAlignedVector256(theirWeights + 1584))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1600, Avx2.MultiplyLow(clamp_them_1600, Avx2.LoadAlignedVector256(theirWeights + 1600))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1616, Avx2.MultiplyLow(clamp_them_1616, Avx2.LoadAlignedVector256(theirWeights + 1616))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1632, Avx2.MultiplyLow(clamp_them_1632, Avx2.LoadAlignedVector256(theirWeights + 1632))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1648, Avx2.MultiplyLow(clamp_them_1648, Avx2.LoadAlignedVector256(theirWeights + 1648))));
+
+                Vector256<short> clamp_them_1664 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1664)));
+                Vector256<short> clamp_them_1680 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1680)));
+                Vector256<short> clamp_them_1696 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1696)));
+                Vector256<short> clamp_them_1712 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1712)));
+                Vector256<short> clamp_them_1728 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1728)));
+                Vector256<short> clamp_them_1744 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1744)));
+                Vector256<short> clamp_them_1760 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1760)));
+                Vector256<short> clamp_them_1776 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1776)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1664, Avx2.MultiplyLow(clamp_them_1664, Avx2.LoadAlignedVector256(theirWeights + 1664))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1680, Avx2.MultiplyLow(clamp_them_1680, Avx2.LoadAlignedVector256(theirWeights + 1680))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1696, Avx2.MultiplyLow(clamp_them_1696, Avx2.LoadAlignedVector256(theirWeights + 1696))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1712, Avx2.MultiplyLow(clamp_them_1712, Avx2.LoadAlignedVector256(theirWeights + 1712))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1728, Avx2.MultiplyLow(clamp_them_1728, Avx2.LoadAlignedVector256(theirWeights + 1728))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1744, Avx2.MultiplyLow(clamp_them_1744, Avx2.LoadAlignedVector256(theirWeights + 1744))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1760, Avx2.MultiplyLow(clamp_them_1760, Avx2.LoadAlignedVector256(theirWeights + 1760))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1776, Avx2.MultiplyLow(clamp_them_1776, Avx2.LoadAlignedVector256(theirWeights + 1776))));
+
+                Vector256<short> clamp_them_1792 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1792)));
+                Vector256<short> clamp_them_1808 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1808)));
+                Vector256<short> clamp_them_1824 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1824)));
+                Vector256<short> clamp_them_1840 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1840)));
+                Vector256<short> clamp_them_1856 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1856)));
+                Vector256<short> clamp_them_1872 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1872)));
+                Vector256<short> clamp_them_1888 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1888)));
+                Vector256<short> clamp_them_1904 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1904)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1792, Avx2.MultiplyLow(clamp_them_1792, Avx2.LoadAlignedVector256(theirWeights + 1792))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1808, Avx2.MultiplyLow(clamp_them_1808, Avx2.LoadAlignedVector256(theirWeights + 1808))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1824, Avx2.MultiplyLow(clamp_them_1824, Avx2.LoadAlignedVector256(theirWeights + 1824))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1840, Avx2.MultiplyLow(clamp_them_1840, Avx2.LoadAlignedVector256(theirWeights + 1840))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1856, Avx2.MultiplyLow(clamp_them_1856, Avx2.LoadAlignedVector256(theirWeights + 1856))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1872, Avx2.MultiplyLow(clamp_them_1872, Avx2.LoadAlignedVector256(theirWeights + 1872))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1888, Avx2.MultiplyLow(clamp_them_1888, Avx2.LoadAlignedVector256(theirWeights + 1888))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1904, Avx2.MultiplyLow(clamp_them_1904, Avx2.LoadAlignedVector256(theirWeights + 1904))));
+
+                Vector256<short> clamp_them_1920 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1920)));
+                Vector256<short> clamp_them_1936 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1936)));
+                Vector256<short> clamp_them_1952 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1952)));
+                Vector256<short> clamp_them_1968 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1968)));
+                Vector256<short> clamp_them_1984 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 1984)));
+                Vector256<short> clamp_them_2000 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 2000)));
+                Vector256<short> clamp_them_2016 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 2016)));
+                Vector256<short> clamp_them_2032 = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, Avx2.LoadAlignedVector256(theirData + 2032)));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1920, Avx2.MultiplyLow(clamp_them_1920, Avx2.LoadAlignedVector256(theirWeights + 1920))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1936, Avx2.MultiplyLow(clamp_them_1936, Avx2.LoadAlignedVector256(theirWeights + 1936))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1952, Avx2.MultiplyLow(clamp_them_1952, Avx2.LoadAlignedVector256(theirWeights + 1952))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1968, Avx2.MultiplyLow(clamp_them_1968, Avx2.LoadAlignedVector256(theirWeights + 1968))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_1984, Avx2.MultiplyLow(clamp_them_1984, Avx2.LoadAlignedVector256(theirWeights + 1984))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_2000, Avx2.MultiplyLow(clamp_them_2000, Avx2.LoadAlignedVector256(theirWeights + 2000))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_2016, Avx2.MultiplyLow(clamp_them_2016, Avx2.LoadAlignedVector256(theirWeights + 2016))));
+                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(clamp_them_2032, Avx2.MultiplyLow(clamp_them_2032, Avx2.LoadAlignedVector256(theirWeights + 2032))));
             }
 
             #endregion

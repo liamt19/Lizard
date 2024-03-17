@@ -12,7 +12,7 @@ namespace Lizard.Logic.NN
     public static unsafe partial class Simple768
     {
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
+        public const int HiddenSize = 2048;
         public const int OutputBuckets = 1;
 
         private const int QA = 255;
@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "basilisk-epoch1.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
