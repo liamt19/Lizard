@@ -123,7 +123,7 @@
         /// ProbCut will test all available captures with a reduced depth and a modified beta,
         /// and if a cutoff occurs we can assume that it would cause a cutoff at the full depth and normal beta value.
         /// </summary>
-        public const bool UseProbCut = true;
+        public const bool UseProbCut = false;
 
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
