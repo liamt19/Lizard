@@ -522,8 +522,7 @@ namespace Lizard.Logic.Search
 
                     ss->StatScore = 2 * history.MainHistory[HistoryTable.HistoryIndex(ourColor, m)] +
                                         (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 4)->ContinuationHistory)[histIdx];
+                                        (*(ss - 2)->ContinuationHistory)[histIdx];
 
                     R -= (ss->StatScore / (4096 * HistoryReductionMultiplier));
 
