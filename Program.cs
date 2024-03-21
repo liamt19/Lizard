@@ -20,6 +20,8 @@ namespace Lizard
 
         public static void Main(string[] args)
         {
+            UCIClient.ProcessUCIOptions();
+
             if (args.Length == 1 && args[0] == "bench")
             {
                 SearchBench.Go(12, openBench: true);

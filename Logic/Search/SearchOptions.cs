@@ -86,7 +86,11 @@
         /// <summary>
         /// The reduction is increased by the current depth divided by this amount.
         /// </summary>
-        public static int NMPReductionDivisor = 5;
+        public static int NMPReductionDivisor = 4;
+
+        //  http://somelizard.pythonanywhere.com/test/305/
+        public static int NMPEvalBetaDivisor = 173;
+        public static int NMPEvalBetaMinTerm = 3;
 
 
 

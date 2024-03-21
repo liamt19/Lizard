@@ -655,6 +655,8 @@ namespace Lizard.Logic.UCI
             Options[nameof(NMPMinDepth)].SetMinMax(1, 9);
             Options[nameof(NMPReductionBase)].SetMinMax(1, 9);
             Options[nameof(NMPReductionDivisor)].SetMinMax(1, 9);
+            Options[nameof(NMPEvalBetaDivisor)].AutoMinMax();
+            Options[nameof(NMPEvalBetaMinTerm)].SetMinMax(0, 7);
 
             Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 12);
             Options[nameof(ReverseFutilityPruningPerDepth)].AutoMinMax();
