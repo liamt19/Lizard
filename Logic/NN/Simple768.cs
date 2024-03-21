@@ -13,7 +13,7 @@ namespace Lizard.Logic.NN
     {
         public const int InputSize = 768;
         public const int HiddenSize = 1536;
-        public const int OutputBuckets = 1;
+        public const int OutputBuckets = 8;
 
         private const int QA = 255;
         private const int QB = 64;
@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "ft-reg-100.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
