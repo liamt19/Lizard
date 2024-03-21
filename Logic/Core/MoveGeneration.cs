@@ -72,17 +72,13 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up, to);
+                    list[size++].Move.SetNew(to - up, to);
                 }
 
                 while (twoMoves != 0)
                 {
                     int to = poplsb(&twoMoves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - up, to);
+                    list[size++].Move.SetNew(to - up - up, to);
                 }
             }
 
@@ -104,16 +100,19 @@
                     size = NewMakePromotionChecks(list, to - up, to, false, size);
                 }
 
-                while (promotionCapturesL != 0)
+                if (!quiets)
                 {
-                    int to = poplsb(&promotionCapturesL);
-                    size = NewMakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
-                }
+                    while (promotionCapturesL != 0)
+                    {
+                        int to = poplsb(&promotionCapturesL);
+                        size = NewMakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
+                    }
 
-                while (promotionCapturesR != 0)
-                {
-                    int to = poplsb(&promotionCapturesR);
-                    size = NewMakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
+                    while (promotionCapturesR != 0)
+                    {
+                        int to = poplsb(&promotionCapturesR);
+                        size = NewMakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
+                    }
                 }
             }
 
@@ -126,19 +125,13 @@
                 while (capturesL != 0)
                 {
                     int to = poplsb(&capturesL);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.WEST, to);
-
+                    list[size++].Move.SetNew(to - up - Direction.WEST, to);
                 }
 
                 while (capturesR != 0)
                 {
                     int to = poplsb(&capturesR);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.EAST, to);
-
+                    list[size++].Move.SetNew(to - up - Direction.EAST, to);
                 }
 
                 if (State->EPSquare != EPNone)
@@ -166,41 +159,19 @@
 
             int NewMakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
             {
-                int highPiece = Knight;
-                int lowPiece = Queen;
-
-                if (quiets && isCapture)
-                {
-                    return size;
-                }
-
-                if (evasions || nonEvasions)
-                {
-                    //  All promotions are valid
-                    highPiece = Queen;
-                    lowPiece = Knight;
-                }
-
-                if (loudMoves)
-                {
-                    //  GenLoud makes all promotions for captures, and only makes Queens for non-capture promotions
-                    highPiece = Queen;
-                    lowPiece = isCapture ? Knight : Queen;
-                }
-
-                if (quiets)
-                {
-                    //  GenQuiets only makes underpromotions
-                    lowPiece = Knight;
-                    highPiece = Rook;
-                }
-
+                //  Gen(Non)Evasions makes everything
+                //  GenLoud makes all promotions for captures, and only makes Queens for non-capture promotions
+                //  GenQuiets only makes underpromotions
                 //  GenQChecks makes nothing.
-
-                for (int promotionPiece = lowPiece; promotionPiece <= highPiece; promotionPiece++)
+                if (!(loudMoves && isCapture) && !quietChecks)
                 {
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(from, promotionSquare, promotionPiece);
+                    list[size++].Move.SetNew(from, promotionSquare, Knight);
+                    list[size++].Move.SetNew(from, promotionSquare, Bishop);
+                    list[size++].Move.SetNew(from, promotionSquare, Rook);
+                }
+                if (evasions || nonEvasions || loudMoves)
+                {
+                    list[size++].Move.SetNew(from, promotionSquare, Queen);
                 }
 
                 return size;
@@ -261,10 +232,7 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to);
-
+                    list[size++].Move.SetNew(ourKing, to);
                 }
 
                 if ((quiets || nonEvasions) && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
@@ -409,9 +377,7 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to);
+                    list[size++].Move.SetNew(idx, to);
                 }
             }
 
@@ -494,8 +460,7 @@
 
                 while (moves != 0)
                 {
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, poplsb(&moves));
+                    list[size++].Move.SetNew(ourKing, poplsb(&moves));
                 }
 
                 if (((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
@@ -572,9 +537,7 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to);
+                    list[size++].Move.SetNew(idx, to);
                 }
             }
 
@@ -608,17 +571,13 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up, to);
+                    list[size++].Move.SetNew(to - up, to);
                 }
 
                 while (twoMoves != 0)
                 {
                     int to = poplsb(&twoMoves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - up, to);
+                    list[size++].Move.SetNew(to - up - up, to);
                 }
             }
             
@@ -654,17 +613,13 @@
             while (capturesL != 0)
             {
                 int to = poplsb(&capturesL);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.WEST, to);
+                list[size++].Move.SetNew(to - up - Direction.WEST, to);
             }
 
             while (capturesR != 0)
             {
                 int to = poplsb(&capturesR);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.EAST, to);
+                list[size++].Move.SetNew(to - up - Direction.EAST, to);
             }
 
             return size;
@@ -676,8 +631,7 @@
                 {
                     if (isCapture || allowChecks && (SquareBB[promotionSquare] & State->CheckSquares[promotionPiece]) != 0)
                     {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNew(from, promotionSquare, promotionPiece);
+                        list[size++].Move.SetNew(from, promotionSquare, promotionPiece);
                     }
                 }
 
