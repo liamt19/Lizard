@@ -553,7 +553,7 @@ namespace Lizard.Logic.Search
                         if (score <= alpha)
                         {
                             //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth - 1);
+                            bonus = -StatMalus(newDepth - 1);
                         }
                         else if (score >= beta)
                         {
