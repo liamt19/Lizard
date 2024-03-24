@@ -28,7 +28,7 @@ namespace Lizard.Logic.Search.Ordering
         /// and that PieceToHistory[0, 1, 2] is the correct PieceToHistory for a white (0) knight (1) moving to C1 (2).
         /// This is then used by <see cref="MoveOrdering"/>.AssignScores
         /// </summary>
-        public readonly ContinuationHistory** Continuations;
+        public readonly ContinuationHistory Continuations;
 
         public HistoryTable()
         {
@@ -37,30 +37,13 @@ namespace Lizard.Logic.Search.Ordering
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
-            Continuations = (ContinuationHistory**)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont0 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont1 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-
-            cont0[0] = new ContinuationHistory();
-            cont0[1] = new ContinuationHistory();
-
-            cont1[0] = new ContinuationHistory();
-            cont1[1] = new ContinuationHistory();
-
-            Continuations[0] = cont0;
-            Continuations[1] = cont1;
+            Continuations = new ContinuationHistory();
         }
 
         public void Dispose()
         {
             NativeMemory.AlignedFree(MainHistory);
             NativeMemory.AlignedFree(CaptureHistory);
-
-            for (int i = 0; i < 2; i++)
-            {
-                Continuations[i][0].Dispose();
-                Continuations[i][1].Dispose();
-            }
 
         }
 

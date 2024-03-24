@@ -254,7 +254,7 @@ namespace Lizard.Logic.Search
             {
                 int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
                 ss->CurrentMove = Move.Null;
-                ss->ContinuationHistory = history.Continuations[0][0][0];
+                ss->ContinuationHistory = history.Continuations[0];
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 info.Position.MakeNullMove();
@@ -312,7 +312,7 @@ namespace Lizard.Logic.Search
                     int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None && !m.Castle) ? 1 : 0][histIdx];
+                    ss->ContinuationHistory = history.Continuations[histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -482,7 +482,7 @@ namespace Lizard.Logic.Search
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -916,7 +916,7 @@ namespace Lizard.Logic.Search
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
