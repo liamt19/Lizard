@@ -21,7 +21,7 @@ BUILD_OPTS = --self-contained -v quiet --property WarningLevel=0 -o ./ -c Releas
 #	Try building the non-AOT version first, and then try to build the AOT version if possible.
 #   This recipe should always work, but AOT requires some additional setup so the aot recipe may fail.
 release:
-	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="$(DefineConstants)PEXT" -p:EVALFILE=$(EVALFILE)
+	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="$(DefineConstants)" -p:EVALFILE=$(EVALFILE)
 	-rmdir /s /q .\bin\Release
 	$(MAKE) aot
 
@@ -30,7 +30,7 @@ release:
 #	-p:DebugType=embedded apparently just... doesn't embed it? So this will delete the pdb as well.	
 #	https://github.com/dotnet/sdk/issues/35798
 aot:
-	-dotnet publish . $(BUILD_OPTS) -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="$(DefineConstants)PUBLISH_AOT%3BPEXT" -p:EVALFILE=$(EVALFILE)
+	-dotnet publish . $(BUILD_OPTS) -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="$(DefineConstants)PUBLISH_AOT" -p:EVALFILE=$(EVALFILE)
 	-rmdir /s /q .\bin\Release\native
 	-rmdir /s /q .\bin\Release
 	-del .\Lizard.pdb
