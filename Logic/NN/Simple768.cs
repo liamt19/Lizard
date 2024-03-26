@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
 
-        public const string NetworkName = "basilisk-epoch1.bin";
+        public const string NetworkName = "basilisk-epoch18.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
