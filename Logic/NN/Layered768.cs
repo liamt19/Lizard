@@ -1,6 +1,11 @@
 ﻿
+#define UNROLL
+#undef UNROLL
+
 #define SPARSE
 #undef SPARSE
+
+using FTType = float;
 
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -29,25 +34,22 @@ namespace Lizard.Logic.NN
 
         public const int SIMD_CHUNKS = HiddenSize / VSize.Float;
 
-        public const string NetworkName = "params.bin";
+        public const string NetworkName = "lizard-768x4x16x32x1-320-params.bin";
         private const string DefaultNetwork = "nn.nnue";
 
-        /// <summary>
-        /// The values applied according to the active features and current bucket.
-        /// <para></para>
-        /// This is the 768 -> 1536 part of the architecture.
-        /// </summary>
-        private static readonly Vector256<float>* FeatureWeights;
+#if FT_QUANTIZE
+        private static readonly Vector256<FTType>* FeatureWeights;
+        private static readonly Vector256<FTType>* FeatureBiases;
 
-        /// <summary>
-        /// The initial values that are placed into the accumulators.
-        /// <para></para>
-        /// When doing a full refresh, both accumulators are filled with these.
-        /// </summary>
+        private static readonly float* L1_WEIGHTS;
+        private static readonly float* L1_BIASES;
+#else
+        private static readonly Vector256<float>* FeatureWeights;
         private static readonly Vector256<float>* FeatureBiases;
 
         private static readonly float* L1_WEIGHTS;
         private static readonly float* L1_BIASES;
+#endif
 
         private static readonly float* L2_WEIGHTS;
         private static readonly float* L2_BIASES;
@@ -161,6 +163,9 @@ namespace Lizard.Logic.NN
             for (int i = 0; i < N_L1; i++)
                 L1_BIASES[i] = br.ReadSingle();
 
+
+
+
             for (int i = 0; i < N_L1 * N_L2; i++)
                 L2_WEIGHTS[i] = br.ReadSingle();
             for (int i = 0; i < N_L2; i++)
@@ -219,11 +224,11 @@ namespace Lizard.Logic.NN
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var w = (Vector256<float>*)accumulator.White;
-            var b = (Vector256<float>*)accumulator.Black;
+            var w = (Vector256<FTType>*)accumulator.White;
+            var b = (Vector256<FTType>*)accumulator.Black;
 
-            Unsafe.CopyBlock(w, FeatureBiases, sizeof(float) * FeatureBiasElements);
-            Unsafe.CopyBlock(b, FeatureBiases, sizeof(float) * FeatureBiasElements);
+            Unsafe.CopyBlock(w, FeatureBiases, sizeof(FTType) * FeatureBiasElements);
+            Unsafe.CopyBlock(b, FeatureBiases, sizeof(FTType) * FeatureBiasElements);
 
             int wk = pos.State->KingSquares[White];
             int bk = pos.State->KingSquares[Black];
@@ -251,8 +256,8 @@ namespace Lizard.Logic.NN
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var ourAccumulation = (Vector256<float>*) (accumulator[perspective]);
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(float) * FeatureBiasElements);
+            var ourAccumulation = (Vector256<FTType>*) (accumulator[perspective]);
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(FTType) * FeatureBiasElements);
 
             int ourKing = pos.State->KingSquares[perspective];
 
@@ -290,12 +295,12 @@ namespace Lizard.Logic.NN
             return (int)ForwardOutput(x2);
 #else
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            if (true || accumulator.NeedsRefresh[White])
+            if (accumulator.NeedsRefresh[White])
             {
                 RefreshAccumulatorPerspective(pos, White);
             }
 
-            if (true || accumulator.NeedsRefresh[Black])
+            if (accumulator.NeedsRefresh[Black])
             {
                 RefreshAccumulatorPerspective(pos, Black);
             }
@@ -374,9 +379,10 @@ namespace Lizard.Logic.NN
         }
 
 
+#if UNROLL
+
         public static void MakeMove(Position pos, Move m)
         {
-            return;
             ref Bitboard bb = ref pos.bb;
 
             Accumulator* accumulator = pos.NextState->Accumulator;
@@ -391,8 +397,8 @@ namespace Lizard.Logic.NN
             int them = Not(us);
             int theirPiece = bb.GetPieceAtIndex(moveTo);
 
-            var whiteAccumulation = (Vector256<float>*) ((*accumulator)[White]);
-            var blackAccumulation = (Vector256<float>*) ((*accumulator)[Black]);
+            var whiteAccumulation = (Vector256<FTType>*) ((*accumulator)[White]);
+            var blackAccumulation = (Vector256<FTType>*) ((*accumulator)[Black]);
 
             //  Refreshes are only required if our king moves to a different bucket
             if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
@@ -400,7 +406,123 @@ namespace Lizard.Logic.NN
                 //  We will need to fully refresh our perspective, but we can still do theirs.
                 accumulator->NeedsRefresh[us] = true;
 
-                var theirAccumulation = (Vector256<float>*) ((*accumulator)[them]);
+                var theirAccumulation = (Vector256<FTType>*) ((*accumulator)[them]);
+                int theirKing = pos.State->KingSquares[them];
+
+                int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
+                int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
+
+                if (theirPiece != None)
+                {
+                    int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
+
+                    FunUnrollThings.SubSubAdd((FTType*)theirAccumulation,
+                        (FTType*)(FeatureWeights + from),
+                        (FTType*)(FeatureWeights + cap),
+                        (FTType*)(FeatureWeights + to));
+                }
+                else if (m.Castle)
+                {
+                    int rookFromSq = moveTo;
+                    int rookToSq = m.CastlingRookSquare;
+
+                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare, theirKing, them);
+
+                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
+                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
+
+                    SubSubAddAdd(theirAccumulation,
+                        (FeatureWeights + from),
+                        (FeatureWeights + rookFrom),
+                        (FeatureWeights + to),
+                        (FeatureWeights + rookTo));
+                }
+                else
+                {
+                    FunUnrollThings.SubAdd((FTType*)theirAccumulation,
+                        (FTType*)(FeatureWeights + from),
+                        (FTType*)(FeatureWeights + to));
+                }
+            }
+            else
+            {
+                int wKing = pos.State->KingSquares[White];
+                int bKing = pos.State->KingSquares[Black];
+
+                (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
+                (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
+
+                if (theirPiece != None)
+                {
+                    (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
+
+                    FunUnrollThings.SubSubAdd((FTType*)whiteAccumulation,
+                        (FTType*)(FeatureWeights + wFrom),
+                        (FTType*)(FeatureWeights + wCap),
+                        (FTType*)(FeatureWeights + wTo));
+
+                    FunUnrollThings.SubSubAdd((FTType*)blackAccumulation,
+                        (FTType*)(FeatureWeights + bFrom),
+                        (FTType*)(FeatureWeights + bCap),
+                        (FTType*)(FeatureWeights + bTo));
+                }
+                else if (m.EnPassant)
+                {
+                    int idxPawn = moveTo - ShiftUpDir(us);
+
+                    (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
+
+                    FunUnrollThings.SubSubAdd((FTType*)whiteAccumulation,
+                        (FTType*)(FeatureWeights + wFrom),
+                        (FTType*)(FeatureWeights + wCap),
+                        (FTType*)(FeatureWeights + wTo));
+
+                    FunUnrollThings.SubSubAdd((FTType*)blackAccumulation,
+                        (FTType*)(FeatureWeights + bFrom),
+                        (FTType*)(FeatureWeights + bCap),
+                        (FTType*)(FeatureWeights + bTo));
+                }
+                else
+                {
+                    FunUnrollThings.SubAdd((FTType*)whiteAccumulation,
+                        (FTType*)(FeatureWeights + wFrom),
+                        (FTType*)(FeatureWeights + wTo));
+
+                    FunUnrollThings.SubAdd((FTType*)blackAccumulation,
+                        (FTType*)(FeatureWeights + bFrom),
+                        (FTType*)(FeatureWeights + bTo));
+                }
+            }
+        }
+
+#else
+
+        public static void MakeMove(Position pos, Move m)
+        {
+            ref Bitboard bb = ref pos.bb;
+
+            Accumulator* accumulator = pos.NextState->Accumulator;
+            pos.State->Accumulator->CopyTo(accumulator);
+
+            int moveTo = m.To;
+            int moveFrom = m.From;
+
+            int us = pos.ToMove;
+            int ourPiece = bb.GetPieceAtIndex(moveFrom);
+
+            int them = Not(us);
+            int theirPiece = bb.GetPieceAtIndex(moveTo);
+
+            var whiteAccumulation = (Vector256<FTType>*) ((*accumulator)[White]);
+            var blackAccumulation = (Vector256<FTType>*) ((*accumulator)[Black]);
+
+            //  Refreshes are only required if our king moves to a different bucket
+            if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
+            {
+                //  We will need to fully refresh our perspective, but we can still do theirs.
+                accumulator->NeedsRefresh[us] = true;
+
+                var theirAccumulation = (Vector256<FTType>*) ((*accumulator)[them]);
                 int theirKing = pos.State->KingSquares[them];
 
                 int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
@@ -488,9 +610,11 @@ namespace Lizard.Logic.NN
                 }
             }
         }
+#endif
 
 
-        private static void SubAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* add1)
+
+        private static void SubAdd(Vector256<FTType>* src, Vector256<FTType>* sub1, Vector256<FTType>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -498,7 +622,7 @@ namespace Lizard.Logic.NN
             }
         }
 
-        private static void SubSubAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* sub2, Vector256<float>* add1)
+        private static void SubSubAdd(Vector256<FTType>* src, Vector256<FTType>* sub1, Vector256<FTType>* sub2, Vector256<FTType>* add1)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
@@ -506,7 +630,7 @@ namespace Lizard.Logic.NN
             }
         }
 
-        private static void SubSubAddAdd(Vector256<float>* src, Vector256<float>* sub1, Vector256<float>* sub2, Vector256<float>* add1, Vector256<float>* add2)
+        private static void SubSubAddAdd(Vector256<FTType>* src, Vector256<FTType>* sub1, Vector256<FTType>* sub2, Vector256<FTType>* add1, Vector256<FTType>* add2)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {

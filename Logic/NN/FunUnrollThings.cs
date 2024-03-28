@@ -213,5 +213,112 @@ namespace Lizard.Logic.NN
             Avx2.Store(src + 1520, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1520), Avx2.LoadVector256(add1 + 1520)), Avx2.LoadVector256(sub1 + 1520)), Avx2.LoadVector256(sub2 + 1520)));
         }
 
+
+        public static void SubSubAdd(float* src, float* sub1, float* sub2, float* add1)
+        {
+            Avx2.Store(src + 0, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 0), Avx2.LoadVector256(add1 + 0)), Avx2.LoadVector256(sub1 + 0)), Avx2.LoadVector256(sub2 + 0)));
+            Avx2.Store(src + 8, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 8), Avx2.LoadVector256(add1 + 8)), Avx2.LoadVector256(sub1 + 8)), Avx2.LoadVector256(sub2 + 8)));
+            Avx2.Store(src + 16, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 16), Avx2.LoadVector256(add1 + 16)), Avx2.LoadVector256(sub1 + 16)), Avx2.LoadVector256(sub2 + 16)));
+            Avx2.Store(src + 24, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 24), Avx2.LoadVector256(add1 + 24)), Avx2.LoadVector256(sub1 + 24)), Avx2.LoadVector256(sub2 + 24)));
+            Avx2.Store(src + 32, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 32), Avx2.LoadVector256(add1 + 32)), Avx2.LoadVector256(sub1 + 32)), Avx2.LoadVector256(sub2 + 32)));
+            Avx2.Store(src + 40, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 40), Avx2.LoadVector256(add1 + 40)), Avx2.LoadVector256(sub1 + 40)), Avx2.LoadVector256(sub2 + 40)));
+            Avx2.Store(src + 48, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 48), Avx2.LoadVector256(add1 + 48)), Avx2.LoadVector256(sub1 + 48)), Avx2.LoadVector256(sub2 + 48)));
+            Avx2.Store(src + 56, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 56), Avx2.LoadVector256(add1 + 56)), Avx2.LoadVector256(sub1 + 56)), Avx2.LoadVector256(sub2 + 56)));
+            Avx2.Store(src + 64, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 64), Avx2.LoadVector256(add1 + 64)), Avx2.LoadVector256(sub1 + 64)), Avx2.LoadVector256(sub2 + 64)));
+            Avx2.Store(src + 72, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 72), Avx2.LoadVector256(add1 + 72)), Avx2.LoadVector256(sub1 + 72)), Avx2.LoadVector256(sub2 + 72)));
+            Avx2.Store(src + 80, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 80), Avx2.LoadVector256(add1 + 80)), Avx2.LoadVector256(sub1 + 80)), Avx2.LoadVector256(sub2 + 80)));
+            Avx2.Store(src + 88, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 88), Avx2.LoadVector256(add1 + 88)), Avx2.LoadVector256(sub1 + 88)), Avx2.LoadVector256(sub2 + 88)));
+            Avx2.Store(src + 96, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 96), Avx2.LoadVector256(add1 + 96)), Avx2.LoadVector256(sub1 + 96)), Avx2.LoadVector256(sub2 + 96)));
+            Avx2.Store(src + 104, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 104), Avx2.LoadVector256(add1 + 104)), Avx2.LoadVector256(sub1 + 104)), Avx2.LoadVector256(sub2 + 104)));
+            Avx2.Store(src + 112, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 112), Avx2.LoadVector256(add1 + 112)), Avx2.LoadVector256(sub1 + 112)), Avx2.LoadVector256(sub2 + 112)));
+            Avx2.Store(src + 120, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 120), Avx2.LoadVector256(add1 + 120)), Avx2.LoadVector256(sub1 + 120)), Avx2.LoadVector256(sub2 + 120)));
+            Avx2.Store(src + 128, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 128), Avx2.LoadVector256(add1 + 128)), Avx2.LoadVector256(sub1 + 128)), Avx2.LoadVector256(sub2 + 128)));
+            Avx2.Store(src + 136, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 136), Avx2.LoadVector256(add1 + 136)), Avx2.LoadVector256(sub1 + 136)), Avx2.LoadVector256(sub2 + 136)));
+            Avx2.Store(src + 144, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 144), Avx2.LoadVector256(add1 + 144)), Avx2.LoadVector256(sub1 + 144)), Avx2.LoadVector256(sub2 + 144)));
+            Avx2.Store(src + 152, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 152), Avx2.LoadVector256(add1 + 152)), Avx2.LoadVector256(sub1 + 152)), Avx2.LoadVector256(sub2 + 152)));
+            Avx2.Store(src + 160, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 160), Avx2.LoadVector256(add1 + 160)), Avx2.LoadVector256(sub1 + 160)), Avx2.LoadVector256(sub2 + 160)));
+            Avx2.Store(src + 168, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 168), Avx2.LoadVector256(add1 + 168)), Avx2.LoadVector256(sub1 + 168)), Avx2.LoadVector256(sub2 + 168)));
+            Avx2.Store(src + 176, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 176), Avx2.LoadVector256(add1 + 176)), Avx2.LoadVector256(sub1 + 176)), Avx2.LoadVector256(sub2 + 176)));
+            Avx2.Store(src + 184, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 184), Avx2.LoadVector256(add1 + 184)), Avx2.LoadVector256(sub1 + 184)), Avx2.LoadVector256(sub2 + 184)));
+            Avx2.Store(src + 192, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 192), Avx2.LoadVector256(add1 + 192)), Avx2.LoadVector256(sub1 + 192)), Avx2.LoadVector256(sub2 + 192)));
+            Avx2.Store(src + 200, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 200), Avx2.LoadVector256(add1 + 200)), Avx2.LoadVector256(sub1 + 200)), Avx2.LoadVector256(sub2 + 200)));
+            Avx2.Store(src + 208, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 208), Avx2.LoadVector256(add1 + 208)), Avx2.LoadVector256(sub1 + 208)), Avx2.LoadVector256(sub2 + 208)));
+            Avx2.Store(src + 216, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 216), Avx2.LoadVector256(add1 + 216)), Avx2.LoadVector256(sub1 + 216)), Avx2.LoadVector256(sub2 + 216)));
+            Avx2.Store(src + 224, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 224), Avx2.LoadVector256(add1 + 224)), Avx2.LoadVector256(sub1 + 224)), Avx2.LoadVector256(sub2 + 224)));
+            Avx2.Store(src + 232, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 232), Avx2.LoadVector256(add1 + 232)), Avx2.LoadVector256(sub1 + 232)), Avx2.LoadVector256(sub2 + 232)));
+            Avx2.Store(src + 240, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 240), Avx2.LoadVector256(add1 + 240)), Avx2.LoadVector256(sub1 + 240)), Avx2.LoadVector256(sub2 + 240)));
+            Avx2.Store(src + 248, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 248), Avx2.LoadVector256(add1 + 248)), Avx2.LoadVector256(sub1 + 248)), Avx2.LoadVector256(sub2 + 248)));
+            Avx2.Store(src + 256, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 256), Avx2.LoadVector256(add1 + 256)), Avx2.LoadVector256(sub1 + 256)), Avx2.LoadVector256(sub2 + 256)));
+            Avx2.Store(src + 264, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 264), Avx2.LoadVector256(add1 + 264)), Avx2.LoadVector256(sub1 + 264)), Avx2.LoadVector256(sub2 + 264)));
+            Avx2.Store(src + 272, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 272), Avx2.LoadVector256(add1 + 272)), Avx2.LoadVector256(sub1 + 272)), Avx2.LoadVector256(sub2 + 272)));
+            Avx2.Store(src + 280, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 280), Avx2.LoadVector256(add1 + 280)), Avx2.LoadVector256(sub1 + 280)), Avx2.LoadVector256(sub2 + 280)));
+            Avx2.Store(src + 288, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 288), Avx2.LoadVector256(add1 + 288)), Avx2.LoadVector256(sub1 + 288)), Avx2.LoadVector256(sub2 + 288)));
+            Avx2.Store(src + 296, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 296), Avx2.LoadVector256(add1 + 296)), Avx2.LoadVector256(sub1 + 296)), Avx2.LoadVector256(sub2 + 296)));
+            Avx2.Store(src + 304, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 304), Avx2.LoadVector256(add1 + 304)), Avx2.LoadVector256(sub1 + 304)), Avx2.LoadVector256(sub2 + 304)));
+            Avx2.Store(src + 312, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 312), Avx2.LoadVector256(add1 + 312)), Avx2.LoadVector256(sub1 + 312)), Avx2.LoadVector256(sub2 + 312)));
+            Avx2.Store(src + 320, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 320), Avx2.LoadVector256(add1 + 320)), Avx2.LoadVector256(sub1 + 320)), Avx2.LoadVector256(sub2 + 320)));
+            Avx2.Store(src + 328, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 328), Avx2.LoadVector256(add1 + 328)), Avx2.LoadVector256(sub1 + 328)), Avx2.LoadVector256(sub2 + 328)));
+            Avx2.Store(src + 336, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 336), Avx2.LoadVector256(add1 + 336)), Avx2.LoadVector256(sub1 + 336)), Avx2.LoadVector256(sub2 + 336)));
+            Avx2.Store(src + 344, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 344), Avx2.LoadVector256(add1 + 344)), Avx2.LoadVector256(sub1 + 344)), Avx2.LoadVector256(sub2 + 344)));
+            Avx2.Store(src + 352, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 352), Avx2.LoadVector256(add1 + 352)), Avx2.LoadVector256(sub1 + 352)), Avx2.LoadVector256(sub2 + 352)));
+            Avx2.Store(src + 360, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 360), Avx2.LoadVector256(add1 + 360)), Avx2.LoadVector256(sub1 + 360)), Avx2.LoadVector256(sub2 + 360)));
+            Avx2.Store(src + 368, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 368), Avx2.LoadVector256(add1 + 368)), Avx2.LoadVector256(sub1 + 368)), Avx2.LoadVector256(sub2 + 368)));
+            Avx2.Store(src + 376, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 376), Avx2.LoadVector256(add1 + 376)), Avx2.LoadVector256(sub1 + 376)), Avx2.LoadVector256(sub2 + 376)));
+
+
+        }
+
+        public static void SubAdd(float* src, float* sub1, float* add1)
+        {
+            Avx2.Store(src + 0,   Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 0), Avx2.LoadVector256(add1 + 0)), Avx2.LoadVector256(sub1 + 0)));
+            Avx2.Store(src + 8,   Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 8), Avx2.LoadVector256(add1 + 8)), Avx2.LoadVector256(sub1 + 8)));
+            Avx2.Store(src + 16,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 16), Avx2.LoadVector256(add1 + 16)), Avx2.LoadVector256(sub1 + 16)));
+            Avx2.Store(src + 24,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 24), Avx2.LoadVector256(add1 + 24)), Avx2.LoadVector256(sub1 + 24)));
+            Avx2.Store(src + 32,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 32), Avx2.LoadVector256(add1 + 32)), Avx2.LoadVector256(sub1 + 32)));
+            Avx2.Store(src + 40,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 40), Avx2.LoadVector256(add1 + 40)), Avx2.LoadVector256(sub1 + 40)));
+            Avx2.Store(src + 48,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 48), Avx2.LoadVector256(add1 + 48)), Avx2.LoadVector256(sub1 + 48)));
+            Avx2.Store(src + 56,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 56), Avx2.LoadVector256(add1 + 56)), Avx2.LoadVector256(sub1 + 56)));
+            Avx2.Store(src + 64,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 64), Avx2.LoadVector256(add1 + 64)), Avx2.LoadVector256(sub1 + 64)));
+            Avx2.Store(src + 72,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 72), Avx2.LoadVector256(add1 + 72)), Avx2.LoadVector256(sub1 + 72)));
+            Avx2.Store(src + 80,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 80), Avx2.LoadVector256(add1 + 80)), Avx2.LoadVector256(sub1 + 80)));
+            Avx2.Store(src + 88,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 88), Avx2.LoadVector256(add1 + 88)), Avx2.LoadVector256(sub1 + 88)));
+            Avx2.Store(src + 96,  Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 96), Avx2.LoadVector256(add1 + 96)), Avx2.LoadVector256(sub1 + 96)));
+            Avx2.Store(src + 104, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 104), Avx2.LoadVector256(add1 + 104)), Avx2.LoadVector256(sub1 + 104)));
+            Avx2.Store(src + 112, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 112), Avx2.LoadVector256(add1 + 112)), Avx2.LoadVector256(sub1 + 112)));
+            Avx2.Store(src + 120, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 120), Avx2.LoadVector256(add1 + 120)), Avx2.LoadVector256(sub1 + 120)));
+            Avx2.Store(src + 128, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 128), Avx2.LoadVector256(add1 + 128)), Avx2.LoadVector256(sub1 + 128)));
+            Avx2.Store(src + 136, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 136), Avx2.LoadVector256(add1 + 136)), Avx2.LoadVector256(sub1 + 136)));
+            Avx2.Store(src + 144, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 144), Avx2.LoadVector256(add1 + 144)), Avx2.LoadVector256(sub1 + 144)));
+            Avx2.Store(src + 152, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 152), Avx2.LoadVector256(add1 + 152)), Avx2.LoadVector256(sub1 + 152)));
+            Avx2.Store(src + 160, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 160), Avx2.LoadVector256(add1 + 160)), Avx2.LoadVector256(sub1 + 160)));
+            Avx2.Store(src + 168, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 168), Avx2.LoadVector256(add1 + 168)), Avx2.LoadVector256(sub1 + 168)));
+            Avx2.Store(src + 176, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 176), Avx2.LoadVector256(add1 + 176)), Avx2.LoadVector256(sub1 + 176)));
+            Avx2.Store(src + 184, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 184), Avx2.LoadVector256(add1 + 184)), Avx2.LoadVector256(sub1 + 184)));
+            Avx2.Store(src + 192, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 192), Avx2.LoadVector256(add1 + 192)), Avx2.LoadVector256(sub1 + 192)));
+            Avx2.Store(src + 200, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 200), Avx2.LoadVector256(add1 + 200)), Avx2.LoadVector256(sub1 + 200)));
+            Avx2.Store(src + 208, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 208), Avx2.LoadVector256(add1 + 208)), Avx2.LoadVector256(sub1 + 208)));
+            Avx2.Store(src + 216, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 216), Avx2.LoadVector256(add1 + 216)), Avx2.LoadVector256(sub1 + 216)));
+            Avx2.Store(src + 224, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 224), Avx2.LoadVector256(add1 + 224)), Avx2.LoadVector256(sub1 + 224)));
+            Avx2.Store(src + 232, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 232), Avx2.LoadVector256(add1 + 232)), Avx2.LoadVector256(sub1 + 232)));
+            Avx2.Store(src + 240, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 240), Avx2.LoadVector256(add1 + 240)), Avx2.LoadVector256(sub1 + 240)));
+            Avx2.Store(src + 248, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 248), Avx2.LoadVector256(add1 + 248)), Avx2.LoadVector256(sub1 + 248)));
+            Avx2.Store(src + 256, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 256), Avx2.LoadVector256(add1 + 256)), Avx2.LoadVector256(sub1 + 256)));
+            Avx2.Store(src + 264, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 264), Avx2.LoadVector256(add1 + 264)), Avx2.LoadVector256(sub1 + 264)));
+            Avx2.Store(src + 272, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 272), Avx2.LoadVector256(add1 + 272)), Avx2.LoadVector256(sub1 + 272)));
+            Avx2.Store(src + 280, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 280), Avx2.LoadVector256(add1 + 280)), Avx2.LoadVector256(sub1 + 280)));
+            Avx2.Store(src + 288, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 288), Avx2.LoadVector256(add1 + 288)), Avx2.LoadVector256(sub1 + 288)));
+            Avx2.Store(src + 296, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 296), Avx2.LoadVector256(add1 + 296)), Avx2.LoadVector256(sub1 + 296)));
+            Avx2.Store(src + 304, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 304), Avx2.LoadVector256(add1 + 304)), Avx2.LoadVector256(sub1 + 304)));
+            Avx2.Store(src + 312, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 312), Avx2.LoadVector256(add1 + 312)), Avx2.LoadVector256(sub1 + 312)));
+            Avx2.Store(src + 320, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 320), Avx2.LoadVector256(add1 + 320)), Avx2.LoadVector256(sub1 + 320)));
+            Avx2.Store(src + 328, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 328), Avx2.LoadVector256(add1 + 328)), Avx2.LoadVector256(sub1 + 328)));
+            Avx2.Store(src + 336, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 336), Avx2.LoadVector256(add1 + 336)), Avx2.LoadVector256(sub1 + 336)));
+            Avx2.Store(src + 344, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 344), Avx2.LoadVector256(add1 + 344)), Avx2.LoadVector256(sub1 + 344)));
+            Avx2.Store(src + 352, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 352), Avx2.LoadVector256(add1 + 352)), Avx2.LoadVector256(sub1 + 352)));
+            Avx2.Store(src + 360, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 360), Avx2.LoadVector256(add1 + 360)), Avx2.LoadVector256(sub1 + 360)));
+            Avx2.Store(src + 368, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 368), Avx2.LoadVector256(add1 + 368)), Avx2.LoadVector256(sub1 + 368)));
+            Avx2.Store(src + 376, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 376), Avx2.LoadVector256(add1 + 376)), Avx2.LoadVector256(sub1 + 376)));
+        }
+
     }
 }
