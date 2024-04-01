@@ -25,7 +25,10 @@ namespace Lizard.Logic.Transposition
         public const int DepthNone = -6;
 
         [FieldOffset(0)]
-        public int _ScoreStatEval;      //  4 = 16 bits + 16 bits
+        public short _Score;            //  2 = 16 bits
+
+        [FieldOffset(2)]
+        public short _StatEval;           //  2 = 16 bits
 
         [FieldOffset(4)]
         public Move BestMove;           //  2 = 16 bits
@@ -42,14 +45,14 @@ namespace Lizard.Logic.Transposition
 
         public short Score
         {
-            get => (short)(_ScoreStatEval & 0xFFFF);
-            set => _ScoreStatEval = (_ScoreStatEval & ~0xFFFF) | value;
+            get => _Score;
+            set => _Score = value;
         }
 
         public short StatEval
         {
-            get => (short)((_ScoreStatEval & 0xFFFF0000) >> 16);
-            set => _ScoreStatEval = (int)((_ScoreStatEval & 0x0000FFFF) | (value << 16));
+            get => _StatEval;
+            set => _StatEval = value;
         }
 
         public int Age
