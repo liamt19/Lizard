@@ -378,7 +378,7 @@ namespace Lizard.Logic.NN
                 int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
 
-                if (theirPiece != None)
+                if (theirPiece != None && !m.Castle)
                 {
                     int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
 
