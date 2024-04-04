@@ -30,7 +30,7 @@ namespace Lizard.Logic.NN
         /// (768x4 -> 1024)x2 -> 8
         /// 
         /// </summary>
-        public const string NetworkName = "lizard-1024_4_8_gauss-200.bin";
+        public const string NetworkName = "lizard-1024_4_8_gauss-600.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>

@@ -121,7 +121,7 @@
   <data name="iguana-epoch10" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\iguana-epoch10.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="lizard-1024_4_8_gauss-200" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\lizard-1024_4_8_gauss-200.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="lizard-1024_4_8_gauss-600" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\lizard-1024_4_8_gauss-600.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>
