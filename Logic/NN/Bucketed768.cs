@@ -225,6 +225,7 @@ namespace Lizard.Logic.NN
             }
 
             accumulator.NeedsRefresh[White] = accumulator.NeedsRefresh[Black] = false;
+            accumulator.FeatureUpdates[White].UpdateType = accumulator.FeatureUpdates[Black].UpdateType = FeatureUpdateType.None;
         }
 
         public static void RefreshAccumulatorPerspective(Position pos, int perspective)
@@ -253,20 +254,111 @@ namespace Lizard.Logic.NN
             }
 
             accumulator.NeedsRefresh[perspective] = false;
+            accumulator.FeatureUpdates[perspective].UpdateType = FeatureUpdateType.None;
         }
+
+
+        private static void UpdateInto(Accumulator* src, Accumulator* dst)
+        {
+#if DEBUG
+            if (src->NeedsRefresh[White] || src->NeedsRefresh[Black])
+            {
+                Log($"UpdateInto was called with a src needing a refresh! W/B: {src->NeedsRefresh[White]}/{src->NeedsRefresh[Black]}");
+            }
+
+            if (!src->Computed[White] || !src->Computed[Black])
+            {
+                Log($"UpdateInto was called with a src not computed! W/B: {src->Computed[White]}/{src->Computed[Black]}");
+            }
+#endif
+
+            short* weights = (short*)FeatureWeights;
+            src->CopyTo(dst);
+
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                short* acc = (short*)((*dst)[perspective]);
+                switch (src->FeatureUpdates[perspective].UpdateType)
+                {
+                    case FeatureUpdateType.Normal:
+                        SubAdd(acc, 
+                            &weights[src->FeatureUpdates[perspective].Sub[0]], 
+                            &weights[src->FeatureUpdates[perspective].Add[0]]);
+
+                        break;
+                    case FeatureUpdateType.Capture:
+                        SubSubAdd(acc, 
+                            &weights[src->FeatureUpdates[perspective].Sub[0]], 
+                            &weights[src->FeatureUpdates[perspective].Sub[1]], 
+                            &weights[src->FeatureUpdates[perspective].Add[0]]);
+
+                        break;
+                    case FeatureUpdateType.Castle:
+                        SubSubAddAdd(acc,
+                            &weights[src->FeatureUpdates[perspective].Sub[0]],
+                            &weights[src->FeatureUpdates[perspective].Sub[1]],
+                            &weights[src->FeatureUpdates[perspective].Add[0]],
+                            &weights[src->FeatureUpdates[perspective].Add[1]]);
+
+                        break;
+                    default:
+                        break;
+                }
+
+                dst->NeedsRefresh[perspective] = false;
+                dst->Computed[perspective] = true;
+            }
+        }
+
+
+
+        public static bool TryIncrementalUpdate(Position pos, int perspective)
+        {
+            StateInfo* curr = pos.State;
+            StateInfo* first = pos.StartingState;
+            StateInfo* temp = curr;
+
+            //  Go back until we reach a computed accumulator, or abort if we reach a state that needs a refresh before that.
+            while (temp != first)
+            {
+                if (temp->Accumulator->NeedsRefresh[perspective])
+                    return false;
+                if (temp->Accumulator->Computed[perspective])
+                    break;
+
+                temp--;
+            }
+
+            if (temp == first)
+            {
+                return false;
+            }
+
+            //  temp is computed, now move forward until we've updated the current state
+            while (temp != curr + 1)
+            {
+                UpdateInto(temp->Accumulator, (temp + 1)->Accumulator);
+
+                temp++;
+            }
+
+            return true;
+        }
+
 
         public static int GetEvaluation(Position pos)
         {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-            if (accumulator.NeedsRefresh[White])
+            if (!TryIncrementalUpdate(pos, White))
             {
                 RefreshAccumulatorPerspective(pos, White);
             }
 
-            if (accumulator.NeedsRefresh[Black])
+            if (!TryIncrementalUpdate(pos, Black))
             {
                 RefreshAccumulatorPerspective(pos, Black);
             }
+
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
 
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             Vector256<int> normalSum = Vector256<int>.Zero;
@@ -352,7 +444,8 @@ namespace Lizard.Logic.NN
             ref Bitboard bb = ref pos.bb;
 
             Accumulator* accumulator = pos.NextState->Accumulator;
-            pos.State->Accumulator->CopyTo(accumulator);
+            //pos.State->Accumulator->CopyTo(accumulator);
+            accumulator->Computed[White] = accumulator->Computed[Black] = false;
 
             int moveTo = m.To;
             int moveFrom = m.From;
@@ -363,51 +456,35 @@ namespace Lizard.Logic.NN
             int them = Not(us);
             int theirPiece = bb.GetPieceAtIndex(moveTo);
 
-            var whiteAccumulation = (*accumulator)[White];
-            var blackAccumulation = (*accumulator)[Black];
+            ref FeatureUpdatePair pair = ref accumulator->FeatureUpdates;
 
             //  Refreshes are only required if our king moves to a different bucket
             if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
             {
                 //  We will need to fully refresh our perspective, but we can still do theirs.
                 accumulator->NeedsRefresh[us] = true;
+                pair[us].UpdateType = FeatureUpdateType.None;
 
-                var theirAccumulation = (*accumulator)[them];
                 int theirKing = pos.State->KingSquares[them];
 
-                int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
-                int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
+                pair[them].Sub[0] = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
+                pair[them].Add[0] = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
+                pair[them].UpdateType = FeatureUpdateType.Normal;
 
                 if (theirPiece != None && !m.Castle)
                 {
-                    int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
-
-                    SubSubAdd((short*)theirAccumulation,
-                        (short*)(FeatureWeights + from),
-                        (short*)(FeatureWeights + cap),
-                        (short*)(FeatureWeights + to));
+                    pair[them].Sub[1] = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
+                    pair[them].UpdateType = FeatureUpdateType.Capture;
                 }
                 else if (m.Castle)
                 {
                     int rookFromSq = moveTo;
                     int rookToSq = m.CastlingRookSquare;
 
-                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare, theirKing, them);
-
-                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
-                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
-
-                    SubSubAddAdd(theirAccumulation,
-                        (FeatureWeights + from),
-                        (FeatureWeights + rookFrom),
-                        (FeatureWeights + to),
-                        (FeatureWeights + rookTo));
-                }
-                else
-                {
-                    SubAdd((short*)theirAccumulation,
-                        (short*)(FeatureWeights + from),
-                        (short*)(FeatureWeights + to));
+                    pair[them].Sub[1] = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
+                    pair[them].Add[0] = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare, theirKing, them);
+                    pair[them].Add[1] = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
+                    pair[them].UpdateType = FeatureUpdateType.Castle;
                 }
             }
             else
@@ -418,19 +495,20 @@ namespace Lizard.Logic.NN
                 (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
 
+                pair[White].Sub[0] = wFrom;
+                pair[White].Add[0] = wTo;
+
+                pair[Black].Sub[0] = bFrom;
+                pair[Black].Add[0] = bTo;
+                pair[Black].UpdateType = pair[White].UpdateType = FeatureUpdateType.Normal;
+
                 if (theirPiece != None)
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    SubSubAdd((short*)whiteAccumulation,
-                        (short*)(FeatureWeights + wFrom),
-                        (short*)(FeatureWeights + wCap),
-                        (short*)(FeatureWeights + wTo));
-
-                    SubSubAdd((short*)blackAccumulation,
-                        (short*)(FeatureWeights + bFrom),
-                        (short*)(FeatureWeights + bCap),
-                        (short*)(FeatureWeights + bTo));
+                    pair[White].Sub[1] = wCap;
+                    pair[Black].Sub[1] = bCap;
+                    pair[Black].UpdateType = pair[White].UpdateType = FeatureUpdateType.Capture;
                 }
                 else if (m.EnPassant)
                 {
@@ -438,31 +516,34 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    SubSubAdd((short*)whiteAccumulation,
-                        (short*)(FeatureWeights + wFrom),
-                        (short*)(FeatureWeights + wCap),
-                        (short*)(FeatureWeights + wTo));
-
-                    SubSubAdd((short*)blackAccumulation,
-                        (short*)(FeatureWeights + bFrom),
-                        (short*)(FeatureWeights + bCap),
-                        (short*)(FeatureWeights + bTo));
+                    pair[White].Sub[1] = wCap;
+                    pair[Black].Sub[1] = bCap;
+                    pair[Black].UpdateType = pair[White].UpdateType = FeatureUpdateType.Capture;
                 }
-                else
-                {
-                    SubAdd((short*)whiteAccumulation,
-                        (short*)(FeatureWeights + wFrom),
-                        (short*)(FeatureWeights + wTo));
 
-                    SubAdd((short*)blackAccumulation,
-                        (short*)(FeatureWeights + bFrom),
-                        (short*)(FeatureWeights + bTo));
-                }
+                //  Castling moves always need a refresh.
             }
         }
 
 
-        private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
+
+        private static void SubAdd_Normal(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]);
+            }
+        }
+
+        private static void SubSubAdd_Normal(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1)
+        {
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(src[i], add1[i]), sub1[i]), sub2[i]);
+            }
+        }
+
+        private static void SubSubAddAdd_Normal(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {

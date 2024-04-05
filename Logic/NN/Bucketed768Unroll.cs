@@ -9,17 +9,17 @@ namespace Lizard.Logic.NN
     {
         public static int GetEvaluationUnrolled(Position pos)
         {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-
-            if (accumulator.NeedsRefresh[White])
+            if (!TryIncrementalUpdate(pos, White))
             {
                 RefreshAccumulatorPerspective(pos, White);
             }
 
-            if (accumulator.NeedsRefresh[Black])
+            if (!TryIncrementalUpdate(pos, Black))
             {
                 RefreshAccumulatorPerspective(pos, Black);
             }
+
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
 
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             Vector256<int> normalSum = Vector256<int>.Zero;
