@@ -11,9 +11,9 @@ namespace Lizard.Logic.NN
     [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
-        private const int InputBuckets = 5;
+        private const int InputBuckets = 4;
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
+        public const int HiddenSize = 1024;
         private const int OutputBuckets = 8;
 
         private const int QA = 255;
@@ -27,16 +27,16 @@ namespace Lizard.Logic.NN
 
         /// <summary>
         /// 
-        /// (768x5 -> 1536)x2 -> 8
+        /// (768x4 -> 1024)x2 -> 8
         /// 
         /// </summary>
-        public const string NetworkName = "skink-epoch15.bin";
+        public const string NetworkName = "lizard-1024_4_8_gauss-600.bin";
         private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
         /// <para></para>
-        /// This is the 768 -> 1536 part of the architecture.
+        /// This is the 768 -> 1024 part of the architecture.
         /// </summary>
         public static readonly Vector256<short>* FeatureWeights;
 
@@ -51,7 +51,7 @@ namespace Lizard.Logic.NN
         /// The values that are multiplied with the SCRelu-activated output from the feature transformer 
         /// to produce the final sum.
         /// <para></para>
-        /// This is the (1536)x2 -> 1 part.
+        /// This is the (1024)x2 -> 1 part.
         /// </summary>
         public static readonly Vector256<short>* LayerWeights;
 
@@ -70,14 +70,14 @@ namespace Lizard.Logic.NN
 
         private static readonly int[] KingBuckets =
         [
-            0, 0, 1, 1, 6, 6, 5, 5,
-            2, 2, 2, 2, 7, 7, 7, 7,
-            3, 3, 3, 3, 8, 8, 8, 8,
-            3, 3, 3, 3, 8, 8, 8, 8,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
+            0, 0, 1, 1, 5, 5, 4, 4,
+            2, 2, 2, 2, 6, 6, 6, 6,
+            3, 3, 3, 3, 7, 7, 7, 7,
+            3, 3, 3, 3, 7, 7, 7, 7,
+            3, 3, 3, 3, 7, 7, 7, 7,
+            3, 3, 3, 3, 7, 7, 7, 7,
+            3, 3, 3, 3, 7, 7, 7, 7,
+            3, 3, 3, 3, 7, 7, 7, 7,
         ];
 
         static Bucketed768()
