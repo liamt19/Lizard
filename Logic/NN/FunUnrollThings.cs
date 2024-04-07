@@ -72,7 +72,7 @@ namespace Lizard.Logic.NN
             Avx2.Store(src + 992, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 992), Avx2.LoadVector256(add1 + 992)), Avx2.LoadVector256(sub1 + 992)));
             Avx2.Store(src + 1008, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1008), Avx2.LoadVector256(add1 + 1008)), Avx2.LoadVector256(sub1 + 1008)));
 
-            if ((NNUE.SimpleNet && Simple768.HiddenSize <= 1024) || (!NNUE.SimpleNet && Bucketed768.HiddenSize <= 1024))
+            if ((NNUE.NetArch == NetworkArchitecture.Simple768 && Simple768.HiddenSize <= 1024) || (NNUE.NetArch == NetworkArchitecture.Bucketed768 && Bucketed768.HiddenSize <= 1024))
                 return;
 
             Avx2.Store(src + 1024, Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1024), Avx2.LoadVector256(add1 + 1024)), Avx2.LoadVector256(sub1 + 1024)));
@@ -176,7 +176,7 @@ namespace Lizard.Logic.NN
             Avx2.Store(src + 992, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 992), Avx2.LoadVector256(add1 + 992)), Avx2.LoadVector256(sub1 + 992)), Avx2.LoadVector256(sub2 + 992)));
             Avx2.Store(src + 1008, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1008), Avx2.LoadVector256(add1 + 1008)), Avx2.LoadVector256(sub1 + 1008)), Avx2.LoadVector256(sub2 + 1008)));
 
-            if ((NNUE.SimpleNet && Simple768.HiddenSize <= 1024) || (!NNUE.SimpleNet && Bucketed768.HiddenSize <= 1024))
+            if ((NNUE.NetArch == NetworkArchitecture.Simple768 && Simple768.HiddenSize <= 1024) || (NNUE.NetArch == NetworkArchitecture.Bucketed768 && Bucketed768.HiddenSize <= 1024))
                 return;
 
             Avx2.Store(src + 1024, Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.LoadVector256(src + 1024), Avx2.LoadVector256(add1 + 1024)), Avx2.LoadVector256(sub1 + 1024)), Avx2.LoadVector256(sub2 + 1024)));

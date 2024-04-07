@@ -3,13 +3,12 @@ namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
     {
-
-        public static readonly bool SimpleNet = true;
+        public const NetworkArchitecture NetArch = NetworkArchitecture.Simple768;
 
 
         public static void RefreshAccumulator(Position pos)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArchitecture.Simple768)
             {
                 Simple768.RefreshAccumulator(pos);
             }
@@ -21,7 +20,7 @@ namespace Lizard.Logic.NN
 
         public static short GetEvaluation(Position pos)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArchitecture.Simple768)
             {
                 return (short) Simple768.GetEvaluationUnrolled(pos);
             }
@@ -31,7 +30,7 @@ namespace Lizard.Logic.NN
 
         public static void MakeMove(Position pos, Move m)
         {
-            if (SimpleNet)
+            if (NetArch == NetworkArchitecture.Simple768)
             {
                 Simple768.MakeMove(pos, m);
             }

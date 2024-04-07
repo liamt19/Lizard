@@ -81,6 +81,12 @@
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
 
+    public enum NetworkArchitecture
+    {
+        Simple768,
+        Bucketed768
+    }
+
 
     public static class Files
     {
