@@ -135,6 +135,10 @@ namespace Lizard
                 {
                     HandleEvalAllCommand();
                 }
+                else if (input.StartsWithIgnoreCase("load"))
+                {
+                    HandleLoadCommand(input);
+                }
                 else if (input.StartsWithIgnoreCase("trace"))
                 {
                     HandleTraceCommand(input);
@@ -359,6 +363,29 @@ namespace Lizard
                 Log("\n\n");
             }
         }
+
+
+        private static void HandleLoadCommand(string input)
+        {
+            if (input.Length < 5)
+            {
+                Log("No file provided!");
+                return;
+            }
+
+            input = input[5..];
+
+            if (File.Exists(input))
+            {
+                NNUE.LoadNewNetwork(input);
+                NNUE.RefreshAccumulator(p);
+            }
+            else
+            {
+                Log($"Couldn't find the file '{input}'");
+            }
+        }
+
 
         private static void HandleTraceCommand(string input)
         {

@@ -1,4 +1,6 @@
 ﻿
+using Lizard.Properties;
+
 namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
@@ -41,6 +43,69 @@ namespace Lizard.Logic.NN
         }
 
 
+
+        /// <summary>
+        /// Calls the Initialize method for the selected architecture.
+        /// <br></br>
+        /// Call <see cref="RefreshAccumulator"/> for any existing positions, since their accumulators will no longer be computed!
+        /// </summary>
+        public static void LoadNewNetwork(string networkToLoad)
+        {
+            if (NetArch == NetworkArchitecture.Simple768)
+            {
+                Simple768.Initialize(networkToLoad, exitIfFail: false);
+            }
+            else
+            {
+                Bucketed768.Initialize(networkToLoad, exitIfFail: false);
+            }
+        }
+
+
+        /// <summary>
+        /// Attempts to open the file <paramref name="networkToLoad"/> if it exists, 
+        /// and otherwise loads the embedded network.
+        /// </summary>
+        public static Stream TryOpenFile(string networkToLoad, bool exitIfFail = true)
+        {
+            Stream netFile;
+
+            if (File.Exists(networkToLoad))
+            {
+                netFile = File.OpenRead(networkToLoad);
+                Log("Using NNUE with 768 network " + networkToLoad);
+            }
+            else
+            {
+                var NetworkName = NetArch == NetworkArchitecture.Simple768 ? Simple768.NetworkName :
+                                                                             Bucketed768.NetworkName;
+
+                //  Just load the default network
+                networkToLoad = NetworkName;
+                Log("Using NNUE with 768 network " + NetworkName);
+
+                string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
+
+                object? o = Resources.ResourceManager.GetObject(resourceName);
+                if (o == null)
+                {
+                    Console.WriteLine("The 768 NNRunOption was set to true, but there isn't a valid 768 network to load!");
+                    Console.WriteLine("This program looks for a 768 network named " + "'nn.nnue' or '" + NetworkName + "' within the current directory.");
+                    Console.WriteLine("If neither can be found, then '" + NetworkName + "' needs to be a compiled as a resource as a fallback!");
+                    Console.ReadLine();
+
+                    if (exitIfFail)
+                    {
+                        Environment.Exit(-1);
+                    }
+                }
+
+                byte[] data = (byte[])o;
+                netFile = new MemoryStream(data);
+            }
+
+            return netFile;
+        }
 
 
         public static void Trace(Position pos)

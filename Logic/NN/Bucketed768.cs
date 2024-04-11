@@ -1,8 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Runtime.InteropServices;
-using Lizard.Properties;
 
 using static Lizard.Logic.NN.FunUnrollThings;
 
@@ -31,7 +29,6 @@ namespace Lizard.Logic.NN
         /// 
         /// </summary>
         public const string NetworkName = "lizard-1024_4_8_gauss-600.bin";
-        private const string DefaultNetwork = "nn.nnue";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.
@@ -68,6 +65,8 @@ namespace Lizard.Logic.NN
         private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
+        public static long ExpectedNetworkSize => (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
+
         private static readonly int[] KingBuckets =
         [
             0, 0, 1, 1, 5, 5, 4, 4,
@@ -88,7 +87,7 @@ namespace Lizard.Logic.NN
             LayerWeights = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
             LayerBiases = (Vector256<short>*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
 
-            string networkToLoad = DefaultNetwork;
+            string networkToLoad = NetworkName;
 
             try
             {
@@ -100,53 +99,26 @@ namespace Lizard.Logic.NN
             Initialize(networkToLoad);
         }
 
-        public static void Initialize(string networkToLoad)
+        public static void Initialize(string networkToLoad, bool exitIfFail = true)
         {
-            Stream kpFile;
+            Stream netFile = NNUE.TryOpenFile(networkToLoad, exitIfFail);
 
-            if (File.Exists(networkToLoad))
-            {
-                kpFile = File.OpenRead(networkToLoad);
-                Log("Using NNUE with 768 network " + networkToLoad);
-            }
-            else if (File.Exists(NetworkName))
-            {
-                kpFile = File.OpenRead(NetworkName);
-                Log("Using NNUE with 768 network " + NetworkName);
-            }
-            else
-            {
-                //  Just load the default network
-                networkToLoad = NetworkName;
-                Log("Using NNUE with 768 network " + NetworkName);
-
-                string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
-
-                object? o = Resources.ResourceManager.GetObject(resourceName);
-                if (o == null)
-                {
-                    Console.WriteLine("The 768 NNRunOption was set to true, but there isn't a valid 768 network to load!");
-                    Console.WriteLine("This program looks for a 768 network named " + "'nn.nnue' or '" + NetworkName + "' within the current directory.");
-                    Console.WriteLine("If neither can be found, then '" + NetworkName + "' needs to be a compiled as a resource as a fallback!");
-                    Console.ReadLine();
-                    Environment.Exit(-1);
-                }
-
-                byte[] data = (byte[])o;
-                kpFile = new MemoryStream(data);
-            }
-
-
-            using BinaryReader br = new BinaryReader(kpFile);
+            using BinaryReader br = new BinaryReader(netFile);
             var stream = br.BaseStream;
-            long toRead = sizeof(short) * (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements);
+            long toRead = ExpectedNetworkSize;
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
                 Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
-                Console.ReadLine();
-                Environment.Exit(-1);
+                if (exitIfFail)
+                {
+                    Environment.Exit(-1);
+                }
+                else
+                {
+                    return;
+                }
             }
 
             for (int i = 0; i < FeatureWeightElements / VSize.Short; i++)
