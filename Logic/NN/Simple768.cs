@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -188,15 +189,21 @@ namespace Lizard.Logic.NN
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             Vector256<int> normalSum = Vector256<int>.Zero;
 
+            int outputBucket = SelectOutputBucket ? (int)((popcount(pos.bb.Occupancy) - 2) / 4) : 0;
+            var ourData =   (accumulator[pos.ToMove]);
+            var theirData = (accumulator[Not(pos.ToMove)]);
+            var ourWeights =   (LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)));
+            var theirWeights = (LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)) + SIMD_CHUNKS);
+
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 //  Clamp each feature between [0, QA]
-                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, ourData[i]));
 
                 //  Multiply the clamped feature by its corresponding weight.
                 //  We can do this with short values since the weights are always between [-127, 127]
                 //  (and the product will always be < short.MaxValue) so this will never overflow.
-                Vector256<short> mult = clamp * LayerWeights[i];
+                Vector256<short> mult = clamp * ourWeights[i];
 
                 if (UseAvx)
                 {
@@ -206,6 +213,8 @@ namespace Lizard.Logic.NN
                 }
                 else
                 {
+                    //  Otherwise, we can widen the values in both vectors into integers and multiply them.
+                    //  This results in an additional multiply, add, and a couple of vextracti128/vpmovsxwd for the widening
                     (var loMult, var hiMult) = Vector256.Widen(mult);
                     (var loClamp, var hiClamp) = Vector256.Widen(clamp);
 
@@ -215,8 +224,8 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, theirData[i]));
+                Vector256<short> mult = clamp * theirWeights[i];
 
                 if (UseAvx)
                 {
@@ -233,7 +242,7 @@ namespace Lizard.Logic.NN
 
             int output = UseAvx ? SumVector256NoHadd(normalSum) : Vector256.Sum(normalSum);
 
-            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+            return (output / QA + LayerBiases[0][outputBucket]) * OutputScale / QAB;
         }
 
 
