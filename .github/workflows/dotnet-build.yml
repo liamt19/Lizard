@@ -30,16 +30,16 @@ jobs:
       run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -r ${{ matrix.target }} -o "${{ github.workspace }}/builds/${{ matrix.target }}"
 
     - name: Where the honk is my file part1
-      run: ls -la \"${{ github.workspace }}\"
+      run: ls -la ${{ github.workspace }}
 
     - name: Where the honk is my file part2
-      run: ls -la \"${{ github.workspace }}/builds\"
+      run: ls -la ${{ github.workspace }}/builds
 
     - name: Where the honk is my file part3
-      run: ls -la \"${{ github.workspace }}/builds/${{ matrix.target }}\"
+      run: ls -la ${{ github.workspace }}/builds/${{ matrix.target }}
       
     - name: Run Bench
-      run: \"${{ github.workspace }}/builds/${{ matrix.target }}/Lizard\" bench
+      run: ${{ github.workspace }}/builds/${{ matrix.target }}/Lizard bench
       
     - name: Upload ${{ matrix.target }} Build
       uses: actions/upload-artifact@v3
