@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+env:
+    DOTNET_VERSION: 9.0.x
+
+jobs:
+
+  build-and-publish:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            runtime-identifier: linux-x64
+          - os: windows-latest
+            runtime-identifier: win-x64
+          - os: macOS-latest
+            runtime-identifier: osx-x64
+          - os: macos-14
+            runtime-identifier: osx-arm64
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Nuget cache
+      uses: actions/cache@v4
+      with:
+        path:
+          ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+    - name: Build
+      run: dotnet build -c Release
+
+    - name: Publish Engine
+      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -r ${{ matrix.runtime-identifier }} -o artifacts/${{ matrix.runtime-identifier }}
+
+    - name: Upload Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }} artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }}
+        path: |
+          artifacts/${{ matrix.runtime-identifier }}/
+          !artifacts/**/*.pdb
+        if-no-files-found: error
