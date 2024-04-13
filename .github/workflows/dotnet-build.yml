@@ -13,7 +13,7 @@ jobs:
         - os: windows-latest
           target: win-x64
         - os: macos-latest
-          target: x86_64-apple-darwin
+          target: osx-x64
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
@@ -27,8 +27,11 @@ jobs:
         dotnet-version: 9.0
 
     - name: Build ${{ matrix.target }}
-      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -r ${{ matrix.target }} -o "${{ github.workspace }}/builds/${{ matrix.target }}"
+      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="PUBLISH_AOT" -r ${{ matrix.target }} -o "${{ github.workspace }}/builds/${{ matrix.target }}"
 
+    - name: Run Bench
+      run: ${{ github.workspace }}/builds/${{ matrix.target }}/Lizard bench
+      
     - name: Upload ${{ matrix.target }} Build
       uses: actions/upload-artifact@v3
       with:

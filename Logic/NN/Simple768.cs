@@ -1,8 +1,10 @@
 ﻿using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 using static Lizard.Logic.NN.FunUnrollThings;
+using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
@@ -20,7 +22,7 @@ namespace Lizard.Logic.NN
         public const int OutputScale = 400;
         private const bool SelectOutputBucket = (OutputBuckets != 1);
 
-        public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
+        public static readonly int SIMD_CHUNKS = HiddenSize / Vector256<short>.Count;
 
         public const string NetworkName = "iguana-epoch10.bin";
 
@@ -172,10 +174,11 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
+
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
-                    accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
+                    accumulator.White[i] = Vector256.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
+                    accumulator.Black[i] = Vector256.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
                 }
             }
         }
@@ -186,31 +189,60 @@ namespace Lizard.Logic.NN
             Vector256<short> ClampMax = Vector256.Create((short)QA);
             Vector256<int> normalSum = Vector256<int>.Zero;
 
+            int outputBucket = SelectOutputBucket ? (int)((popcount(pos.bb.Occupancy) - 2) / 4) : 0;
+            var ourData =   (accumulator[pos.ToMove]);
+            var theirData = (accumulator[Not(pos.ToMove)]);
+            var ourWeights =   (LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)));
+            var theirWeights = (LayerWeights + (outputBucket * (SIMD_CHUNKS * 2)) + SIMD_CHUNKS);
+
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 //  Clamp each feature between [0, QA]
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, ourData[i]));
 
                 //  Multiply the clamped feature by its corresponding weight.
                 //  We can do this with short values since the weights are always between [-127, 127]
                 //  (and the product will always be < short.MaxValue) so this will never overflow.
-                Vector256<short> mult = clamp * LayerWeights[i];
+                Vector256<short> mult = clamp * ourWeights[i];
 
-                //  We can use VPMADDWD to do the multiplication of mult and clamp, and add it to the sum.
-                //  MADD multiplies and sums adjacent pairs of 16-bit integers into 32-bit integers, so this doesn't overflow either.
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                if (UseAvx)
+                {
+                    //  We can use VPMADDWD to do the multiplication of mult and clamp, and add it to the sum.
+                    //  MADD multiplies and sums adjacent pairs of 16-bit integers into 32-bit integers, so this doesn't overflow either.
+                    normalSum = Vector256.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                }
+                else
+                {
+                    //  Otherwise, we can widen the values in both vectors into integers and multiply them.
+                    //  This results in an additional multiply, add, and a couple of vextracti128/vpmovsxwd for the widening
+                    (var loMult, var hiMult) = Vector256.Widen(mult);
+                    (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+
+                    normalSum = Vector256.Add(normalSum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                }
             }
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
-                Vector256<short> mult = clamp * LayerWeights[i + SIMD_CHUNKS];
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, theirData[i]));
+                Vector256<short> mult = clamp * theirWeights[i];
+
+                if (UseAvx)
+                {
+                    normalSum = Vector256.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                }
+                else
+                {
+                    (var loMult, var hiMult) = Vector256.Widen(mult);
+                    (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+
+                    normalSum = Vector256.Add(normalSum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                }
             }
 
-            int output = SumVector256NoHadd(normalSum);
+            int output = UseAvx ? SumVector256NoHadd(normalSum) : Vector256.Sum(normalSum);
 
-            return (output / QA + LayerBiases[0][0]) * OutputScale / QAB;
+            return (output / QA + LayerBiases[0][outputBucket]) * OutputScale / QAB;
         }
 
 
@@ -312,13 +344,39 @@ namespace Lizard.Logic.NN
             }
             else
             {
-                SubAdd((short*)whiteAccumulation, 
-                    (short*)(FeatureWeights + wFrom), 
+                SubAdd((short*)whiteAccumulation,
+                    (short*)(FeatureWeights + wFrom),
                     (short*)(FeatureWeights + wTo));
 
-                SubAdd((short*)blackAccumulation, 
-                    (short*)(FeatureWeights + bFrom), 
+                SubAdd((short*)blackAccumulation,
+                    (short*)(FeatureWeights + bFrom),
                     (short*)(FeatureWeights + bTo));
+            }
+        }
+
+
+        private static void SubAdd(short* _src, short* _sub1, short* _add1)
+        {
+            Vector256<short>* src = (Vector256<short>*)_src;
+            Vector256<short>* sub1 = (Vector256<short>*)_sub1;
+            Vector256<short>* add1 = (Vector256<short>*)_add1;
+
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Vector256.Subtract(Vector256.Add(src[i], add1[i]), sub1[i]);
+            }
+        }
+
+        private static void SubSubAdd(short* _src, short* _sub1, short* _sub2, short* _add1)
+        {
+            Vector256<short>* src = (Vector256<short>*)_src;
+            Vector256<short>* sub1 = (Vector256<short>*)_sub1;
+            Vector256<short>* sub2 = (Vector256<short>*)_sub2;
+            Vector256<short>* add1 = (Vector256<short>*)_add1;
+
+            for (int i = 0; i < SIMD_CHUNKS; i++)
+            {
+                src[i] = Vector256.Subtract(Vector256.Subtract(Vector256.Add(src[i], add1[i]), sub1[i]), sub2[i]);
             }
         }
 
@@ -326,7 +384,7 @@ namespace Lizard.Logic.NN
         {
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
+                src[i] = Vector256.Subtract(Vector256.Subtract(Vector256.Add(Vector256.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
             }
         }
 

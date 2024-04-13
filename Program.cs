@@ -23,7 +23,7 @@ namespace Lizard
             if (args.Length == 1 && args[0] == "bench")
             {
                 SearchBench.Go(12, openBench: true);
-                Environment.Exit(1);
+                Environment.Exit(0);
             }
 
             InitializeAll();

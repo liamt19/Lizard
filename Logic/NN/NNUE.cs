@@ -1,4 +1,6 @@
 ﻿
+using System.Runtime.Intrinsics.X86;
+
 using Lizard.Properties;
 
 namespace Lizard.Logic.NN
@@ -6,7 +8,7 @@ namespace Lizard.Logic.NN
     public static unsafe class NNUE
     {
         public const NetworkArchitecture NetArch = NetworkArchitecture.Simple768;
-
+        public static readonly bool UseAvx = Avx2.IsSupported;
 
         public static void RefreshAccumulator(Position pos)
         {
@@ -24,10 +26,17 @@ namespace Lizard.Logic.NN
         {
             if (NetArch == NetworkArchitecture.Simple768)
             {
-                return (short) Simple768.GetEvaluationUnrolled(pos);
+                if (UseAvx)
+                {
+                    return (short)Simple768.GetEvaluationUnrolled(pos);
+                }
+                else
+                {
+                    return (short)Simple768.GetEvaluation(pos);
+                }
             }
 
-            return (short) Bucketed768.GetEvaluationUnrolled(pos);
+            return (short)Bucketed768.GetEvaluationUnrolled(pos);
         }
 
         public static void MakeMove(Position pos, Move m)
