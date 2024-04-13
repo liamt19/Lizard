@@ -34,3 +34,6 @@ jobs:
       with:
         name: Lizard-${{ matrix.target }}
         path: ${{ github.workspace }}/builds/${{ matrix.target }}
+
+    - name: Run Bench
+      run: \"${{ github.workspace }}/builds/${{ matrix.target }}\" bench
