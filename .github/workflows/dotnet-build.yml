@@ -27,7 +27,7 @@ jobs:
         dotnet-version: 9.0
 
     - name: Build ${{ matrix.target }}
-      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -r ${{ matrix.target }} -o "${{ github.workspace }}/builds/${{ matrix.target }}"
+      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -p:PublishAOT=true -p:PublishSingleFile=false -p:DefineConstants="PUBLISH_AOT" -r ${{ matrix.target }} -o "${{ github.workspace }}/builds/${{ matrix.target }}"
 
     - name: Run Bench
       run: ${{ github.workspace }}/builds/${{ matrix.target }}/Lizard bench
