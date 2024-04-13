@@ -28,11 +28,11 @@ namespace Lizard.Logic.NN
             {
                 if (UseAvx)
                 {
-                    return (short)Simple768.GetEvaluation(pos);
+                    return (short)Simple768.GetEvaluationUnrolled(pos);
                 }
                 else
                 {
-                    return (short)Simple768.GetEvaluationUnrolled(pos);
+                    return (short)Simple768.GetEvaluation(pos);
                 }
             }
 
