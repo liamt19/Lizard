@@ -36,4 +36,4 @@ jobs:
         path: ${{ github.workspace }}/builds/${{ matrix.target }}
 
     - name: Run Bench
-      run: \"${{ github.workspace }}/builds/${{ matrix.target }}/Lizard-${{ matrix.target }}\" bench
+      run: \"${{ github.workspace }}/builds/${{ matrix.target }}/Lizard\" bench
