@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
+using Lizard.Logic.Magic;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.Util
@@ -242,17 +243,12 @@ namespace Lizard.Logic.Util
             }
 
             sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
-            sb.Append(AvxVnni.IsSupported ? "AvxVnni " : string.Empty);
             sb.Append(Bmi2.IsSupported ? "Bmi2 " : string.Empty);
             sb.Append(Sse3.IsSupported ? "Sse3 " : string.Empty);
             sb.Append(Sse42.IsSupported ? "Sse42 " : string.Empty);
-
             sb.Append(Sse.IsSupported ? "Prefetch " : string.Empty);
             sb.Append(Popcnt.X64.IsSupported ? "Popcount " : string.Empty);
-#if PEXT
-            //  Magic bitboards will only use Pext if "PEXT" is also defined
-            sb.Append(Bmi2.X64.IsSupported ? "Pext " : string.Empty);
-#endif
+            sb.Append(Bmi2.X64.IsSupported && MagicBitboards.UsePext ? "Pext " : string.Empty);
             sb.Append(Lzcnt.X64.IsSupported ? "Lzcnt " : string.Empty);
 
             return sb.ToString();
