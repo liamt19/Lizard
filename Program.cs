@@ -170,13 +170,6 @@ namespace Lizard
                 {
                     Log(GetCompilerInfo());
                 }
-#if DEBUG
-                else if (input.EqualsIgnoreCase("draw nets"))
-                {
-                    Simple768.DrawFeatureWeightPic(true);
-                    Simple768.DrawLayerWeightPic(true);
-                }
-#endif
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
                     break;
