@@ -1,11 +1,12 @@
 ﻿using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 
 namespace Lizard.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {
-        public static FancyMagicSquare* FancyRookMagics;
-        public static FancyMagicSquare* FancyBishopMagics;
+        private static FancyMagicSquare* FancyRookMagics;
+        private static FancyMagicSquare* FancyBishopMagics;
 
         private static ulong* RookTable;
         private static ulong* BishopTable;
@@ -13,12 +14,12 @@ namespace Lizard.Logic.Magic
         /// <summary>
         /// Contains bitboards whose bits are set where blockers for a rook on a given square could be
         /// </summary>
-        public static ulong[] RookBlockerMask = new ulong[64];
+        private static ulong[] RookBlockerMask = new ulong[64];
 
         /// <summary>
         /// Contains bitboards whose bits are set where blockers for a bishop on a given square could be
         /// </summary>
-        public static ulong[] BishopBlockerMask = new ulong[64];
+        private static ulong[] BishopBlockerMask = new ulong[64];
 
         /// <summary>
         /// For a given index, contains every possible combination of blockers for a rook at that index
@@ -33,29 +34,52 @@ namespace Lizard.Logic.Magic
         private static ulong[][] BishopBlockerBoards = new ulong[64][];
         private static ulong[][] BishopAttackBoards = new ulong[64][];
 
-        public static MagicSquare[] RookMagics;
-        public static MagicSquare[] BishopMagics;
+        private static MagicSquare[] RookMagics;
+        private static MagicSquare[] BishopMagics;
 
 
         public static readonly bool UsePext = true;
         static MagicBitboards()
         {
+            GenAllBlockerBoards();
+            RookMagics = InitializeMagics(Piece.Rook);
+            BishopMagics = InitializeMagics(Piece.Bishop);
+
+            if (!Bmi2.X64.IsSupported)
+            {
+                //  If your CPU doesn't have pext, then we can't call InitializeFancyMagics at all.
+                UsePext = false;
+                return;
+            }
+
             RookTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
             BishopTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
             FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
             FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
 
-            GenAllBlockerBoards();
-            RookMagics = InitializeMagics(Piece.Rook);
-            BishopMagics = InitializeMagics(Piece.Bishop);
-
+            //  Check if using pext is faster than the normal way.
+            //  Idea slightly modified from Pedantic:
+            //  https://github.com/JoAnnP38/Pedantic/blob/master/Pedantic.Chess/BoardPext.cs#L153
             {
                 ulong temp = 0;
 
                 Stopwatch sw = Stopwatch.StartNew();
                 long fancyElapsed = 0;
                 long normalElapsed = 0;
-                for (int n = 0; n < 100; n++)
+
+                const int TestIters = 50;
+                for (int n = 0; n < TestIters; n++)
+                {
+                    for (int m = 0; m < 100; m++)
+                        foreach ((int sq, ulong blockers) in pextTests)
+                            temp ^= TestPextNormal(blockers, sq);
+
+                    for (int m = 0; m < 100; m++)
+                        foreach ((int sq, ulong blockers) in pextTests)
+                            temp ^= TestPextFancy(blockers, sq);
+                }
+
+                for (int n = 0; n < TestIters; n++)
                 {
                     sw.Restart();
                     for (int m = 0; m < 100; m++)
@@ -81,7 +105,7 @@ namespace Lizard.Logic.Magic
 
             if (UsePext)
             {
-                Console.WriteLine("PEXT is enabled.");
+                //  We will be using the fancy magics, so free the memory for these
                 RookMagics = null;
                 RookAttackBoards = null;
                 RookBlockerBoards = null;
@@ -94,7 +118,7 @@ namespace Lizard.Logic.Magic
             }
             else
             {
-                Console.WriteLine("PEXT is disabled.");
+                //  We will be using the normal magics, so free the memory of the fancy ones
                 NativeMemory.AlignedFree(RookTable);
                 NativeMemory.AlignedFree(FancyRookMagics);
 
@@ -105,7 +129,7 @@ namespace Lizard.Logic.Magic
             //Initialize();
         }
 
-        public static void Initialize()
+        private static void Initialize()
         {
             if (UsePext)
             {
@@ -490,6 +514,10 @@ namespace Lizard.Logic.Magic
             0xFFFFFCFCFD79EDFF, 0xFC0863FCCB147576, 0x0100112201048800, 0x0800000080208838, 0x8080200010020202, 0x42002C0484080201, 0xFC087E8E4BB2F736, 0x43FF9E4EF4CA2C89,
         };
 
+
+        /// <summary>
+        /// Entries from Pedantic: https://github.com/JoAnnP38/Pedantic/blob/master/Pedantic.Chess/BoardPext.cs#L153
+        /// </summary>
         private static readonly (int sq, ulong blockers)[] pextTests =
         [
             (56, 0x69EB3C000828EF65ul), (29, 0x000002C424040000ul), (58, 0x042001002080A000ul), (49, 0x0002B001A0284100ul),
