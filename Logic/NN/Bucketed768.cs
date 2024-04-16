@@ -3,6 +3,7 @@ using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 using static Lizard.Logic.NN.FunUnrollThings;
+using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
@@ -21,7 +22,7 @@ namespace Lizard.Logic.NN
         public const int OutputScale = 400;
         private const bool SelectOutputBucket = (OutputBuckets != 1);
 
-        public const int SIMD_CHUNKS = HiddenSize / VSize.Short;
+        public static readonly int SIMD_CHUNKS = HiddenSize / Vector256<short>.Count;
 
         /// <summary>
         /// 
@@ -191,8 +192,8 @@ namespace Lizard.Logic.NN
                 (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx, wk, bk);
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    accumulator.White[i] = Avx2.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
-                    accumulator.Black[i] = Avx2.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
+                    accumulator.White[i] = Vector256.Add(accumulator.White[i], FeatureWeights[wIdx + i]);
+                    accumulator.Black[i] = Vector256.Add(accumulator.Black[i], FeatureWeights[bIdx + i]);
                 }
             }
 
@@ -220,7 +221,7 @@ namespace Lizard.Logic.NN
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
                 for (int i = 0; i < SIMD_CHUNKS; i++)
                 {
-                    ourAccumulation[i] = Avx2.Add(ourAccumulation[i], FeatureWeights[idx + i]);
+                    ourAccumulation[i] = Vector256.Add(ourAccumulation[i], FeatureWeights[idx + i]);
                 }
             }
 
@@ -249,20 +250,42 @@ namespace Lizard.Logic.NN
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
                 //  Clamp each feature between [0, QA]
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, accumulator[pos.ToMove][i]));
 
                 //  Multiply the clamped feature by its corresponding weight.
                 //  We can do this with short values since the weights are always between [-127, 127]
                 //  (and the product will always be < short.MaxValue) so this will never overflow.
                 Vector256<short> mult = clamp * bucketWeights[i];
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                
+                if (NNUE.UseAvx)
+                {
+                    normalSum = Vector256.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                }
+                else
+                {
+                    (var loMult, var hiMult) = Vector256.Widen(mult);
+                    (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+
+                    normalSum = Vector256.Add(normalSum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                }
             }
 
             for (int i = 0; i < SIMD_CHUNKS; i++)
             {
-                Vector256<short> clamp = Avx2.Min(ClampMax, Avx2.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
+                Vector256<short> clamp = Vector256.Min(ClampMax, Vector256.Max(Vector256<short>.Zero, accumulator[Not(pos.ToMove)][i]));
                 Vector256<short> mult = clamp * bucketWeights[i + SIMD_CHUNKS];
-                normalSum = Avx2.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+
+                if (NNUE.UseAvx)
+                {
+                    normalSum = Vector256.Add(normalSum, Avx2.MultiplyAddAdjacent(mult, clamp));
+                }
+                else
+                {
+                    (var loMult, var hiMult) = Vector256.Widen(mult);
+                    (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+
+                    normalSum = Vector256.Add(normalSum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                }
             }
 
             //  Now sum the summation vector, preferably without vphaddd (which Vector256.Sum appears to use)
@@ -323,8 +346,11 @@ namespace Lizard.Logic.NN
         {
             ref Bitboard bb = ref pos.bb;
 
-            Accumulator* accumulator = pos.NextState->Accumulator;
-            pos.State->Accumulator->CopyTo(accumulator);
+            Accumulator* src = pos.State->Accumulator;
+            Accumulator* dst = pos.NextState->Accumulator;
+
+            dst->NeedsRefresh[0] = src->NeedsRefresh[0];
+            dst->NeedsRefresh[1] = src->NeedsRefresh[1];
 
             int moveTo = m.To;
             int moveFrom = m.From;
@@ -335,16 +361,20 @@ namespace Lizard.Logic.NN
             int them = Not(us);
             int theirPiece = bb.GetPieceAtIndex(moveTo);
 
-            var whiteAccumulation = (*accumulator)[White];
-            var blackAccumulation = (*accumulator)[Black];
+            var srcWhite = (*src)[White];
+            var srcBlack = (*src)[Black];
+
+            var dstWhite = (*dst)[White];
+            var dstBlack = (*dst)[Black];
 
             //  Refreshes are only required if our king moves to a different bucket
             if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
             {
                 //  We will need to fully refresh our perspective, but we can still do theirs.
-                accumulator->NeedsRefresh[us] = true;
+                dst->NeedsRefresh[us] = true;
 
-                var theirAccumulation = (*accumulator)[them];
+                var theirSrc = (*src)[them];
+                var theirDst = (*dst)[them];
                 int theirKing = pos.State->KingSquares[them];
 
                 int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
@@ -354,7 +384,7 @@ namespace Lizard.Logic.NN
                 {
                     int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
 
-                    SubSubAdd((short*)theirAccumulation,
+                    SubSubAdd((short*)theirSrc, (short*)theirDst,
                         (short*)(FeatureWeights + from),
                         (short*)(FeatureWeights + cap),
                         (short*)(FeatureWeights + to));
@@ -369,15 +399,15 @@ namespace Lizard.Logic.NN
                     int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
                     int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
 
-                    SubSubAddAdd(theirAccumulation,
-                        (FeatureWeights + from),
-                        (FeatureWeights + rookFrom),
-                        (FeatureWeights + to),
-                        (FeatureWeights + rookTo));
+                    SubSubAddAdd((short*)theirSrc, (short*)theirDst,
+                        (short*)(FeatureWeights + from),
+                        (short*)(FeatureWeights + rookFrom),
+                        (short*)(FeatureWeights + to),
+                        (short*)(FeatureWeights + rookTo));
                 }
                 else
                 {
-                    SubAdd((short*)theirAccumulation,
+                    SubAdd((short*)theirSrc, (short*)theirDst,
                         (short*)(FeatureWeights + from),
                         (short*)(FeatureWeights + to));
                 }
@@ -394,12 +424,12 @@ namespace Lizard.Logic.NN
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    SubSubAdd((short*)whiteAccumulation,
+                    SubSubAdd((short*)srcWhite, (short*)dstWhite,
                         (short*)(FeatureWeights + wFrom),
                         (short*)(FeatureWeights + wCap),
                         (short*)(FeatureWeights + wTo));
 
-                    SubSubAdd((short*)blackAccumulation,
+                    SubSubAdd((short*)srcBlack, (short*)dstBlack,
                         (short*)(FeatureWeights + bFrom),
                         (short*)(FeatureWeights + bCap),
                         (short*)(FeatureWeights + bTo));
@@ -410,37 +440,29 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    SubSubAdd((short*)whiteAccumulation,
+                    SubSubAdd((short*)srcWhite, (short*)dstWhite,
                         (short*)(FeatureWeights + wFrom),
                         (short*)(FeatureWeights + wCap),
                         (short*)(FeatureWeights + wTo));
 
-                    SubSubAdd((short*)blackAccumulation,
+                    SubSubAdd((short*)srcBlack, (short*)dstBlack,
                         (short*)(FeatureWeights + bFrom),
                         (short*)(FeatureWeights + bCap),
                         (short*)(FeatureWeights + bTo));
                 }
                 else
                 {
-                    SubAdd((short*)whiteAccumulation,
+                    SubAdd((short*)srcWhite, (short*)dstWhite,
                         (short*)(FeatureWeights + wFrom),
                         (short*)(FeatureWeights + wTo));
 
-                    SubAdd((short*)blackAccumulation,
+                    SubAdd((short*)srcBlack, (short*)dstBlack,
                         (short*)(FeatureWeights + bFrom),
                         (short*)(FeatureWeights + bTo));
                 }
             }
         }
 
-
-        private static void SubSubAddAdd(Vector256<short>* src, Vector256<short>* sub1, Vector256<short>* sub2, Vector256<short>* add1, Vector256<short>* add2)
-        {
-            for (int i = 0; i < SIMD_CHUNKS; i++)
-            {
-                src[i] = Avx2.Subtract(Avx2.Subtract(Avx2.Add(Avx2.Add(src[i], add1[i]), add2[i]), sub1[i]), sub2[i]);
-            }
-        }
 
 
 
