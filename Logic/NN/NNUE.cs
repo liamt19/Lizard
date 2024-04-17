@@ -16,7 +16,7 @@ namespace Lizard.Logic.NN
             {
                 Simple768.RefreshAccumulator(pos);
             }
-            else
+            else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.RefreshAccumulator(pos);
             }
@@ -35,8 +35,18 @@ namespace Lizard.Logic.NN
                     return (short)Simple768.GetEvaluation(pos);
                 }
             }
+            else if (NetArch == NetworkArchitecture.Bucketed768)
+            {
+                if (UseAvx)
+                {
+                    return (short)Bucketed768.GetEvaluationUnrolled(pos);
+                }
+                else
+                {
+                    return (short)Bucketed768.GetEvaluation(pos);
+                }
+            }
 
-            return (short)Bucketed768.GetEvaluationUnrolled(pos);
         }
 
         public static void MakeMove(Position pos, Move m)
@@ -45,7 +55,7 @@ namespace Lizard.Logic.NN
             {
                 Simple768.MakeMove(pos, m);
             }
-            else
+            else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.MakeMove(pos, m);
             }
@@ -64,7 +74,7 @@ namespace Lizard.Logic.NN
             {
                 Simple768.Initialize(networkToLoad, exitIfFail: false);
             }
-            else
+            else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.Initialize(networkToLoad, exitIfFail: false);
             }
