@@ -93,7 +93,7 @@ namespace Lizard.Logic.NN.HKA.Layers
             WeightOffset = OutputDimensions * ChunkSize / VSize.SByte;
         }
 
-        [MethodImpl(Inline)]
+
         public int FindNNZ(int* input, ushort* outputPtr)
         {
             const int InputSimdWidth = VSize.Int;
@@ -140,26 +140,35 @@ namespace Lizard.Logic.NN.HKA.Layers
             int count = FindNNZ(inputPtr, nnz);
 
             Span<Vector256<int>> outs = stackalloc Vector256<int>[NumRegs];
-            for (int k = 0; k < NumRegs; k++)
-            {
-                outs[k] = Biases[k];
-            }
+            //for (int k = 0; k < NumRegs; k++)
+            //{
+            //    outs[k] = Biases[k];
+            //}
+            
+            outs[0] = Biases[0];
+            outs[1] = Biases[1];
 
             for (int j = 0; j < count; ++j)
             {
                 var i = nnz[j];
                 Vector256<byte> in0 = Avx2.BroadcastScalarToVector256(inputPtr + i).AsByte();
 
-                for (int k = 0; k < NumRegs; ++k)
-                {
-                    AffineTransform.m256_add_dpbusd_epi32(ref outs[k], in0, Weights[(i * WeightOffset) + k]);
-                }
+                //for (int k = 0; k < NumRegs; ++k)
+                //{
+                //    AffineTransform.m256_add_dpbusd_epi32(ref outs[k], in0, Weights[(i * WeightOffset) + k]);
+                //}
+
+                AffineTransform.m256_add_dpbusd_epi32(ref outs[0], in0, Weights[(i * WeightOffset) + 0]);
+                AffineTransform.m256_add_dpbusd_epi32(ref outs[1], in0, Weights[(i * WeightOffset) + 1]);
             }
 
-            for (int k = 0; k < NumRegs; k++)
-            {
-                Avx.Store(outputPtr + (k * VSize.Int), outs[k]);
-            }
+            //for (int k = 0; k < NumRegs; k++)
+            //{
+            //    Avx.Store(outputPtr + (k * VSize.Int), outs[k]);
+            //}
+
+            Avx.Store(outputPtr + (0 * VSize.Int), outs[0]);
+            Avx.Store(outputPtr + (1 * VSize.Int), outs[1]);
         }
 
 
@@ -199,7 +208,7 @@ namespace Lizard.Logic.NN.HKA.Layers
                 {
                     for (int i = 0; i < OutputDimensions; i += VSize.Int)
                     {
-                        Biases[i / VSize.Int] = Avx.LoadDquVector256(biasPtr + i);
+                        Biases[i / VSize.Int] = Avx.LoadVector256(biasPtr + i);
                     }
                 }
 
@@ -207,7 +216,7 @@ namespace Lizard.Logic.NN.HKA.Layers
                 {
                     for (int i = 0; i < OutputDimensions * PaddedInputDimensions; i += VSize.SByte)
                     {
-                        Weights[i / VSize.SByte] = Avx.LoadDquVector256(weightPtr + i);
+                        Weights[i / VSize.SByte] = Avx.LoadVector256(weightPtr + i);
                     }
                 }
             }
@@ -232,8 +241,6 @@ namespace Lizard.Logic.NN.HKA.Layers
         }
 
 
-
-        [MethodImpl(Inline)]
         private uint GetWeightIndex(int i)
         {
             return (uint)((i / 4 % (PaddedInputDimensions / 4) * OutputDimensions * 4) + (i / PaddedInputDimensions * 4) + (i % 4));

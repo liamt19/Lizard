@@ -130,10 +130,27 @@ namespace Lizard.Logic.NN.HKA
 
             for (int j = 0; j < HalfDimensions / TileHeight; j++)
             {
-                for (int k = 0; k < NumRegs; k++)
-                {
-                    acc[k] = Biases[(j * RelativeTileHeight) + k];
-                }
+                //for (int k = 0; k < NumRegs; k++)
+                //{
+                //    acc[k] = Biases[(j * RelativeTileHeight) + k];
+                //}
+
+                acc[ 0] = Biases[(j * RelativeTileHeight) +  0];
+                acc[ 1] = Biases[(j * RelativeTileHeight) +  1];
+                acc[ 2] = Biases[(j * RelativeTileHeight) +  2];
+                acc[ 3] = Biases[(j * RelativeTileHeight) +  3];
+                acc[ 4] = Biases[(j * RelativeTileHeight) +  4];
+                acc[ 5] = Biases[(j * RelativeTileHeight) +  5];
+                acc[ 6] = Biases[(j * RelativeTileHeight) +  6];
+                acc[ 7] = Biases[(j * RelativeTileHeight) +  7];
+                acc[ 8] = Biases[(j * RelativeTileHeight) +  8];
+                acc[ 9] = Biases[(j * RelativeTileHeight) +  9];
+                acc[10] = Biases[(j * RelativeTileHeight) + 10];
+                acc[11] = Biases[(j * RelativeTileHeight) + 11];
+                acc[12] = Biases[(j * RelativeTileHeight) + 12];
+                acc[13] = Biases[(j * RelativeTileHeight) + 13];
+                acc[14] = Biases[(j * RelativeTileHeight) + 14];
+                acc[15] = Biases[(j * RelativeTileHeight) + 15];
 
                 int i = 0;
                 while (i < activeCount)
@@ -146,17 +163,50 @@ namespace Lizard.Logic.NN.HKA
 
                     var offset = (RelativeWeightIndex * index) + (j * RelativeTileHeight);
                     Vector256<short>* column = &Weights[offset];
-                    for (int k = 0; k < NumRegs; k++)
-                    {
-                        acc[k] = Avx2.Add(acc[k], column[k]);
-                    }
+                    //for (int k = 0; k < NumRegs; k++)
+                    //{
+                    //    acc[k] = Avx2.Add(acc[k], column[k]);
+                    //}
+
+                    acc[ 0] = Avx2.Add(acc[ 0], column[ 0]);
+                    acc[ 1] = Avx2.Add(acc[ 1], column[ 1]);
+                    acc[ 2] = Avx2.Add(acc[ 2], column[ 2]);
+                    acc[ 3] = Avx2.Add(acc[ 3], column[ 3]);
+                    acc[ 4] = Avx2.Add(acc[ 4], column[ 4]);
+                    acc[ 5] = Avx2.Add(acc[ 5], column[ 5]);
+                    acc[ 6] = Avx2.Add(acc[ 6], column[ 6]);
+                    acc[ 7] = Avx2.Add(acc[ 7], column[ 7]);
+                    acc[ 8] = Avx2.Add(acc[ 8], column[ 8]);
+                    acc[ 9] = Avx2.Add(acc[ 9], column[ 9]);
+                    acc[10] = Avx2.Add(acc[10], column[10]);
+                    acc[11] = Avx2.Add(acc[11], column[11]);
+                    acc[12] = Avx2.Add(acc[12], column[12]);
+                    acc[13] = Avx2.Add(acc[13], column[13]);
+                    acc[14] = Avx2.Add(acc[14], column[14]);
+                    acc[15] = Avx2.Add(acc[15], column[15]);
                 }
 
-                for (int k = 0; k < NumRegs; k++)
-                {
-                    accumulation[(j * NumRegs) + k] = acc[k];
+                //for (int k = 0; k < NumRegs; k++)
+                //{
+                //    accumulation[(j * NumRegs) + k] = acc[k];
+                //}
 
-                }
+                accumulation[(j * NumRegs) +  0] = acc[ 0];
+                accumulation[(j * NumRegs) +  1] = acc[ 1];
+                accumulation[(j * NumRegs) +  2] = acc[ 2];
+                accumulation[(j * NumRegs) +  3] = acc[ 3];
+                accumulation[(j * NumRegs) +  4] = acc[ 4];
+                accumulation[(j * NumRegs) +  5] = acc[ 5];
+                accumulation[(j * NumRegs) +  6] = acc[ 6];
+                accumulation[(j * NumRegs) +  7] = acc[ 7];
+                accumulation[(j * NumRegs) +  8] = acc[ 8];
+                accumulation[(j * NumRegs) +  9] = acc[ 9];
+                accumulation[(j * NumRegs) + 10] = acc[10];
+                accumulation[(j * NumRegs) + 11] = acc[11];
+                accumulation[(j * NumRegs) + 12] = acc[12];
+                accumulation[(j * NumRegs) + 13] = acc[13];
+                accumulation[(j * NumRegs) + 14] = acc[14];
+                accumulation[(j * NumRegs) + 15] = acc[15];
             }
 
             Vector256<int>* psq = stackalloc Vector256<int>[NumPsqtRegs];

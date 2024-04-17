@@ -185,7 +185,6 @@ namespace Lizard.Logic.NN.HKA.Layers
         }
 
 
-        [MethodImpl(Inline)]
         private uint GetSmallWeightIndex(int i)
         {
             return (uint)((i / 4 % (PaddedInputDimensions / 4) * OutputDimensions * 4) + (i / PaddedInputDimensions * 4) + (i % 4));

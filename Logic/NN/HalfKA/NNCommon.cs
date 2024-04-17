@@ -17,7 +17,6 @@
         /// <summary>
         /// Rounds <paramref name="n"/> up to be a multiple of <paramref name="numBase"/>
         /// </summary>
-        [MethodImpl(Inline)]
         public static int CeilToMultiple(short n, short numBase)
         {
             return (n + numBase - 1) / numBase * numBase;

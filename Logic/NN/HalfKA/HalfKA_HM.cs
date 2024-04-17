@@ -273,7 +273,7 @@ namespace Lizard.Logic.NN.HKA
         /// </summary>
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
-        public static void RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
+        public static void _RemoveFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
 
@@ -298,7 +298,7 @@ namespace Lizard.Logic.NN.HKA
         /// </summary>
         /// <param name="accumulation">A reference to either <see cref="Accumulator.White"/> or <see cref="Accumulator.Black"/></param>
         /// <param name="index">The feature index calculated with <see cref="HalfKAIndex"/></param>
-        public static void AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
+        public static void _AddFeature(in Vector256<short>* accumulation, in Vector256<int>* psqtAccumulation, int index)
         {
             const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
 
@@ -315,7 +315,6 @@ namespace Lizard.Logic.NN.HKA
             {
                 psqtAccumulation[j] = Avx2.Add(psqtAccumulation[j], FeatureTransformer.PSQTWeights[index + (j * RelativeTileHeight)]);
             }
-
         }
 
 
@@ -396,7 +395,6 @@ namespace Lizard.Logic.NN.HKA
         /// in Stockfish 12's format, which has all of white's pieces before black's. It looks like:
         /// PS_NONE = 0, W_PAWN = 1, W_KNIGHT = 2, ... B_PAWN = 9, ... PIECE_NB = 16
         /// </summary>
-        [MethodImpl(Inline)]
         public static int FishPiece(int pc, int pt)
         {
             return pt + 1 + (pc * 8);
@@ -700,6 +698,227 @@ namespace Lizard.Logic.NN.HKA
             public const uint PS_B_QUEEN = 9 * SquareNB;
             public const uint PS_KING = 10 * SquareNB;
             public const uint PS_NB = 11 * SquareNB;
+        }
+
+
+
+
+        public static void AddFeature(Vector256<short>* accumulation, Vector256<int>* psqtAccumulation, int index)
+        {
+            const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
+
+            const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
+            const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
+
+            int ci = RelativeDimensions * index;
+            accumulation[ 0] = Avx2.Add(accumulation[ 0], FeatureTransformer.Weights[ci +  0]);
+            accumulation[ 1] = Avx2.Add(accumulation[ 1], FeatureTransformer.Weights[ci +  1]);
+            accumulation[ 2] = Avx2.Add(accumulation[ 2], FeatureTransformer.Weights[ci +  2]);
+            accumulation[ 3] = Avx2.Add(accumulation[ 3], FeatureTransformer.Weights[ci +  3]);
+            accumulation[ 4] = Avx2.Add(accumulation[ 4], FeatureTransformer.Weights[ci +  4]);
+            accumulation[ 5] = Avx2.Add(accumulation[ 5], FeatureTransformer.Weights[ci +  5]);
+            accumulation[ 6] = Avx2.Add(accumulation[ 6], FeatureTransformer.Weights[ci +  6]);
+            accumulation[ 7] = Avx2.Add(accumulation[ 7], FeatureTransformer.Weights[ci +  7]);
+            accumulation[ 8] = Avx2.Add(accumulation[ 8], FeatureTransformer.Weights[ci +  8]);
+            accumulation[ 9] = Avx2.Add(accumulation[ 9], FeatureTransformer.Weights[ci +  9]);
+            accumulation[10] = Avx2.Add(accumulation[10], FeatureTransformer.Weights[ci + 10]);
+            accumulation[11] = Avx2.Add(accumulation[11], FeatureTransformer.Weights[ci + 11]);
+            accumulation[12] = Avx2.Add(accumulation[12], FeatureTransformer.Weights[ci + 12]);
+            accumulation[13] = Avx2.Add(accumulation[13], FeatureTransformer.Weights[ci + 13]);
+            accumulation[14] = Avx2.Add(accumulation[14], FeatureTransformer.Weights[ci + 14]);
+            accumulation[15] = Avx2.Add(accumulation[15], FeatureTransformer.Weights[ci + 15]);
+            accumulation[16] = Avx2.Add(accumulation[16], FeatureTransformer.Weights[ci + 16]);
+            accumulation[17] = Avx2.Add(accumulation[17], FeatureTransformer.Weights[ci + 17]);
+            accumulation[18] = Avx2.Add(accumulation[18], FeatureTransformer.Weights[ci + 18]);
+            accumulation[19] = Avx2.Add(accumulation[19], FeatureTransformer.Weights[ci + 19]);
+            accumulation[20] = Avx2.Add(accumulation[20], FeatureTransformer.Weights[ci + 20]);
+            accumulation[21] = Avx2.Add(accumulation[21], FeatureTransformer.Weights[ci + 21]);
+            accumulation[22] = Avx2.Add(accumulation[22], FeatureTransformer.Weights[ci + 22]);
+            accumulation[23] = Avx2.Add(accumulation[23], FeatureTransformer.Weights[ci + 23]);
+            accumulation[24] = Avx2.Add(accumulation[24], FeatureTransformer.Weights[ci + 24]);
+            accumulation[25] = Avx2.Add(accumulation[25], FeatureTransformer.Weights[ci + 25]);
+            accumulation[26] = Avx2.Add(accumulation[26], FeatureTransformer.Weights[ci + 26]);
+            accumulation[27] = Avx2.Add(accumulation[27], FeatureTransformer.Weights[ci + 27]);
+            accumulation[28] = Avx2.Add(accumulation[28], FeatureTransformer.Weights[ci + 28]);
+            accumulation[29] = Avx2.Add(accumulation[29], FeatureTransformer.Weights[ci + 29]);
+            accumulation[30] = Avx2.Add(accumulation[30], FeatureTransformer.Weights[ci + 30]);
+            accumulation[31] = Avx2.Add(accumulation[31], FeatureTransformer.Weights[ci + 31]);
+            accumulation[32] = Avx2.Add(accumulation[32], FeatureTransformer.Weights[ci + 32]);
+            accumulation[33] = Avx2.Add(accumulation[33], FeatureTransformer.Weights[ci + 33]);
+            accumulation[34] = Avx2.Add(accumulation[34], FeatureTransformer.Weights[ci + 34]);
+            accumulation[35] = Avx2.Add(accumulation[35], FeatureTransformer.Weights[ci + 35]);
+            accumulation[36] = Avx2.Add(accumulation[36], FeatureTransformer.Weights[ci + 36]);
+            accumulation[37] = Avx2.Add(accumulation[37], FeatureTransformer.Weights[ci + 37]);
+            accumulation[38] = Avx2.Add(accumulation[38], FeatureTransformer.Weights[ci + 38]);
+            accumulation[39] = Avx2.Add(accumulation[39], FeatureTransformer.Weights[ci + 39]);
+            accumulation[40] = Avx2.Add(accumulation[40], FeatureTransformer.Weights[ci + 40]);
+            accumulation[41] = Avx2.Add(accumulation[41], FeatureTransformer.Weights[ci + 41]);
+            accumulation[42] = Avx2.Add(accumulation[42], FeatureTransformer.Weights[ci + 42]);
+            accumulation[43] = Avx2.Add(accumulation[43], FeatureTransformer.Weights[ci + 43]);
+            accumulation[44] = Avx2.Add(accumulation[44], FeatureTransformer.Weights[ci + 44]);
+            accumulation[45] = Avx2.Add(accumulation[45], FeatureTransformer.Weights[ci + 45]);
+            accumulation[46] = Avx2.Add(accumulation[46], FeatureTransformer.Weights[ci + 46]);
+            accumulation[47] = Avx2.Add(accumulation[47], FeatureTransformer.Weights[ci + 47]);
+            accumulation[48] = Avx2.Add(accumulation[48], FeatureTransformer.Weights[ci + 48]);
+            accumulation[49] = Avx2.Add(accumulation[49], FeatureTransformer.Weights[ci + 49]);
+            accumulation[50] = Avx2.Add(accumulation[50], FeatureTransformer.Weights[ci + 50]);
+            accumulation[51] = Avx2.Add(accumulation[51], FeatureTransformer.Weights[ci + 51]);
+            accumulation[52] = Avx2.Add(accumulation[52], FeatureTransformer.Weights[ci + 52]);
+            accumulation[53] = Avx2.Add(accumulation[53], FeatureTransformer.Weights[ci + 53]);
+            accumulation[54] = Avx2.Add(accumulation[54], FeatureTransformer.Weights[ci + 54]);
+            accumulation[55] = Avx2.Add(accumulation[55], FeatureTransformer.Weights[ci + 55]);
+            accumulation[56] = Avx2.Add(accumulation[56], FeatureTransformer.Weights[ci + 56]);
+            accumulation[57] = Avx2.Add(accumulation[57], FeatureTransformer.Weights[ci + 57]);
+            accumulation[58] = Avx2.Add(accumulation[58], FeatureTransformer.Weights[ci + 58]);
+            accumulation[59] = Avx2.Add(accumulation[59], FeatureTransformer.Weights[ci + 59]);
+            accumulation[60] = Avx2.Add(accumulation[60], FeatureTransformer.Weights[ci + 60]);
+            accumulation[61] = Avx2.Add(accumulation[61], FeatureTransformer.Weights[ci + 61]);
+            accumulation[62] = Avx2.Add(accumulation[62], FeatureTransformer.Weights[ci + 62]);
+            accumulation[63] = Avx2.Add(accumulation[63], FeatureTransformer.Weights[ci + 63]);
+            accumulation[64] = Avx2.Add(accumulation[64], FeatureTransformer.Weights[ci + 64]);
+            accumulation[65] = Avx2.Add(accumulation[65], FeatureTransformer.Weights[ci + 65]);
+            accumulation[66] = Avx2.Add(accumulation[66], FeatureTransformer.Weights[ci + 66]);
+            accumulation[67] = Avx2.Add(accumulation[67], FeatureTransformer.Weights[ci + 67]);
+            accumulation[68] = Avx2.Add(accumulation[68], FeatureTransformer.Weights[ci + 68]);
+            accumulation[69] = Avx2.Add(accumulation[69], FeatureTransformer.Weights[ci + 69]);
+            accumulation[70] = Avx2.Add(accumulation[70], FeatureTransformer.Weights[ci + 70]);
+            accumulation[71] = Avx2.Add(accumulation[71], FeatureTransformer.Weights[ci + 71]);
+            accumulation[72] = Avx2.Add(accumulation[72], FeatureTransformer.Weights[ci + 72]);
+            accumulation[73] = Avx2.Add(accumulation[73], FeatureTransformer.Weights[ci + 73]);
+            accumulation[74] = Avx2.Add(accumulation[74], FeatureTransformer.Weights[ci + 74]);
+            accumulation[75] = Avx2.Add(accumulation[75], FeatureTransformer.Weights[ci + 75]);
+            accumulation[76] = Avx2.Add(accumulation[76], FeatureTransformer.Weights[ci + 76]);
+            accumulation[77] = Avx2.Add(accumulation[77], FeatureTransformer.Weights[ci + 77]);
+            accumulation[78] = Avx2.Add(accumulation[78], FeatureTransformer.Weights[ci + 78]);
+            accumulation[79] = Avx2.Add(accumulation[79], FeatureTransformer.Weights[ci + 79]);
+            accumulation[80] = Avx2.Add(accumulation[80], FeatureTransformer.Weights[ci + 80]);
+            accumulation[81] = Avx2.Add(accumulation[81], FeatureTransformer.Weights[ci + 81]);
+            accumulation[82] = Avx2.Add(accumulation[82], FeatureTransformer.Weights[ci + 82]);
+            accumulation[83] = Avx2.Add(accumulation[83], FeatureTransformer.Weights[ci + 83]);
+            accumulation[84] = Avx2.Add(accumulation[84], FeatureTransformer.Weights[ci + 84]);
+            accumulation[85] = Avx2.Add(accumulation[85], FeatureTransformer.Weights[ci + 85]);
+            accumulation[86] = Avx2.Add(accumulation[86], FeatureTransformer.Weights[ci + 86]);
+            accumulation[87] = Avx2.Add(accumulation[87], FeatureTransformer.Weights[ci + 87]);
+            accumulation[88] = Avx2.Add(accumulation[88], FeatureTransformer.Weights[ci + 88]);
+            accumulation[89] = Avx2.Add(accumulation[89], FeatureTransformer.Weights[ci + 89]);
+            accumulation[90] = Avx2.Add(accumulation[90], FeatureTransformer.Weights[ci + 90]);
+            accumulation[91] = Avx2.Add(accumulation[91], FeatureTransformer.Weights[ci + 91]);
+            accumulation[92] = Avx2.Add(accumulation[92], FeatureTransformer.Weights[ci + 92]);
+            accumulation[93] = Avx2.Add(accumulation[93], FeatureTransformer.Weights[ci + 93]);
+            accumulation[94] = Avx2.Add(accumulation[94], FeatureTransformer.Weights[ci + 94]);
+            accumulation[95] = Avx2.Add(accumulation[95], FeatureTransformer.Weights[ci + 95]);
+            accumulation[96] = Avx2.Add(accumulation[96], FeatureTransformer.Weights[ci + 96]);
+
+            psqtAccumulation[0] = Avx2.Add(psqtAccumulation[0], FeatureTransformer.PSQTWeights[index + (0 * RelativeTileHeight)]);
+        }
+
+        public static void RemoveFeature(Vector256<short>* accumulation, Vector256<int>* psqtAccumulation, int index)
+        {
+            const uint NumChunks = FeatureTransformer.HalfDimensions / (SimdWidth / 2);
+
+            const int RelativeDimensions = (int)FeatureTransformer.HalfDimensions / 16;
+            const int RelativeTileHeight = FeatureTransformer.TileHeight / 16;
+
+            int ci = RelativeDimensions * index;
+            accumulation[ 0] = Avx2.Subtract(accumulation[ 0], FeatureTransformer.Weights[ci +  0]);
+            accumulation[ 1] = Avx2.Subtract(accumulation[ 1], FeatureTransformer.Weights[ci +  1]);
+            accumulation[ 2] = Avx2.Subtract(accumulation[ 2], FeatureTransformer.Weights[ci +  2]);
+            accumulation[ 3] = Avx2.Subtract(accumulation[ 3], FeatureTransformer.Weights[ci +  3]);
+            accumulation[ 4] = Avx2.Subtract(accumulation[ 4], FeatureTransformer.Weights[ci +  4]);
+            accumulation[ 5] = Avx2.Subtract(accumulation[ 5], FeatureTransformer.Weights[ci +  5]);
+            accumulation[ 6] = Avx2.Subtract(accumulation[ 6], FeatureTransformer.Weights[ci +  6]);
+            accumulation[ 7] = Avx2.Subtract(accumulation[ 7], FeatureTransformer.Weights[ci +  7]);
+            accumulation[ 8] = Avx2.Subtract(accumulation[ 8], FeatureTransformer.Weights[ci +  8]);
+            accumulation[ 9] = Avx2.Subtract(accumulation[ 9], FeatureTransformer.Weights[ci +  9]);
+            accumulation[10] = Avx2.Subtract(accumulation[10], FeatureTransformer.Weights[ci + 10]);
+            accumulation[11] = Avx2.Subtract(accumulation[11], FeatureTransformer.Weights[ci + 11]);
+            accumulation[12] = Avx2.Subtract(accumulation[12], FeatureTransformer.Weights[ci + 12]);
+            accumulation[13] = Avx2.Subtract(accumulation[13], FeatureTransformer.Weights[ci + 13]);
+            accumulation[14] = Avx2.Subtract(accumulation[14], FeatureTransformer.Weights[ci + 14]);
+            accumulation[15] = Avx2.Subtract(accumulation[15], FeatureTransformer.Weights[ci + 15]);
+            accumulation[16] = Avx2.Subtract(accumulation[16], FeatureTransformer.Weights[ci + 16]);
+            accumulation[17] = Avx2.Subtract(accumulation[17], FeatureTransformer.Weights[ci + 17]);
+            accumulation[18] = Avx2.Subtract(accumulation[18], FeatureTransformer.Weights[ci + 18]);
+            accumulation[19] = Avx2.Subtract(accumulation[19], FeatureTransformer.Weights[ci + 19]);
+            accumulation[20] = Avx2.Subtract(accumulation[20], FeatureTransformer.Weights[ci + 20]);
+            accumulation[21] = Avx2.Subtract(accumulation[21], FeatureTransformer.Weights[ci + 21]);
+            accumulation[22] = Avx2.Subtract(accumulation[22], FeatureTransformer.Weights[ci + 22]);
+            accumulation[23] = Avx2.Subtract(accumulation[23], FeatureTransformer.Weights[ci + 23]);
+            accumulation[24] = Avx2.Subtract(accumulation[24], FeatureTransformer.Weights[ci + 24]);
+            accumulation[25] = Avx2.Subtract(accumulation[25], FeatureTransformer.Weights[ci + 25]);
+            accumulation[26] = Avx2.Subtract(accumulation[26], FeatureTransformer.Weights[ci + 26]);
+            accumulation[27] = Avx2.Subtract(accumulation[27], FeatureTransformer.Weights[ci + 27]);
+            accumulation[28] = Avx2.Subtract(accumulation[28], FeatureTransformer.Weights[ci + 28]);
+            accumulation[29] = Avx2.Subtract(accumulation[29], FeatureTransformer.Weights[ci + 29]);
+            accumulation[30] = Avx2.Subtract(accumulation[30], FeatureTransformer.Weights[ci + 30]);
+            accumulation[31] = Avx2.Subtract(accumulation[31], FeatureTransformer.Weights[ci + 31]);
+            accumulation[32] = Avx2.Subtract(accumulation[32], FeatureTransformer.Weights[ci + 32]);
+            accumulation[33] = Avx2.Subtract(accumulation[33], FeatureTransformer.Weights[ci + 33]);
+            accumulation[34] = Avx2.Subtract(accumulation[34], FeatureTransformer.Weights[ci + 34]);
+            accumulation[35] = Avx2.Subtract(accumulation[35], FeatureTransformer.Weights[ci + 35]);
+            accumulation[36] = Avx2.Subtract(accumulation[36], FeatureTransformer.Weights[ci + 36]);
+            accumulation[37] = Avx2.Subtract(accumulation[37], FeatureTransformer.Weights[ci + 37]);
+            accumulation[38] = Avx2.Subtract(accumulation[38], FeatureTransformer.Weights[ci + 38]);
+            accumulation[39] = Avx2.Subtract(accumulation[39], FeatureTransformer.Weights[ci + 39]);
+            accumulation[40] = Avx2.Subtract(accumulation[40], FeatureTransformer.Weights[ci + 40]);
+            accumulation[41] = Avx2.Subtract(accumulation[41], FeatureTransformer.Weights[ci + 41]);
+            accumulation[42] = Avx2.Subtract(accumulation[42], FeatureTransformer.Weights[ci + 42]);
+            accumulation[43] = Avx2.Subtract(accumulation[43], FeatureTransformer.Weights[ci + 43]);
+            accumulation[44] = Avx2.Subtract(accumulation[44], FeatureTransformer.Weights[ci + 44]);
+            accumulation[45] = Avx2.Subtract(accumulation[45], FeatureTransformer.Weights[ci + 45]);
+            accumulation[46] = Avx2.Subtract(accumulation[46], FeatureTransformer.Weights[ci + 46]);
+            accumulation[47] = Avx2.Subtract(accumulation[47], FeatureTransformer.Weights[ci + 47]);
+            accumulation[48] = Avx2.Subtract(accumulation[48], FeatureTransformer.Weights[ci + 48]);
+            accumulation[49] = Avx2.Subtract(accumulation[49], FeatureTransformer.Weights[ci + 49]);
+            accumulation[50] = Avx2.Subtract(accumulation[50], FeatureTransformer.Weights[ci + 50]);
+            accumulation[51] = Avx2.Subtract(accumulation[51], FeatureTransformer.Weights[ci + 51]);
+            accumulation[52] = Avx2.Subtract(accumulation[52], FeatureTransformer.Weights[ci + 52]);
+            accumulation[53] = Avx2.Subtract(accumulation[53], FeatureTransformer.Weights[ci + 53]);
+            accumulation[54] = Avx2.Subtract(accumulation[54], FeatureTransformer.Weights[ci + 54]);
+            accumulation[55] = Avx2.Subtract(accumulation[55], FeatureTransformer.Weights[ci + 55]);
+            accumulation[56] = Avx2.Subtract(accumulation[56], FeatureTransformer.Weights[ci + 56]);
+            accumulation[57] = Avx2.Subtract(accumulation[57], FeatureTransformer.Weights[ci + 57]);
+            accumulation[58] = Avx2.Subtract(accumulation[58], FeatureTransformer.Weights[ci + 58]);
+            accumulation[59] = Avx2.Subtract(accumulation[59], FeatureTransformer.Weights[ci + 59]);
+            accumulation[60] = Avx2.Subtract(accumulation[60], FeatureTransformer.Weights[ci + 60]);
+            accumulation[61] = Avx2.Subtract(accumulation[61], FeatureTransformer.Weights[ci + 61]);
+            accumulation[62] = Avx2.Subtract(accumulation[62], FeatureTransformer.Weights[ci + 62]);
+            accumulation[63] = Avx2.Subtract(accumulation[63], FeatureTransformer.Weights[ci + 63]);
+            accumulation[64] = Avx2.Subtract(accumulation[64], FeatureTransformer.Weights[ci + 64]);
+            accumulation[65] = Avx2.Subtract(accumulation[65], FeatureTransformer.Weights[ci + 65]);
+            accumulation[66] = Avx2.Subtract(accumulation[66], FeatureTransformer.Weights[ci + 66]);
+            accumulation[67] = Avx2.Subtract(accumulation[67], FeatureTransformer.Weights[ci + 67]);
+            accumulation[68] = Avx2.Subtract(accumulation[68], FeatureTransformer.Weights[ci + 68]);
+            accumulation[69] = Avx2.Subtract(accumulation[69], FeatureTransformer.Weights[ci + 69]);
+            accumulation[70] = Avx2.Subtract(accumulation[70], FeatureTransformer.Weights[ci + 70]);
+            accumulation[71] = Avx2.Subtract(accumulation[71], FeatureTransformer.Weights[ci + 71]);
+            accumulation[72] = Avx2.Subtract(accumulation[72], FeatureTransformer.Weights[ci + 72]);
+            accumulation[73] = Avx2.Subtract(accumulation[73], FeatureTransformer.Weights[ci + 73]);
+            accumulation[74] = Avx2.Subtract(accumulation[74], FeatureTransformer.Weights[ci + 74]);
+            accumulation[75] = Avx2.Subtract(accumulation[75], FeatureTransformer.Weights[ci + 75]);
+            accumulation[76] = Avx2.Subtract(accumulation[76], FeatureTransformer.Weights[ci + 76]);
+            accumulation[77] = Avx2.Subtract(accumulation[77], FeatureTransformer.Weights[ci + 77]);
+            accumulation[78] = Avx2.Subtract(accumulation[78], FeatureTransformer.Weights[ci + 78]);
+            accumulation[79] = Avx2.Subtract(accumulation[79], FeatureTransformer.Weights[ci + 79]);
+            accumulation[80] = Avx2.Subtract(accumulation[80], FeatureTransformer.Weights[ci + 80]);
+            accumulation[81] = Avx2.Subtract(accumulation[81], FeatureTransformer.Weights[ci + 81]);
+            accumulation[82] = Avx2.Subtract(accumulation[82], FeatureTransformer.Weights[ci + 82]);
+            accumulation[83] = Avx2.Subtract(accumulation[83], FeatureTransformer.Weights[ci + 83]);
+            accumulation[84] = Avx2.Subtract(accumulation[84], FeatureTransformer.Weights[ci + 84]);
+            accumulation[85] = Avx2.Subtract(accumulation[85], FeatureTransformer.Weights[ci + 85]);
+            accumulation[86] = Avx2.Subtract(accumulation[86], FeatureTransformer.Weights[ci + 86]);
+            accumulation[87] = Avx2.Subtract(accumulation[87], FeatureTransformer.Weights[ci + 87]);
+            accumulation[88] = Avx2.Subtract(accumulation[88], FeatureTransformer.Weights[ci + 88]);
+            accumulation[89] = Avx2.Subtract(accumulation[89], FeatureTransformer.Weights[ci + 89]);
+            accumulation[90] = Avx2.Subtract(accumulation[90], FeatureTransformer.Weights[ci + 90]);
+            accumulation[91] = Avx2.Subtract(accumulation[91], FeatureTransformer.Weights[ci + 91]);
+            accumulation[92] = Avx2.Subtract(accumulation[92], FeatureTransformer.Weights[ci + 92]);
+            accumulation[93] = Avx2.Subtract(accumulation[93], FeatureTransformer.Weights[ci + 93]);
+            accumulation[94] = Avx2.Subtract(accumulation[94], FeatureTransformer.Weights[ci + 94]);
+            accumulation[95] = Avx2.Subtract(accumulation[95], FeatureTransformer.Weights[ci + 95]);
+            accumulation[96] = Avx2.Subtract(accumulation[96], FeatureTransformer.Weights[ci + 96]);
+
+            psqtAccumulation[0] = Avx2.Subtract(psqtAccumulation[0], FeatureTransformer.PSQTWeights[index + (0 * RelativeTileHeight)]);
         }
     }
 }
