@@ -84,7 +84,8 @@
     public enum NetworkArchitecture
     {
         Simple768,
-        Bucketed768
+        Bucketed768,
+        HalfKA
     }
 
 

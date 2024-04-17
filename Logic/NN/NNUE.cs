@@ -1,13 +1,15 @@
 ﻿
+using System;
 using System.Runtime.Intrinsics.X86;
 
+using Lizard.Logic.NN.HKA;
 using Lizard.Properties;
 
 namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
     {
-        public const NetworkArchitecture NetArch = NetworkArchitecture.Simple768;
+        public const NetworkArchitecture NetArch = NetworkArchitecture.HalfKA;
         public static readonly bool UseAvx = Avx2.IsSupported;
 
         public static void RefreshAccumulator(Position pos)
@@ -19,6 +21,10 @@ namespace Lizard.Logic.NN
             else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.RefreshAccumulator(pos);
+            }
+            else if (NetArch == NetworkArchitecture.HalfKA)
+            {
+                HKA.HalfKA_HM.RefreshAccumulator(pos);
             }
         }
 
@@ -46,7 +52,10 @@ namespace Lizard.Logic.NN
                     return (short)Bucketed768.GetEvaluation(pos);
                 }
             }
-
+            else if (NetArch == NetworkArchitecture.HalfKA)
+            {
+                return (short)HKA.HalfKA_HM.GetEvaluation(pos);
+            }
         }
 
         public static void MakeMove(Position pos, Move m)
@@ -58,6 +67,10 @@ namespace Lizard.Logic.NN
             else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.MakeMove(pos, m);
+            }
+            else if (NetArch == NetworkArchitecture.HalfKA)
+            {
+                HKA.HalfKA_HM.MakeMove(pos, m);
             }
         }
 
@@ -78,6 +91,10 @@ namespace Lizard.Logic.NN
             {
                 Bucketed768.Initialize(networkToLoad, exitIfFail: false);
             }
+            else if (NetArch == NetworkArchitecture.HalfKA)
+            {
+                HKA.HalfKA_HM.Initialize(networkToLoad, exitIfFail: false);
+            }
         }
 
 
@@ -96,8 +113,9 @@ namespace Lizard.Logic.NN
             }
             else
             {
-                var NetworkName = NetArch == NetworkArchitecture.Simple768 ? Simple768.NetworkName :
-                                                                             Bucketed768.NetworkName;
+                var NetworkName = NetArch == NetworkArchitecture.Simple768   ? Simple768.NetworkName :
+                                  NetArch == NetworkArchitecture.Bucketed768 ? Bucketed768.NetworkName : 
+                                                                               HalfKA_HM.NetworkName;
 
                 //  Just load the default network
                 networkToLoad = NetworkName;

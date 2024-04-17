@@ -156,6 +156,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Logic\NN\HalfKA\" />
     <Folder Include="obj\" />
   </ItemGroup>
 

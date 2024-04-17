@@ -2,6 +2,7 @@
 using System.Text;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.NN.HKA;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.Core
@@ -196,7 +197,8 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                NNUE.RefreshAccumulator(this);
+                State->Accumulator->NeedsRefresh[White] = true;
+                State->Accumulator->NeedsRefresh[Black] = true;
             }
         }
 
@@ -289,7 +291,7 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                NNUE.MakeMove(this, move);
+                HalfKA_HM.MakeMove(this, move);
             }
 
             //  Move onto the next state
@@ -1297,7 +1299,8 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN)
             {
-                NNUE.RefreshAccumulator(this);
+                State->Accumulator->NeedsRefresh[White] = true;
+                State->Accumulator->NeedsRefresh[Black] = true;
             }
 
             return true;
