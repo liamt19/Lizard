@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Search.Ordering;
+using Lizard.Logic.Search.History;
 
 namespace Lizard.Logic.Threads
 {
@@ -548,8 +548,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public void Clear()
         {
-            NativeMemory.Clear(History.MainHistory, sizeof(short) * HistoryTable.MainHistoryElements);
-            NativeMemory.Clear(History.CaptureHistory, sizeof(short) * HistoryTable.CaptureHistoryElements);
+            History.MainHistory.Clear();
+            History.CaptureHistory.Clear();
 
             for (int i = 0; i < 2; i++)
             {

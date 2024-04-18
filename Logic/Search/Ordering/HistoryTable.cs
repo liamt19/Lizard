@@ -1,25 +1,25 @@
-﻿
+﻿using System.Runtime.InteropServices;
 
+using Lizard.Logic.Search.History;
 
-using System.Runtime.InteropServices;
-
-namespace Lizard.Logic.Search.Ordering
+namespace Lizard.Logic.Search.History
 {
+    /// <summary>
+    /// Holds instances of the MainHistory, CaptureHistory, and 4 ContinuationHistory's for a single SearchThread.
+    /// </summary>
     public unsafe struct HistoryTable
     {
+        public const int NormalClamp = 16384;
+
         /// <summary>
-        /// Index using Color * <see cref="MainHistoryPCStride"/> + Move.MoveMask
+        /// Index using [ourColor] [Move.MoveMask]
         /// </summary>
-        public readonly short* MainHistory;
-        public const int MainHistoryClamp = 16384;
-        public const int MainHistoryPCStride = 4096;
-        public const int MainHistoryElements = ColorNB * SquareNB * SquareNB;
+        public readonly MainHistoryTable MainHistory;
 
-
-        public readonly short* CaptureHistory;
-        public const int CaptureClamp = 16384;
-        public const int CaptureHistoryElements = ColorNB * (PieceNB) * SquareNB * (PieceNB);
-
+        /// <summary>
+        /// Index using [ourColor] [ourPieceType] [Move.To] [theirPieceType]
+        /// </summary>
+        public readonly CaptureHistoryTable CaptureHistory;
 
         /// <summary>
         /// Index with [inCheck] [Capture]
@@ -32,8 +32,8 @@ namespace Lizard.Logic.Search.Ordering
 
         public HistoryTable()
         {
-            MainHistory = (short*)AlignedAllocZeroed(sizeof(short) * MainHistoryElements, AllocAlignment);
-            CaptureHistory = (short*)AlignedAllocZeroed(sizeof(short) * CaptureHistoryElements, AllocAlignment);
+            MainHistory = new MainHistoryTable();
+            CaptureHistory = new CaptureHistoryTable();
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
@@ -53,8 +53,8 @@ namespace Lizard.Logic.Search.Ordering
 
         public void Dispose()
         {
-            NativeMemory.AlignedFree(MainHistory);
-            NativeMemory.AlignedFree(CaptureHistory);
+            MainHistory.Dispose();
+            CaptureHistory.Dispose();
 
             for (int i = 0; i < 2; i++)
             {
@@ -62,226 +62,7 @@ namespace Lizard.Logic.Search.Ordering
                 Continuations[i][1].Dispose();
             }
 
-        }
-
-
-        /// <summary>
-        /// Applies the <paramref name="bonus"/> to the score at the specified <paramref name="index"/> in the short* <paramref name="field"/>.
-        /// This <paramref name="bonus"/> is clamped by the value of <paramref name="clamp"/>.
-        /// </summary>
-        public void ApplyBonus(short* field, int index, int bonus, int clamp)
-        {
-            field[index] += (short)(bonus - (field[index] * Math.Abs(bonus) / clamp));
-        }
-
-        public static int HistoryIndex(int pc, Move m)
-        {
-            if (EnableAssertions)
-            {
-                Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements,
-                    "HistoryIndex(" + pc + ", " + m.MoveMask + ") is OOB! (should be 0 <= idx < " + MainHistoryElements + ")");
-            }
-            return (pc * MainHistoryPCStride) + m.MoveMask;
-        }
-
-        /// <summary>
-        /// Returns the index of the score that should be applied to a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
-        /// capturing a piece of type <paramref name="capturedPt"/> on the square <paramref name="toSquare"/>.
-        /// <br></br>
-        /// This just calculates the flattened 3D array index for 
-        /// <see cref="CaptureHistory"/>[<paramref name="pt"/> + <paramref name="pc"/>][<paramref name="toSquare"/>][<paramref name="capturedPt"/>].
-        /// </summary>
-        public static int CapIndex(int pc, int pt, int toSquare, int capturedPt)
-        {
-            const int xMax = (PieceNB) * ColorNB;
-            const int yMax = SquareNB;
-            const int zMax = PieceNB;
-
-            int x = pt + ((PieceNB) * pc);
-            int y = toSquare;
-            int z = capturedPt;
-
-            if (EnableAssertions)
-            {
-                int idx = (z * xMax * yMax) + (y * xMax) + x;
-                Assert(idx is >= 0 and < CaptureHistoryElements,
-                    "CapIndex(" + pt + ", " + pc + ", " + toSquare + ", " + capturedPt + ") == " + idx + " is OOB! (should be 0 <= idx < " + CaptureHistoryElements + ")");
-            }
-
-            return (z * xMax * yMax) + (y * xMax) + x;
+            NativeMemory.AlignedFree(Continuations);
         }
     }
-
-    /// <summary>
-    /// Records how successful different moves have been in the past by recording that move's
-    /// piece type and color, and the square that it is moving to. 
-    /// <br></br>
-    /// This is a short array with dimensions [12][64], with a size of <inheritdoc cref="ByteSize"/>.
-    /// </summary>
-    public unsafe struct PieceToHistory
-    {
-        private short* _History;
-
-        public const short Clamp = 16384;
-
-
-        private const short FillValue = -50;
-
-        private const int DimX = PieceNB * 2;
-        private const int DimY = SquareNB;
-
-        /// <summary>
-        /// 12 * 64 == 768 elements
-        /// </summary>
-        public const nuint Length = DimX * DimY;
-
-        /// <summary>
-        /// 2 * (<inheritdoc cref="Length"/>) == 1536 bytes
-        /// </summary>
-        public const nuint ByteSize = sizeof(short) * Length;
-
-        public PieceToHistory() { }
-
-        public void Dispose()
-        {
-            NativeMemory.AlignedFree(_History);
-        }
-
-        /// <summary>
-        /// Returns the score at the index <paramref name="idx"/>, which should have been calculated with <see cref="GetIndex"/>
-        /// </summary>
-        public short this[int pc, int pt, int sq]
-        {
-            get
-            {
-                int idx = GetIndex(pc, pt, sq);
-                return _History[idx];
-            }
-            set
-            {
-                int idx = GetIndex(pc, pt, sq);
-                _History[idx] = value;
-            }
-        }
-
-        /// <summary>
-        /// Returns the score at the index <paramref name="idx"/>, which should have been calculated with <see cref="GetIndex"/>
-        /// </summary>
-        public short this[int idx]
-        {
-            get
-            {
-                return _History[idx];
-            }
-            set
-            {
-                _History[idx] = value;
-            }
-        }
-
-        /// <summary>
-        /// Returns the index of the score in the History array for a piece of color <paramref name="pc"/> 
-        /// and type <paramref name="pt"/> moving to the square <paramref name="sq"/>.
-        /// </summary>
-        public static int GetIndex(int pc, int pt, int sq)
-        {
-            if (EnableAssertions)
-            {
-                Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length,
-                    "GetIndex(" + pc + ", " + pt + ", " + sq + ") is OOB! (should be 0 <= idx < " + Length + ")");
-            }
-
-            return ((pt + (PieceNB * pc)) * DimY) + sq;
-        }
-
-        /// <summary>
-        /// Allocates memory for this instance's array.
-        /// </summary>
-        public void Alloc()
-        {
-            _History = (short*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-        }
-
-        /// <summary>
-        /// Fills this instance's array with the value of <see cref="FillValue"/>.
-        /// </summary>
-        public void Clear()
-        {
-            NativeMemory.Clear(_History, ByteSize);
-            Span<short> span = new Span<short>(_History, (int)Length);
-            span.Fill(FillValue);
-        }
-    }
-
-
-    /// <summary>
-    /// Records the history for a pair of moves.
-    /// <br></br>
-    /// This is an array of <see cref="PieceToHistory"/> [12][64], with a size of <inheritdoc cref="ByteSize"/>.
-    /// </summary>
-    public unsafe struct ContinuationHistory
-    {
-        private PieceToHistory* _History;
-
-        private const int DimX = PieceNB * 2;
-        private const int DimY = SquareNB;
-
-        /// <summary>
-        /// 12 * 64 == 768 elements
-        /// </summary>
-        public const nuint Length = DimX * DimY;
-
-        /// <summary>
-        /// 8 * (<inheritdoc cref="Length"/>) == 6144 bytes
-        /// </summary>
-        private const nuint ByteSize = (nuint)(sizeof(ulong) * Length);
-
-        public ContinuationHistory()
-        {
-            _History = (PieceToHistory*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-
-            for (nuint i = 0; i < Length; i++)
-            {
-                (_History + i)->Alloc();
-            }
-        }
-
-        public void Dispose()
-        {
-            for (nuint i = 0; i < Length; i++)
-            {
-                (_History + i)->Dispose();
-            }
-
-            NativeMemory.AlignedFree(_History);
-        }
-
-
-        public PieceToHistory* this[int pc, int pt, int sq]
-        {
-            get
-            {
-                int idx = PieceToHistory.GetIndex(pc, pt, sq);
-                return &_History[idx];
-            }
-        }
-
-        public PieceToHistory* this[int idx]
-        {
-            get
-            {
-                return &_History[idx];
-            }
-        }
-
-
-        public void Clear()
-        {
-            for (nuint i = 0; i < Length; i++)
-            {
-                _History[i].Clear();
-            }
-        }
-    }
-
 }

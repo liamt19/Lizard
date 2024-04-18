@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
-using Lizard.Logic.Search.Ordering;
+using Lizard.Logic.Search.History;
 
 namespace Lizard.Logic.Search
 {

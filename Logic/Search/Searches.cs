@@ -1,7 +1,7 @@
 ﻿using System.Text;
 
 using Lizard.Logic.NN;
-using Lizard.Logic.Search.Ordering;
+using Lizard.Logic.Search.History;
 using Lizard.Logic.Threads;
 
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
@@ -498,10 +498,10 @@ namespace Lizard.Logic.Search
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
                         R--;
 
-                    var histScore = 2 * history.MainHistory[HistoryTable.HistoryIndex(us, m)] +
-                                    (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                    (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                    (*(ss - 4)->ContinuationHistory)[histIdx];
+                    var histScore = 2 * history.MainHistory[us, m] + 
+                           (*(ss - 1)->ContinuationHistory)[histIdx] + 
+                           (*(ss - 2)->ContinuationHistory)[histIdx] + 
+                           (*(ss - 4)->ContinuationHistory)[histIdx];
 
                     R -= (histScore / (4096 * HistoryReductionMultiplier));
 
@@ -953,8 +953,7 @@ namespace Lizard.Logic.Search
 
             if (capturedPiece != None && !bestMove.Castle)
             {
-                int idx = HistoryTable.CapIndex(thisColor, thisPiece, moveTo, capturedPiece);
-                history.ApplyBonus(history.CaptureHistory, idx, quietMoveBonus, HistoryTable.CaptureClamp);
+                history.CaptureHistory[thisColor, thisPiece, moveTo, capturedPiece] <<= quietMoveBonus;
             }
             else
             {
@@ -967,21 +966,21 @@ namespace Lizard.Logic.Search
                     ss->Killer0 = bestMove;
                 }
 
-                history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, bestMove), bestMoveBonus, HistoryTable.MainHistoryClamp);
+                history.MainHistory[thisColor, bestMove] <<= bestMoveBonus;
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    history.ApplyBonus(history.MainHistory, HistoryTable.HistoryIndex(thisColor, m), -quietMovePenalty, HistoryTable.MainHistoryClamp);
+                    history.MainHistory[thisColor, m] <<= -quietMovePenalty;
                     UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -quietMovePenalty);
                 }
             }
 
             for (int i = 0; i < captureCount; i++)
             {
-                int idx = HistoryTable.CapIndex(thisColor, bb.GetPieceAtIndex(captureMoves[i].From), captureMoves[i].To, bb.GetPieceAtIndex(captureMoves[i].To));
-                history.ApplyBonus(history.CaptureHistory, idx, -quietMoveBonus, HistoryTable.CaptureClamp);
+                Move m = captureMoves[i];
+                history.CaptureHistory[thisColor, bb.GetPieceAtIndex(m.From), m.To, bb.GetPieceAtIndex(m.To)] <<= -quietMoveBonus;
             }
         }
 
@@ -1002,8 +1001,7 @@ namespace Lizard.Logic.Search
 
                 if ((ss - i)->CurrentMove != Move.Null)
                 {
-                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] += (short)(bonus -
-                    ((*(ss - i)->ContinuationHistory)[pc, pt, sq] * Math.Abs(bonus) / PieceToHistory.Clamp));
+                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] <<= bonus;
                 }
             }
         }
