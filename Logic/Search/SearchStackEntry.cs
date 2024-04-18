@@ -41,50 +41,44 @@ namespace Lizard.Logic.Search
 
 
         /// <summary>
-        /// The History scores for the current move, which is currently only used in Late Move Reductions.
-        /// </summary>
-        [FieldOffset(16)]
-        public int StatScore;
-
-        /// <summary>
         /// The number of times that previous moves had their search depth extended by two.
         /// </summary>
-        [FieldOffset(20)]
+        [FieldOffset(16)]
         public int DoubleExtensions;
 
         /// <summary>
         /// The number of moves made by both players thus far, which is generally the depth of the search times two.
         /// </summary>
-        [FieldOffset(24)]
+        [FieldOffset(20)]
         public short Ply;
 
         /// <summary>
         /// The static evaluation for the position at the current <see cref="Ply"/>.
         /// </summary>
-        [FieldOffset(26)]
+        [FieldOffset(22)]
         public short StaticEval;
 
         /// <summary>
         /// Whether or not the side to move is in check at the current <see cref="Ply"/>.
         /// </summary>
-        [FieldOffset(28)]
+        [FieldOffset(24)]
         public bool InCheck;
 
         /// <summary>
         /// Set to true for PV/Root searches, or if <see cref="TTHit"/> is <see langword="true"/> 
         /// and the TT entry had TTPV true when it was updated.
         /// </summary>
-        [FieldOffset(29)]
+        [FieldOffset(25)]
         public bool TTPV;
 
         /// <summary>
         /// Set to true if there was an acceptable <see cref="TTEntry"/> for the position at the current <see cref="Ply"/>.
         /// </summary>
-        [FieldOffset(30)]
+        [FieldOffset(26)]
         public bool TTHit;
 
-        [FieldOffset(31)]
-        private fixed byte _pad0[1];
+        [FieldOffset(27)]
+        private fixed byte _pad0[5];
 
 
 
@@ -141,7 +135,6 @@ namespace Lizard.Logic.Search
             Skip = Move.Null;
             ContinuationHistory = null;
 
-            StatScore = 0;
             Ply = 0;
             DoubleExtensions = 0;
             StaticEval = ScoreNone;
