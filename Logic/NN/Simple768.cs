@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
 
         public static readonly int SIMD_CHUNKS = HiddenSize / Vector256<short>.Count;
 
-        public const string NetworkName = "iguana-epoch10.bin";
+        public const string NetworkName = "iguana-wiggle-epoch11.bin";
 
         /// <summary>
         /// The values applied according to the active features and current bucket.

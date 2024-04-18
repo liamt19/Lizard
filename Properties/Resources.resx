@@ -118,8 +118,8 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="iguana-epoch10" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\iguana-epoch10.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="iguana-wiggle-epoch11" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\iguana-wiggle-epoch11.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
   <data name="lizard-1024_4_8_gauss-600" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\lizard-1024_4_8_gauss-600.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
