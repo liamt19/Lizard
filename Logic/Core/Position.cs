@@ -58,6 +58,8 @@ namespace Lizard.Logic.Core
         /// </summary>
         public bool Checked => InCheck || InDoubleCheck;
 
+        public ulong Hash => State->Hash;
+
 
         /// <summary>
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
