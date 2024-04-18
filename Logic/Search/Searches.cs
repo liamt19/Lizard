@@ -63,21 +63,18 @@ namespace Lizard.Logic.Search
             }
 
             Position pos = info.Position;
-            ref Bitboard bb = ref pos.bb;
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
-
-            ulong posHash = pos.State->Hash;
+            ref Bitboard bb = ref pos.bb;
 
             Move bestMove = Move.Null;
 
-            int ourColor = pos.ToMove;
+            int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
+            short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
-
-            short eval = ss->StaticEval;
 
             bool doSkip = ss->Skip != Move.Null;
             bool improving = false;
@@ -108,18 +105,8 @@ namespace Lizard.Logic.Search
 
                 if (SearchPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
                 {
-                    if (pos.Checked)
-                    {
-                        //  Instead of looking further and probably breaking something,
-                        //  Just evaluate this move as a draw here and keep looking at the others.
-                        return ScoreDraw;
-                    }
-                    else
-                    {
-                        //  If we aren't in check, then just return the static eval instead of a draw score for consistency.
-                        return NNUE.GetEvaluation(pos);
-                    }
-
+                    //  Return a draw score or static eval
+                    return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
                 }
 
                 //  https://www.chessprogramming.org/Mate_Distance_Pruning
@@ -133,16 +120,11 @@ namespace Lizard.Logic.Search
                 }
             }
 
-            (ss + 1)->Skip = Move.Null;
-
-            //  TODO: SPRT this with (ss + 2) instead
             (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
 
             ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
-
-            ss->StatScore = 0;
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(posHash, out TTEntry* tte);
+            ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
             if (!doSkip)
             {
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
@@ -207,7 +189,7 @@ namespace Lizard.Logic.Search
                 //  We are improving if the static evaluation at this ply is better than what it was
                 //  when it was our turn 2 plies ago, (or 4 plies if we were in check).
                 improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-                            ((ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true);
+                            (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true;
             }
 
 
@@ -215,7 +197,7 @@ namespace Lizard.Logic.Search
             //  We accept Reverse Futility Pruning for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
-            //  at a depth at or below the max (currently 8)
+            //  at a depth at or below the max (currently 7)
             //  which don't have a TT move,
             //  so long as:
             //  The static evaluation (eval) is below a TT win or a mate score,
@@ -236,7 +218,7 @@ namespace Lizard.Logic.Search
 
             //  We accept Null Move Pruning for:
             //  non-PV nodes
-            //  at a depth at or above the min (currently 3)
+            //  at a depth at or above the min (currently 6)
             //  which have a static eval or TT score equal to or above beta
             //  (ditto for ss->StaticEval),
             //  so long as:
@@ -272,7 +254,7 @@ namespace Lizard.Logic.Search
             //  Try ProbCut for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
-            //  at a depth at or above the min (currently 5)
+            //  at a depth at or above the min (currently 2!)
             //  while our beta isn't near a mate score
             //  so long as:
             //  We didn't have a TT hit,
@@ -293,13 +275,6 @@ namespace Lizard.Logic.Search
                 int numCaps = pos.GenAll<GenLoud>(captures);
                 AssignProbCutScores(ref bb, captures, numCaps);
 
-
-                /*
-                Score of ProbCut vs Baseline: 904 - 723 - 1676 	3303
-                Elo difference: 19.1 +/- 8.31 [10.8, 27.4]
-                SPRT: llr 3.55 [0, 5] (-2.94, 2.94) - H1 Accepted
-                */
-
                 for (int i = 0; i < numCaps; i++)
                 {
                     Move m = OrderNextMove(captures, numCaps, i);
@@ -309,10 +284,13 @@ namespace Lizard.Logic.Search
                         continue;
                     }
 
-                    int histIdx = PieceToHistory.GetIndex(ourColor, bb.GetPieceAtIndex(m.From), m.To);
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+
+                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.Castle);
+                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
+                    
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][(bb.GetPieceAtIndex(m.To) != None && !m.Castle) ? 1 : 0][histIdx];
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -381,14 +359,14 @@ namespace Lizard.Logic.Search
 
                 if (EnableAssertions)
                 {
-                    Assert(pos.IsPseudoLegal(m),
-                        "The move " + m + " = " + m.ToString(pos) + " was legal for FEN " + pos.GetFEN() + ", " +
-                        "but it isn't pseudo-legal!");
+                    Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
                 }
 
-                int toSquare = m.To;
-                bool isCapture = (bb.GetPieceAtIndex(toSquare) != None && !m.Castle);
-                int thisPieceType = bb.GetPieceAtIndex(m.From);
+                int moveFrom = m.From;
+                int moveTo = m.To;
+                int theirPiece = bb.GetPieceAtIndex(moveTo);
+                int ourPiece = bb.GetPieceAtIndex(moveFrom);
+                bool isCapture = (theirPiece != None && !m.Castle);
 
                 legalMoves++;
                 int extend = 0;
@@ -406,7 +384,7 @@ namespace Lizard.Logic.Search
                         skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
                     }
 
-                    bool givesCheck = ((pos.State->CheckSquares[thisPieceType] & SquareBB[toSquare]) != 0);
+                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
                     if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
                     {
@@ -428,7 +406,7 @@ namespace Lizard.Logic.Search
                 //  non-root nodes
                 //  which aren't a response to a previous singular extension search,
                 //  haven't already been extended significantly,
-                //  and have a depth at or above 5 (or 6 for PV searches + PV TT entry hits),
+                //  and have a depth at or above 7 (or 8 for PV searches + PV TT entry hits),
                 //  so long as:
                 //  The current move is the TT hit's move,
                 //  the TT hit's score isn't a definitive win/loss,
@@ -476,13 +454,13 @@ namespace Lizard.Logic.Search
                     }
                 }
 
-                int histIdx = PieceToHistory.GetIndex(ourColor, thisPieceType, toSquare);
+                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+
+                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
                 ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend == 2 ? 1 : 0);
-
-                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -520,12 +498,12 @@ namespace Lizard.Logic.Search
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
                         R--;
 
-                    ss->StatScore = 2 * history.MainHistory[ourColor, m] +
-                                        (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 4)->ContinuationHistory)[histIdx];
+                    var histScore = 2 * history.MainHistory[us, m] + 
+                           (*(ss - 1)->ContinuationHistory)[histIdx] + 
+                           (*(ss - 2)->ContinuationHistory)[histIdx] + 
+                           (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (ss->StatScore / (4096 * HistoryReductionMultiplier));
+                    R -= (histScore / (4096 * HistoryReductionMultiplier));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
@@ -561,7 +539,7 @@ namespace Lizard.Logic.Search
                             bonus = StatBonus(newDepth - 1);
                         }
 
-                        UpdateContinuations(ss, ourColor, thisPieceType, m.To, bonus);
+                        UpdateContinuations(ss, us, ourPiece, m.To, bonus);
                     }
                 }
                 else if (!isPV || legalMoves > 1)
@@ -582,13 +560,7 @@ namespace Lizard.Logic.Search
                 if (isRoot)
                 {
                     //  Update the NodeTM table with the number of nodes that were searched in this subtree.
-                    thisThread.NodeTable[m.From][m.To] += thisThread.Nodes - prevNodes;
-                }
-
-                if (EnableAssertions)
-                {
-                    Assert(score is > -ScoreInfinite and < ScoreInfinite,
-                        "The returned score = " + score + " from a recursive call to Negamax was OOB! (should be " + (-ScoreInfinite) + " < score < " + ScoreInfinite);
+                    thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
                 }
 
                 if (SearchPool.StopThreads)
@@ -704,10 +676,12 @@ namespace Lizard.Logic.Search
                 //  This is one of the root nodes in a MultiPV search.
 
                 TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
-                          ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
+                          ((bestScore > startingAlpha) ? TTNodeType.Exact : 
+                                                         TTNodeType.Beta);
 
-                tte->Update(posHash, MakeTTScore((short)bestScore, ss->Ply), bound, depth,
-                    (bound == TTNodeType.Beta) ? Move.Null : bestMove, ss->StaticEval, ss->TTPV);
+                Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
+
+                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, ss->TTPV);
             }
 
             return bestScore;
@@ -724,29 +698,24 @@ namespace Lizard.Logic.Search
         public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
-            if (EnableAssertions)
-            {
-                Assert(typeof(NodeType) != typeof(RootNode),
-                "QSearch(..., depth = " + depth + ") got a NodeType of RootNode, but RootNodes should never enter a QSearch!" +
-                (depth < 1 ? " If the depth is 0, this might have been caused by razoring pruning. " +
-                             "Otherwise, Negamax was called with probably called with a negative depth." : string.Empty));
-            }
 
             Position pos = info.Position;
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
+            ref Bitboard bb = ref pos.bb;
+
             Move bestMove = Move.Null;
 
+            int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
-            short bestScore = -ScoreInfinite;
+            int bestScore = -ScoreInfinite;
             short futility = -ScoreInfinite;
-
             short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
 
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(pos.State->Hash, out TTEntry* tte);
+            ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
             int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
@@ -755,6 +724,7 @@ namespace Lizard.Logic.Search
             if (isPV)
             {
                 ss->PV[0] = Move.Null;
+                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
 
 
@@ -766,11 +736,6 @@ namespace Lizard.Logic.Search
             if (ss->Ply >= MaxSearchStackPly - 1)
             {
                 return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
-            }
-
-            if (isPV)
-            {
-                thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
 
             if (!isPV
@@ -789,12 +754,8 @@ namespace Lizard.Logic.Search
             {
                 if (ss->TTHit)
                 {
-                    eval = ss->StaticEval = tte->StatEval;
-                    if (eval == ScoreNone)
-                    {
-                        //  If the TT hit didn't have a static eval, get one now.
-                        eval = ss->StaticEval = NNUE.GetEvaluation(pos);
-                    }
+                    //  If the TT hit didn't have a static eval, get one now.
+                    eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
@@ -804,16 +765,9 @@ namespace Lizard.Logic.Search
                 }
                 else
                 {
-                    if ((ss - 1)->CurrentMove.IsNull())
-                    {
-                        //  The previous move made was done in NMP (and nothing has changed since (ss - 1)),
-                        //  so for simplicity we can use the previous static eval but negative.
-                        eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
-                    }
-                    else
-                    {
-                        eval = ss->StaticEval = NNUE.GetEvaluation(pos);
-                    }
+                    //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
+                    //  use the previous static eval but negative. Otherwise get the eval as normal.
+                    eval = ss->StaticEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
                 }
 
                 if (eval >= beta)
@@ -851,23 +805,24 @@ namespace Lizard.Logic.Search
 
                 if (EnableAssertions)
                 {
-                    Assert(pos.IsPseudoLegal(m),
-                        "The move " + m + " = " + m.ToString(pos) + " was legal for FEN " + pos.GetFEN() + ", " +
-                        "but it isn't pseudo-legal!");
+                    Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
                 }
 
                 legalMoves++;
 
-                bool isCapture = (pos.bb.GetPieceAtIndex(m.To) != None && !m.Castle);
-                bool isPromotion = m.Promotion;
-                bool givesCheck = ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(m.From)] & SquareBB[m.To]) != 0);
+                int moveFrom = m.From;
+                int moveTo = m.To;
+                int theirPiece = bb.GetPieceAtIndex(moveTo);
+                int ourPiece = bb.GetPieceAtIndex(moveFrom);
+                bool isCapture = (theirPiece != None && !m.Castle);
+                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
                 movesMade++;
 
                 if (bestScore > ScoreTTLoss)
                 {
-                    if (!(givesCheck || isPromotion)
-                        && (prevSquare != m.To)
+                    if (!(givesCheck || m.Promotion)
+                        && (prevSquare != moveTo)
                         && futility > -ScoreWin)
                     {
                         if (legalMoves > 3 && !ss->InCheck)
@@ -877,7 +832,7 @@ namespace Lizard.Logic.Search
                             continue;
                         }
 
-                        short futilityValue = (short)(futility + GetPieceValue(pos.bb.GetPieceAtIndex(m.To)));
+                        short futilityValue = (short)(futility + GetPieceValue(theirPiece));
 
                         if (futilityValue <= alpha)
                         {
@@ -907,16 +862,17 @@ namespace Lizard.Logic.Search
                     }
                 }
 
+                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+
                 if (ss->InCheck && !isCapture)
                 {
                     checkEvasions++;
                 }
 
-                int histIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(m.From), m.To);
+                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
-                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck ? 1 : 0][isCapture ? 1 : 0][histIdx];
+                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -952,17 +908,10 @@ namespace Lizard.Logic.Search
             }
 
             TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
-                      ((bestScore > startingAlpha) ? TTNodeType.Exact : TTNodeType.Beta);
+                      ((bestScore > startingAlpha) ? TTNodeType.Exact : 
+                                                     TTNodeType.Beta);
 
-            tte->Update(pos.State->Hash, MakeTTScore(bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
-
-            if (EnableAssertions)
-            {
-                Assert(bestScore is > -ScoreInfinite and < ScoreInfinite,
-                    "A call to QSearch is returning a bestScore of " + bestScore + ", which is OOB! " +
-                    "QSearch's return values should always be in the range (" + -ScoreInfinite + " < " + bestScore + " < " + ScoreInfinite + "). " +
-                    "bestValue is only initialized to " + -ScoreInfinite + " when ss->InCheck is true, which it currently " + (ss->InCheck ? "is" : "isn't") + ".");
-            }
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
 
             return bestScore;
         }

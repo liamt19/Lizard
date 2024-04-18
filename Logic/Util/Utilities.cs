@@ -859,6 +859,15 @@ namespace Lizard.Logic.Util
             }
         }
 
+        public static int AsInt(this bool v)
+        {
+            return v ? 1 : 0;
+        }
+
+        public static bool AsBool(this int v)
+        {
+            return (v != 0);
+        }
     }
 
 
