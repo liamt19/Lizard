@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Search.Ordering;
+using Lizard.Logic.Search.History;
 
 using static Lizard.Logic.Search.MovePicker.MovePickerStage;
 
@@ -465,8 +465,7 @@ namespace Lizard.Logic.Search
                     capturedPiece = Rook;
                 }
 
-                int capIdx = HistoryTable.CapIndex(pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece);
-                iter->Score = (13 * GetPieceValue(capturedPiece)) + (captureHistory[capIdx] / 12);
+                iter->Score = (13 * GetPieceValue(capturedPiece)) + -9999;// (captureHistory[pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / 12);
             }
         }
 
@@ -476,7 +475,7 @@ namespace Lizard.Logic.Search
             {
                 int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
 
-                iter->Score = (2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                iter->Score = -9999 + //(2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
                               (2 * (*continuations[0])[contIdx]) +
                                   (*continuations[1])[contIdx] +
                                   (*continuations[3])[contIdx] +
@@ -511,7 +510,7 @@ namespace Lizard.Logic.Search
                 {
                     int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
 
-                    iter->Score = (2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
+                    iter->Score = -9999 + //(2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
                                   (2 * (*continuations[0])[contIdx]) +
                                       (*continuations[1])[contIdx] +
                                       (*continuations[3])[contIdx] +
