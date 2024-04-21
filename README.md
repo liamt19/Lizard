@@ -18,10 +18,10 @@ who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). So
 
 | Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | Notes |
 | ---- | ------------ | ---- | ---- | --- |
-| 10.0 | Jan. 4 2024  | 3365 | 3406 | First non-Stockfish NNUE |
-| 10.1 | Jan. 13 2024 | 3427 | -    | Various improvements to search |
-| 10.2 | Feb. 9 2024 | 3500 | 3585    | Larger network, more tunes |
-| 10.3 | Mar. 8 2024 | TBD | TBD    | Significant speedups, FRC support |
+| 10.0 | Jan. 4 2024  | 3367 | 3402 | First non-Stockfish NNUE |
+| 10.1 | Jan. 13 2024 | 3429 | -    | Various improvements to search |
+| 10.2 | Feb. 9 2024 | 3499 | 3580    | Larger network, more tunes |
+| 10.3 | Mar. 8 2024 | 3510 | TBD    | Significant speedups, FRC support |
 
 </div>
 
