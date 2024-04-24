@@ -1,4 +1,5 @@
 ﻿
+using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 using Lizard.Properties;
@@ -28,18 +29,18 @@ namespace Lizard.Logic.NN
             {
                 if (UseAvx)
                 {
-                    return (short)Simple768.GetEvaluationUnrolled(pos);
+                    return (short)Simple768.GetEvaluationUnrolled512(pos);
                 }
                 else
                 {
-                    return (short)Simple768.GetEvaluation(pos);
+                    return (short)Simple768.GetEvaluationFallback(pos);
                 }
             }
             else if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 if (UseAvx)
                 {
-                    return (short)Bucketed768.GetEvaluationUnrolled(pos);
+                    return (short)Bucketed768.GetEvaluationUnrolled512(pos);
                 }
                 else
                 {
@@ -125,6 +126,72 @@ namespace Lizard.Logic.NN
 
             return netFile;
         }
+
+
+        public static int SumVectorNoHadd(Vector256<int> vect)
+        {
+            Vector128<int> lo = vect.GetLower();
+            Vector128<int> hi = Avx.ExtractVector128(vect, 1);
+            Vector128<int> sum128 = Sse2.Add(lo, hi);
+
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, 0b_10_11_00_01));
+            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, 0b_01_00_11_10));
+
+            //  Something along the lines of Add(sum128, UnpackHigh(sum128, sum128))
+            //  would also work here but it is occasionally off by +- 1.
+            //  The JIT also seems to replace the unpack with a shuffle anyways depending on the instruction order,
+            //  and who am I to not trust the JIT? :)
+
+            return Sse2.ConvertToInt32(sum128);
+        }
+
+        public static int SumVectorNoHadd(Vector512<int> vect)
+        {
+            //  _mm512_reduce_add_epi32 is a sequence instruction and isn't callable
+            return SumVectorNoHadd(vect.GetLower()) + SumVectorNoHadd(vect.GetUpper());
+        }
+
+        /// <summary>
+        /// Transposes the weights stored in <paramref name="block"/>
+        /// </summary>
+        public static void TransposeLayerWeights(short* block, int columnLength, int rowLength)
+        {
+            short* temp = stackalloc short[columnLength * rowLength];
+            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * rowLength));
+
+            for (int bucket = 0; bucket < rowLength; bucket++)
+            {
+                short* thisBucket = block + (bucket * columnLength);
+
+                for (int i = 0; i < columnLength; i++)
+                {
+                    thisBucket[i] = temp[(rowLength * i) + bucket];
+                }
+            }
+        }
+
+        public static void NetStats(string layerName, void* layer, int n)
+        {
+            long avg = 0;
+            int max = int.MinValue;
+            int min = int.MaxValue;
+            short* ptr = (short*)layer;
+            for (int i = 0; i < n; i++)
+            {
+                if (ptr[i] > max)
+                {
+                    max = ptr[i];
+                }
+                if (ptr[i] < min)
+                {
+                    min = ptr[i];
+                }
+                avg += ptr[i];
+            }
+
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+        }
+
 
 
         public static void Trace(Position pos)
