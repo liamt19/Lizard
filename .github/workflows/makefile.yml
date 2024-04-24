@@ -1,0 +1,37 @@
+name: Makefile CI
+
+on:
+  workflow_dispatch:
+
+env:
+    DOTNET_VERSION: 9.0.x
+
+jobs:
+
+  build-and-publish:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest, macos-14]
+        include:
+          - os: ubuntu-latest
+            runtime-identifier: linux-x64
+          - os: windows-latest
+            runtime-identifier: win-x64
+          - os: macOS-latest
+            runtime-identifier: osx-x64
+          - os: macos-14
+            runtime-identifier: osx-arm64
+      fail-fast: false
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run Make
+      run: make
