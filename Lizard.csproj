@@ -18,6 +18,10 @@
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
     <GenerateDependencyFile>False</GenerateDependencyFile>
 
+    <!-- https://github.com/dotnet/runtime/issues/3735#issuecomment-666641134 maybe? 
+    -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+
     <AssemblyVersion>1.0.0</AssemblyVersion>
     <NeutralLanguage>en</NeutralLanguage>
 
