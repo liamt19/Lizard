@@ -39,7 +39,7 @@ RM_BLD_FOLDER = -cd bin && $(RM_FOLDER_CMD) Release && cd ..
 #	-p:DebugType=embedded       Places the PDB file inside the binary
 #	-p:EVALFILE=$(EVALFILE)		Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
 #								This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v d --property WarningLevel=0 -o $(OUT_PATH) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v d --property WarningLevel=0 -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
 
 
 #	-p:PublishAOT=true				Actually enables AOT
