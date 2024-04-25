@@ -8,6 +8,27 @@ ifndef CC
 	CC = dotnet
 endif
 
+ifndef OUT_PATH
+	OUT_PATH = .\\
+endif
+
+ifeq ($(OS),Windows_NT) 
+	FULL_EXE_PATH = $(OUT_PATH)$(EXE).exe
+	PDB_SUFF = pdb
+
+	RM_FILE_CMD = del
+	RM_FOLDER_CMD = rmdir /s /q
+else
+	FULL_EXE_PATH = $(OUT_PATH)$(EXE)
+	PDB_SUFF = dbg
+
+	RM_FILE_CMD = rm
+	RM_FOLDER_CMD = rm -rf
+endif
+
+RM_PDB = -$(RM_FILE_CMD) $(EXE).$(PDB_SUFF)
+RM_BLD_FOLDER = -cd bin && $(RM_FOLDER_CMD) Release && cd ..
+
 
 #	self-contained              .NET Core won't need to be installed to run the binary
 #	-v quiet                    Silences CS#### warnings during building (e.g. "CS0162: Unreachable code detected")
@@ -18,7 +39,7 @@ endif
 #	-p:DebugType=embedded       Places the PDB file inside the binary
 #	-p:EVALFILE=$(EVALFILE)		Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
 #								This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v quiet --property WarningLevel=0 -o ./ -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v quiet --property WarningLevel=0 -o $(OUT_PATH) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
 
 
 #	-p:PublishAOT=true				Actually enables AOT
@@ -27,42 +48,28 @@ BUILD_OPTS := --self-contained -v quiet --property WarningLevel=0 -o ./ -c Relea
 AOT_OPTS = -p:PublishAOT=true -p:PublishSingleFile=false -p:IS_AOT=true
 
 
-OPT_512 = -p:DefineConstants="$(DefineConstants)AVX_512"
-
-AVX_OR_NOT = 
-
-GET_COMP_INFO = $(shell echo | $(EXE) compiler)
-
-
-define CHK
-	ifneq ($(findstring Avx512, $(GET_COMP_INFO)),)
-		$(eval AVX_OR_NOT=true)
-	endif
-endef
-
-
-default_build:
-	dotnet publish . $(BUILD_OPTS)
-	-rmdir /s /q .\bin\Release
-	$(MAKE) check512
-
-
-check512:
-	$(eval $(call CHK))
-	$(MAKE) release
-
-
 #	Try building the non-AOT version first, and then try to build the AOT version if possible.
 #   This recipe should always work, but AOT requires some additional setup so that recipe may fail.
 release:
-	dotnet publish . $(BUILD_OPTS) $(AVX_OR_NOT)
-	-rmdir /s /q .\bin\Release
+	dotnet publish . $(BUILD_OPTS)
+	$(RM_BLD_FOLDER)
 	$(MAKE) aot
 
 
 #	This will/might only succeed if you have the right toolchain
 aot:
-	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) $(AVX_OR_NOT)
-	-rmdir /s /q .\bin\Release\native
-	-rmdir /s /q .\bin\Release
-	-del .\Lizard.pdb
+	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
+	$(RM_BLD_FOLDER)
+	$(RM_PDB)
+
+
+512:
+	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX_512"
+	$(RM_BLD_FOLDER)
+	$(MAKE) aot_512
+
+
+aot_512:
+	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX_512"
+	$(RM_BLD_FOLDER)
+	$(RM_PDB)
