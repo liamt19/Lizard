@@ -52,24 +52,23 @@ AOT_OPTS = -p:PublishAOT=true -p:PublishSingleFile=false -p:IS_AOT=true
 #   This recipe should always work, but AOT requires some additional setup so that recipe may fail.
 release:
 	dotnet publish . $(BUILD_OPTS)
-	$(RM_BLD_FOLDER)
 	$(MAKE) aot
 
 
 #	This will/might only succeed if you have the right toolchain
 aot:
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
-	$(RM_BLD_FOLDER)
-	$(RM_PDB)
 
 
 512:
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX_512"
-	$(RM_BLD_FOLDER)
 	$(MAKE) aot_512
 
 
 aot_512:
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX_512"
+
+
+clean:
 	$(RM_BLD_FOLDER)
 	$(RM_PDB)
