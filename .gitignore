@@ -11,3 +11,4 @@
 /Properties/PublishProfiles/*.user
 /Properties/launchSettings.json
 /*.exe
+/*.pdb
