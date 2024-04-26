@@ -405,9 +405,9 @@ namespace Lizard.Logic.Threads
                         window += window / 2;
                     }
 
-                    StableSort(ref RootMoves, 0);
+                    StableSort(ref RootMoves, 0, PVIndex + 1);
 
-                    if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1 || tm.GetSearchTime() > 3000))
+                    if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1))
                     {
                         info.OnDepthFinish?.Invoke(ref info);
                     }
