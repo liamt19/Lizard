@@ -119,6 +119,14 @@
       <_Parameter1>$(EVALFILE)</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
+
+  <!-- Targeting the "aot" recipe in the makefile will set this to true.
+  -->
+  <ItemGroup>
+    <AssemblyAttribute Include="Lizard.Logic.Util.IsAOTAttribute">
+      <_Parameter1>$(IS_AOT)</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
   
   
 

@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
@@ -194,10 +196,6 @@ namespace Lizard.Logic.Util
             //  This is because the AOT compiler can't guarantee what types are in the assembly until it is compiled,
             //  so it doesn't let you get a list of them (via GetExecutingAssembly().GetTypes()) or run their constructors.
 
-#if PUBLISH_AOT
-            return;
-#endif
-
             foreach (Type type in System.Reflection.Assembly.GetExecutingAssembly().GetTypes())
             {
                 //  Don't run the constructors of NN classes.
@@ -233,9 +231,8 @@ namespace Lizard.Logic.Util
             sb.Append("Debug ");
 #endif
 
-#if PUBLISH_AOT
-            sb.Append("AOT ");
-#endif
+
+            sb.Append(IsAOTAttribute.IsAOT() ? "AOT " : string.Empty);
 
             if (HasSkipInit)
             {
@@ -243,6 +240,13 @@ namespace Lizard.Logic.Util
             }
 
             sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
+
+#if AVX512
+            sb.Append(Avx512BW.IsSupported ? "Avx512=(supported, used) " : "Avx512=(unsupported, used!) ");
+#else
+            sb.Append(Avx512BW.IsSupported ? "Avx512=(supported, unused!) " : "Avx512=(unsupported, unused) ");
+#endif
+
             sb.Append(Bmi2.IsSupported ? "Bmi2 " : string.Empty);
             sb.Append(Sse3.IsSupported ? "Sse3 " : string.Empty);
             sb.Append(Sse42.IsSupported ? "Sse42 " : string.Empty);
