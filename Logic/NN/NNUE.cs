@@ -8,7 +8,7 @@ namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
     {
-        public const NetworkArchitecture NetArch = NetworkArchitecture.Simple768;
+        public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
         public static readonly bool UseAvx = Avx2.IsSupported;
 
         public static void RefreshAccumulator(Position pos)
