@@ -242,9 +242,9 @@ namespace Lizard.Logic.Util
             sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
 
 #if AVX512
-            sb.Append(Avx512BW.IsSupported ? "Avx512 " : string.Empty);
+            sb.Append(Avx512BW.IsSupported ? "Avx512=(supported, used) " : "Avx512=(unsupported, used!) ");
 #else
-            sb.Append(Avx512BW.IsSupported ? "Avx512 (<- unused!) " : string.Empty);
+            sb.Append(Avx512BW.IsSupported ? "Avx512=(supported, unused!) " : "Avx512=(unsupported, unused) ");
 #endif
 
             sb.Append(Bmi2.IsSupported ? "Bmi2 " : string.Empty);
