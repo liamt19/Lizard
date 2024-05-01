@@ -40,6 +40,24 @@ namespace Lizard.Logic.NN
             target->NeedsRefresh[1] = NeedsRefresh[1];
         }
 
+        public void CopyTo(Accumulator* target, int perspective)
+        {
+            Unsafe.CopyBlock((*target)[perspective], this[perspective], ByteSize);
+            target->NeedsRefresh[perspective] = NeedsRefresh[perspective];
+        }
+
+        public void CopyTo(ref Accumulator target, int perspective)
+        {
+            Unsafe.CopyBlock(target[perspective], this[perspective], ByteSize);
+            target.NeedsRefresh[perspective] = NeedsRefresh[perspective];
+        }
+
+        public void ResetWithBiases(short* biases, uint byteCount)
+        {
+            Unsafe.CopyBlock(White, biases, byteCount);
+            Unsafe.CopyBlock(Black, biases, byteCount);
+        }
+
         public void Dispose()
         {
             NativeMemory.AlignedFree(White);
