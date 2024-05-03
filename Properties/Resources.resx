@@ -121,7 +121,7 @@
   <data name="iguana-wiggle-epoch11" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\iguana-wiggle-epoch11.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
-  <data name="lizard-1024_4_8_gauss-600" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\lizard-1024_4_8_gauss-600.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="L1536x4x8_g75_s20-580" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\L1536x4x8_g75_s20-580.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

@@ -13,7 +13,7 @@ namespace Lizard.Logic.NN
     {
         public const int InputBuckets = 4;
         public const int InputSize = 768;
-        public const int HiddenSize = 1024;
+        public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
         public const int QA = 255;
@@ -27,11 +27,9 @@ namespace Lizard.Logic.NN
         public static readonly int SIMD_CHUNKS_256 = HiddenSize / Vector256<short>.Count;
 
         /// <summary>
-        /// 
-        /// (768x4 -> 1024)x2 -> 8
-        /// 
+        /// (768x4 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "lizard-1024_4_8_gauss-600.bin";
+        public const string NetworkName = "L1536x4x8_g75_s20-580.bin";
 
 
         public static readonly short* FeatureWeights;
