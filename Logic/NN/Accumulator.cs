@@ -12,9 +12,9 @@ namespace Lizard.Logic.NN
         //  as an error when this uses a primary constructor with "size" as a parameter.
         //  https://github.com/dotnet/roslyn/issues/69663
 
-        public const int ByteSize = Simple768.HiddenSize * sizeof(short);
+        public const int ByteSize = Bucketed768.HiddenSize * sizeof(short);
 
-        public static int VectorCount => Simple768.HiddenSize / VSize.Short;
+        public static int VectorCount => Bucketed768.HiddenSize / VSize.Short;
 
         public readonly Vector256<short>* White;
         public readonly Vector256<short>* Black;

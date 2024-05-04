@@ -16,7 +16,7 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int HL = (NNUE.NetArch == NetworkArchitecture.Simple768) ? Simple768.HiddenSize : Bucketed768.HiddenSize;
+        private const int HL = Bucketed768.HiddenSize;
         private const int StopBefore = HL / N;
 
         private const int AVX512_1024HL = 1024 / 32;

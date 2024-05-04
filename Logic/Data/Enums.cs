@@ -83,7 +83,6 @@
 
     public enum NetworkArchitecture
     {
-        Simple768,
         Bucketed768
     }
 
