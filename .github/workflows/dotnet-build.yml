@@ -6,14 +6,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-14]
         include:
           - os: ubuntu-latest
             target: linux-x64
           - os: windows-latest
             target: win-x64
-          - os: macOS-latest
-            target: osx-x64
           - os: macos-14
             target: osx-arm64
       fail-fast: false
