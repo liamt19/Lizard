@@ -6,12 +6,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        os: [ubuntu-latest, windows-latest, macos-13, macos-14]
         include:
           - os: ubuntu-latest
             target: linux-x64
           - os: windows-latest
             target: win-x64
+          - os: macos-13
+            target: osx-x64
           - os: macos-14
             target: osx-arm64
       fail-fast: false
@@ -35,6 +37,10 @@ jobs:
       
     - name: Run Bench
       run: ${{ github.workspace }}/builds/${{ matrix.target }}/Lizard bench
+      
+    - name: Check crashlog.txt
+      if: ${{ failure() }}
+      run: cat ${{ github.workspace }}/builds/${{ matrix.target }}/crashlog.txt
       
     - name: Upload ${{ matrix.target }} Build
       uses: actions/upload-artifact@v3
