@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 
 using Lizard.Logic.Search.History;
+using Lizard.Logic.NN;
 
 namespace Lizard.Logic.Threads
 {
@@ -102,6 +103,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
+        public BucketCache[] CachedBuckets;
+
         public ulong[][] NodeTable;
 
         /// <summary>
@@ -165,6 +168,14 @@ namespace Lizard.Logic.Threads
             Quit = false;
 
             History = new HistoryTable();
+
+            const int CacheSize = Bucketed768.InputBuckets * 2;
+            CachedBuckets = new BucketCache[CacheSize];
+            for (int i = 0; i < CacheSize; i++)
+            {
+                CachedBuckets[i] = new BucketCache();
+            }
+
             NodeTable = new ulong[SquareNB][];
             for (int sq = 0; sq < SquareNB; sq++)
             {
@@ -326,6 +337,8 @@ namespace Lizard.Logic.Threads
                 (ss + i)->PV = (Move*)AlignedAllocZeroed((nuint)(MaxPly * sizeof(Move)), AllocAlignment);
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
+
+            Bucketed768.ResetCaches(this);
 
             for (int sq = 0; sq < SquareNB; sq++)
             {

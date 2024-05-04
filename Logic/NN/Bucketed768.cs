@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
+
+using Lizard.Logic.Threads;
 
 using static Lizard.Logic.NN.FunUnrollThings;
 using static Lizard.Logic.NN.NNUE;
@@ -10,9 +11,9 @@ namespace Lizard.Logic.NN
     [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
-        private const int InputBuckets = 4;
+        public const int InputBuckets = 4;
         public const int InputSize = 768;
-        public const int HiddenSize = 1024;
+        public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
         public const int QA = 255;
@@ -26,11 +27,9 @@ namespace Lizard.Logic.NN
         public static readonly int SIMD_CHUNKS_256 = HiddenSize / Vector256<short>.Count;
 
         /// <summary>
-        /// 
-        /// (768x4 -> 1024)x2 -> 8
-        /// 
+        /// (768x4 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "lizard-1024_4_8_gauss-600.bin";
+        public const string NetworkName = "L1536x4x8_g75_s20-580.bin";
 
 
         public static readonly short* FeatureWeights;
@@ -46,7 +45,7 @@ namespace Lizard.Logic.NN
 
         public static long ExpectedNetworkSize => (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
 
-        private static readonly int[] KingBuckets =
+        private static ReadOnlySpan<int> KingBuckets =>
         [
             0, 0, 1, 1, 5, 5, 4, 4,
             2, 2, 2, 2, 6, 6, 6, 6,
@@ -57,6 +56,8 @@ namespace Lizard.Logic.NN
             3, 3, 3, 3, 7, 7, 7, 7,
             3, 3, 3, 3, 7, 7, 7, 7,
         ];
+
+        public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
 
         static Bucketed768()
         {
@@ -138,20 +139,20 @@ namespace Lizard.Logic.NN
 
         public static void RefreshAccumulator(Position pos)
         {
-            RefreshAccumulatorPerspective(pos, White);
-            RefreshAccumulatorPerspective(pos, Black);
+            RefreshAccumulatorPerspectiveFull(pos, White);
+            RefreshAccumulatorPerspectiveFull(pos, Black);
         }
 
-        public static void RefreshAccumulatorPerspective(Position pos, int perspective)
+        public static void RefreshAccumulatorPerspectiveFull(Position pos, int perspective)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var ourAccumulation = (Vector512<short>*) accumulator[perspective];
+            var ourAccumulation = (short*)accumulator[perspective];
             Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            accumulator.NeedsRefresh[perspective] = false;
 
             int ourKing = pos.State->KingSquares[perspective];
-
             ulong occ = bb.Occupancy;
             while (occ != 0)
             {
@@ -162,14 +163,67 @@ namespace Lizard.Logic.NN
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
                 var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
+                UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+            }
 
-                for (int i = 0; i < SIMD_CHUNKS_512; i++)
+            if (pos.Owner.CachedBuckets == null)
+            {
+                //  TODO: Upon SearchThread init, this isn't created yet :(
+                return;
+            }
+
+            ref BucketCache cache = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
+            ref Bitboard entryBB = ref cache.Boards[perspective];
+            ref Accumulator entryAcc = ref cache.Accumulator;
+
+            accumulator.CopyTo(ref entryAcc, perspective);
+            bb.CopyTo(ref entryBB);
+        }
+
+
+        public static void RefreshAccumulatorPerspective(Position pos, int perspective)
+        {
+            ref Accumulator accumulator = ref *pos.State->Accumulator;
+            ref Bitboard bb = ref pos.bb;
+
+            int ourKing = pos.State->KingSquares[perspective];
+            int thisBucket = KingBuckets[ourKing];
+
+            ref BucketCache rtEntry = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
+            ref Bitboard entryBB = ref rtEntry.Boards[perspective];
+            ref Accumulator entryAcc = ref rtEntry.Accumulator;
+
+            var ourAccumulation = (short*)entryAcc[perspective];
+            accumulator.NeedsRefresh[perspective] = false;
+
+            for (int pc = 0; pc < ColorNB; pc++)
+            {
+                for (int pt = 0; pt < PieceNB; pt++)
                 {
-                    ourAccumulation[i] = Vector512.Add(ourAccumulation[i], ourWeights[i]);
+                    ulong prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
+                    ulong curr =      bb.Pieces[pt] &      bb.Colors[pc];
+
+                    ulong added   = curr & ~prev;
+                    ulong removed = prev & ~curr;
+
+                    while (added != 0)
+                    {
+                        int sq = poplsb(&added);
+                        int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
+                        UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+                    }
+
+                    while (removed != 0)
+                    {
+                        int sq = poplsb(&removed);
+                        int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
+                        UnrollSubtract(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+                    }
                 }
             }
 
-            accumulator.NeedsRefresh[perspective] = false;
+            entryAcc.CopyTo(ref accumulator, perspective);
+            bb.CopyTo(ref entryBB);
         }
 
         public static int GetEvaluation(Position pos)
@@ -387,6 +441,17 @@ namespace Lizard.Logic.NN
                            (FeatureWeights + bFrom),
                            (FeatureWeights + bTo));
                 }
+            }
+        }
+
+        public static void ResetCaches(SearchThread td)
+        {
+            for (int bIdx = 0; bIdx < td.CachedBuckets.Length; bIdx++)
+            {
+                ref BucketCache bc = ref td.CachedBuckets[bIdx];
+                bc.Accumulator.ResetWithBiases(FeatureBiases, sizeof(short) * HiddenSize);
+                bc.Boards[White].Reset();
+                bc.Boards[Black].Reset();
             }
         }
     }

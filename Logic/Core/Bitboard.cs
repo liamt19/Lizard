@@ -76,6 +76,19 @@
             }
         }
 
+        public void CopyTo(ref Bitboard other)
+        {
+            fixed (ulong* srcPieces = Pieces, dstPieces = other.Pieces)
+            {
+                Unsafe.CopyBlock(dstPieces, srcPieces, sizeof(ulong) * PieceNB);
+            }
+
+            fixed (ulong* srcColors = Colors, dstColors = other.Colors)
+            {
+                Unsafe.CopyBlock(dstColors, srcColors, sizeof(ulong) * ColorNB);
+            }
+        }
+
         /// <summary>
         /// Returns true if White or Black has a piece on <paramref name="idx"/>
         /// </summary>

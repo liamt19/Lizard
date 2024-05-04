@@ -8,16 +8,12 @@ namespace Lizard.Logic.NN
 {
     public static unsafe class NNUE
     {
-        public const NetworkArchitecture NetArch = NetworkArchitecture.Simple768;
+        public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
         public static readonly bool UseAvx = Avx2.IsSupported;
 
         public static void RefreshAccumulator(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Simple768)
-            {
-                Simple768.RefreshAccumulator(pos);
-            }
-            else if (NetArch == NetworkArchitecture.Bucketed768)
+            if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.RefreshAccumulator(pos);
             }
@@ -25,18 +21,7 @@ namespace Lizard.Logic.NN
 
         public static short GetEvaluation(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Simple768)
-            {
-                if (UseAvx)
-                {
-                    return (short)Simple768.GetEvaluationUnrolled512(pos);
-                }
-                else
-                {
-                    return (short)Simple768.GetEvaluationFallback(pos);
-                }
-            }
-            else if (NetArch == NetworkArchitecture.Bucketed768)
+            if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 if (UseAvx)
                 {
@@ -52,11 +37,7 @@ namespace Lizard.Logic.NN
 
         public static void MakeMove(Position pos, Move m)
         {
-            if (NetArch == NetworkArchitecture.Simple768)
-            {
-                Simple768.MakeMove(pos, m);
-            }
-            else if (NetArch == NetworkArchitecture.Bucketed768)
+            if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.MakeMove(pos, m);
             }
@@ -71,11 +52,7 @@ namespace Lizard.Logic.NN
         /// </summary>
         public static void LoadNewNetwork(string networkToLoad)
         {
-            if (NetArch == NetworkArchitecture.Simple768)
-            {
-                Simple768.Initialize(networkToLoad, exitIfFail: false);
-            }
-            else if (NetArch == NetworkArchitecture.Bucketed768)
+            if (NetArch == NetworkArchitecture.Bucketed768)
             {
                 Bucketed768.Initialize(networkToLoad, exitIfFail: false);
             }
@@ -97,8 +74,7 @@ namespace Lizard.Logic.NN
             }
             else
             {
-                var NetworkName = NetArch == NetworkArchitecture.Simple768 ? Simple768.NetworkName :
-                                                                             Bucketed768.NetworkName;
+                var NetworkName = Bucketed768.NetworkName;
 
                 //  Just load the default network
                 networkToLoad = NetworkName;

@@ -12,9 +12,9 @@ namespace Lizard.Logic.NN
         //  as an error when this uses a primary constructor with "size" as a parameter.
         //  https://github.com/dotnet/roslyn/issues/69663
 
-        public const int ByteSize = Simple768.HiddenSize * sizeof(short);
+        public const int ByteSize = Bucketed768.HiddenSize * sizeof(short);
 
-        public static int VectorCount => Simple768.HiddenSize / VSize.Short;
+        public static int VectorCount => Bucketed768.HiddenSize / VSize.Short;
 
         public readonly Vector256<short>* White;
         public readonly Vector256<short>* Black;
@@ -38,6 +38,24 @@ namespace Lizard.Logic.NN
 
             target->NeedsRefresh[0] = NeedsRefresh[0];
             target->NeedsRefresh[1] = NeedsRefresh[1];
+        }
+
+        public void CopyTo(Accumulator* target, int perspective)
+        {
+            Unsafe.CopyBlock((*target)[perspective], this[perspective], ByteSize);
+            target->NeedsRefresh[perspective] = NeedsRefresh[perspective];
+        }
+
+        public void CopyTo(ref Accumulator target, int perspective)
+        {
+            Unsafe.CopyBlock(target[perspective], this[perspective], ByteSize);
+            target.NeedsRefresh[perspective] = NeedsRefresh[perspective];
+        }
+
+        public void ResetWithBiases(short* biases, uint byteCount)
+        {
+            Unsafe.CopyBlock(White, biases, byteCount);
+            Unsafe.CopyBlock(Black, biases, byteCount);
         }
 
         public void Dispose()
