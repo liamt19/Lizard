@@ -476,7 +476,7 @@ namespace Lizard.Logic.NN
             }
 
             //  Save weights the same way bullet does
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+            TransposeLayerWeights((short*)LayerWeights, OutputBuckets, HiddenSize * 2);
 
             using FileStream fs = new FileStream(dst, FileMode.Create);
             using BinaryWriter br = new BinaryWriter(fs);
