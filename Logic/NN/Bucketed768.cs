@@ -454,5 +454,55 @@ namespace Lizard.Logic.NN
                 bc.Boards[Black].Reset();
             }
         }
+
+        public static void ApplyTuneAndSave(string src = @"D:\Programming\Lizard\deltas.txt", string dst = @"D:\Programming\Lizard\retuned.bin")
+        {
+            var lines = File.ReadAllLines(src);
+            foreach (var line in lines)
+            {
+                var splits = line.Split(new[] { ',', '_' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                int idx = int.Parse(splits[1]);
+                float val = float.Parse(splits[2]);
+
+                if (splits[0] == "ftb")
+                {
+                    FeatureBiases[idx] = (short)(val * QA);
+                }
+                else
+                {
+                    LayerBiases[idx] = (short)(val * QA * QB);
+                }
+            }
+
+            //  Save weights the same way bullet does
+            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+
+            using FileStream fs = new FileStream(dst, FileMode.Create);
+            using BinaryWriter br = new BinaryWriter(fs);
+
+            for (int i = 0; i < FeatureWeightElements; i++)
+            {
+                br.Write(FeatureWeights[i]);
+            }
+
+            for (int i = 0; i < FeatureBiasElements; i++)
+            {
+                br.Write(FeatureBiases[i]);
+            }
+
+            for (int i = 0; i < LayerWeightElements; i++)
+            {
+                br.Write(LayerWeights[i]);
+            }
+
+            for (int i = 0; i < LayerBiasElements; i++)
+            {
+                br.Write(LayerBiases[i]);
+            }
+
+            //  Then put them back
+            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+        }
     }
 }

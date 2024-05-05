@@ -146,6 +146,10 @@ namespace Lizard
                 {
                     HandleLoadCommand(input);
                 }
+                else if (input.StartsWithIgnoreCase("savetune"))
+                {
+                    Bucketed768.ApplyTuneAndSave();
+                }
                 else if (input.StartsWithIgnoreCase("trace"))
                 {
                     HandleTraceCommand(input);
