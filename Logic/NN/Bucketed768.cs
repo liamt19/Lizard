@@ -29,7 +29,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x4 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x4x8_g75_s20-580.bin";
+        public const string NetworkName = "L1536x4x8_g75_s20-580-params.bin";
 
 
         public static readonly short* FeatureWeights;
@@ -38,10 +38,10 @@ namespace Lizard.Logic.NN
         public static readonly short* LayerBiases;
 
         private const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
-        private const int FeatureBiasElements = HiddenSize;
+        public const int FeatureBiasElements = HiddenSize;
 
         private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
-        private const int LayerBiasElements = OutputBuckets;
+        public const int LayerBiasElements = OutputBuckets;
 
         public static long ExpectedNetworkSize => (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
 
@@ -103,22 +103,22 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < FeatureWeightElements; i++)
             {
-                FeatureWeights[i] = br.ReadInt16();
+                FeatureWeights[i] = (short)(br.ReadSingle() * QA);
             }
 
             for (int i = 0; i < FeatureBiasElements; i++)
             {
-                FeatureBiases[i] = br.ReadInt16();
+                FeatureBiases[i] = (short)(br.ReadSingle() * QA);
             }
 
             for (int i = 0; i < LayerWeightElements; i++)
             {
-                LayerWeights[i] = br.ReadInt16();
+                LayerWeights[i] = (short)(br.ReadSingle() * QB);
             }
 
             for (int i = 0; i < LayerBiasElements; i++)
             {
-                LayerBiases[i] = br.ReadInt16();
+                LayerBiases[i] = (short)(br.ReadSingle() * QA * QB);
             }
 
             //  These weights are stored in column major order, but they are easier to use in row major order.

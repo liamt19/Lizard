@@ -1,4 +1,6 @@
 ﻿using System.Reflection;
+using System.Security.AccessControl;
+using System.Xml.Linq;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
@@ -145,6 +147,9 @@ namespace Lizard.Logic.UCI
             {
                 SendString(Options[k].ToString());
             }
+
+            SendNetworkTuneItems();
+
             SendString("uciok");
 
             LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
@@ -617,6 +622,43 @@ namespace Lizard.Logic.UCI
                 }
             }
 
+            try
+            {
+                var splits = optName.Split('_');
+                short* layer;
+                int quant;
+                switch (splits[0])
+                {
+                    case "ftw":
+                        layer = Bucketed768.FeatureWeights;
+                        quant = Bucketed768.QA;
+                        break;
+                    
+                    case "ftb":
+                        layer = Bucketed768.FeatureBiases;
+                        quant = Bucketed768.QA;
+                        break;
+                    
+                    case "fcw":
+                        layer = Bucketed768.LayerWeights;
+                        quant = Bucketed768.QB;
+                        break;
+                    
+                    default:
+                    case "fcb":
+                        layer = Bucketed768.LayerBiases;
+                        quant = Bucketed768.QA * Bucketed768.QB;
+                        break;
+                };
+
+
+                int offset = int.Parse(splits[1]);
+                float newValue = float.Parse(optValue);
+
+                layer[offset] = (short)(newValue * quant);
+            }
+            catch (Exception e) { Log(e.ToString()); }
+
             LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
         }
 
@@ -729,6 +771,28 @@ namespace Lizard.Logic.UCI
                 var opt = Options[optName];
                 SendString(opt.GetSPSAFormat());
             }
+
+            const float maxVal = 1.98f;
+            const float minVal = -maxVal;
+
+            const float Granularity = 20;
+            const float step = 0.00495f;
+
+            for (int i = 0; i < Bucketed768.FeatureBiasElements; i++)
+            {
+                string name = $"ftb_{i}";
+                float defaultVal = (float)Bucketed768.FeatureBiases[i] / (Bucketed768.QA);
+
+                SendString($"{name}, float, {defaultVal}, {minVal}, {maxVal}, {step}, 0.002");
+            }
+
+            for (int i = 0; i < Bucketed768.LayerBiasElements; i++)
+            {
+                string name = $"fcb_{i}";
+                float defaultVal = (float)Bucketed768.LayerBiases[i] / (Bucketed768.QA * Bucketed768.QB);
+
+                SendString($"{name}, float, {defaultVal}, {minVal}, {maxVal}, {step / 4}, 0.002");
+            }
         }
 
         private static void SetSPSAOutputParams()
@@ -745,6 +809,28 @@ namespace Lizard.Logic.UCI
                 var splits = line.Split(", ");
                 Options[splits[0]].DefaultValue = splits[1];
                 Options[splits[0]].RefreshBackingField();
+            }
+        }
+
+        private static void SendNetworkTuneItems()
+        {
+            const float maxVal = 1.98f;
+            const float minVal = -maxVal;
+
+            for (int i = 0; i < Bucketed768.LayerBiasElements; i++)
+            {
+                string name = $"fcb_{i}";
+                float defaultVal = (float)Bucketed768.LayerBiases[i] / (Bucketed768.QA * Bucketed768.QB);
+
+                SendString($"option name {name} type string default {defaultVal} min {minVal} max {maxVal}");
+            }
+
+            for (int i = 0; i < Bucketed768.FeatureBiasElements; i++)
+            {
+                string name = $"ftb_{i}";
+                float defaultVal = (float)Bucketed768.FeatureBiases[i] / (Bucketed768.QA);
+
+                SendString($"option name {name} type string default {defaultVal} min {minVal} max {maxVal}");
             }
         }
     }
