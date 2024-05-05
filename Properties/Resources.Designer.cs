@@ -63,9 +63,9 @@ namespace Lizard.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] L1536x4x8_g75_s20_580 {
+        public static byte[] L1536x4x8_g75_s20_580_params {
             get {
-                object obj = ResourceManager.GetObject("L1536x4x8_g75_s20-580", resourceCulture);
+                object obj = ResourceManager.GetObject("L1536x4x8_g75_s20-580-params", resourceCulture);
                 return ((byte[])(obj));
             }
         }
@@ -73,9 +73,9 @@ namespace Lizard.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] L1536x4x8_g75_s20_580_params {
+        public static byte[] L1536x4x8_g75_s20_580_retuned {
             get {
-                object obj = ResourceManager.GetObject("L1536x4x8_g75_s20-580-params", resourceCulture);
+                object obj = ResourceManager.GetObject("L1536x4x8_g75_s20-580-retuned", resourceCulture);
                 return ((byte[])(obj));
             }
         }
