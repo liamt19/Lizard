@@ -37,10 +37,10 @@ namespace Lizard.Logic.NN
         public static readonly short* LayerWeights;
         public static readonly short* LayerBiases;
 
-        private const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
+        public const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
         public const int FeatureBiasElements = HiddenSize;
 
-        private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
+        public const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         public const int LayerBiasElements = OutputBuckets;
 
         public static long ExpectedNetworkSize => (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
@@ -469,7 +469,11 @@ namespace Lizard.Logic.NN
                 {
                     FeatureBiases[idx] = (short)(val * QA);
                 }
-                else
+                else if (splits[0] == "fcw")
+                {
+                    LayerWeights[idx] = (short)(val * QB);
+                }
+                else if (splits[0] == "fcb")
                 {
                     LayerBiases[idx] = (short)(val * QA * QB);
                 }

@@ -791,7 +791,15 @@ namespace Lizard.Logic.UCI
                 string name = $"fcb_{i}";
                 float defaultVal = (float)Bucketed768.LayerBiases[i] / (Bucketed768.QA * Bucketed768.QB);
 
-                SendString($"{name}, float, {defaultVal}, {minVal}, {maxVal}, {step / 4}, 0.002");
+                SendString($"{name}, float, {defaultVal}, {minVal}, {maxVal}, {step / 2}, 0.002");
+            }
+
+            for (int i = 0; i < Bucketed768.LayerWeightElements; i++)
+            {
+                string name = $"fcw_{i}";
+                float defaultVal = (float)Bucketed768.LayerWeights[i] / (Bucketed768.QB);
+
+                SendString($"{name}, float, {defaultVal}, {minVal}, {maxVal}, {step / 2}, 0.002");
             }
         }
 
@@ -817,6 +825,15 @@ namespace Lizard.Logic.UCI
             const float maxVal = 1.98f;
             const float minVal = -maxVal;
 
+
+            for (int i = 0; i < Bucketed768.FeatureBiasElements; i++)
+            {
+                string name = $"ftb_{i}";
+                float defaultVal = (float)Bucketed768.FeatureBiases[i] / (Bucketed768.QA);
+
+                SendString($"option name {name} type string default {defaultVal} min {minVal} max {maxVal}");
+            }
+
             for (int i = 0; i < Bucketed768.LayerBiasElements; i++)
             {
                 string name = $"fcb_{i}";
@@ -825,10 +842,10 @@ namespace Lizard.Logic.UCI
                 SendString($"option name {name} type string default {defaultVal} min {minVal} max {maxVal}");
             }
 
-            for (int i = 0; i < Bucketed768.FeatureBiasElements; i++)
+            for (int i = 0; i < Bucketed768.LayerWeightElements; i++)
             {
-                string name = $"ftb_{i}";
-                float defaultVal = (float)Bucketed768.FeatureBiases[i] / (Bucketed768.QA);
+                string name = $"fcw_{i}";
+                float defaultVal = (float)Bucketed768.LayerWeights[i] / (Bucketed768.QB);
 
                 SendString($"option name {name} type string default {defaultVal} min {minVal} max {maxVal}");
             }
