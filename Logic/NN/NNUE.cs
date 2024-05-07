@@ -1,4 +1,5 @@
 ﻿
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -13,34 +14,17 @@ namespace Lizard.Logic.NN
 
         public static void RefreshAccumulator(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.RefreshAccumulator(pos);
-            }
+            Bucketed768.RefreshAccumulator(pos);
         }
 
         public static short GetEvaluation(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                if (UseAvx)
-                {
-                    return (short)Bucketed768.GetEvaluationUnrolled512(pos);
-                }
-                else
-                {
-                    return (short)Bucketed768.GetEvaluation(pos);
-                }
-            }
-
+            return (short)Bucketed768.GetEvaluation(pos);
         }
 
         public static void MakeMove(Position pos, Move m)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.MakeMove(pos, m);
-            }
+            Bucketed768.MakeMove(pos, m);
         }
 
 
@@ -52,10 +36,7 @@ namespace Lizard.Logic.NN
         /// </summary>
         public static void LoadNewNetwork(string networkToLoad)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.Initialize(networkToLoad, exitIfFail: false);
-            }
+            Bucketed768.Initialize(networkToLoad, exitIfFail: false);
         }
 
 
@@ -130,23 +111,25 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// Transposes the weights stored in <paramref name="block"/>
         /// </summary>
-        public static void TransposeLayerWeights(short* block, int columnLength, int rowLength)
+        public static void TransposeLayerWeights<T>(T* block, int columnLength, int rowLength)
         {
-            short* temp = stackalloc short[columnLength * rowLength];
-            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * rowLength));
+            T* temp = (T*)NativeMemory.Alloc((nuint)sizeof(T) * (nuint)(columnLength * rowLength));
+            Unsafe.CopyBlock(temp, block, (uint)(sizeof(T) * columnLength * rowLength));
 
             for (int bucket = 0; bucket < rowLength; bucket++)
             {
-                short* thisBucket = block + (bucket * columnLength);
+                T* thisBucket = block + (bucket * columnLength);
 
                 for (int i = 0; i < columnLength; i++)
                 {
                     thisBucket[i] = temp[(rowLength * i) + bucket];
                 }
             }
+
+            NativeMemory.Free(temp);
         }
 
-        public static void NetStats(string layerName, void* layer, int n)
+        public static void NetStats(string layerName, short* layer, int n)
         {
             long avg = 0;
             int max = int.MinValue;
@@ -162,6 +145,23 @@ namespace Lizard.Logic.NN
                 {
                     min = ptr[i];
                 }
+                avg += ptr[i];
+            }
+
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+        }
+
+
+        public static void NetStats(string layerName, float* layer, int n)
+        {
+            var avg = 0.0f;
+            var max = float.MinValue;
+            var min = float.MaxValue;
+            float* ptr = (float*)layer;
+            for (int i = 0; i < n; i++)
+            {
+                max = Math.Max(ptr[i], max);
+                min = Math.Min(ptr[i], max);
                 avg += ptr[i];
             }
 
