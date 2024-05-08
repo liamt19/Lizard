@@ -63,9 +63,9 @@ namespace Lizard.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        public static byte[] morelayers_8_32_8_relu_140_params {
+        public static byte[] morelayers_8_32_8_relu_250_params {
             get {
-                object obj = ResourceManager.GetObject("morelayers_8_32_8-relu-140-params", resourceCulture);
+                object obj = ResourceManager.GetObject("morelayers_8_32_8-relu-250-params", resourceCulture);
                 return ((byte[])(obj));
             }
         }

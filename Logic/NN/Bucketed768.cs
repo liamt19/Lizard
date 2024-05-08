@@ -42,7 +42,7 @@ namespace Lizard.Logic.NN
         public static readonly int L3_CHUNK_SIZE = 1;
 #endif
 
-        public const string NetworkName = "morelayers_8_32_8-relu-140-params.bin";
+        public const string NetworkName = "morelayers_8_32_8-relu-250-params.bin";
 
         private static readonly UQNetContainer UQNet;
         public static readonly NetContainer<short, float> Net;
