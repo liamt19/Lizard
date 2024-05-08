@@ -126,26 +126,7 @@ namespace Lizard.Logic.Magic
                 NativeMemory.AlignedFree(FancyBishopMagics);
             }
 
-            //Initialize();
         }
-
-        private static void Initialize()
-        {
-            if (UsePext)
-            {
-                RookTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
-                BishopTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
-                FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
-                FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
-            }
-            else
-            {
-                GenAllBlockerBoards();
-                RookMagics = InitializeMagics(Piece.Rook);
-                BishopMagics = InitializeMagics(Piece.Bishop);
-            }
-        }
-
 
 
         /// <summary>

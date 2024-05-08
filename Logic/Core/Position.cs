@@ -8,24 +8,12 @@ namespace Lizard.Logic.Core
 {
     public unsafe partial class Position
     {
-        /// <summary>
-        /// This Position's <see cref="Bitboard"/>, which contains masks for each type of piece and player color.
-        /// </summary>
         public Bitboard bb;
-
-        /// <summary>
-        /// The address of <see cref="bb"/>'s memory block, since C# doesn't like taking the address of structs.
-        /// </summary>
-        private readonly nint _bbBlock;
 
         /// <summary>
         /// The second number in the FEN, which starts at 1 and increases every time black moves.
         /// </summary>
         public int FullMoves = 1;
-
-        /// <summary>
-        /// Set to the color of the player whose turn it is to move.
-        /// </summary>
         public int ToMove;
 
         /// <summary>
@@ -33,18 +21,7 @@ namespace Lizard.Logic.Core
         /// </summary>
         public int[] MaterialCountNonPawn;
 
-        /// <summary>
-        /// Set to true if the side to move is in check from a single piece.
-        /// <br></br>
-        /// If they are, the piece giving check is on the square <see cref="idxChecker"/>.
-        /// </summary>
         public bool InCheck;
-
-        /// <summary>
-        /// Set to true if the side to move is in check from two pieces.
-        /// <br></br>
-        /// If they are, then one of the pieces giving check is on the square <see cref="idxChecker"/>.
-        /// </summary>
         public bool InDoubleCheck;
 
         /// <summary>
@@ -53,9 +30,7 @@ namespace Lizard.Logic.Core
         /// </summary>
         public int idxChecker;
 
-        /// <summary>
-        /// Returns true if the side to move is either in check or in double check.
-        /// </summary>
+
         public bool Checked => InCheck || InDoubleCheck;
 
         public ulong Hash => State->Hash;
@@ -65,9 +40,9 @@ namespace Lizard.Logic.Core
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
         /// If you find yourself in a game exceeding 2047 moves, go outside.
         /// </summary>
-        public const int StateStackSize = 2048;
+        private const int StateStackSize = 2048;
 
-        private readonly nint _stateBlock;
+        private readonly StateInfo* _stateBlock;
 
         /// <summary>
         /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
@@ -75,41 +50,19 @@ namespace Lizard.Logic.Core
         private readonly StateInfo* _SentinelStart;
         private readonly StateInfo* _SentinelEnd;
 
-        /// <summary>
-        /// The initial StateInfo.
-        /// </summary>
+
         public StateInfo* StartingState => _SentinelStart;
 
         /// <summary>
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
         /// </summary>
         public StateInfo* State;
-
-        /// <summary>
-        /// The StateInfo before the current one, or NULL if the current StateInfo is the first one, <see cref="_SentinelStart"/>
-        /// </summary>
         public StateInfo* PreviousState => State == _SentinelStart ? null : (State - 1);
-
-        /// <summary>
-        /// The StateInfo after the current one, which hopefully is within the bounds of <see cref="StateStackSize"/>
-        /// </summary>
-        public StateInfo* NextState
-        {
-            get
-            {
-                if (State == _SentinelEnd)
-                {
-                    Log("ERROR: Current State is _SentinelEnd, and getting NextState is OOB!");
-                    return null;
-                }
-
-                return State + 1;
-            }
-        }
+        public StateInfo* NextState => (State + 1);
 
 
 
-        private readonly nint _accumulatorBlock = nint.Zero;
+        private readonly Accumulator* _accumulatorBlock;
 
 
         /// <summary>
@@ -148,7 +101,7 @@ namespace Lizard.Logic.Core
         /// <br></br>
         /// If <paramref name="owner"/> is <see langword="null"/> then <paramref name="createAccumulators"/> should be false.
         /// </summary>
-        public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread? owner = null)
+        public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread owner = null)
         {
             MaterialCountNonPawn = new int[2];
             CastlingRookSquares = new int[(int)CastlingStatus.All];
@@ -158,31 +111,24 @@ namespace Lizard.Logic.Core
             this.UpdateNN = createAccumulators;
             this.Owner = owner;
 
-            _bbBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Bitboard) * 1), AllocAlignment);
-            this.bb = *(Bitboard*)_bbBlock;
+            this.bb = new Bitboard();
 
-            _stateBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
-            StateInfo* StateStack = (StateInfo*)_stateBlock;
+            _stateBlock = (StateInfo*)AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
 
-            _SentinelStart = &StateStack[0];
-            _SentinelEnd = &StateStack[StateStackSize - 1];
-            State = &StateStack[0];
+            _SentinelStart = &_stateBlock[0];
+            _SentinelEnd = &_stateBlock[StateStackSize - 1];
+            State = &_stateBlock[0];
 
             if (UpdateNN)
             {
                 //  Create the accumulators now if we need to.
-                //  This is actually a rather significant memory investment (each AccumulatorPSQT needs 6,216 = ~6kb of memory)
+                //  This is actually a rather significant memory investment
                 //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
-                _accumulatorBlock = (nint)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
-                Accumulator* accs = (Accumulator*)_accumulatorBlock;
+                _accumulatorBlock = (Accumulator*)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    (StateStack + i)->Accumulator = accs + i;
-                }
-
-                for (int i = 0; i < StateStackSize; i++)
-                {
-                    *(StateStack + i)->Accumulator = new Accumulator();
+                    (_stateBlock + i)->Accumulator = _accumulatorBlock + i;
+                    *(_stateBlock + i)->Accumulator = new Accumulator();
                 }
             }
 
@@ -208,8 +154,6 @@ namespace Lizard.Logic.Core
         /// </summary>
         ~Position()
         {
-            NativeMemory.AlignedFree((void*)_bbBlock);
-
             if (UpdateNN)
             {
                 //  Free each accumulator, then the block
@@ -309,25 +253,15 @@ namespace Lizard.Logic.Core
             int moveTo = move.To;
 
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
-            int ourColor = bb.GetColorAtIndex(moveFrom);
+            int ourColor = ToMove;
 
             int theirPiece = bb.GetPieceAtIndex(moveTo);
             int theirColor = Not(ourColor);
 
-            if (EnableAssertions)
-            {
-                Assert(ourPiece != None,
-                    $"Move {move.ToString()} in FEN '{GetFEN()}' doesn't have a piece on the From square!");
-
-                Assert(theirPiece == None || (ourColor != bb.GetColorAtIndex(moveTo) || move.Castle),
-                    $"Move {move.ToString(this)} in FEN '{GetFEN()}' is trying to capture our own {PieceToString(theirPiece)} on {IndexToString(moveTo)}");
-
-                Assert(theirPiece != King,
-                    $"Move {move.ToString(this)} in FEN '{GetFEN()}' is trying to capture {ColorToString(bb.GetColorAtIndex(moveTo))}'s king on {IndexToString(moveTo)}");
-
-                Assert(ourColor == ToMove,
-                    $"Move {move.ToString(this)} in FEN '{GetFEN()}' is trying to move a {ColorToString(ourColor)} piece when it is {ColorToString(ToMove)}'s turn to move!");
-            }
+            Assert(ourPiece != None,   $"Move {move.ToString()} in FEN '{GetFEN()}' doesn't have a piece on the From square!");
+            Assert(theirPiece != King, $"Move {move.ToString()} in FEN '{GetFEN()}' captures a king!");
+            Assert(theirPiece == None || (ourColor != bb.GetColorAtIndex(moveTo) || move.Castle),
+                $"Move {move.ToString()} in FEN '{GetFEN()}' captures our own {PieceToString(theirPiece)} on {IndexToString(moveTo)}");
 
             if (ourPiece == King)
             {
@@ -708,20 +642,11 @@ namespace Lizard.Logic.Core
 
             if (bb.GetPieceAtIndex(to) != None)
             {
-                if (EnableAssertions)
-                {
-                    Assert(bb.GetPieceAtIndex(to) != None,
-                        "HashAfter(" + m + ") in FEN '" + GetFEN() + "' is a capture move, " +
-                        "but there isn't a piece on " + IndexToString(to) + " to be captured!");
-                }
+                Assert(bb.GetPieceAtIndex(to) != None, $"HashAfter({m}) in FEN {GetFEN()} is a capture move but {IndexToString(to)} is empty");
                 hash.ZobristToggleSquare(Not(us), bb.GetPieceAtIndex(to), to);
             }
 
-            if (EnableAssertions)
-            {
-                Assert(ourPiece != None,
-                    "HashAfter(" + m + ") in FEN '" + GetFEN() + "' doesn't have a piece on its From square!");
-            }
+            Assert(ourPiece != None, $"HashAfter({m}) in FEN {GetFEN()} doesn't have a piece on its From square!");
 
             hash.ZobristMove(from, to, us, ourPiece);
             hash.ZobristChangeToMove();

@@ -1,13 +1,6 @@
-﻿
-#define JB
-#undef JB
-
-using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Text;
+﻿using System.Text;
 
 using Lizard.Logic.NN;
-using Lizard.Logic.Search;
 using Lizard.Logic.Threads;
 
 namespace Lizard
@@ -136,7 +129,7 @@ namespace Lizard
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
-                    Log("Simple768 Eval: " + NNUE.GetEvaluation(p));
+                    Log("Bucketed768 Eval: " + NNUE.GetEvaluation(p));
                 }
                 else if (input.EqualsIgnoreCase("eval all"))
                 {
@@ -168,10 +161,6 @@ namespace Lizard
                 else if (input.StartsWithIgnoreCase("bench"))
                 {
                     HandleBenchCommand(input);
-                }
-                else if (input.EqualsIgnoreCase("gc"))
-                {
-                    ForceGC();
                 }
                 else if (input.EqualsIgnoreCase("compiler"))
                 {

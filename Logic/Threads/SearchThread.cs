@@ -516,13 +516,7 @@ namespace Lizard.Logic.Threads
 
             if (disposing)
             {
-                if (EnableAssertions)
-                {
-                    Assert(Searching == false,
-                        "The search thread '" + ToString() + "' had its Dispose(" + disposing + ") method called " +
-                        "while the thread's Searching field was " + Searching + "! " +
-                        "A thread may only be disposed if it isn't currently in a search.");
-                }
+                Assert(Searching == false, "The thread {ToString()} had its Dispose({disposing}) method called Searching was {Searching}!");
 
                 //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
                 Quit = true;

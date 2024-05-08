@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Design", "CA1031:Do not catch general exception types", Justification = "These aren't handled in an exception-specific way", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
 [assembly: SuppressMessage("Design", "CA1051:Do not declare visible instance fields", Justification = "This is a fair point but I don't care", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
 [assembly: SuppressMessage("Design", "CA1062:Validate arguments of public methods", Justification = "Validate them yourself, you lazy calling method", Scope = "namespaceanddescendants", Target = "~N:Lizard.Logic")]
+[assembly: SuppressMessage("Design", "CA1040:Avoid empty interfaces", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 
 
 
@@ -29,3 +30,9 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Usage", "CA2211:Non-constant fields should not be visible", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 [assembly: SuppressMessage("Usage", "CA2201:Do not raise reserved exception types", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+
+
+
+[assembly: SuppressMessage("Maintainability", "CA1508:Avoid dead conditional code", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
+
+#pragma warning disable CS8625

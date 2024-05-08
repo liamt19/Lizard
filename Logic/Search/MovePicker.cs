@@ -11,16 +11,12 @@ namespace Lizard.Logic.Search
     {
         static MovePicker()
         {
-            //  Ensure proper offsets for Killer0 and Killer1 in a SearchStackEntry
-            if (EnableAssertions)
-            {
-                int off0 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer0").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
-                int off1 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer1").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
+            int off0 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer0").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
+            int off1 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer1").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
 
-                Assert(off0 == off1 - sizeof(ScoredMove),
-                    "The offset of Killer1 must be exactly 8 bytes after Killer0. " +
-                    "Killer0 is at " + off0 + ", and Killer1 is at " + off1);
-            }
+            Assert(off0 == off1 - sizeof(ScoredMove),
+                $"The offset of Killer1 must be exactly 8 bytes after Killer0. " +
+                 "Killer0 is at {off0}, and Killer1 is at {off1}");
         }
 
         public string StageName
@@ -186,42 +182,6 @@ namespace Lizard.Logic.Search
                     genSize = pos.GenAll<GenLoud>(currentMove);
 
                     lastMove = currentMove + genSize;
-
-                    if (EnableAssertions)
-                    {
-                        for (ScoredMove* iter = currentMove; iter != lastMove; iter++)
-                        {
-                            Move m = iter->Move;
-                            if (pos.bb.GetPieceAtIndex(m.To) != None)
-                            {
-                                Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[m.To]) != 0,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "' " +
-                                    "marked as a capture, but " + ColorToString(Not(pos.ToMove)) + " doesn't have a piece on " + IndexToString(m.To) + "!");
-                            }
-                            else if (m.EnPassant)
-                            {
-                                int up = ShiftUpDir(pos.ToMove);
-                                Assert(m.To == pos.State->EPSquare, "GenAll<GenLoud> generated an en passant move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "but the move's To square should be " + IndexToString(pos.State->EPSquare) + ", not " + IndexToString(m.To));
-
-                                int epPawnSquare = m.To - up;
-
-                                Assert((pos.bb.Colors[Not(pos.ToMove)] & SquareBB[epPawnSquare]) != 0,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "marked as an en passant, but " + ColorToString(Not(pos.ToMove)) + " doesn't have a pawn to be captured on " + IndexToString(epPawnSquare) + "!");
-                            }
-                            else if (m.Promotion)
-                            {
-                                Assert(m.PromotionTo == Queen,
-                                    "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', " +
-                                    "but GenLoud is only supposed to generate queen promotions for non-captures!");
-                            }
-                            else
-                            {
-                                Assert(false, "GenAll<GenLoud> generated a move " + m + " = '" + m.ToString(pos) + "', which isn't a capture, queen promotion, or en passant!");
-                            }
-                        }
-                    }
 
                     ScoreCaptures();
                     PartialSort(currentMove, lastMove);
@@ -454,13 +414,6 @@ namespace Lizard.Logic.Search
                 }
                 else if (m.Promotion)
                 {
-                    if (EnableAssertions)
-                    {
-                        Assert(m.Promotion && m.PromotionTo == Queen,
-                            "ScoreCaptures() for move " + m + " = " + m.ToString(pos) + " wasn't a capture nor en passant, " +
-                            "so it must be a queen promotion. m.Promotion is " + m.Promotion + ", and m.PromotionTo is " + PieceToString(m.PromotionTo));
-                    }
-
                     //  For non-capture queen promotions
                     capturedPiece = Rook;
                 }
@@ -498,13 +451,6 @@ namespace Lizard.Logic.Search
                 {
                     int capturedPiece = iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To);
                     iter->Score = GetPieceValue(capturedPiece) + 10000;
-
-                    if (EnableAssertions)
-                    {
-                        Assert(capturedPiece != None,
-                            "ScoreEvasions() got the move " + iter->Move.ToString() + " = " + iter->Move.ToString(pos) + ", " +
-                            "which was generated as a capture/EP but isn't in the current position!");
-                    }
                 }
                 else
                 {

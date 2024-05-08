@@ -14,20 +14,12 @@ namespace Lizard.Logic.Core
     [StructLayout(LayoutKind.Explicit)]
     public unsafe struct StateInfo
     {
-        public static readonly nuint StateCopySize;
+        public static readonly nuint StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
         static StateInfo()
         {
-            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
-
-            if (EnableAssertions)
-            {
-                //  Static assertion
-                int accOffset = ((FieldOffsetAttribute)typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
-
-                Assert(accOffset == (int)StateCopySize,
-                    "A StateInfo's Accumulator pointer must be the last field in the struct! " +
-                    "It's offset is currently " + accOffset + " / " + sizeof(StateInfo) + ", but it should be at " + StateCopySize);
-            }
+            int accOffset = ((FieldOffsetAttribute)typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
+            Assert(accOffset == (int)StateCopySize,
+                $"StateInfo's Accumulator pointer is {accOffset} / {sizeof(StateInfo)}, should be {StateCopySize}");
         }
 
         [FieldOffset(0)]

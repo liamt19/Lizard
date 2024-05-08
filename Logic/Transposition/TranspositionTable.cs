@@ -37,12 +37,8 @@ namespace Lizard.Logic.Transposition
             {
                 Initialize(SearchOptions.Hash);
 
-                if (EnableAssertions)
-                {
-                    Assert(ClusterCount > MinTTClusters,
-                        "The Transposition Table is undersized! It must have space for at least " + MinTTClusters + " clusters, " +
-                        "but it currently can only fit " + ClusterCount);
-                }
+                Assert(ClusterCount > MinTTClusters,
+                    $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
             }
         }
 

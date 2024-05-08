@@ -1,6 +1,4 @@
-﻿using Lizard.Properties;
-
-namespace Lizard.Logic.Util
+﻿namespace Lizard.Logic.Util
 {
     //  SkipStaticConstructor since this introduces some unnecessary strings
     [SkipStaticConstructor]

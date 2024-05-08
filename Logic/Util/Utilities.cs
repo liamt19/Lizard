@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
-using System.Reflection;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
@@ -61,13 +59,6 @@ namespace Lizard.Logic.Util
 
 
         /// <summary>
-        /// Set to true if the GC is running in server mode instead of workstation mode.
-        /// </summary>
-        public static readonly bool ServerGC = System.Runtime.GCSettings.IsServerGC;
-
-
-
-        /// <summary>
         /// Set to true if multiple instances of this engine are running.
         /// <br></br>
         /// If there are, then the log file to not be written to unless <see cref="UCIClient.WriteToConcurrentLogs"/> = <see langword="true"/>.
@@ -78,13 +69,6 @@ namespace Lizard.Logic.Util
         /// The process ID for this engine instance. This is only used to determine the name of the log file to write to.
         /// </summary>
         public static int ProcessID;
-
-
-        /// <summary>
-        /// The time in milliseconds that this engine instance was started.
-        /// </summary>
-        public static readonly long StartTimeMS = new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds();
-
 
         public const bool NO_LOG_FILE = true;
 
@@ -103,21 +87,6 @@ namespace Lizard.Logic.Util
             }
 
             Debug.WriteLine(s);
-        }
-
-
-        /// <summary>
-        /// Forces a blocking and compacting garbage collection. 
-        /// <para></para>
-        /// I don't care what StackOverflow has to say about calling <see cref="GC.Collect"/> yourself.
-        /// There is no good reason to leave an additional 190 MB of RAM in use because the GC hasn't decided to deal with it yet.
-        /// <br></br>
-        /// I'd rather force it to collect during an opponent's turn than have it decide to collect during our own.
-        /// </summary>
-        public static void ForceGC()
-        {
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-            GC.WaitForPendingFinalizers();
         }
 
 
@@ -154,7 +123,7 @@ namespace Lizard.Logic.Util
                     //  Ensure that the processes are exactly the same as this one.
                     //  This checks their entire path, since multiple engine instance concern is
                     //  only if they are started from the same path.
-                    if (selfProcs[i].MainModule.FileName != thisProc.MainModule.FileName)
+                    if (selfProcs[i].MainModule?.FileName != thisProc.MainModule?.FileName)
                     {
                         continue;
                     }
@@ -182,42 +151,6 @@ namespace Lizard.Logic.Util
                 IsRunningConcurrently = true;
             }
         }
-
-        /// <summary>
-        /// Runs the static constructor of every class, unless the class is marked with the <see cref="SkipStaticConstructorAttribute"/>.
-        /// <br></br>
-        /// If PUBLISH_AOT is defined, this returns immediately since it isn't necessary.
-        /// </summary>
-        public static void InitializeStaticConstructors()
-        {
-            //  Note Assembly.GetExecutingAssembly().GetTypes() can't be used with AOT compilation,
-            //  so if PUBLISH_AOT is defined this needs to be skipped. (It isn't needed for AOT anyway)
-
-            //  This is because the AOT compiler can't guarantee what types are in the assembly until it is compiled,
-            //  so it doesn't let you get a list of them (via GetExecutingAssembly().GetTypes()) or run their constructors.
-
-            foreach (Type type in System.Reflection.Assembly.GetExecutingAssembly().GetTypes())
-            {
-                //  Don't run the constructors of NN classes.
-                if (type.CustomAttributes.Any(x => x.AttributeType == typeof(SkipStaticConstructorAttribute))) continue;
-
-                //  Don't bother with types that are named similar to:
-                //  "<>c__DisplayClass4_0" (lambda functions)
-                //  "__StaticArrayInitTypeSize=16" (static int[] type stuff)
-                if (type.Name.StartsWith('<') || type.Name.StartsWith('_')) continue;
-
-                try
-                {
-                    System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
-                }
-                catch (TypeInitializationException e)
-                {
-                    Log("InitializeAll for type " + type.FullName + " failed: ");
-                    Log(e.ToString());
-                }
-            }
-        }
-
 
         public static string GetCompilerInfo()
         {
@@ -257,8 +190,6 @@ namespace Lizard.Logic.Util
 
             return sb.ToString();
         }
-
-        public static string FormatCurrentTime() => (new DateTimeOffset(DateTime.UtcNow).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000");
 
         public static class Direction
         {
@@ -571,62 +502,6 @@ namespace Lizard.Logic.Util
         }
 
 
-        /// <summary>
-        /// Returns a string containing a ToString() version of a list of moves in human readable format.
-        /// This would return something similar to "g1f3, e2e4, d2d4".
-        /// </summary>
-        public static unsafe string Stringify(Move* list, int listSize = 0) => Stringify(new Span<Move>(list, MoveListSize), listSize);
-
-        public static string Stringify(Span<Move> list, int listSize = 0)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
-            for (int i = 0; i < loopMax; i++)
-            {
-                if (list[i].Equals(Move.Null))
-                {
-                    break;
-                }
-                sb.Append(list[i].ToString() + ", ");
-            }
-            if (sb.Length > 3)
-            {
-                sb.Remove(sb.Length - 2, 2);
-            }
-            return sb.ToString();
-        }
-
-
-        /// <summary>
-        /// Returns a string containing a ToString() version of a list of moves in human readable format.
-        /// So instead of seeing "g1f3, e2e4, d2d4" it would show "Nf3, e4, d4".
-        /// </summary>
-        public static unsafe string Stringify(Move* list, Position position, int listSize = 0) => Stringify(new Span<Move>(list, MoveListSize), position, listSize);
-
-        public static string Stringify(Span<Move> list, Position position, int listSize = 0)
-        {
-            StringBuilder sb = new StringBuilder();
-            int loopMax = (listSize > 0) ? Math.Min(list.Length, listSize) : list.Length;
-            for (int i = 0; i < loopMax; i++)
-            {
-                if (list[i].Equals(Move.Null))
-                {
-                    break;
-                }
-                string s = list[i].ToString(position);
-                sb.Append(s + ", ");
-            }
-
-            if (sb.Length > 3)
-            {
-                sb.Remove(sb.Length - 2, 2);
-            }
-            return sb.ToString();
-        }
-
-
-
         public static unsafe string Stringify(ScoredMove* list, int listSize = 0) => Stringify(new Span<ScoredMove>(list, MoveListSize), listSize);
 
         public static string Stringify(Span<ScoredMove> list, int listSize = 0)
@@ -805,21 +680,6 @@ namespace Lizard.Logic.Util
                 const double NormalizeEvalFactor = 2.4;
                 return "cp " + (int)(score / NormalizeEvalFactor);
             }
-        }
-
-        /// <summary>
-        /// Used in evaluation traces to truncate the evaluation term's Score <paramref name="normalScore"/> to two decimal places,
-        /// and to keep that number centered within its column, which has a size of <paramref name="sz"/>.
-        /// </summary>
-        public static string FormatEvalTerm(double normalScore, int sz = 8)
-        {
-            return CenteredString(string.Format("{0:N2}", InCentipawns(normalScore)), sz);
-        }
-
-        public static double InCentipawns(double score)
-        {
-            double div = Math.Round(score / 100, 2);
-            return div;
         }
 
         public static int ConvertRange(int originalStart, int originalEnd, int newStart, int newEnd, int value)

@@ -99,12 +99,6 @@
         {
             Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
             Log("bestmove " + bestThreadMove.ToString());
-
-            if (ServerGC)
-            {
-                //  Force a GC now if we are running in the server mode.
-                ForceGC();
-            }
         }
 
         public override string ToString()

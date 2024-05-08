@@ -11,8 +11,6 @@ using VInt = System.Runtime.Intrinsics.Vector256<int>;
 using VShort = System.Runtime.Intrinsics.Vector256<short>;
 #endif
 
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace Lizard.Logic.NN
 {

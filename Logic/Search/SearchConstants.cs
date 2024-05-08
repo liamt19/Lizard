@@ -36,19 +36,5 @@
 
 
         public const int DefaultMovesToGo = 20;
-
-
-        /// <summary>
-        /// Whether or not to adjust UCI search times if there is only one legal move in the position.
-        /// <br></br>
-        /// Using this will save time since we the best move is the only one we can make and we don't need to spend time to confirm that.
-        /// </summary>
-        public const bool OneLegalMoveMode = false;
-
-        /// <summary>
-        /// The max time in milliseconds that will be searched if <see cref="OneLegalMoveMode"/> is <see langword="true"/>.
-        /// </summary>
-        public const int OneLegalMoveTime = 100;
-
     }
 }

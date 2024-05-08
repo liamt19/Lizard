@@ -1,31 +1,20 @@
-﻿namespace Lizard.Logic.Transposition
+﻿using System.Runtime.CompilerServices;
+
+namespace Lizard.Logic.Transposition
 {
     public static unsafe class Zobrist
     {
-        private static ulong[][][] ColorPieceSquareHashes;
-        private static ulong[] CastlingRightsHashes;
-        private static ulong[] EnPassantFileHashes;
-        private static ulong BlackHash;
-        private static Random rand;
-
         private const int DefaultSeed = 0xBEEF;
 
-        private static bool Initialized = false;
+        private static ulong[][][] ColorPieceSquareHashes = new ulong[ColorNB][][];
+        private static ulong[] CastlingRightsHashes = new ulong[ColorNB * 2];
+        private static ulong[] EnPassantFileHashes = new ulong[8];
+        private static ulong BlackHash;
+        private static Random rand = new Random(DefaultSeed);
 
-        static Zobrist()
+        [ModuleInitializer]
+        public static void Initialize()
         {
-            if (!Initialized)
-            {
-                Initialize();
-            }
-        }
-
-        public static void Initialize(int randomSeed = DefaultSeed)
-        {
-            ColorPieceSquareHashes = new ulong[2][][];
-            CastlingRightsHashes = new ulong[4];
-            EnPassantFileHashes = new ulong[8];
-            rand = new Random(randomSeed);
 
             ColorPieceSquareHashes[Color.White] = new ulong[6][];
             ColorPieceSquareHashes[Color.Black] = new ulong[6][];
@@ -112,13 +101,10 @@
         /// </summary>
         public static void ZobristMove(this ref ulong hash, int from, int to, int color, int pt)
         {
-            if (EnableAssertions)
-            {
-                Assert(from is >= A1 and <= H8, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid From square! (should be 0 <= idx <= 63)");
-                Assert(to is >= A1 and <= H8, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid To square! (should be 0 <= idx <= 63)");
-                Assert(color is White or Black, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid piece color! (should be 0 or 1)");
-                Assert(pt is >= Pawn and <= King, "ZobristMove(from = " + from + ", to = " + to + ", color = " + color + ", type = " + pt + ") wasn't given a valid piece type! (should be 0 <= pt <= 5)");
-            }
+            Assert(from is >= A1 and <= H8, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid From square! (should be 0 <= idx <= 63)");
+            Assert(to is >= A1 and <= H8, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid To square! (should be 0 <= idx <= 63)");
+            Assert(color is White or Black, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece color! (should be 0 or 1)");
+            Assert(pt is >= Pawn and <= King, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
 
             hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
         }
@@ -128,12 +114,9 @@
         /// </summary>
         public static void ZobristToggleSquare(this ref ulong hash, int color, int pt, int idx)
         {
-            if (EnableAssertions)
-            {
-                Assert(color is White or Black, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid piece color! (should be 0 or 1)");
-                Assert(pt is >= Pawn and <= King, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid piece type! (should be 0 <= pt <= 5)");
-                Assert(idx is >= A1 and <= H8, "ZobristToggleSquare(color = " + color + ", type = " + pt + ", square = " + idx + ") wasn't given a valid square! (should be 0 <= idx <= 63)");
-            }
+            Assert(color is White or Black, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece color! (should be 0 or 1)");
+            Assert(pt is >= Pawn and <= King, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
+            Assert(idx is >= A1 and <= H8, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid square! (should be 0 <= idx <= 63)");
 
             hash ^= ColorPieceSquareHashes[color][pt][idx];
         }

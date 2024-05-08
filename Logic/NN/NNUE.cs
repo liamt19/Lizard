@@ -82,7 +82,7 @@ namespace Lizard.Logic.NN
 
                 string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
 
-                object? o = Resources.ResourceManager.GetObject(resourceName);
+                object o = Resources.ResourceManager.GetObject(resourceName);
                 if (o == null)
                 {
                     Console.WriteLine("The 768 NNRunOption was set to true, but there isn't a valid 768 network to load!");

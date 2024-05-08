@@ -1,10 +1,13 @@
-﻿namespace Lizard.Logic.Util
+﻿using System.Diagnostics;
+
+namespace Lizard.Logic.Util
 {
     public static class ExceptionHandling
     {
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        public static void Assert(bool condition, string? message)
+        [Conditional("ENABLE_ASSERTIONS")]
+        public static void Assert(bool condition, string message)
         {
 #if DEBUG
             Debug.Assert(condition, message);
