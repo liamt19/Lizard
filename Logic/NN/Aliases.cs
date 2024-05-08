@@ -40,6 +40,7 @@ namespace Lizard.Logic.NN
         public static Vector256<int> _mm256_inserti128_si256(Vector256<int> a, Vector128<int> b, [ConstantExpected] byte index) => Avx2.InsertVector128(a, b, index);
         public static Vector256<float> _mm256_set1_ps(float a) => Vector256.Create(a);
         public static Vector256<short> _mm256_set1_epi16(short a) => Vector256.Create(a);
+        public static Vector256<short> _mm256_setzero_epi16() => Vector256<short>.Zero;
         public static Vector256<float> _mm256_setzero_ps() => Vector256<float>.Zero;
 
         public static Vector128<float> _mm_shuffle_ps(Vector128<float> a, Vector128<float> b, [ConstantExpected] byte control) => Sse.Shuffle(a, b, control);
