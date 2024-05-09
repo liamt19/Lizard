@@ -44,7 +44,7 @@
         /// <summary>
         /// The depth must be greater than or equal to this for singular extensions to be considered.
         /// </summary>
-        public static int SingularExtensionsMinDepth = 7;
+        public static int SingularExtensionsMinDepth = 6;
 
         /// <summary>
         /// This number is multiplied by the depth to determine the singular beta value.
