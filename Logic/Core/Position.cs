@@ -737,7 +737,7 @@ namespace Lizard.Logic.Core
 
             if (InDoubleCheck && pt != Piece.King)
             {
-                //	Must move king out of double check
+                //  Must move king out of double check
                 return false;
             }
 
@@ -1054,7 +1054,7 @@ namespace Lizard.Logic.Core
 
                 for (int i = 0; i < splits.Length; i++)
                 {
-                    //	it's a row on the board
+                    //  it's a row on the board
                     if (i <= 7)
                     {
                         int pieceX = 0;
@@ -1081,12 +1081,12 @@ namespace Lizard.Logic.Core
                             }
                         }
                     }
-                    //	who moves next
+                    //  who moves next
                     else if (i == 8)
                     {
                         ToMove = splits[i].Equals("w") ? Color.White : Color.Black;
                     }
-                    //	castling availability
+                    //  castling availability
                     else if (i == 9)
                     {
                         State->CastleStatus = CastlingStatus.None;
@@ -1119,12 +1119,12 @@ namespace Lizard.Logic.Core
                             SetCastlingStatus(color, rsq);
                         }
                     }
-                    //	en passant target or last double pawn move
+                    //  en passant target or last double pawn move
                     else if (i == 10)
                     {
                         if (!splits[i].Contains('-'))
                         {
-                            //	White moved a pawn last
+                            //  White moved a pawn last
                             if (splits[i][1].Equals('3'))
                             {
                                 State->EPSquare = StringToIndex(splits[i]);
@@ -1135,7 +1135,7 @@ namespace Lizard.Logic.Core
                             }
                         }
                     }
-                    //	halfmove number
+                    //  halfmove number
                     else if (i == 11)
                     {
                         if (int.TryParse(splits[i], out int halfMoves))
@@ -1143,7 +1143,7 @@ namespace Lizard.Logic.Core
                             State->HalfmoveClock = halfMoves;
                         }
                     }
-                    //	fullmove number
+                    //  fullmove number
                     else if (i == 12)
                     {
                         if (int.TryParse(splits[i], out int fullMoves))
