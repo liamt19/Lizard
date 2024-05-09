@@ -6,8 +6,6 @@
 
 //#define SKIP_INIT_IN_DEBUG
 
-//#define ENABLE_ASSERTIONS
-
 
 #if USE_SKIP_INIT
 
@@ -54,18 +52,6 @@ namespace Lizard.Logic.Data
         public const bool HasSkipInit = true;
 #else
         public const bool HasSkipInit = false;
-#endif
-
-        /// <summary>
-        /// Whether or not to enable various sanity checks throughout the program. 
-        /// These are explicit calls to Debug.Assert in Debug mode, and a reimplementation of it while in Release mode.
-        /// <para></para>
-        /// This should be off if you aren't actively looking for a bug, because it makes the program run about 3x slower.
-        /// </summary>
-#if ENABLE_ASSERTIONS
-        public const bool EnableAssertions = true;
-#else
-        public const bool EnableAssertions = false;
 #endif
 
     }

@@ -139,7 +139,7 @@ namespace Lizard.Logic.UCI
             SendString("id name Lizard " + EngineBuildVersion);
 #endif
             SendString("id author Liam McGuire");
-            SendString("info string Using Simple768 evaluation.");
+            SendString("info string Using Bucketed768 evaluation.");
 
             foreach (string k in Options.Keys)
             {
@@ -219,13 +219,6 @@ namespace Lizard.Logic.UCI
                     }
                     else
                     {
-                        if (EnableAssertions)
-                        {
-                            Assert(param[0] == "fen",
-                                "The first parameter for a 'position' UCI command was '" + param[0] + "', but it should have been 'fen'! " +
-                                "A 'position' command must either be followed by 'startpos' for the initial position, or by 'fen ...' for an arbitrary FEN.");
-                        }
-
                         string fen = param[1];
 
                         bool hasExtraMoves = false;
@@ -279,7 +272,6 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "stop")
                 {
-                    LogString("[INFO]: got stop command at " + FormatCurrentTime());
                     SearchPool.StopThreads = true;
                 }
                 else if (cmd == "leave")
@@ -353,7 +345,6 @@ namespace Lizard.Logic.UCI
         /// <param name="param">List of parameters sent with the "go" command.</param>
         private void HandleGo(string[] param)
         {
-            LogString("[INFO]: Got 'go' command at " + FormatCurrentTime());
             if (info.SearchActive)
             {
                 LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
@@ -412,17 +403,9 @@ namespace Lizard.Logic.UCI
                 }
                 else if (param[i] == "infinite")
                 {
-                    if (EnableAssertions)
-                    {
-                        Assert(info.MaxNodes == MaxSearchNodes,
-                            "An infinite search command should have MaxNodes == " + MaxSearchNodes + ", but it was " + info.MaxNodes);
-
-                        Assert(tm.MaxSearchTime == MaxSearchTime,
-                            "An infinite search command should have MaxSearchTime == " + MaxSearchTime + ", but it was " + tm.MaxSearchTime);
-
-                        Assert(info.MaxDepth == MaxDepth,
-                            "An infinite search command should have MaxDepth == " + MaxDepth + ", but it was " + info.MaxDepth);
-                    }
+                    Assert(info.MaxNodes == MaxSearchNodes, $"go infinite should have MaxNodes == {MaxSearchNodes}, but it was {info.MaxNodes}");
+                    Assert(tm.MaxSearchTime == MaxSearchTime, $"go infinite should have MaxSearchTime == {MaxSearchTime}, but it was {tm.MaxSearchTime}");
+                    Assert(info.MaxDepth == MaxDepth, $"go infinite should have MaxDepth == {MaxDepth}, but it was {info.MaxDepth}");
 
                     info.MaxNodes = MaxSearchNodes;
                     tm.MaxSearchTime = MaxSearchTime;
@@ -433,10 +416,6 @@ namespace Lizard.Logic.UCI
                 {
                     tm.PlayerTime = int.Parse(param[i + 1]);
                     hasPlayerTime = true;
-
-                    LogString("[INFO]: We have " + tm.PlayerTime + " ms left on our clock, should STOP by " +
-                              (new DateTimeOffset(DateTime.UtcNow.AddMilliseconds(tm.PlayerTime)).ToUnixTimeMilliseconds() - StartTimeMS).ToString("0000000") +
-                              ", current time " + FormatCurrentTime());
                 }
                 else if ((param[i] == "winc" && info.Position.ToMove == Color.White) ||
                          (param[i] == "binc" && info.Position.ToMove == Color.Black))
@@ -457,7 +436,6 @@ namespace Lizard.Logic.UCI
             }
 
             SearchPool.StartSearch(info.Position, ref info, setup);
-            LogString("[INFO]: Returned from call to StartSearch at " + FormatCurrentTime());
         }
 
 
@@ -491,11 +469,8 @@ namespace Lizard.Logic.UCI
 
                 Move bestThreadMove = bestThread.RootMoves[0].Move;
 
-                if (EnableAssertions)
-                {
-                    Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove,
-                        "MainThread's best move = " + SearchPool.MainThread.RootMoves[0].Move + " was different than the BestThread's = " + bestThreadMove + "!");
-                }
+                Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove,
+                    $"MainThread's best move = {SearchPool.MainThread.RootMoves[0].Move} was different than the BestThread's = {bestThreadMove}!");
 
                 if (bestThreadMove.IsNull())
                 {
@@ -511,19 +486,10 @@ namespace Lizard.Logic.UCI
                 }
 
                 SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
-                LogString("[INFO]: sent 'bestmove " + bestThreadMove.ToString() + "' at " + FormatCurrentTime());
             }
             else
             {
                 LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
-            }
-
-
-
-            if (ServerGC)
-            {
-                //  Force a GC now if we are running in the server mode.
-                ForceGC();
             }
         }
 

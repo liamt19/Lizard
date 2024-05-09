@@ -1,6 +1,4 @@
-﻿using Lizard.Properties;
-
-namespace Lizard.Logic.Util
+﻿namespace Lizard.Logic.Util
 {
     //  SkipStaticConstructor since this introduces some unnecessary strings
     [SkipStaticConstructor]
@@ -47,7 +45,7 @@ namespace Lizard.Logic.Util
 
         /// <summary>
         /// Runs a perft command on each of the positions in BenchFENs, and verifies that the number of nodes
-		/// returned by our perft command is the same as the number that Stockfish 14 reported.
+        /// returned by our perft command is the same as the number that Stockfish 14 reported.
         /// </summary>
         public static bool Go(int depth = 4)
         {

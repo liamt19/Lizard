@@ -129,11 +129,8 @@ namespace Lizard.Logic.Transposition
                 this.Depth = (sbyte)depth;
                 this.AgePVType = (sbyte)(TranspositionTable.Age | ((isPV ? 1 : 0) << 2) | (int)nodeType);
 
-                if (EnableAssertions)
-                {
-                    Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
-                        "WARN the score " + score + " is outside of bounds for normal TT entries!");
-                }
+                Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
+                    $"WARN the score {score} is outside of bounds for normal TT entries!");
             }
         }
 

@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
@@ -168,32 +167,6 @@ namespace Lizard.Logic.Util
             NativeMemory.Clear(block, byteCount);
 
             return block;
-        }
-
-
-        //  https://www.liranchen.com/2010/08/forcing-jit-compilation-during-runtime.html
-        //  Might not want to do this though because the JIT should run under normal circumstances
-        public static void PreJITMethods(Assembly assembly)
-        {
-            Type[] types = assembly.GetTypes();
-            foreach (Type curType in types)
-            {
-                MethodInfo[] methods = curType.GetMethods(
-                        BindingFlags.DeclaredOnly |
-                        BindingFlags.NonPublic |
-                        BindingFlags.Public |
-                        BindingFlags.Instance |
-                        BindingFlags.Static);
-
-                foreach (MethodInfo curMethod in methods)
-                {
-                    if (curMethod.IsAbstract ||
-                        curMethod.ContainsGenericParameters)
-                        continue;
-
-                    System.Runtime.CompilerServices.RuntimeHelpers.PrepareMethod(curMethod.MethodHandle);
-                }
-            }
         }
 
     }

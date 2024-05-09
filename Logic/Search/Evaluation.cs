@@ -1,6 +1,4 @@
-﻿using Lizard.Logic.NN;
-
-namespace Lizard.Logic.Search
+﻿namespace Lizard.Logic.Search
 {
     public static unsafe class Evaluation
     {

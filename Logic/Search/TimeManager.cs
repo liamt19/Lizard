@@ -93,11 +93,6 @@
             if (currentTime > (MaxSearchTime - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
             {
                 //  Stop if we are close to going over the max time
-                if (UCIClient.Active)
-                {
-                    Log("Reached hard time limit! Used " + currentTime + " of allowed " + MaxSearchTime + " ms at " + FormatCurrentTime());
-                }
-
                 return true;
             }
 

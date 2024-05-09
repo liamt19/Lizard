@@ -1,7 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Search.History;
-
 namespace Lizard.Logic.Search.History
 {
     public unsafe readonly struct CaptureHistoryTable

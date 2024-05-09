@@ -14,20 +14,12 @@ namespace Lizard.Logic.Core
     [StructLayout(LayoutKind.Explicit)]
     public unsafe struct StateInfo
     {
-        public static readonly nuint StateCopySize;
+        public static readonly nuint StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
         static StateInfo()
         {
-            StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
-
-            if (EnableAssertions)
-            {
-                //  Static assertion
-                int accOffset = ((FieldOffsetAttribute)typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
-
-                Assert(accOffset == (int)StateCopySize,
-                    "A StateInfo's Accumulator pointer must be the last field in the struct! " +
-                    "It's offset is currently " + accOffset + " / " + sizeof(StateInfo) + ", but it should be at " + StateCopySize);
-            }
+            int accOffset = ((FieldOffsetAttribute)typeof(StateInfo).GetField("Accumulator").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
+            Assert(accOffset == (int)StateCopySize,
+                $"StateInfo's Accumulator pointer is {accOffset} / {sizeof(StateInfo)}, should be {StateCopySize}");
         }
 
         [FieldOffset(0)]
@@ -43,31 +35,28 @@ namespace Lizard.Logic.Core
         public fixed ulong Pinners[2];
 
         [FieldOffset(88)]
-        public fixed ulong Xrays[2];
-
-        [FieldOffset(104)]
         public ulong Hash = 0;
 
-        [FieldOffset(112)]
+        [FieldOffset(96)]
         public ulong Checkers = 0;
 
-        [FieldOffset(120)]
+        [FieldOffset(104)]
         public CastlingStatus CastleStatus = CastlingStatus.None;
 
         /// <summary>
         /// The first number in the FEN, which starts at 0 and resets to 0 every time a pawn moves or a piece is captured.
         /// If this reaches 100, the game is a draw by the 50-move rule.
         /// </summary>
-        [FieldOffset(124)]
+        [FieldOffset(108)]
         public int HalfmoveClock = 0;
 
-        [FieldOffset(128)]
+        [FieldOffset(112)]
         public int EPSquare = EPNone;
 
-        [FieldOffset(132)]
+        [FieldOffset(116)]
         public int CapturedPiece = None;
 
-        [FieldOffset(136)]
+        [FieldOffset(120)]
         public Accumulator* Accumulator;
 
         public StateInfo()

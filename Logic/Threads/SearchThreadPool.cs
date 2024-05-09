@@ -1,6 +1,4 @@
-﻿using System.Text;
-
-namespace Lizard.Logic.Threads
+﻿namespace Lizard.Logic.Threads
 {
     /// <summary>
     /// Keeps track of a number of SearchThreads and provides methods to start and wait for them to finish.
@@ -134,61 +132,13 @@ namespace Lizard.Logic.Threads
 
                 td.RootPosition.LoadFromFEN(rootFEN);
 
-                if (EnableAssertions)
-                {
-                    Assert(td.RootPosition.Owner == td,
-                        "The RootPosition for the thread " + td.ToString() + " had an owner of " + td.RootPosition.Owner.ToString() + "! " +
-                        "All search threads must be the owner of their RootPosition objects. " +
-                        "This can only happen when a SearchThread's RootPosition object is overwritten with a different position, " +
-                        "and if the RootPosition field is readonly (which it should be) this means there is UB.");
-                }
+                Assert(td.RootPosition.Owner == td,
+                    $"The RootPosition for the thread {td.ToString()} had an owner of {td.RootPosition.Owner.ToString()}!");
 
                 foreach (var move in setup.SetupMoves)
                 {
                     td.RootPosition.MakeMove(move);
                 }
-
-                if (EnableAssertions)
-                {
-                    if (td.RootPosition.State->Hash != rootPosition.State->Hash)
-                    {
-                        StringBuilder threadHashes = new StringBuilder();
-                        var temp = td.RootPosition.StartingState;
-                        while (temp != td.RootPosition.State)
-                        {
-                            threadHashes.Append(temp->Hash + ", ");
-                            temp++;
-                        }
-
-                        if (threadHashes.Length > 3)
-                            threadHashes.Remove(threadHashes.Length - 2, 2);
-
-
-                        StringBuilder searchHashes = new StringBuilder();
-                        temp = td.RootPosition.StartingState;
-                        while (temp != td.RootPosition.State)
-                        {
-                            searchHashes.Append(temp->Hash + ", ");
-                            temp++;
-                        }
-
-                        if (searchHashes.Length > 3)
-                            searchHashes.Remove(searchHashes.Length - 2, 2);
-
-                        Assert(td.RootPosition.State->Hash == rootPosition.State->Hash,
-                            "The RootPosition for the thread " + td.ToString() + " had a hash of " + td.RootPosition.State->Hash +
-                            ", but it should have been " + rootPosition.State->Hash + ". " +
-                            "The previous hashes of the thread RootPosition are as follows: [" + threadHashes.ToString() + "]. " +
-                            "The previous hashes of the should have looked like this: [" + searchHashes.ToString() + "].");
-                    }
-                }
-            }
-
-            if (size == 1 && UCIClient.Active && OneLegalMoveMode)
-            {
-                //  If we only have one legal move while running in UCI mode, set the search time to be at most 100 ms.
-                //  There is no point in searching this node longer, since the TT will be cleared anyways.
-                SharedInfo.TimeManager.MaxSearchTime = Math.Min(SharedInfo.TimeManager.MaxSearchTime, OneLegalMoveTime);
             }
 
             SharedInfo.TimeManager.StartTimer();
@@ -252,12 +202,9 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public void BlockCallerUntilFinished()
         {
-            if (EnableAssertions)
-            {
-                Assert(Blocker.ParticipantCount == 1,
-                    "BlockCallerUntilFinished was called, but the barrier had " + Blocker.ParticipantCount + " participants (should have been 1)! " +
-                    "This can happen if any thread other than the main thread calls this method.");
-            }
+            //  This can happen if any thread other than the main thread calls this method.
+            Assert(Blocker.ParticipantCount == 1,
+                "BlockCallerUntilFinished was called, but the barrier had {Blocker.ParticipantCount} participants (should have been 1)!");
 
             if (SharedInfo.SearchActive == false)
             {

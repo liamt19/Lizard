@@ -364,10 +364,7 @@ namespace Lizard.Logic.Search
                     continue;
                 }
 
-                if (EnableAssertions)
-                {
-                    Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
-                }
+                Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
 
                 int moveFrom = m.From;
                 int moveTo = m.To;
@@ -810,10 +807,7 @@ namespace Lizard.Logic.Search
                     continue;
                 }
 
-                if (EnableAssertions)
-                {
-                    Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
-                }
+                Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
 
                 legalMoves++;
 

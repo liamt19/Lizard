@@ -1,7 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Search.Ordering;
-
 namespace Lizard.Logic.Search.History
 {
     public unsafe readonly struct MainHistoryTable
@@ -39,11 +37,8 @@ namespace Lizard.Logic.Search.History
 
         public static int HistoryIndex(int pc, Move m)
         {
-            if (EnableAssertions)
-            {
-                Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements,
-                    "HistoryIndex(" + pc + ", " + m.MoveMask + ") is OOB! (should be 0 <= idx < " + MainHistoryElements + ")");
-            }
+            Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements, 
+                $"HistoryIndex({pc}, {m.MoveMask}) should be < {MainHistoryElements}");
 
             return (pc * MainHistoryPCStride) + m.MoveMask;
         }

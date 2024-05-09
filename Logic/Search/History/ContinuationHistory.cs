@@ -1,7 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Search.Ordering;
-
 namespace Lizard.Logic.Search.History
 {
     /// <summary>

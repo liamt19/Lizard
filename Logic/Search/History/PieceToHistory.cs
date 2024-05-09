@@ -53,11 +53,7 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public static int GetIndex(int pc, int pt, int sq)
         {
-            if (EnableAssertions)
-            {
-                Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length,
-                    "GetIndex(" + pc + ", " + pt + ", " + sq + ") is OOB! (should be 0 <= idx < " + Length + ")");
-            }
+            Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length, $"GetIndex({pc}, {pt}, {sq}) should be < {Length}");
 
             return ((pt + (PieceNB * pc)) * DimY) + sq;
         }

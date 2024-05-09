@@ -104,11 +104,8 @@
         {
             PieceTypes[idx] = pt;
 
-            if (EnableAssertions)
-            {
-                Assert((Colors[pc] & SquareBB[idx]) == 0, ColorToString(pc) + " already has a piece on the square " + IndexToString(idx));
-                Assert((Pieces[pt] & SquareBB[idx]) == 0, "A " + PieceToString(pt) + " already exists on the square " + IndexToString(idx));
-            }
+            Assert((Colors[pc] & SquareBB[idx]) == 0, $"{ColorToString(pc)} already has a piece on the square {IndexToString(idx)}");
+            Assert((Pieces[pt] & SquareBB[idx]) == 0, $"A {PieceToString(pt)} already exists on the square {IndexToString(idx)}");
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
@@ -123,11 +120,8 @@
         {
             PieceTypes[idx] = Piece.None;
 
-            if (EnableAssertions)
-            {
-                Assert((Colors[pc] & SquareBB[idx]) != 0, ColorToString(pc) + " doesn't have a piece to remove on the square " + IndexToString(idx));
-                Assert((Pieces[pt] & SquareBB[idx]) != 0, "The square " + IndexToString(idx) + " doesn't have a " + PieceToString(pt) + " to remove");
-            }
+            Assert((Colors[pc] & SquareBB[idx]) != 0, $"{ColorToString(pc)} doesn't have a piece to remove on the square {IndexToString(idx)}");
+            Assert((Pieces[pt] & SquareBB[idx]) != 0, $"The square {IndexToString(idx)} doesn't have a {PieceToString(pt)} to remove");
 
             Colors[pc] ^= SquareBB[idx];
             Pieces[pt] ^= SquareBB[idx];
@@ -185,12 +179,7 @@
         /// </summary>
         public int KingIndex(int pc)
         {
-            if (EnableAssertions)
-            {
-                Assert(lsb(KingMask(pc)) != SquareNB,
-                    "KingIndex(" + ColorToString(pc) + ") got a KingMask of " + KingMask(pc)
-                    + ", which has an LSB of 64! (this means that " + ColorToString(pc) + " doesn't have a king on the board)");
-            }
+            Assert(lsb(KingMask(pc)) != SquareNB, $"KingIndex({ColorToString(pc)}) got a KingMask of {KingMask(pc)}");
 
             return lsb(KingMask(pc));
         }
@@ -222,15 +211,11 @@
         /// <para></para>
         /// <paramref name="pinners"/> is a mask of the other side's pieces that would be 
         /// putting <paramref name="pc"/>'s king in check if a blocker of color <paramref name="pc"/> wasn't in the way
-        /// <br></br>
-        /// <paramref name="xrayers"/> is a mask for blockers that are the opposite color of <paramref name="pc"/>.
-        /// These are pieces that would cause a discovery if they move off of the ray.
         /// </summary>
-        public ulong BlockingPieces(int pc, ulong* pinners, ulong* xrayers)
+        public ulong BlockingPieces(int pc, ulong* pinners)
         {
             ulong blockers = 0UL;
             *pinners = 0;
-            *xrayers = 0;
 
             ulong temp;
             ulong us = Colors[pc];
@@ -239,8 +224,8 @@
             int ourKing = KingIndex(pc);
 
             //  Candidates are their pieces that are on the same rank/file/diagonal as our king.
-            ulong candidates = ((RookRays[ourKing] & (Pieces[Piece.Rook] | Pieces[Piece.Queen])) |
-                                (BishopRays[ourKing] & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))) & them;
+            ulong candidates = them & ((RookRays[ourKing] & (Pieces[Queen] | Pieces[Rook])) |
+                                     (BishopRays[ourKing] & (Pieces[Queen] | Pieces[Bishop])));
 
             ulong occ = us | them;
 
@@ -259,11 +244,6 @@
                     {
                         //  If the blocker is ours, then the candidate on the square "idx" is a pinner
                         *pinners |= SquareBB[idx];
-                    }
-                    else
-                    {
-                        //  If the blocker isn't ours, then it will cause a discovered check if it moves
-                        *xrayers |= SquareBB[idx];
                     }
                 }
             }

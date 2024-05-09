@@ -88,7 +88,7 @@ namespace Lizard.Logic.NN
             long toRead = ExpectedNetworkSize;
             if (stream.Position + toRead > stream.Length)
             {
-                Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
+                Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
                 Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
                 if (exitIfFail)
@@ -133,7 +133,7 @@ namespace Lizard.Logic.NN
             NetStats("fc weight", LayerWeights, LayerWeightElements);
             NetStats("fc bias", LayerBiases, LayerBiasElements);
 
-            Log("Init Simple768 done");
+            Log("Init Bucketed768 done");
 #endif
         }
 
