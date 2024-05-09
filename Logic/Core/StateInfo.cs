@@ -35,31 +35,28 @@ namespace Lizard.Logic.Core
         public fixed ulong Pinners[2];
 
         [FieldOffset(88)]
-        public fixed ulong Xrays[2];
-
-        [FieldOffset(104)]
         public ulong Hash = 0;
 
-        [FieldOffset(112)]
+        [FieldOffset(96)]
         public ulong Checkers = 0;
 
-        [FieldOffset(120)]
+        [FieldOffset(104)]
         public CastlingStatus CastleStatus = CastlingStatus.None;
 
         /// <summary>
         /// The first number in the FEN, which starts at 0 and resets to 0 every time a pawn moves or a piece is captured.
         /// If this reaches 100, the game is a draw by the 50-move rule.
         /// </summary>
-        [FieldOffset(124)]
+        [FieldOffset(108)]
         public int HalfmoveClock = 0;
 
-        [FieldOffset(128)]
+        [FieldOffset(112)]
         public int EPSquare = EPNone;
 
-        [FieldOffset(132)]
+        [FieldOffset(116)]
         public int CapturedPiece = None;
 
-        [FieldOffset(136)]
+        [FieldOffset(120)]
         public Accumulator* Accumulator;
 
         public StateInfo()

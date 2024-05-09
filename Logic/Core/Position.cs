@@ -90,6 +90,11 @@ namespace Lizard.Logic.Core
 
         public bool IsChess960 = false;
 
+
+        public bool CastlingImpeded(ulong occ, CastlingStatus cr) => (occ & CastlingRookPaths[(int)cr]) != 0;
+        public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & us) != 0;
+
+
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
         /// <br></br>
@@ -590,8 +595,8 @@ namespace Lizard.Logic.Core
 
         public void SetCheckInfo()
         {
-            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black], &State->Xrays[Black]);
-            State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White], &State->Xrays[White]);
+            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black]);
+            State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White]);
 
             int kingSq = State->KingSquares[Not(ToMove)];
 
@@ -696,14 +701,14 @@ namespace Lizard.Logic.Core
                 if ((moveTo ^ moveFrom) != 16)
                 {
                     //  This is NOT a pawn double move, so it can only go to a square it attacks or the empty square directly above/below.
-                    return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0
+                    return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB[moveTo]) != 0
                         || (empty & SquareBB[moveTo]) != 0;
                 }
                 else
                 {
                     //  This IS a pawn double move, so it can only go to a square it attacks,
                     //  or the empty square 2 ranks above/below provided the square 1 rank above/below is also empty.
-                    return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0
+                    return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB[moveTo]) != 0
                         || ((empty & SquareBB[moveTo - ShiftUpDir(pc)]) != 0 && (empty & SquareBB[moveTo]) != 0);
                 }
 
@@ -711,7 +716,7 @@ namespace Lizard.Logic.Core
 
             //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
             //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-            return (bb.AttackMask(moveFrom, bb.GetColorAtIndex(moveFrom), pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.Castle;
+            return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.Castle;
         }
 
 
@@ -822,7 +827,7 @@ namespace Lizard.Logic.Core
                 ulong moveMask = SquareBB[moveFrom] | SquareBB[moveTo];
 
                 //  This is only legal if our king is NOT attacked after the EP is made
-                return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB[idxPawn])) & bb.Colors[Not(ourColor)]) == 0;
+                return (bb.AttackersTo(ourKing, bb.Occupancy ^ (moveMask | SquareBB[idxPawn])) & bb.Colors[theirColor]) == 0;
             }
 
             //  Otherwise, this move is legal if:

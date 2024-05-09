@@ -21,10 +21,10 @@
         /// </summary>
         public int GenPawns<GenType>(ScoredMove* list, ulong targets, int size) where GenType : MoveGenerationType
         {
-            bool loudMoves = typeof(GenType) == typeof(GenLoud);
-            bool quiets = typeof(GenType) == typeof(GenQuiets);
+            bool loudMoves   = typeof(GenType) == typeof(GenLoud);
+            bool quiets      = typeof(GenType) == typeof(GenQuiets);
             bool quietChecks = typeof(GenType) == typeof(GenQChecks);
-            bool evasions = typeof(GenType) == typeof(GenEvasions);
+            bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
 
@@ -215,9 +215,9 @@
         /// </summary>
         public int GenAll<GenType>(ScoredMove* list, int size = 0) where GenType : MoveGenerationType
         {
-            bool loudMoves = typeof(GenType) == typeof(GenLoud);
-            bool quiets = typeof(GenType) == typeof(GenQuiets);
-            bool evasions = typeof(GenType) == typeof(GenEvasions);
+            bool loudMoves   = typeof(GenType) == typeof(GenLoud);
+            bool quiets      = typeof(GenType) == typeof(GenQuiets);
+            bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool quietChecks = typeof(GenType) == typeof(GenQChecks);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
@@ -233,10 +233,10 @@
             // If we are generating evasions and in double check, then skip non-king moves.
             if (!(evasions && MoreThanOne(State->Checkers)))
             {
-                targets = evasions ? LineBB[ourKing][lsb(State->Checkers)]
+                targets = evasions    ? LineBB[ourKing][lsb(State->Checkers)]
                         : nonEvasions ? ~us
-                        : loudMoves ? them
-                        : ~occ;
+                        : loudMoves   ? them
+                        :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
                 size = GenNormal(list, Knight, quietChecks, targets, size);
@@ -512,8 +512,8 @@
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.WK)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.WK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WK]] & us) != 0)
+                        && !CastlingImpeded(us, CastlingStatus.WK)
+                        && HasCastlingRook(us, CastlingStatus.WK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
@@ -521,8 +521,8 @@
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.WQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WQ]] & us) != 0)
+                        && !CastlingImpeded(us, CastlingStatus.WQ)
+                        && HasCastlingRook(us, CastlingStatus.WQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
@@ -532,8 +532,8 @@
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.BK)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.BK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BK]] & us) != 0)
+                        && !CastlingImpeded(us, CastlingStatus.BK)
+                        && HasCastlingRook(us, CastlingStatus.BK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
@@ -541,8 +541,8 @@
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.BQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BQ]] & us) != 0)
+                        && !CastlingImpeded(us, CastlingStatus.BQ)
+                        && HasCastlingRook(us, CastlingStatus.BQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
