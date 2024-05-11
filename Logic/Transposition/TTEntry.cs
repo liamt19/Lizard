@@ -20,98 +20,47 @@ namespace Lizard.Logic.Transposition
         public const int DepthOffset = -7;
         public const int DepthNone = -6;
 
-        [FieldOffset(0)]
-        public short _Score;            //  2 = 16 bits
-
-        [FieldOffset(2)]
-        public short _StatEval;           //  2 = 16 bits
-
-        [FieldOffset(4)]
-        public Move BestMove;           //  2 = 16 bits
-
-        [FieldOffset(6)]
-        public ushort Key;              //  2 = 16 bits
-
-        [FieldOffset(8)]
-        public byte AgePVType;          //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
-
-        [FieldOffset(9)]
-        public byte _depth;             //  1 =  8 bits
+        [FieldOffset(0)] private short _Score;      //  2 = 16 bits
+        [FieldOffset(2)] private short _StatEval;   //  2 = 16 bits
+        [FieldOffset(4)] private Move _Move;        //  2 = 16 bits
+        [FieldOffset(6)] private ushort _Key;       //  2 = 16 bits
+        [FieldOffset(8)] private byte _AgePVType;   //  1 =  8 bits (5 bits for age, 1 for isPV, 2 for type)
+        [FieldOffset(9)] private byte _Depth;       //  1 =  8 bits
 
 
-        public short Score
-        {
-            get => _Score;
-            set => _Score = value;
-        }
+        public readonly short Score => _Score;
+        public readonly short StatEval => _StatEval;
+        public readonly Move BestMove => _Move;
+        public readonly ushort Key => _Key;
+        public readonly int Depth => (_Depth + DepthOffset);
+        public readonly int RawDepth => (_Depth);
 
-        public short StatEval
-        {
-            get => _StatEval;
-            set => _StatEval = value;
-        }
+        public readonly int Age => _AgePVType & TT_AGE_MASK;
+        public readonly bool PV => (_AgePVType & TT_PV_MASK) != 0;
+        public readonly TTNodeType NodeType => (TTNodeType)(_AgePVType & TT_BOUND_MASK);
+        public readonly int Bound => _AgePVType & TT_BOUND_MASK;
 
-        public int Age
-        {
-            get => AgePVType & 0b11111000;
-        }
 
-        public bool PV
-        {
-            get => (AgePVType & TT_PV_MASK) != 0;
-        }
-
-        public TTNodeType NodeType
-        {
-            get => (TTNodeType)(AgePVType & TT_BOUND_MASK);
-        }
-
-        public int Bound
-        {
-            get => AgePVType & TT_BOUND_MASK;
-        }
-
-        public int Depth
-        {
-            get => (_depth + DepthOffset);
-            set => _depth = (byte)(value);
-        }
-
-        public sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - AgePVType) & TranspositionTable.TT_AGE_MASK);
-        public bool IsEmpty => _depth == 0;
-
-        public TTEntry(ulong key, short score, TTNodeType nodeType, int depth, Move move)
-        {
-            this.Key = MakeKey(key);
-            this.Score = score;
-            this.AgePVType = 0;
-            this.Depth = (sbyte)depth;
-
-            this.BestMove = move;
-        }
-
-        public static ushort MakeKey(ulong posHash)
-        {
-            return (ushort)posHash;
-        }
+        public readonly sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
+        public readonly bool IsEmpty => _Depth == 0;
 
         public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
         {
             var k = (ushort)key;
-            if (!move.IsNull() || k != Key)
+            if (move != Move.Null || k != Key)
             {
-                BestMove = move;
+                _Move = move;
             }
 
             if (nodeType == TTNodeType.Exact
                 || k != Key
-                || depth + (isPV ? 2 : 0) > _depth - 4 + DepthOffset)
+                || depth + (isPV ? 2 : 0) > _Depth - 4 + DepthOffset)
             {
-                Key = k;
-                Score = score;
-                StatEval = statEval;
-                Depth = (byte)(depth - DepthOffset);
-                AgePVType = (byte)(TranspositionTable.Age | ((isPV ? 1u : 0u) << 2) | (uint)nodeType);
+                _Key = k;
+                _Score = score;
+                _StatEval = statEval;
+                _Depth = (byte)(depth - DepthOffset);
+                _AgePVType = (byte)(TranspositionTable.Age | ((isPV ? 1u : 0u) << 2) | (uint)nodeType);
 
                 Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
                     $"WARN the score {score} is outside of bounds for normal TT entries!");

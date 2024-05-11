@@ -128,8 +128,8 @@ namespace Lizard.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((replace->_depth - replace->RelAge(TranspositionTable.Age)) >
-                    (  tte[i]._depth -   tte[i].RelAge(TranspositionTable.Age)))
+                if ((replace->RawDepth - replace->RelAge(TranspositionTable.Age)) >
+                    (  tte[i].RawDepth -   tte[i].RelAge(TranspositionTable.Age)))
                 {
                     replace = &tte[i];
                 }
@@ -173,7 +173,7 @@ namespace Lizard.Logic.Transposition
 
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    if (!cluster[j].IsEmpty && (cluster[j].AgePVType & TT_AGE_MASK) == (Age & TT_AGE_MASK))
+                    if (!cluster[j].IsEmpty && (cluster[j].Age) == (Age & TT_AGE_MASK))
                     {
                         entries++;
                     }
