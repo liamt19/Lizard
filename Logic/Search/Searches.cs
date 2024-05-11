@@ -182,6 +182,8 @@ namespace Lizard.Logic.Search
             {
                 //  Get the static evaluation and store it in the empty TT slot.
                 eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+                
+                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
@@ -776,6 +778,9 @@ namespace Lizard.Logic.Search
 
                 if (eval >= beta)
                 {
+                    if (!ss->TTHit)
+                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, false);
+
                     return eval;
                 }
 
