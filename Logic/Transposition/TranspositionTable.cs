@@ -27,7 +27,7 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// The age of the TT, which is increased for every call to <see cref="Threads.SearchThread.MainThreadSearch"/>.
         /// </summary>
-        public static ushort Age = 0;
+        public static byte Age = 0;
 
         private static bool Initialized = false;
 
@@ -113,8 +113,6 @@ namespace Lizard.Logic.Transposition
                 //  If the entry's key matches, or the entry is empty, then pick this one.
                 if (tte[i].Key == key || tte[i].IsEmpty)
                 {
-                    tte[i].AgePVType = (sbyte)(Age | (tte[i].AgePVType & (TT_AGE_INC - 1)));
-
                     tte = &tte[i];
 
                     //  We return true if the entry isn't empty, which means that tte is valid.
@@ -130,8 +128,8 @@ namespace Lizard.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if (((replace->_depth - (TT_AGE_CYCLE + Age - replace->AgePVType)) & TT_AGE_MASK) >
-                    ((tte[i]._depth - (TT_AGE_CYCLE + Age - tte[i].AgePVType)) & TT_AGE_MASK))
+                if ((replace->_depth - replace->RelAge(TranspositionTable.Age)) >
+                    (  tte[i]._depth -   tte[i].RelAge(TranspositionTable.Age)))
                 {
                     replace = &tte[i];
                 }
