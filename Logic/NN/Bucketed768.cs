@@ -10,17 +10,16 @@ using Lizard.Logic.Threads;
 using static Lizard.Logic.NN.NNUE;
 using static Lizard.Logic.NN.Aliases;
 using static Lizard.Logic.NN.FunUnrollThings;
-using System;
 
 namespace Lizard.Logic.NN
 {
     [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
-        public const int INPUT_BUCKETS = 4;
+        public const int INPUT_BUCKETS = 9;
         public const int INPUT_SIZE = 768;
-        public const int L1_SIZE = 1536;
-        public const int L2_SIZE = 8;
+        public const int L1_SIZE = 1280;
+        public const int L2_SIZE = 16;
         public const int L3_SIZE = 32;
         public const int OUTPUT_BUCKETS = 8;
 
@@ -42,7 +41,7 @@ namespace Lizard.Logic.NN
         public static readonly int L3_CHUNK_SIZE = 1;
 #endif
 
-        public const string NetworkName = "morelayers_8_32_8-relu-250-params.bin";
+        public const string NetworkName = "morelayers_1280_16_32_8-360-params.bin";
 
         private static readonly UQNetContainer UQNet;
         public static readonly NetContainer<short, float> Net;
@@ -65,14 +64,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 1, 1, 5, 5, 4, 4,
-            2, 2, 2, 2, 6, 6, 6, 6,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
+            0, 1, 2, 3, 12, 11, 10,  9,
+            4, 4, 5, 5, 14, 14, 13, 13,
+            6, 6, 7, 7, 16, 16, 15, 15,
+            6, 6, 7, 7, 16, 16, 15, 15,
+            8, 8, 8, 8, 17, 17, 17, 17,
+            8, 8, 8, 8, 17, 17, 17, 17,
+            8, 8, 8, 8, 17, 17, 17, 17,
+            8, 8, 8, 8, 17, 17, 17, 17,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -313,8 +312,8 @@ namespace Lizard.Logic.NN
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);
 
 #if USE_AVX2
-            ActivateFTAndAffineL1(ourData, Net.L1Weights[outputBucket], L1OutputsUs);
-            ActivateFTAndAffineL1(theirData, Net.L1Weights[outputBucket] + L1_SIZE * L2_SIZE, L1OutputsThem);
+            ActivateFTAndAffineL1Sparse(ourData,   Net.L1Weights[outputBucket], L1OutputsUs);
+            ActivateFTAndAffineL1Sparse(theirData, Net.L1Weights[outputBucket] + L1_SIZE * L2_SIZE, L1OutputsThem);
 #else
             ActivateFTAndAffineL1Fallback(ourData,   Net.L1Weights[outputBucket], L1OutputsUs);
             ActivateFTAndAffineL1Fallback(theirData, Net.L1Weights[outputBucket] + L1_SIZE * L2_SIZE, L1OutputsThem);
@@ -340,37 +339,38 @@ namespace Lizard.Logic.NN
         }
 
 
-        public static void ActivateFTAndAffineL1(short* inputs, short* weights, int* output)
+        public static void ActivateFTAndAffineL1Sparse(short* inputs, short* weights, int* output)
         {
             var sums = stackalloc Vector256<int>[L2_SIZE];
             var wVecs = (Vector256<short>*)(weights);
             var inputsVecs = (Vector256<short>*)(inputs);
 
             var zero = _mm256_setzero_epi16();
+            var one = _mm256_set1_epi16(FT_QUANT);
 
-            for (int i = 0; i < L1_SIZE / L1_CHUNK_SIZE; ++i)
+            int* nnz_indices = stackalloc int[L1_SIZE / L1_CHUNK_SIZE];
+            int total_nnz = 0;
+
+            for (int i = 0; i < L1_SIZE / L1_CHUNK_SIZE; i++)
             {
+                var chunk = inputsVecs[i];
+                var cmpgt = _mm256_cmpgt_epi16(chunk, zero);
+                if (_mm256_movemask_epi8(cmpgt.AsByte()) != 0)
+                {
+                    nnz_indices[total_nnz++] = i;
+                }
+            }
+
+            for (int nnz = 0; nnz < total_nnz; ++nnz)
+            {
+                int i = nnz_indices[nnz];
                 var row = &wVecs[i * L2_SIZE];
+                var activated = _mm256_min_epi16(one, _mm256_max_epi16(inputsVecs[i], zero));
 
-                var activated = _mm256_max_epi16(inputsVecs[i], zero);
-
-                var p0 = _mm256_madd_epi16(activated, row[0]);
-                var p1 = _mm256_madd_epi16(activated, row[1]);
-                var p2 = _mm256_madd_epi16(activated, row[2]);
-                var p3 = _mm256_madd_epi16(activated, row[3]);
-                var p4 = _mm256_madd_epi16(activated, row[4]);
-                var p5 = _mm256_madd_epi16(activated, row[5]);
-                var p6 = _mm256_madd_epi16(activated, row[6]);
-                var p7 = _mm256_madd_epi16(activated, row[7]);
-
-                sums[0] = _mm256_add_epi32(sums[0], p0);
-                sums[1] = _mm256_add_epi32(sums[1], p1);
-                sums[2] = _mm256_add_epi32(sums[2], p2);
-                sums[3] = _mm256_add_epi32(sums[3], p3);
-                sums[4] = _mm256_add_epi32(sums[4], p4);
-                sums[5] = _mm256_add_epi32(sums[5], p5);
-                sums[6] = _mm256_add_epi32(sums[6], p6);
-                sums[7] = _mm256_add_epi32(sums[7], p7);
+                for (int j = 0; j < L2_SIZE; j++)
+                {
+                    sums[j] = _mm256_add_epi32(sums[j], _mm256_madd_epi16(activated, row[j]));
+                }
             }
 
             for (int i = 0; i < L2_SIZE / L2_CHUNK_SIZE; ++i)
@@ -711,6 +711,19 @@ namespace Lizard.Logic.NN
             var sum01 = _mm256_hadd_ps(inp[0], inp[1]);
             var sum23 = _mm256_hadd_ps(inp[2], inp[3]);
             return _mm256_hadd_ps(sum01, sum23);
+        }
+
+        //  https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md#m256_process_chunk
+        public static void m256_process_chunk(ref Vector256<int> sum0, ref Vector256<int> sum1, Vector256<short> col0, Vector256<short> col1, Vector256<short> factor)
+        {
+            // We interleave the two columns, because madd adds adjacent values.
+            // This way we effectively add the results from both columns.
+            sum0 = _mm256_add_epi32(
+                sum0, _mm256_madd_epi16(factor, _mm256_unpacklo_epi16(col0, col1))
+            );
+            sum1 = _mm256_add_epi32(
+                sum1, _mm256_madd_epi16(factor, _mm256_unpackhi_epi16(col0, col1))
+            );
         }
     }
 }
