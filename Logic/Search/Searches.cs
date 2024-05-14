@@ -453,10 +453,17 @@ namespace Lizard.Logic.Search
                     {
                         return singleBeta;
                     }
-                    else if (ttScore >= beta || ttScore <= alpha)
+                    else if (ttScore >= beta)
                     {
-                        //  This move is basically the opposite of singular, so reduce it instead.
-                        extend = isPV ? -1 : -extend;
+                        extend = -2 + (isPV ? 1 : 0);
+                    }
+                    else if (cutNode)
+                    {
+                        extend = -2;
+                    }
+                    else if (ttScore <= alpha)
+                    {
+                        extend = -1;
                     }
                 }
 
