@@ -387,13 +387,6 @@ namespace Lizard.Logic.Threads
                     int score = RootMoves[PVIndex].PreviousScore;
                     SelDepth = 0;
 
-                    if (RootDepth >= 5)
-                    {
-                        window = AspirationWindowMargin;
-                        alpha = Math.Max(AlphaStart, score - window);
-                        beta = Math.Min(BetaStart, score + window);
-                    }
-
                     while (true)
                     {
                         score = Logic.Search.Searches.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);

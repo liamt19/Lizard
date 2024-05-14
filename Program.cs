@@ -17,7 +17,7 @@ namespace Lizard
             {
                 if (args[0] == "bench")
                 {
-                    SearchBench.Go(12, openBench: true);
+                    SearchBench.Go(6, openBench: true);
                     Environment.Exit(0);
                 }
                 else if (args[0] == "compiler")

@@ -87,6 +87,11 @@ namespace Lizard.Logic.Search
                 }
             }
 
+            if (SearchPool.GetNodeCount() >= info.MaxNodes)
+            {
+                SearchPool.StopThreads = true;
+            }
+
             if (isPV)
             {
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
@@ -210,17 +215,8 @@ namespace Lizard.Logic.Search
                 if (isPV)
                     System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
 
-                if (!isPV || legalMoves > 1)
-                {
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, depth - 1, !cutNode);
-                }
-
-                if (isPV && (playedMoves == 1 || score > alpha))
-                {
-                    //  Do a new PV search here.
-                    (ss + 1)->PV[0] = Move.Null;
-                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, depth - 1, false);
-                }
+                (ss + 1)->PV[0] = Move.Null;
+                score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, depth - 1, false);
 
                 pos.UnmakeMove(m);
 
@@ -371,6 +367,11 @@ namespace Lizard.Logic.Search
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
 
+            if (SearchPool.GetNodeCount() >= info.MaxNodes)
+            {
+                SearchPool.StopThreads = true;
+                return NNUE.GetEvaluation(pos);
+            }
 
             if (pos.IsDraw())
             {
@@ -452,7 +453,7 @@ namespace Lizard.Logic.Search
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
                 bool isCapture = (theirPiece != None && !m.Castle);
 
-                if (!(isCapture || ss->InCheck))
+                if (!isCapture)
                 {
                     continue;
                 }
