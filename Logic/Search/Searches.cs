@@ -76,10 +76,6 @@ namespace Lizard.Logic.Search
 
             int startingAlpha = alpha;
 
-            bool doSkip = ss->Skip != Move.Null;
-            bool improving = false;
-
-
             if (thisThread.IsMain && ((++thisThread.CheckupCount) >= SearchThread.CheckupMax))
             {
                 thisThread.CheckupCount = 0;
@@ -120,20 +116,10 @@ namespace Lizard.Logic.Search
                 }
             }
 
-            (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
-
-            ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
-            if (!doSkip)
-            {
-                ss->TTPV = isPV || (ss->TTHit && tte->PV);
-            }
-
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
 
-            //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
-            //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
             Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
             if (ss->InCheck)
@@ -143,11 +129,7 @@ namespace Lizard.Logic.Search
                 goto MovesLoop;
             }
 
-            if (doSkip)
-            {
-                eval = ss->StaticEval;
-            }
-            else if (ss->TTHit)
+            if (ss->TTHit)
             {
                 eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
@@ -334,12 +316,7 @@ namespace Lizard.Logic.Search
                 }
             }
 
-            if (bestScore <= alpha)
-            {
-                ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
-            }
-
-            if (!doSkip && !(isRoot && thisThread.PVIndex > 0))
+            if (!(isRoot && thisThread.PVIndex > 0))
             {
                 //  Don't update the TT if:
                 //  This is a singular extensions search (since the a/b bounds were modified and we skipped a move),
@@ -351,7 +328,8 @@ namespace Lizard.Logic.Search
 
                 Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
 
-                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, ss->TTPV);
+                bool p = (isPV || bestScore <= alpha);
+                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, p);
             }
 
             return bestScore;
@@ -378,9 +356,7 @@ namespace Lizard.Logic.Search
 
             int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
-            int bestScore = -ScoreInfinite;
-            short futility = -ScoreInfinite;
-            short eval = ss->StaticEval;
+            int bestScore = ss->StaticEval;
 
             int startingAlpha = alpha;
 
@@ -416,44 +392,38 @@ namespace Lizard.Logic.Search
 
             if (ss->InCheck)
             {
-                eval = ss->StaticEval = -ScoreInfinite;
+                bestScore = ss->StaticEval = -ScoreInfinite;
             }
             else
             {
                 if (ss->TTHit)
                 {
                     //  If the TT hit didn't have a static eval, get one now.
-                    eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                    bestScore = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                    if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
+                    if (ttScore != ScoreNone && ((tte->Bound & (ttScore > bestScore ? BoundLower : BoundUpper)) != 0))
                     {
                         //  If the TTEntry has a valid score and the bound is correct, use that score in place of the static eval.
-                        eval = ttScore;
+                        bestScore = ttScore;
                     }
                 }
                 else
                 {
-                    //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
-                    //  use the previous static eval but negative. Otherwise get the eval as normal.
-                    eval = ss->StaticEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
+                    bestScore = ss->StaticEval = NNUE.GetEvaluation(pos);
                 }
 
-                if (eval >= beta)
+                if (bestScore >= beta)
                 {
                     if (!ss->TTHit)
-                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, false);
+                        tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, (short)bestScore, false);
 
-                    return eval;
+                    return bestScore;
                 }
 
-                if (eval > alpha)
+                if (bestScore > alpha)
                 {
-                    alpha = eval;
+                    alpha = bestScore;
                 }
-
-                bestScore = eval;
-
-                futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
             }
 
             int legalMoves = 0;
@@ -481,7 +451,6 @@ namespace Lizard.Logic.Search
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
                 bool isCapture = (theirPiece != None && !m.Castle);
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
                 if (!(isCapture || ss->InCheck))
                 {
@@ -530,7 +499,7 @@ namespace Lizard.Logic.Search
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : 
                                                      TTNodeType.Beta);
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, false);
 
             return bestScore;
         }
