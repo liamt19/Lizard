@@ -136,23 +136,6 @@ namespace Lizard.Logic.Search
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
             Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
 
-            //  For TT hits, we can accept and return the TT score if:
-            //  We aren't in a PV node,
-            //  we aren't in a singular extension search,
-            //  the TT hit's depth is above the current depth,
-            //  the ttScore isn't invalid,
-            //  the ttScore is below alpha (or it is just above alpha and we expected this node to fail high),
-            //  and the tt entry's bound fits the criteria.
-            if (!isPV
-                && !doSkip
-                && tte->Depth >= depth
-                && ttScore != ScoreNone
-                && (ttScore < alpha || cutNode)
-                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
-            {
-                return ttScore;
-            }
-
             if (ss->InCheck)
             {
                 //  If we are in check, don't bother getting a static evaluation or pruning.
@@ -162,14 +145,10 @@ namespace Lizard.Logic.Search
 
             if (doSkip)
             {
-                //  Use the static evaluation from the previous call to Negamax,
-                //  which has the same position as this one.
                 eval = ss->StaticEval;
             }
             else if (ss->TTHit)
             {
-                //  Use the static evaluation from the TT if it had one, or get a new one.
-                //  We don't overwrite that TT's StatEval score yet though.
                 eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
@@ -180,165 +159,31 @@ namespace Lizard.Logic.Search
             }
             else
             {
-                //  Get the static evaluation and store it in the empty TT slot.
                 eval = ss->StaticEval = NNUE.GetEvaluation(pos);
-                
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, ss->TTPV);
             }
 
-            if (ss->Ply >= 2)
+            //  For TT hits, we can accept and return the TT score if:
+            //  We aren't in a PV node,
+            //  we aren't in a singular extension search,
+            //  the TT hit's depth is above the current depth,
+            //  the ttScore isn't invalid,
+            //  the ttScore is below alpha (or it is just above alpha and we expected this node to fail high),
+            //  and the tt entry's bound fits the criteria.
+            if (!isPV
+                && tte->Depth >= depth
+                && ttScore != ScoreNone
+                && (ttScore < alpha)
+                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
-                //  We are improving if the static evaluation at this ply is better than what it was
-                //  when it was our turn 2 plies ago, (or 4 plies if we were in check).
-                improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-                            (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true;
+                return ttScore;
             }
-
-
-
-            //  We accept Reverse Futility Pruning for:
-            //  non-PV nodes
-            //  that aren't a response to a previous singular extension search
-            //  at a depth at or below the max (currently 7)
-            //  which don't have a TT move,
-            //  so long as:
-            //  The static evaluation (eval) is below a TT win or a mate score,
-            //  the eval would cause a beta cutoff,
-            //  and the eval is significantly above beta.
-            if (UseReverseFutilityPruning
-                && !ss->TTPV
-                && !doSkip
-                && depth <= ReverseFutilityPruningMaxDepth
-                && ttMove.Equals(Move.Null)
-                && (eval < ScoreAssuredWin)
-                && (eval >= beta)
-                && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
-            {
-                return (eval + beta) / 2;
-            }
-
-
-            //  We accept Null Move Pruning for:
-            //  non-PV nodes
-            //  at a depth at or above the min (currently 6)
-            //  which have a static eval or TT score equal to or above beta
-            //  (ditto for ss->StaticEval),
-            //  so long as:
-            //  The previous node didn't start a singular extension search,
-            //  the previous node didn't start a null move search,
-            //  and we have non-pawn material (important for Zugzwang).
-            if (UseNullMovePruning
-                && !isPV
-                && depth >= NMPMinDepth
-                && eval >= beta
-                && eval >= ss->StaticEval
-                && !doSkip
-                && (ss - 1)->CurrentMove != Move.Null
-                && pos.MaterialCountNonPawn[pos.ToMove] > 0)
-            {
-                int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
-                ss->CurrentMove = Move.Null;
-                ss->ContinuationHistory = history.Continuations[0][0][0];
-
-                //  Skip our turn, and see if the our opponent is still behind even with a free move.
-                info.Position.MakeNullMove();
-                score = -Negamax<NonPVNode>(ref info, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
-                info.Position.UnmakeNullMove();
-
-                if (score >= beta)
-                {
-                    //  Null moves are not allowed to return mate or TT win scores, so ensure the score is below that.
-                    return score < ScoreTTWin ? score : beta;
-                }
-            }
-
-
-            //  Try ProbCut for:
-            //  non-PV nodes
-            //  that aren't a response to a previous singular extension search
-            //  at a depth at or above the min (currently 2!)
-            //  while our beta isn't near a mate score
-            //  so long as:
-            //  We didn't have a TT hit,
-            //  or the TT hit's depth is well below the current depth,
-            //  or the TT hit's score is above beta + ProbCutBeta(Improving).
-            int probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
-            const int seeThreshold = 1;
-            if (UseProbCut
-                && !isPV
-                && !doSkip
-                && depth >= ProbCutMinDepth
-                && Math.Abs(beta) < ScoreTTWin
-                && (!ss->TTHit || tte->Depth < depth - 3 || tte->Score >= probBeta))
-            {
-                //  nnnnnnnn/PPPPPPPP/1N1N4/1rbrB3/1QbR1q2/1nRn4/2B5/3K3k w - - 0 1
-                //  This position has 88 different captures (the most I could come up with), so 128 as a limit is fair.
-                ScoredMove* captures = stackalloc ScoredMove[NormalListCapacity];
-                int numCaps = pos.GenAll<GenLoud>(captures);
-                AssignProbCutScores(ref bb, captures, numCaps);
-
-                for (int i = 0; i < numCaps; i++)
-                {
-                    Move m = OrderNextMove(captures, numCaps, i);
-                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, seeThreshold))
-                    {
-                        //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
-                        continue;
-                    }
-
-                    prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
-
-                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.Castle);
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
-                    
-                    ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
-                    thisThread.Nodes++;
-
-                    pos.MakeMove(m);
-
-                    score = -QSearch<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
-
-                    if (score >= probBeta)
-                    {
-                        //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, depth - 4, !cutNode);
-                    }
-
-                    pos.UnmakeMove(m);
-
-                    if (score >= probBeta)
-                    {
-                        return score;
-                    }
-                }
-            }
-
-
-            if (ttMove.Equals(Move.Null)
-                && cutNode
-                && depth >= ExtraCutNodeReductionMinDepth)
-            {
-                //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 6).
-                depth--;
-            }
-
 
             MovesLoop:
 
             int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
             int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
 
-            int quietCount = 0;     //  Number of quiet moves that have been played, to a max of 16.
-            int captureCount = 0;   //  Number of capture moves that have been played, to a max of 16.
-
             bool didSkip = false;
-
-            Move* captureMoves = stackalloc Move[16];
-            Move* quietMoves = stackalloc Move[16];
-
-            bool skipQuiets = false;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
@@ -347,12 +192,6 @@ namespace Lizard.Logic.Search
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
-
-                if (m == ss->Skip)
-                {
-                    didSkip = true;
-                    continue;
-                }
 
                 if (!pos.IsLegal(m))
                 {
@@ -375,105 +214,10 @@ namespace Lizard.Logic.Search
                 bool isCapture = (theirPiece != None && !m.Castle);
 
                 legalMoves++;
-                int extend = 0;
-
-                //  If this isn't a root node,
-                //  we have a non-mate score for at least one move,
-                //  and we have non-pawn material:
-                //  We can start skipping quiet moves if we have already seen enough of them at this depth.
-                if (!isRoot
-                    && bestScore > ScoreMatedMax
-                    && pos.MaterialCountNonPawn[pos.ToMove] > 0)
-                {
-                    if (skipQuiets == false)
-                    {
-                        skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
-                    }
-
-                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
-
-                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
-                    {
-                        continue;
-                    }
-
-                    if (givesCheck || isCapture || skipQuiets)
-                    {
-                        //  Once we've found at least 1 move that doesn't lead to mate,
-                        //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -LMRExchangeBase * depth))
-                        {
-                            continue;
-                        }
-                    }
-                }
-
-                //  Try Singular Extensions for:
-                //  non-root nodes
-                //  which aren't a response to a previous singular extension search,
-                //  haven't already been extended significantly,
-                //  and have a depth at or above 7 (or 8 for PV searches + PV TT entry hits),
-                //  so long as:
-                //  The current move is the TT hit's move,
-                //  the TT hit's score isn't a definitive win/loss,
-                //  the TT hit is an alpha node,
-                //  and the TT depth is close to or above the current depth.
-                if (UseSingularExtensions
-                    && !isRoot
-                    && !doSkip
-                    && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SingularExtensionsMinDepth + (isPV && tte->PV ? 1 : 0))
-                    && m.Equals(ttMove)
-                    && Math.Abs(ttScore) < ScoreWin
-                    && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
-                {
-                    int singleBeta = ttScore - (SingularExtensionsNumerator * depth / 10);
-                    int singleDepth = (depth + SingularExtensionsDepthAugment) / 2;
-
-                    ss->Skip = m;
-                    score = Negamax<NonPVNode>(ref info, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
-                    ss->Skip = Move.Null;
-
-                    if (score < singleBeta)
-                    {
-                        //  This move seems to be good, so extend it.
-                        extend = 1;
-
-                        if (!isPV
-                            && score < singleBeta - SingularExtensionsBeta
-                            && ss->DoubleExtensions <= 8)
-                        {
-                            //  If this isn't a PV, and this move is was a good deal better than any other one,
-                            //  then extend by 2 so long as we've double extended less than 8 times.
-                            extend = 2;
-                        }
-                    }
-                    else if (singleBeta >= beta)
-                    {
-                        return singleBeta;
-                    }
-                    else if (ttScore >= beta)
-                    {
-                        extend = -2 + (isPV ? 1 : 0);
-                    }
-                    else if (cutNode)
-                    {
-                        extend = -2;
-                    }
-                    else if (ttScore <= alpha)
-                    {
-                        extend = -1;
-                    }
-                }
 
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
 
-                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
-
-                ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend == 2 ? 1 : 0);
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -482,90 +226,18 @@ namespace Lizard.Logic.Search
                 ulong prevNodes = thisThread.Nodes;
 
                 if (isPV)
-                {
                     System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
-                }
 
-                int newDepth = depth + extend;
-
-                if (depth >= 2
-                    && legalMoves >= 2
-                    && !isCapture)
+                if (!isPV || legalMoves > 1)
                 {
-
-                    int R = LogarithmicReductionTable[depth][legalMoves];
-
-                    //  Reduce if our static eval is declining
-                    if (!improving)
-                        R++;
-
-                    //  Reduce if we think that this move is going to be a bad one
-                    if (cutNode)
-                        R++;
-
-                    //  Extend for PV searches
-                    if (isPV)
-                        R--;
-
-                    //  Extend killer moves
-                    if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
-                        R--;
-
-                    var histScore = 2 * history.MainHistory[us, m] + 
-                           (*(ss - 1)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 2)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 4)->ContinuationHistory)[histIdx];
-
-                    R -= (histScore / (4096 * HistoryReductionMultiplier));
-
-                    //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
-                    //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
-                    //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
-                    R = Math.Clamp(R, 1, newDepth);
-                    int reducedDepth = (newDepth - R);
-
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
-
-                    //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
-                    //  before updating this move's continuation history.
-                    if (score > alpha && R > 1)
-                    {
-                        //  This is mainly SF's idea about a verification search, and updating
-                        //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtensionThreshold)) ? 1 : 0;
-                        newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
-
-                        if (newDepth - 1 > reducedDepth)
-                        {
-                            score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
-                        }
-
-                        int bonus = 0;
-                        if (score <= alpha)
-                        {
-                            //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth - 1);
-                        }
-                        else if (score >= beta)
-                        {
-                            //  Apply a bonus to this continuation.
-                            bonus = StatBonus(newDepth - 1);
-                        }
-
-                        UpdateContinuations(ss, us, ourPiece, m.To, bonus);
-                    }
-                }
-                else if (!isPV || legalMoves > 1)
-                {
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, depth - 1, !cutNode);
                 }
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
                     //  Do a new PV search here.
-                    //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV[0] = Move.Null;
-                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth - 1, false);
+                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, depth - 1, false);
                 }
 
                 pos.UnmakeMove(m);
@@ -640,26 +312,11 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
-                            UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
-
                             //  This is a beta cutoff: Don't bother searching other moves because the current one is already too good.
                             break;
                         }
 
                         alpha = score;
-                    }
-                }
-
-                if (m != bestMove)
-                {
-                    //  Add the move to the capture/quiet list.
-                    if (isCapture && captureCount < 16)
-                    {
-                        captureMoves[captureCount++] = m;
-                    }
-                    else if (!isCapture && quietCount < 16)
-                    {
-                        quietMoves[quietCount++] = m;
                     }
                 }
             }
@@ -729,10 +386,8 @@ namespace Lizard.Logic.Search
 
             ss->InCheck = pos.Checked;
             ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
-            int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
-            bool ttPV = ss->TTHit && tte->PV;
 
             if (isPV)
             {
@@ -752,7 +407,7 @@ namespace Lizard.Logic.Search
             }
 
             if (!isPV
-                && tte->Depth >= ttDepth
+                && tte->Depth >= 0
                 && ttScore != ScoreNone
                 && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
@@ -801,14 +456,12 @@ namespace Lizard.Logic.Search
                 futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
             }
 
-            int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
             int legalMoves = 0;
             int movesMade = 0;
-            int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = pos.GenPseudoLegalQS(list, ttDepth);
-            AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
+            int size = pos.GenPseudoLegal(list);
+            AssignScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -830,62 +483,15 @@ namespace Lizard.Logic.Search
                 bool isCapture = (theirPiece != None && !m.Castle);
                 bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
+                if (!(isCapture || ss->InCheck))
+                {
+                    continue;
+                }
+
                 movesMade++;
 
-                if (bestScore > ScoreTTLoss)
-                {
-                    if (!(givesCheck || m.Promotion)
-                        && (prevSquare != moveTo)
-                        && futility > -ScoreWin)
-                    {
-                        if (legalMoves > 3 && !ss->InCheck)
-                        {
-                            //  If we've already tried 3 moves and we know that we aren't getting mated,
-                            //  only try checks, promotions, and recaptures
-                            continue;
-                        }
-
-                        short futilityValue = (short)(futility + GetPieceValue(theirPiece));
-
-                        if (futilityValue <= alpha)
-                        {
-                            //  Our eval is low, and this move doesn't win us enough material to raise it above alpha.
-                            bestScore = Math.Max(bestScore, futilityValue);
-                            continue;
-                        }
-
-                        if (futility <= alpha && !SEE_GE(pos, m, 1))
-                        {
-                            //  Our eval is low, and this move doesn't win us material
-                            bestScore = Math.Max(bestScore, futility);
-                            continue;
-                        }
-                    }
-
-                    if (checkEvasions >= 2)
-                    {
-                        //  If we are in check, only consider 2 non-capturing moves.
-                        break;
-                    }
-
-                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
-                    {
-                        //  This move loses a significant amount of material
-                        continue;
-                    }
-                }
-
                 prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
-
-                if (ss->InCheck && !isCapture)
-                {
-                    checkEvasions++;
-                }
-
-                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
-
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);

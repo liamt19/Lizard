@@ -29,35 +29,15 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     sm.Score = int.MaxValue - 100000;
                 }
-                else if (m == ss->Killer0)
-                {
-                    sm.Score = int.MaxValue - 1000000;
-                }
-                else if (m == ss->Killer1)
-                {
-                    sm.Score = int.MaxValue - 2000000;
-                }
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor);
+                    sm.Score = (10 * GetPieceValue(capturedPiece));
                 }
                 else
                 {
-                    int pt = bb.GetPieceAtIndex(moveFrom);
-                    int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
-
-                    sm.Score = 2 * history.MainHistory[pc, m];
-                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
-                    sm.Score += (*(ss - 2)->ContinuationHistory)[contIdx];
-                    sm.Score += (*(ss - 4)->ContinuationHistory)[contIdx];
-                    sm.Score += (*(ss - 6)->ContinuationHistory)[contIdx];
-
-                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
-                    {
-                        sm.Score += OrderingGivesCheckBonus;
-                    }
+                    sm.Score = 0;
+                    
                 }
             }
         }
@@ -88,24 +68,11 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor);
+                    sm.Score = (10 * GetPieceValue(capturedPiece));
                 }
                 else
                 {
-                    int pt = bb.GetPieceAtIndex(moveFrom);
-                    int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
-
-                    sm.Score = 2 * history.MainHistory[pc, m];
-                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 2)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
-
-                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
-                    {
-                        sm.Score += OrderingGivesCheckBonus;
-                    }
+                    sm.Score = 0;
                 }
             }
         }
