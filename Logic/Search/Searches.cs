@@ -490,7 +490,7 @@ namespace Lizard.Logic.Search
 
                 if (depth >= 2
                     && legalMoves >= 2
-                    && !isCapture)
+                    && !(isPV && isCapture))
                 {
 
                     int R = LogarithmicReductionTable[depth][legalMoves];
