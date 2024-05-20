@@ -7,14 +7,10 @@ namespace Lizard.Logic.Data
     {
         public static readonly Move Null = new Move();
 
-        //  6 bits for: From, To, SqChecker
+        //  6 bits for From and To
         //  
         //  2 bits for PromotionTo, which defaults to a knight (1), so the "Promotion" flag MUST be looked at before "PromotionTo" is.
         //  (Otherwise every move would show up as a promotion to a knight, woohoo for horses!).
-        //  
-        //  6 bits for the 6 move flags.
-        //  
-        //  Total of 26, padded to 32.
         private ushort _data;
         public ushort Data
         {
@@ -25,7 +21,7 @@ namespace Lizard.Logic.Data
 
 
         public const int FlagEnPassant = 0b000001 << 14;
-        public const int FlagCastle = 0b000010 << 14;
+        public const int FlagCastle    = 0b000010 << 14;
         public const int FlagPromotion = 0b000011 << 14;
 
         private const int SpecialFlagsMask = 0b000011 << 14;

@@ -31,24 +31,6 @@ SOFTWARE.
 using static Lizard.Logic.Tablebase.Fathom;
 using static Lizard.Logic.Tablebase.TBProbeHeader;
 using static Lizard.Logic.Tablebase.TBProbe;
-using static Lizard.Logic.Tablebase.TBProbeCore;
-using static Lizard.Logic.Tablebase.TBConfig;
-
-using TbMove = ushort;
-using size_t = ulong;
-using map_t = ulong;
-
-using int8_t = sbyte;
-using uint8_t = byte;
-using int16_t = short;
-using uint16_t = ushort;
-using int32_t = int;
-using uint32_t = uint;
-using int64_t = long;
-using uint64_t = ulong;
-
-using unsigned = uint;
-using Value = int;
 
 using System.Runtime.InteropServices;
 using System.IO.MemoryMappedFiles;

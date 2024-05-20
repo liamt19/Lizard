@@ -31,8 +31,6 @@ SOFTWARE.
 using static Lizard.Logic.Tablebase.Fathom;
 using static Lizard.Logic.Tablebase.TBProbeHeader;
 using static Lizard.Logic.Tablebase.TBProbe;
-using static Lizard.Logic.Tablebase.TBProbeCore;
-using static Lizard.Logic.Tablebase.TBConfig;
 
 using TbMove = ushort;
 using size_t = ulong;
@@ -49,10 +47,7 @@ using uint64_t = ulong;
 
 using unsigned = uint;
 using Value = int;
-using Lizard.Logic.Data;
-using System.Net.NetworkInformation;
-using Lizard.Logic.Tablebase;
-using System.ComponentModel;
+
 
 namespace Lizard.Logic.Tablebase
 {
@@ -430,9 +425,9 @@ namespace Lizard.Logic.Tablebase
         {
             if (!is_check(pos))
                 return false;
-            uint16_t* moves0 = stackalloc uint16_t[MAX_MOVES];
-            uint16_t* moves = moves0;
-            uint16_t* end = gen_moves(pos, moves);
+            TbMove* moves0 = stackalloc TbMove[MAX_MOVES];
+            TbMove* moves = moves0;
+            TbMove* end = gen_moves(pos, moves);
             for (; moves < end; moves++)
             {
                 Pos pos1;
@@ -484,50 +479,6 @@ namespace Lizard.Logic.Tablebase
 
         #region Defines
 
-        private const int TB_PAWN = 1;
-        private const int TB_KNIGHT = 2;
-        private const int TB_BISHOP = 3;
-        private const int TB_ROOK = 4;
-        private const int TB_QUEEN = 5;
-        private const int TB_KING = 6;
-
-        private const int TB_WPAWN = TB_PAWN;
-        private const int TB_BPAWN = (TB_PAWN | 8);
-
-        private const int WHITE_KING = (TB_WPAWN + 5);
-        private const int WHITE_QUEEN = (TB_WPAWN + 4);
-        private const int WHITE_ROOK = (TB_WPAWN + 3);
-        private const int WHITE_BISHOP = (TB_WPAWN + 2);
-        private const int WHITE_KNIGHT = (TB_WPAWN + 1);
-        private const int WHITE_PAWN = TB_WPAWN;
-        private const int BLACK_KING = (TB_BPAWN + 5);
-        private const int BLACK_QUEEN = (TB_BPAWN + 4);
-        private const int BLACK_ROOK = (TB_BPAWN + 3);
-        private const int BLACK_BISHOP = (TB_BPAWN + 2);
-        private const int BLACK_KNIGHT = (TB_BPAWN + 1);
-        private const int BLACK_PAWN = TB_BPAWN;
-
-        private const ulong PRIME_WHITE_QUEEN = 11811845319353239651UL;
-        private const ulong PRIME_WHITE_ROOK = 10979190538029446137UL;
-        private const ulong PRIME_WHITE_BISHOP = 12311744257139811149UL;
-        private const ulong PRIME_WHITE_KNIGHT = 15202887380319082783UL;
-        private const ulong PRIME_WHITE_PAWN = 17008651141875982339UL;
-        private const ulong PRIME_BLACK_QUEEN = 15484752644942473553UL;
-        private const ulong PRIME_BLACK_ROOK = 18264461213049635989UL;
-        private const ulong PRIME_BLACK_BISHOP = 15394650811035483107UL;
-        private const ulong PRIME_BLACK_KNIGHT = 13469005675588064321UL;
-        private const ulong PRIME_BLACK_PAWN = 11695583624105689831UL;
-
-        private const ulong BOARD_RANK_EDGE = 0x8181818181818181UL;
-        private const ulong BOARD_FILE_EDGE = 0xFF000000000000FFUL;
-        private const ulong BOARD_EDGE = (BOARD_RANK_EDGE | BOARD_FILE_EDGE);
-        private const ulong BOARD_RANK_1 = 0x00000000000000FFUL;
-        private const ulong BOARD_FILE_A = 0x8080808080808080UL;
-
-        private const int KEY_KvK = 0;
-
-        private const int BEST_NONE = 0xFFFF;
-        private const int SCORE_ILLEGAL = 0x7FFF;
         #endregion
     }
 }

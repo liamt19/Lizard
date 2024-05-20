@@ -7,10 +7,7 @@ using Lizard.Logic.Tablebase;
 using static Lizard.Logic.Tablebase.Fathom;
 using static Lizard.Logic.Tablebase.TBProbeHeader;
 using static Lizard.Logic.Tablebase.TBProbe;
-using static Lizard.Logic.Tablebase.TBProbeCore;
 using static Lizard.Logic.Tablebase.TBChess;
-using static Lizard.Logic.Tablebase.TBChessHeader;
-using static Lizard.Logic.Tablebase.TBConfig;
 
 namespace Lizard
 {
@@ -42,7 +39,7 @@ namespace Lizard
             info = new SearchInformation(p);
 
 
-            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\lizard\\");
+            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\");
             tb_init();
 
             uint res = 0;
@@ -75,12 +72,30 @@ namespace Lizard
 
             uint* rvs = stackalloc uint[TB_MAX_MOVES];
             //p.LoadFromFEN("7k/8/P5K1/8/8/8/8/8 w - - 0 1");
-            //p.LoadFromFEN("3k4/8/P5K1/8/8/8/8/8 w - - 0 1");
-            p.LoadFromFEN("2k5/8/8/2K5/8/8/2P5/8 w - - 2 2");
+            p.LoadFromFEN("4k2q/2K5/8/8/3Q4/8/8/8 w - - 0 1");
+            //p.LoadFromFEN("4k2q/2K5/8/3Q4/8/8/8/8 w - - 0 1");
             res = 0;
             var rootRet = tb_probe_root(p, rvs);
-            Log($"\ttb_probe_root: {GetDTZResult(rootRet)} and rvs is {*rvs}");
+            
+            Log($"\ttb_probe_root: {GetDTZResult(rootRet)}");
 
+            int r = (int)rootRet;
+
+            var from = TB_GET_FROM(r);
+            var to = TB_GET_TO(r);
+            var wdl = TB_GET_WDL(r);
+            var dtz = TB_GET_DTZ(rootRet);
+            var promo = TB_GET_PROMOTES(r);
+
+
+
+            Log($"rootRet" +
+                $"\t from:{IndexToString(from)}" +
+                $"\t to: {IndexToString(to)}" +
+                $"\t wdl: {GetWDLResult((uint)wdl)}" +
+                $"\t dtz: {dtz}" +
+                $"\t promo: {promo}" +
+                $"\t ep: {TB_GET_EP(r)}");
 
 
 

@@ -31,10 +31,7 @@ SOFTWARE.
 using static Lizard.Logic.Tablebase.Fathom;
 using static Lizard.Logic.Tablebase.TBProbeHeader;
 using static Lizard.Logic.Tablebase.TBChess;
-using static Lizard.Logic.Tablebase.TBChessHeader;
 using static Lizard.Logic.Tablebase.TBProbe;
-using static Lizard.Logic.Tablebase.TBProbeCore;
-using static Lizard.Logic.Tablebase.TBConfig;
 using Lizard.Logic.Tablebase;
 
 using TbMove = ushort;
@@ -55,33 +52,42 @@ using Value = int;
 
 using Lizard.Logic.Magic;
 using System.IO.MemoryMappedFiles;
+using System.Diagnostics;
 
 namespace Lizard.Logic.Tablebase
 {
     public static unsafe class TBProbeHeader
     {
+
+        public static int tbNumPiece, tbNumPawn;
+        public static int numWdl, numDtm, numDtz;
+
+        public static PieceEntry* pieceEntry;
+        public static PawnEntry* pawnEntry;
+        public static TbHashEntry[] tbHash = new TbHashEntry[1 << TB_HASHBITS];
+
         #region Constants
 
-        public const int PAWN = 1;
+        public const int PAWN   = 1;
         public const int KNIGHT = 2;
         public const int BISHOP = 3;
-        public const int ROOK = 4;
-        public const int QUEEN = 5;
-        public const int KING = 6;
+        public const int ROOK   = 4;
+        public const int QUEEN  = 5;
+        public const int KING   = 6;
 
-        public const int W_PAWN = 1;
+        public const int W_PAWN   = 1;
         public const int W_KNIGHT = 2;
         public const int W_BISHOP = 3;
-        public const int W_ROOK = 4;
-        public const int W_QUEEN = 5;
-        public const int W_KING = 6;
+        public const int W_ROOK   = 4;
+        public const int W_QUEEN  = 5;
+        public const int W_KING   = 6;
 
-        public const int B_PAWN = 9;
+        public const int B_PAWN   = 9;
         public const int B_KNIGHT = 10;
         public const int B_BISHOP = 11;
-        public const int B_ROOK = 12;
-        public const int B_QUEEN = 13;
-        public const int B_KING = 14;
+        public const int B_ROOK   = 12;
+        public const int B_QUEEN  = 13;
+        public const int B_KING   = 14;
 
         public const int BLACK = 0;
         public const int WHITE = 1;
@@ -92,63 +98,52 @@ namespace Lizard.Logic.Tablebase
         public const int DTZ = 2;
 
         public const int PIECE_ENC = 0;
-        public const int FILE_ENC = 1;
-        public const int RANK_ENC = 2;
+        public const int FILE_ENC  = 1;
+        public const int RANK_ENC  = 2;
+
+        private const int TB_WPAWN = 1;
+        private const int TB_BPAWN = 1 | 8;
+
+        private const int WHITE_QUEEN  = TB_WPAWN + 4;
+        private const int WHITE_ROOK   = TB_WPAWN + 3;
+        private const int WHITE_BISHOP = TB_WPAWN + 2;
+        private const int WHITE_KNIGHT = TB_WPAWN + 1;
+        private const int WHITE_PAWN   = TB_WPAWN;
+        private const int BLACK_QUEEN  = TB_BPAWN + 4;
+        private const int BLACK_ROOK   = TB_BPAWN + 3;
+        private const int BLACK_BISHOP = TB_BPAWN + 2;
+        private const int BLACK_KNIGHT = TB_BPAWN + 1;
+        private const int BLACK_PAWN   = TB_BPAWN;
+
+        private const ulong PRIME_WHITE_QUEEN  = 11811845319353239651UL;
+        private const ulong PRIME_WHITE_ROOK   = 10979190538029446137UL;
+        private const ulong PRIME_WHITE_BISHOP = 12311744257139811149UL;
+        private const ulong PRIME_WHITE_KNIGHT = 15202887380319082783UL;
+        private const ulong PRIME_WHITE_PAWN   = 17008651141875982339UL;
+        private const ulong PRIME_BLACK_QUEEN  = 15484752644942473553UL;
+        private const ulong PRIME_BLACK_ROOK   = 18264461213049635989UL;
+        private const ulong PRIME_BLACK_BISHOP = 15394650811035483107UL;
+        private const ulong PRIME_BLACK_KNIGHT = 13469005675588064321UL;
+        private const ulong PRIME_BLACK_PAWN   = 11695583624105689831UL;
+
+        public const ulong BOARD_RANK_EDGE = 0x8181818181818181UL;
+        public const ulong BOARD_FILE_EDGE = 0xFF000000000000FFUL;
+
+        public const int KEY_KvK = 0;
+
+        public const ushort BEST_NONE = 0xFFFF;
+        public const ushort SCORE_ILLEGAL = 0x7FFF;
 
 
-        private static readonly int TB_PAWN = 1;
-        private static readonly int TB_KNIGHT = 2;
-        private static readonly int TB_BISHOP = 3;
-        private static readonly int TB_ROOK = 4;
-        private static readonly int TB_QUEEN = 5;
-        private static readonly int TB_KING = 6;
-
-        private static readonly int TB_WPAWN = TB_PAWN;
-        private static readonly int TB_BPAWN = (TB_PAWN | 8);
-
-        private static readonly int WHITE_KING = (TB_WPAWN + 5);
-        private static readonly int WHITE_QUEEN = (TB_WPAWN + 4);
-        private static readonly int WHITE_ROOK = (TB_WPAWN + 3);
-        private static readonly int WHITE_BISHOP = (TB_WPAWN + 2);
-        private static readonly int WHITE_KNIGHT = (TB_WPAWN + 1);
-        private static readonly int WHITE_PAWN = TB_WPAWN;
-        private static readonly int BLACK_KING = (TB_BPAWN + 5);
-        private static readonly int BLACK_QUEEN = (TB_BPAWN + 4);
-        private static readonly int BLACK_ROOK = (TB_BPAWN + 3);
-        private static readonly int BLACK_BISHOP = (TB_BPAWN + 2);
-        private static readonly int BLACK_KNIGHT = (TB_BPAWN + 1);
-        private static readonly int BLACK_PAWN = TB_BPAWN;
-
-        private static readonly ulong PRIME_WHITE_QUEEN = 11811845319353239651UL;
-        private static readonly ulong PRIME_WHITE_ROOK = 10979190538029446137UL;
-        private static readonly ulong PRIME_WHITE_BISHOP = 12311744257139811149UL;
-        private static readonly ulong PRIME_WHITE_KNIGHT = 15202887380319082783UL;
-        private static readonly ulong PRIME_WHITE_PAWN = 17008651141875982339UL;
-        private static readonly ulong PRIME_BLACK_QUEEN = 15484752644942473553UL;
-        private static readonly ulong PRIME_BLACK_ROOK = 18264461213049635989UL;
-        private static readonly ulong PRIME_BLACK_BISHOP = 15394650811035483107UL;
-        private static readonly ulong PRIME_BLACK_KNIGHT = 13469005675588064321UL;
-        private static readonly ulong PRIME_BLACK_PAWN = 11695583624105689831UL;
-
-        private static readonly ulong BOARD_RANK_EDGE = 0x8181818181818181UL;
-        private static readonly ulong BOARD_FILE_EDGE = 0xFF000000000000FFUL;
-        private static readonly ulong BOARD_EDGE = (BOARD_RANK_EDGE | BOARD_FILE_EDGE);
-        private static readonly ulong BOARD_RANK_1 = 0x00000000000000FFUL;
-        private static readonly ulong BOARD_FILE_A = 0x8080808080808080UL;
-
-        public static readonly int KEY_KvK = 0;
-
-        public static readonly ushort BEST_NONE = 0xFFFF;
-        public static readonly ushort SCORE_ILLEGAL = 0x7FFF;
-
-
-
+        public const uint TB_RESULT_CHECKMATE = 4;
+        public const uint TB_RESULT_STALEMATE = 2;
+        public const uint TB_RESULT_FAILED = 0xFFFFFFFF;
 
 
         public const int TB_PIECES = 5;
-        public const int TB_HASHBITS = (TB_PIECES < 7 ? 11 : 12);
+        public const int TB_HASHBITS  = (TB_PIECES < 7 ? 11  : 12);
         public const int TB_MAX_PIECE = (TB_PIECES < 7 ? 254 : 650);
-        public const int TB_MAX_PAWN = (TB_PIECES < 7 ? 256 : 861);
+        public const int TB_MAX_PAWN  = (TB_PIECES < 7 ? 256 : 861);
         public const int TB_MAX_SYMS = 4096;
         public const int TB_MAX_MOVES = (192 + 1);
         public const int TB_MAX_CAPTURES = 64;
@@ -158,30 +153,33 @@ namespace Lizard.Logic.Tablebase
         public const int TB_CASTLING_k = 0x4;     /* Black king-side. */
         public const int TB_CASTLING_q = 0x8;     /* Black queen-side. */
 
-        public const int TB_LOSS = 0;       /* LOSS */
+        public const int TB_LOSS         = 0;       /* LOSS */
         public const int TB_BLESSED_LOSS = 1;       /* LOSS but 50-move draw */
-        public const int TB_DRAW = 2;       /* DRAW */
-        public const int TB_CURSED_WIN = 3;       /* WIN but 50-move draw  */
-        public const int TB_WIN = 4;       /* WIN  */
+        public const int TB_DRAW         = 2;       /* DRAW */
+        public const int TB_CURSED_WIN   = 3;       /* WIN but 50-move draw  */
+        public const int TB_WIN          = 4;       /* WIN  */
 
-        public const int TB_PROMOTES_NONE = 0;
-        public const int TB_PROMOTES_QUEEN = 1;
-        public const int TB_PROMOTES_ROOK = 2;
+        public const int TB_PROMOTES_NONE   = 0;
+        public const int TB_PROMOTES_QUEEN  = 1;
+        public const int TB_PROMOTES_ROOK   = 2;
         public const int TB_PROMOTES_BISHOP = 3;
         public const int TB_PROMOTES_KNIGHT = 4;
 
-        public const int TB_RESULT_WDL_MASK = 0x0000000F;
-        public const int TB_RESULT_TO_MASK = 0x000003F0;
-        public const int TB_RESULT_FROM_MASK = 0x0000FC00;
+        public const int TB_RESULT_WDL_MASK      = 0x0000000F;
+        public const int TB_RESULT_TO_MASK       = 0x000003F0;
+        public const int TB_RESULT_FROM_MASK     = 0x0000FC00;
         public const int TB_RESULT_PROMOTES_MASK = 0x00070000;
-        public const int TB_RESULT_EP_MASK = 0x00080000;
-        public const uint TB_RESULT_DTZ_MASK = 0xFFF00000;
-        public const int TB_RESULT_WDL_SHIFT = 0;
-        public const int TB_RESULT_TO_SHIFT = 4;
-        public const int TB_RESULT_FROM_SHIFT = 10;
+        public const int TB_RESULT_EP_MASK       = 0x00080000;
+        public const uint TB_RESULT_DTZ_MASK     = 0xFFF00000;
+        public const int TB_RESULT_WDL_SHIFT      = 0;
+        public const int TB_RESULT_TO_SHIFT       = 4;
+        public const int TB_RESULT_FROM_SHIFT     = 10;
         public const int TB_RESULT_PROMOTES_SHIFT = 16;
-        public const int TB_RESULT_EP_SHIFT = 19;
-        public const int TB_RESULT_DTZ_SHIFT = 20;
+        public const int TB_RESULT_EP_SHIFT       = 19;
+        public const int TB_RESULT_DTZ_SHIFT      = 20;
+
+
+
 
         #endregion
 
@@ -189,12 +187,28 @@ namespace Lizard.Logic.Tablebase
 
         #region Static readonly stuff
 
-        //public static readonly uint TB_RESULT_CHECKMATE = TB_SET_WDL(0, TB_WIN);
-        //public static readonly uint TB_RESULT_STALEMATE = TB_SET_WDL(0, TB_DRAW);
+        public static readonly string[] tbSuffix = [".rtbw", ".rtbm", ".rtbz"];
+        public static readonly uint[] tbMagic = [0x5d23e871, 0x88ac504b, 0xa50c66d7];
+        public static readonly string piece_to_char = " PNBRQK  pnbrqk";
 
-        public const uint TB_RESULT_CHECKMATE = 4;
-        public const uint TB_RESULT_STALEMATE = 2;
-        public const uint TB_RESULT_FAILED = 0xFFFFFFFF;
+        private static readonly ulong[] calc_key_from_pieces_keys = [
+            0,
+            PRIME_WHITE_PAWN, PRIME_WHITE_KNIGHT, PRIME_WHITE_BISHOP, PRIME_WHITE_ROOK, PRIME_WHITE_QUEEN,
+            0, 0,
+            PRIME_BLACK_PAWN, PRIME_BLACK_KNIGHT, PRIME_BLACK_BISHOP, PRIME_BLACK_ROOK, PRIME_BLACK_QUEEN,
+            0, 0,
+            0
+        ];
+
+        public static readonly int MAX_MOVES = TB_MAX_MOVES;
+        public static readonly int MOVE_STALEMATE = 0xFFFF;
+        public static readonly int MOVE_CHECKMATE = 0xFFFE;
+
+        public const int TB_VALUE_PAWN = 100;  /* value of pawn in endgame */
+        public const int TB_VALUE_MATE = 32000;
+        public const int TB_VALUE_INFINITE = 32767; /* value above all normal score values */
+        public const int TB_VALUE_DRAW = 0;
+        public const int TB_MAX_MATE_PLY = 255;
 
         #endregion
 
@@ -230,7 +244,9 @@ namespace Lizard.Logic.Tablebase
 
         public static int TB_MOVE_TO(TbMove move) => ((move) & 0x3F);
 
-        public static bool TB_MOVE_PROMOTES(TbMove move) => (((move) >> 12) & 0x7) != 0;
+        public static int TB_MOVE_PROMOTES(TbMove move) => (((move) >> 12) & 0x7);
+
+        public static int TB_MOVE_EP(TbMove move) => (((move) >> 15) & 0x1);
 
 
         #endregion
@@ -242,14 +258,9 @@ namespace Lizard.Logic.Tablebase
         public struct TbRootMove
         {
             public TbMove move;
-            public TbMove[] pv;
+            public TbMove[] pv = new TbMove[TB_MAX_PLY];
             public uint pvSize;
             public int tbScore, tbRank;
-
-            public TbRootMove()
-            {
-                pv = new TbMove[TB_MAX_PLY];
-            }
 
             public TbRootMove(TbMove move, TbMove[] pv, uint pvSize, int tbScore, int tbRank)
             {
@@ -264,25 +275,10 @@ namespace Lizard.Logic.Tablebase
         public struct TbRootMoves
         {
             public uint size;
-            public TbRootMove[] moves;
+            public TbRootMove[] moves = new TbRootMove[TB_MAX_MOVES];
 
-            public TbRootMoves()
-            {
-                moves = new TbRootMove[TB_MAX_MOVES];
-            }
+            public TbRootMoves() { }
         };
-
-        #endregion
-
-
-
-
-
-
-
-
-        public static readonly string[] tbSuffix = { ".rtbw", ".rtbm", ".rtbz" };
-        public static readonly uint[] tbMagic = { 0x5d23e871, 0x88ac504b, 0xa50c66d7 };
 
         public struct PairsData
         {
@@ -298,10 +294,7 @@ namespace Lizard.Logic.Tablebase
             public fixed byte constValue[2];
             public fixed ulong _base[1];
 
-            public PairsData()
-            {
-                //_base = new ulong[1];
-            }
+            public PairsData() { }
         };
 
         public struct EncInfo
@@ -311,18 +304,34 @@ namespace Lizard.Logic.Tablebase
             public fixed byte pieces[TB_PIECES];
             public fixed byte norm[TB_PIECES];
 
-            public EncInfo()
-            {
-
-            }
+            public EncInfo() { }
         };
+
+        public struct TbHashEntry
+        {
+            public ulong key;
+            public BaseEntry ptr;
+
+            public TbHashEntry() { }
+        };
+
+
+        #endregion
+
+
+
+
+
+
+
+
+
+
 
         public abstract class BaseEntry
         {
             public ulong key;
             public byte*[] data = new byte*[3];
-            //public MemoryMappedFile[] mapping;
-
 
             //  TODO: This is supposed to be atomic
             public bool[] ready = new bool[3];
@@ -376,38 +385,9 @@ namespace Lizard.Logic.Tablebase
             }
         };
 
-        public struct TbHashEntry
-        {
-            public ulong key;
-            public BaseEntry ptr;
 
-            public TbHashEntry()
-            {
-
-            }
-        };
-
-
-        public static int tbNumPiece, tbNumPawn;
-        public static int numWdl, numDtm, numDtz;
-
-        public static PieceEntry* pieceEntry;
-        public static PawnEntry* pawnEntry;
-        public static TbHashEntry[] tbHash = new TbHashEntry[1 << TB_HASHBITS];
-
-
-
-        public static int ColorOfPiece(int piece)
-        {
-            //  return (Color)(!(piece >> 3));
-            return ((piece >> 3) == 0) ? WHITE : BLACK;
-        }
-
-        public static int TypeOfPiece(int piece)
-        {
-            //return (PieceType)(piece & 7);
-            return (piece & 7);
-        }
+        public static int ColorOfPiece(int piece) => ((piece >> 3) == 0) ? WHITE : BLACK;
+        public static int TypeOfPiece(int piece) => (piece & 7);
 
         public static uint64_t pieces_by_type(Pos* pos, int c, int p)
         {
@@ -432,7 +412,7 @@ namespace Lizard.Logic.Tablebase
             }
         }
 
-        public static readonly string piece_to_char = " PNBRQK  pnbrqk";
+
 
         public static int char_to_piece_type(char c)
         {
@@ -530,14 +510,6 @@ namespace Lizard.Logic.Tablebase
             return key;
         }
 
-        private static readonly ulong[] calc_key_from_pieces_keys = [
-            0,
-            PRIME_WHITE_PAWN, PRIME_WHITE_KNIGHT, PRIME_WHITE_BISHOP, PRIME_WHITE_ROOK, PRIME_WHITE_QUEEN,
-            0, 0,
-            PRIME_BLACK_PAWN, PRIME_BLACK_KNIGHT, PRIME_BLACK_BISHOP, PRIME_BLACK_ROOK, PRIME_BLACK_QUEEN,
-            0, 0,
-            0
-        ];
 
 
         public static TbMove make_move(int promote, int from, int to) => (ushort)(((((promote) & 0x7) << 12) | (((from) & 0x3F) << 6) | ((to) & 0x3F)));
@@ -558,15 +530,7 @@ namespace Lizard.Logic.Tablebase
             return 0;
         }
 
-        public static readonly int MAX_MOVES = TB_MAX_MOVES;
-        public static readonly int MOVE_STALEMATE = 0xFFFF;
-        public static readonly int MOVE_CHECKMATE = 0xFFFE;
-
-
-
-
-
-
+        [Conditional("DEBUG")]
         public static void assert(bool cond)
         {
             if (!cond)
@@ -575,9 +539,64 @@ namespace Lizard.Logic.Tablebase
             }
         }
 
+        [Conditional("DEBUG")]
         public static void assert(int i)
         {
             assert(i != 0);
         }
+
+
+
+        public static string GetWDLResult(uint result)
+        {
+            return result switch
+            {
+                TB_LOSS => "Loss",
+                TB_BLESSED_LOSS => "Blessed loss (50-move draw)",
+                TB_DRAW => "Draw",
+                TB_CURSED_WIN => "Cursed win (50-move draw)",
+                TB_WIN => "Win",
+                _ => "Unknown!"
+            };
+        }
+
+        public static string GetDTZResult(uint result)
+        {
+            uint wdl = (uint)TB_GET_WDL((int)result);
+            return wdl switch
+            {
+                TB_RESULT_CHECKMATE => "Checkmate",
+                TB_RESULT_STALEMATE => "Stalemate",
+                TB_RESULT_FAILED => "Failed!",
+                _ => $"Normal ({result} == {TbMove.FromResult(result)})"
+            };
+        }
+
+        public static int FathomPromoToLizard(int promo)
+        {
+            return promo switch
+            {
+                TB_PROMOTES_QUEEN => Piece.Queen,
+                TB_PROMOTES_ROOK => Piece.Rook,
+                TB_PROMOTES_BISHOP => Piece.Bishop,
+                TB_PROMOTES_KNIGHT => Piece.Knight,
+                TB_PROMOTES_NONE => Piece.None,
+                _ => Piece.None,
+            };
+        }
+
+
+        public static void OrderResults(uint* entries, int size)
+        {
+            Span<uint> span = new Span<uint>(entries, size);
+            uint[] arr = span.ToArray();
+
+            arr = arr.OrderByDescending(wdl => TB_GET_WDL((int)wdl))
+                     .ThenBy(dtz => TB_GET_DTZ(dtz))
+                     .ToArray();
+
+            arr.CopyTo(span);
+        }
+
     }
 }
