@@ -6,7 +6,6 @@
 /.vs/Lizard
 /obj
 /TB_Files
-/Logic/Tablebase
 /Lizard.csproj.user
 /Properties/PublishProfiles/*.user
 /Properties/launchSettings.json

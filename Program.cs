@@ -3,6 +3,15 @@
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
 
+using Lizard.Logic.Tablebase;
+using static Lizard.Logic.Tablebase.Fathom;
+using static Lizard.Logic.Tablebase.TBProbeHeader;
+using static Lizard.Logic.Tablebase.TBProbe;
+using static Lizard.Logic.Tablebase.TBProbeCore;
+using static Lizard.Logic.Tablebase.TBChess;
+using static Lizard.Logic.Tablebase.TBChessHeader;
+using static Lizard.Logic.Tablebase.TBConfig;
+
 namespace Lizard
 {
 
@@ -31,6 +40,50 @@ namespace Lizard
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
+
+
+            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\lizard\\");
+            tb_init();
+
+            uint res = 0;
+
+            if (false)
+            {
+                p.LoadFromFEN("4k3/8/4P3/4K3/8/8/8/8 w - - 0 1");
+                Log($"\tRoot probe: {GetDTZResult(tb_probe_root(p, &res))} and res is {res}");
+
+
+                p.LoadFromFEN("4k3/8/4P3/4K3/8/8/8/8 w - - 0 1");
+                Log($"\twdl: {GetWDLResult(tb_probe_wdl(p))}");
+
+                p.TryMakeMove("Kd6");   //  Now only a draw with Kd8
+                Log($"\tShould be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
+
+                p.TryMakeMove("Kd8");
+                Log($"\tShould be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
+
+                p.LoadFromFEN("4k3/8/3KP3/8/8/8/8/8 b - - 1 1");
+                Log($"\tReset position, should still be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
+
+                p.TryMakeMove("Kf8");
+                Log($"\tWhite is winning now -> {GetWDLResult(tb_probe_wdl(p))}");
+
+                p.LoadFromFEN("5k2/8/3KP3/8/8/8/8/8 w - - 2 2");
+                res = 0;
+                Log($"\tRoot probe: {GetDTZResult(tb_probe_root(p, &res))} and res is {res}");
+            }
+
+            uint* rvs = stackalloc uint[TB_MAX_MOVES];
+            //p.LoadFromFEN("7k/8/P5K1/8/8/8/8/8 w - - 0 1");
+            //p.LoadFromFEN("3k4/8/P5K1/8/8/8/8/8 w - - 0 1");
+            p.LoadFromFEN("2k5/8/8/2K5/8/8/2P5/8 w - - 2 2");
+            res = 0;
+            var rootRet = tb_probe_root(p, rvs);
+            Log($"\ttb_probe_root: {GetDTZResult(rootRet)} and rvs is {*rvs}");
+
+
+
+
 
             DoInputLoop();
         }
