@@ -89,13 +89,12 @@ namespace Lizard.Logic.Tablebase
             }
             else
             {
-                Log($"init_tb({str}) was found!");
+                //Log($"init_tb({str}) was found!");
             }
 
 
-            int[] pcs = new int[16];
-            for (int i = 0; i < 16; i++)
-                pcs[i] = 0;
+            int* pcs = stackalloc int[16];
+
             int color = 0;
             foreach (char s in str)
                 if (s == 'v')
@@ -110,73 +109,59 @@ namespace Lizard.Logic.Tablebase
                     }
                 }
 
-            ulong key;
-            ulong key2;
-            fixed (int* pcsPtr = &pcs[0])
-            {
-                key = calc_key_from_pcs(pcsPtr, 0);
-                key2 = calc_key_from_pcs(pcsPtr, 1);
-            }
+            ulong key = calc_key_from_pcs(&pcs[0], 0);
+            ulong key2 = calc_key_from_pcs(&pcs[0], 1);
 
 
             bool hasPawns = (pcs[W_PAWN] != 0 || pcs[B_PAWN] != 0);
 
-            BaseEntry* be = hasPawns ? &pawnEntry[tbNumPawn++].be
-                                  : &pieceEntry[tbNumPiece++].be;
+            BaseEntry be = hasPawns ?  pawnEntry[tbNumPawn++]
+                                    : pieceEntry[tbNumPiece++];
 
-            if (be->data == null)
-            {
-                *be = new BaseEntry();
-            }
-            else
-            {
-                Log("WARN be->data in init_tb was NOT null, and I think it should be? perhaps");
-            }
-
-            be->hasPawns = hasPawns;
-            be->key = key;
-            be->symmetric = key == key2;
-            be->num = 0;
+            be.hasPawns = hasPawns;
+            be.key = key;
+            be.symmetric = key == key2;
+            be.num = 0;
             for (int i = 0; i < 16; i++)
-                be->num += (byte)pcs[i];
+                be.num += (byte)pcs[i];
 
             numWdl++;
-            numDtm += (be->hasDtm = test_tb(str, tbSuffix[DTM])) ? 1 : 0;
-            numDtz += (be->hasDtz = test_tb(str, tbSuffix[DTZ])) ? 1 : 0;
+            numDtm += (be.hasDtm = test_tb(str, tbSuffix[DTM])) ? 1 : 0;
+            numDtz += (be.hasDtz = test_tb(str, tbSuffix[DTZ])) ? 1 : 0;
 
-            if (be->num > TB_MaxCardinality)
+            if (be.num > TB_MaxCardinality)
             {
-                TB_MaxCardinality = be->num;
+                TB_MaxCardinality = be.num;
             }
-            if (be->hasDtm)
+            if (be.hasDtm)
             {
-                if (be->num > TB_MaxCardinalityDTM)
+                if (be.num > TB_MaxCardinalityDTM)
                 {
-                    TB_MaxCardinalityDTM = be->num;
+                    TB_MaxCardinalityDTM = be.num;
                 }
             }
 
             for (int type = 0; type < 3; type++)
             {
-                be->ready[type] = false;
+                //be.ready[type] = false;
             }
 
-            if (!be->hasPawns)
+            if (!be.hasPawns)
             {
                 int j = 0;
                 for (int i = 0; i < 16; i++)
                     if (pcs[i] == 1) j++;
-                be->kk_enc = j == 2;
+                be.kk_enc = j == 2;
             }
             else
             {
-                be->pawns[0] = (byte)pcs[W_PAWN];
-                be->pawns[1] = (byte)pcs[B_PAWN];
+                be.pawns[0] = (byte)pcs[W_PAWN];
+                be.pawns[1] = (byte)pcs[B_PAWN];
                 //  if (pcs[B_PAWN] && (!pcs[W_PAWN] || pcs[W_PAWN] > pcs[B_PAWN]))
                 if (pcs[B_PAWN] != 0 && ((pcs[W_PAWN] == 0) || pcs[W_PAWN] > pcs[B_PAWN]))
                 {
-                    //  Swap(be->pawns[0], be->pawns[1]);
-                    (be->pawns[0], be->pawns[1]) = (be->pawns[1], be->pawns[0]);
+                    //  Swap(be.pawns[0], be.pawns[1]);
+                    (be.pawns[0], be.pawns[1]) = (be.pawns[1], be.pawns[0]);
                 }
             }
 
@@ -279,7 +264,7 @@ namespace Lizard.Logic.Tablebase
 
         public static uint tb_probe_root(Position pos, uint* results)
         {
-            return tb_probe_root(
+            var root = tb_probe_root(
                 pos.bb.Colors[White],
                 pos.bb.Colors[Black],
                 pos.bb.Pieces[King],
@@ -294,6 +279,41 @@ namespace Lizard.Logic.Tablebase
                 (pos.ToMove == White ? true : false),
                 results
                 );
+
+
+            TbMove tbMove = (TbMove)(*results);
+            int tbFrom = move_from(tbMove);
+            int tbTo = move_to(tbMove);
+
+            
+
+            ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+            int size = pos.GenLegal(legal);
+
+            for (int i = 0; i < size; i++)
+            {
+                int r = (int)results[i];
+
+                var from = TB_GET_FROM(r);
+                var to = TB_GET_TO(r);
+                var wdl = TB_GET_WDL(r);
+                var dtz = TB_GET_DTZ(results[i]);
+
+                Log($"Results[{i}]" +
+                    $"\t from:{IndexToString(from)}" +
+                    $"\t to: {IndexToString(to)}" +
+                    $"\t wdl: {GetWDLResult((uint)wdl)}" +
+                    $"\t dtz: {dtz}");
+            }
+
+            for (int i = 0; i < size; i++)
+            {
+                Move m = legal[0].Move;
+                if (m.From == tbFrom && m.To == tbTo)
+                    Log($"tb_probe_root move is {legal[i].Move.ToString(pos)}");
+            }
+
+            return root;
         }
 
         /*
@@ -364,7 +384,7 @@ namespace Lizard.Logic.Tablebase
             int dtz;
             TbMove move = probe_root(&pos, &dtz, results);
 
-            Log($"In tb_probe_root, probe_root returned {move}");
+            Log($"In tb_probe_root, probe_root returned {move} = {IndexToString(move_from(move))}{IndexToString(move_to(move))}");
 
             if (move == 0)
                 return TB_RESULT_FAILED;
@@ -507,9 +527,9 @@ namespace Lizard.Logic.Tablebase
         }
 
 
-        public static void add_to_hash(BaseEntry* ptr, ulong key)
+        public static void add_to_hash(BaseEntry be, ulong key)
         {
-            Log($"add_to_hash({ptr->key}, {key})");
+            //Log($"add_to_hash({be.key}, {key})");
             int idx;
 
             idx = (int)(key >> (64 - TB_HASHBITS));
@@ -517,89 +537,46 @@ namespace Lizard.Logic.Tablebase
                 idx = (idx + 1) & ((1 << TB_HASHBITS) - 1);
 
             tbHash[idx].key = key;
-            tbHash[idx].ptr = ptr;
+            tbHash[idx].ptr = be;
         }
 
 
-        public static int num_tables(BaseEntry* be, int type)
+        public static int num_tables(BaseEntry be, int type)
         {
-            return be->hasPawns ? type == DTM ? 6 : 4 : 1;
+            return be.hasPawns ? type == DTM ? 6 : 4 : 1;
         }
 
-        //public static EncInfo* first_ei(BaseEntry* be, int type)
-        //{
-        //    if (be->hasPawns)
-        //    {
-        //        return &CVT_PAWN(be)->ei[type == WDL ? 0 : type == DTM ? 8 : 20];
-        //    }
-        //    else
-        //    {
-        //        return &CVT_PIECE(be)->ei[type == WDL ? 0 : type == DTM ? 2 : 4];
-        //    }
-
-        //    return (be->hasPawns) ? &CVT_PAWN(be)->ei[type == WDL ? 0 : type == DTM ? 8 : 20]
-        //                         : &CVT_PIECE(be)->ei[type == WDL ? 0 : type == DTM ? 2 : 4];
-
-        //}
-
-        public static void free_tb_entry(BaseEntry* be)
+        public static void free_tb_entry(BaseEntry be)
         {
             for (int type = 0; type < 3; type++)
             {
 
                 //  if (atomic_load_explicit(&be->ready[type], memory_order_relaxed))
-                if (be->ready[type])
+                if (be.ready[type])
                 {
                     //unmap_file((void*)(be->data[type]), be->mapping[type]);
                     int num = num_tables(be, type);
 
-                    //EncInfo* ei = first_ei(be, type);
-                    if (be->hasPawns)
+                    Span<EncInfo> ei = be.first_ei(type);
+
+                    for (int t = 0; t < num; t++)
                     {
-                        fixed (EncInfo* ei = &CVT_PAWN(be)->ei[type == WDL ? 0 : type == DTM ? 8 : 20])
-                        {
-                            for (int t = 0; t < num; t++)
-                            {
-                                free(ei[t].precomp);
-                                if (type != DTZ)
-                                    free(ei[num + t].precomp);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        fixed (EncInfo* ei = &CVT_PIECE(be)->ei[type == WDL ? 0 : type == DTM ? 2 : 4])
-                        {
-                            for (int t = 0; t < num; t++)
-                            {
-                                free(ei[t].precomp);
-                                if (type != DTZ)
-                                    free(ei[num + t].precomp);
-                            }
-                        }
+                        free(ei[t].precomp);
+                        if (type != DTZ)
+                            free(ei[num + t].precomp);
                     }
 
                     //atomic_store_explicit(&be->ready[type], false, memory_order_relaxed);
-                    be->ready[type] = false;
+                    be.ready[type] = false;
                 }
             }
         }
 
 
-        public static bool initialized = false;
         public static object tbMutex = new object();
         public static bool tb_init()
         {
-            if (!initialized)
-            {
-                init_indices();
-                //king_attacks_init();
-                //knight_attacks_init();
-                //bishop_attacks_init();
-                //rook_attacks_init();
-                //pawn_attacks_init();
-                initialized = true;
-            }
+            init_indices();
 
             int i, j, k, l, m;
             string str = string.Empty;
@@ -712,6 +689,17 @@ namespace Lizard.Logic.Tablebase
                 TB_CURSED_WIN => "Cursed win (50-move draw)",
                 TB_WIN => "Win",
                 _ => "Unknown!"
+            };
+        }
+
+        public static string GetDTZResult(uint result)
+        {
+            return result switch
+            {
+                TB_RESULT_CHECKMATE => "Checkmate",
+                TB_RESULT_STALEMATE => "Stalemate",
+                TB_RESULT_FAILED => "Failed!",
+                _ => $"Unknown! ({result})"
             };
         }
     }

@@ -26,6 +26,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+
+Additionally, some parts of this file were fixed using Ceres' port, which you can find here:
+https://github.com/dje-dev/Ceres/blob/main/src/Ceres.Chess/TBBackends/Fathom/FathomProbe.cs
+
+The fixes were primarily in init_table and probe_table (and the functionality of BaseEntry/PawnEntry/PieceEntry accordingly),
+which I was previously handling in a non-workable way.
+
  */
 
 using static Lizard.Logic.Tablebase.Fathom;
@@ -334,18 +343,18 @@ namespace Lizard.Logic.Tablebase
             }
         }
 
-        public static int leading_pawn(int* p, BaseEntry* be, int enc)
+        public static int leading_pawn(int* p, BaseEntry be, int enc)
         {
-            for (int i = 1; i < be->pawns[0]; i++)
+            for (int i = 1; i < be.pawns[0]; i++)
                 if (Flap[enc - 1][p[0]] > Flap[enc - 1][p[i]])
                     (p[0], p[i]) = (p[i], p[0]);
 
             return enc == FILE_ENC ? FileToFile[p[0] & 7] : (p[0] - 8) >> 3;
         }
 
-        public static size_t encode(int* p, EncInfo* ei, BaseEntry* be, int enc)
+        public static size_t encode(int* p, EncInfo* ei, BaseEntry be, int enc)
         {
-            int n = be->num;
+            int n = be.num;
             size_t idx;
             int k;
 
@@ -362,13 +371,13 @@ namespace Lizard.Logic.Tablebase
                 for (int i = 0; i < n; i++)
                     if (OffDiag[p[i]] != 0)
                     {
-                        if (OffDiag[p[i]] > 0 && i < (be->kk_enc ? 2 : 3))
+                        if (OffDiag[p[i]] > 0 && i < (be.kk_enc ? 2 : 3))
                             for (int j = 0; j < n; j++)
                                 p[j] = FlipDiag[p[j]];
                         break;
                     }
 
-                if (be->kk_enc)
+                if (be.kk_enc)
                 {
                     idx = (ulong)KKIdx[Triangle[p[0]]][p[1]];
                     k = 2;
@@ -392,21 +401,21 @@ namespace Lizard.Logic.Tablebase
             }
             else
             {
-                for (int i = 1; i < be->pawns[0]; i++)
-                    for (int j = i + 1; j < be->pawns[0]; j++)
+                for (int i = 1; i < be.pawns[0]; i++)
+                    for (int j = i + 1; j < be.pawns[0]; j++)
                         if (PawnTwist[enc - 1][p[i]] < PawnTwist[enc - 1][p[j]])
                             (p[i], p[j]) = (p[j], p[i]);
 
-                k = be->pawns[0];
+                k = be.pawns[0];
                 idx = PawnIdx[enc - 1][k - 1][Flap[enc - 1][p[0]]];
                 for (int i = 1; i < k; i++)
                     idx += Binomial[k - i][PawnTwist[enc - 1][p[i]]];
                 idx *= ei->factor[0];
 
                 // Pawns of other color
-                if (be->pawns[1] != 0)
+                if (be.pawns[1] != 0)
                 {
-                    int t = k + be->pawns[1];
+                    int t = k + be.pawns[1];
                     for (int i = k; i < t; i++)
                         for (int j = i + 1; j < t; j++)
                             if (p[i] > p[j])
@@ -453,17 +462,17 @@ namespace Lizard.Logic.Tablebase
             return idx;
         }
 
-        static size_t encode_piece(int* p, EncInfo* ei, BaseEntry* be)
+        static size_t encode_piece(int* p, EncInfo* ei, BaseEntry be)
         {
             return encode(p, ei, be, PIECE_ENC);
         }
 
-        static size_t encode_pawn_f(int* p, EncInfo* ei, BaseEntry* be)
+        static size_t encode_pawn_f(int* p, EncInfo* ei, BaseEntry be)
         {
             return encode(p, ei, be, FILE_ENC);
         }
 
-        static size_t encode_pawn_r(int* p, EncInfo* ei, BaseEntry* be)
+        static size_t encode_pawn_r(int* p, EncInfo* ei, BaseEntry be)
         {
             return encode(p, ei, be, RANK_ENC);
         }
@@ -482,54 +491,53 @@ namespace Lizard.Logic.Tablebase
             return f / l;
         }
 
-        static size_t init_enc_info(EncInfo* ei, BaseEntry* be,
-            uint8_t* tb, int shift, int t, int enc)
+        static size_t init_enc_info(ref EncInfo ei, BaseEntry be, uint8_t* tb, int shift, int t, int enc)
         {
-            bool morePawns = enc != PIECE_ENC && be->pawns[1] > 0;
+            bool morePawns = enc != PIECE_ENC && be.pawns[1] > 0;
 
-            for (int i = 0; i < be->num; i++)
+            for (int i = 0; i < be.num; i++)
             {
-                ei->pieces[i] = (byte)((tb[i + 1 + (morePawns ? 1 : 0)] >> shift) & 0x0f);
-                ei->norm[i] = 0;
+                ei.pieces[i] = (byte)((tb[i + 1 + (morePawns ? 1 : 0)] >> shift) & 0x0f);
+                ei.norm[i] = 0;
             }
 
             int order = (tb[0] >> shift) & 0x0f;
             int order2 = morePawns ? (tb[1] >> shift) & 0x0f : 0x0f;
 
-            int k = ei->norm[0] = (byte)(enc != PIECE_ENC ? be->pawns[0]
-                                 : be->kk_enc ? 2 : 3);
+            int k = ei.norm[0] = (byte)(enc != PIECE_ENC ? be.pawns[0]
+                                 : be.kk_enc ? 2 : 3);
 
             if (morePawns)
             {
-                ei->norm[k] = be->pawns[1];
-                k += ei->norm[k];
+                ei.norm[k] = be.pawns[1];
+                k += ei.norm[k];
             }
 
-            for (int i = k; i < be->num; i += ei->norm[i])
-                for (int j = i; j < be->num && ei->pieces[j] == ei->pieces[i]; j++)
-                    ei->norm[i]++;
+            for (int i = k; i < be.num; i += ei.norm[i])
+                for (int j = i; j < be.num && ei.pieces[j] == ei.pieces[i]; j++)
+                    ei.norm[i]++;
 
             int n = 64 - k;
             size_t f = 1;
 
-            for (int i = 0; k < be->num || i == order || i == order2; i++)
+            for (int i = 0; k < be.num || i == order || i == order2; i++)
             {
                 if (i == order)
                 {
-                    ei->factor[0] = f;
+                    ei.factor[0] = f;
                     //  f *= enc == FILE_ENC ? PawnFactorFile[ei->norm[0] - 1][t]
                     //  : enc == RANK_ENC ? PawnFactorRank[ei->norm[0] - 1][t]
                     //  : be->kk_enc ? 462 : 31332;
 
                     if (enc == FILE_ENC)
                     {
-                        f *= PawnFactorFile[ei->norm[0] - 1][t];
+                        f *= PawnFactorFile[ei.norm[0] - 1][t];
                     }
                     else if (enc == RANK_ENC)
                     {
-                        f *= PawnFactorRank[ei->norm[0] - 1][t];
+                        f *= PawnFactorRank[ei.norm[0] - 1][t];
                     }
-                    else if (be->kk_enc)
+                    else if (be.kk_enc)
                     {
                         f *= 462;
                     }
@@ -540,15 +548,15 @@ namespace Lizard.Logic.Tablebase
                 }
                 else if (i == order2)
                 {
-                    ei->factor[ei->norm[0]] = f;
-                    f *= subfactor(ei->norm[ei->norm[0]], (ulong)(48 - ei->norm[0]));
+                    ei.factor[ei.norm[0]] = f;
+                    f *= subfactor(ei.norm[ei.norm[0]], (ulong)(48 - ei.norm[0]));
                 }
                 else
                 {
-                    ei->factor[k] = f;
-                    f *= subfactor(ei->norm[k], (ulong)n);
-                    n -= ei->norm[k];
-                    k += ei->norm[k];
+                    ei.factor[k] = f;
+                    f *= subfactor(ei.norm[k], (ulong)n);
+                    n -= ei.norm[k];
+                    k += ei.norm[k];
                 }
             }
 
@@ -638,7 +646,7 @@ namespace Lizard.Logic.Tablebase
             return d;
         }
 
-        static bool init_table(BaseEntry* be, string str, int type)
+        static bool init_table(BaseEntry be, string str, int type)
         {
             //  uint8_t* data = map_tb(str, tbSuffix[type], be->mapping[type]); 
             uint8_t* data = map_tb(str, tbSuffix[type]);
@@ -656,259 +664,199 @@ namespace Lizard.Logic.Tablebase
                 return false;
             }
 
-            be->data[type] = data;
+            be.data[type] = data;
 
             bool split = type != DTZ && ((data[4] & 0x01) != 0);
             if (type == DTM)
-                be->dtmLossOnly = (data[4] & 0x04) != 0;
+                be.dtmLossOnly = (data[4] & 0x04) != 0;
 
             data += 5;
 
-            size_t[][] tb_size = new size_t[6][];
-            for (int i = 0; i < 6; i++)
-                tb_size[i] = new size_t[2];
+            size_t[,] tb_size = new size_t[6, 2];
 
             int num = num_tables(be, type);
 
-            //EncInfo* ei = first_ei(be, type);
-            int ptrIdx_PAWN = (type == WDL ? 0 : type == DTM ? 8 : 20);
-            int ptrIdx_PIECE = (type == WDL ? 0 : type == DTM ? 2 : 4);
+            Span<EncInfo> ei = be.first_ei(type);
+            int enc = !be.hasPawns ? PIECE_ENC : type != DTM ? FILE_ENC : RANK_ENC;
 
-            var cvtPiece = CVT_PIECE(be);
-            var cvtPawn = CVT_PAWN(be);
-
-            //  fixed (EncInfo* ei_PIECE = &CVT_PIECE(be)->ei[ptrIdx_PIECE], ei_PAWN = &CVT_PAWN(be)->ei[ptrIdx_PAWN])
-            fixed (EncInfo* ei_PIECE = &cvtPiece->ei[ptrIdx_PIECE], ei_PAWN = &cvtPawn->ei[ptrIdx_PAWN])
+            for (int t = 0; t < num; t++)
             {
-                EncInfo* ei = (be->hasPawns) ? ei_PAWN : ei_PIECE;
-
-                //  I hate this language
-
-                int enc = !be->hasPawns ? PIECE_ENC : type != DTM ? FILE_ENC : RANK_ENC;
-
-                for (int t = 0; t < num; t++)
+                tb_size[t, 0] = init_enc_info(ref ei[t], be, data, 0, t, enc);
+                if (split)
                 {
-                    tb_size[t][0] = init_enc_info(&ei[t], be, data, 0, t, enc);
-                    if (split)
-                        tb_size[t][1] = init_enc_info(&ei[num + t], be, data, 4, t, enc);
-                    data += be->num + 1 + ((be->hasPawns && (be->pawns[1] != 0)) ? 1 : 0);
+                    tb_size[t, 1] = init_enc_info(ref ei[num + t], be, data, 4, t, enc);
                 }
-                data += (uintptr_t)data & 1;
+                data += be.num + 1 + BoolInt((be.hasPawns && IntBool(be.pawns[1])));
+            }
 
-                size_t[][][] size = new size_t[6][][];
-                for (int i = 0; i < 6; i++)
+            data += (uint)data & 1;
+
+            ulong[,][] size = new ulong[6, 2][];
+            for (int i = 0; i < 6; i++)
+            {
+                for (int j = 0; j < 2; j++)
                 {
-                    size[i] = new size_t[2][];
-                    for (int j = 0; j < 2; j++)
-                    {
-                        size[i][j] = new size_t[3];
-                    }
-                }
-
-                for (int t = 0; t < num; t++)
-                {
-                    uint8_t flags;
-                    fixed (size_t* sizePtr = size[t][0])
-                    {
-                        //  ei[t].precomp = setup_pairs(&data, tb_size[t][0], size[t][0], &flags, type);
-                        ei[t].precomp = setup_pairs(&data, tb_size[t][0], sizePtr, &flags, type);
-                    }
-                    if (type == DTZ)
-                    {
-                        if (!be->hasPawns)
-                            CVT_PIECE(be)->dtzFlags = flags;
-                        else
-                            CVT_PAWN(be)->dtzFlags[t] = flags;
-                    }
-                    if (split)
-                    {
-                        fixed (size_t* sizePtr = size[t][1])
-                        {
-                            //  ei[num + t].precomp = setup_pairs(&data, tb_size[t][1], size[t][1], &flags, type);
-                            ei[num + t].precomp = setup_pairs(&data, tb_size[t][1], sizePtr, &flags, type);
-                        }
-
-                    }
-                    else if (type != DTZ)
-                    {
-                        ei[num + t].precomp = null;
-                    }
-                }
-
-                if (type == DTM && !be->dtmLossOnly)
-                {
-                    uint16_t* map = (uint16_t*)data;
-                    *(be->hasPawns ? &CVT_PAWN(be)->dtmMap : &CVT_PIECE(be)->dtmMap) = map;
-                    //  uint16_t(*mapIdx)[2][2] = be->hasPawns ? &CVT_PAWN(be)->dtmMapIdx[0]
-                    //                                         : &CVT_PIECE(be)->dtmMapIdx;
-
-                    if (be->hasPawns)
-                    {
-                        fixed (uint16_t[][]* mapIdx = &CVT_PAWN(be)->dtmMapIdx[0])
-                        {
-                            for (int t = 0; t < num; t++)
-                            {
-                                for (int i = 0; i < 2; i++)
-                                {
-                                    mapIdx[t][0][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                    data += 2 + 2 * read_le_u16(data);
-                                }
-                                if (split)
-                                {
-                                    for (int i = 0; i < 2; i++)
-                                    {
-                                        mapIdx[t][1][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                        data += 2 + 2 * read_le_u16(data);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        uint16_t[][]* mapIdx = &CVT_PIECE(be)->dtmMapIdx;
-
-                        for (int t = 0; t < num; t++)
-                        {
-                            for (int i = 0; i < 2; i++)
-                            {
-                                mapIdx[t][0][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                data += 2 + 2 * read_le_u16(data);
-                            }
-                            if (split)
-                            {
-                                for (int i = 0; i < 2; i++)
-                                {
-                                    mapIdx[t][1][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                    data += 2 + 2 * read_le_u16(data);
-                                }
-                            }
-                        }
-                    }
-                }
-
-
-
-                if (type == DTZ)
-                {
-                    void* map = data;
-                    *(be->hasPawns ? &CVT_PAWN(be)->dtzMap : &CVT_PIECE(be)->dtzMap) = map;
-                    //uint16_t(*mapIdx)[4] = be->hasPawns ? &CVT_PAWN(be)->dtzMapIdx[0]
-                    //                                      : &CVT_PIECE(be)->dtzMapIdx;
-                    //uint8_t* flags = be->hasPawns ? &CVT_PAWN(be)->dtzFlags[0]
-                    //                              : &CVT_PIECE(be)->dtzFlags;
-
-                    if (be->hasPawns)
-                    {
-                        fixed (uint16_t[]* mapIdx = &CVT_PAWN(be)->dtzMapIdx[0])
-                        {
-                            fixed (uint8_t* flags = &CVT_PAWN(be)->dtzFlags[0])
-                            {
-                                for (int t = 0; t < num; t++)
-                                {
-                                    if ((flags[t] & 2) != 0)
-                                    {
-                                        //  if (!(flags[t] & 16))
-                                        if ((flags[t] & 16) == 0)
-                                        {
-                                            for (int i = 0; i < 4; i++)
-                                            {
-                                                mapIdx[t][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                                data += 1 + data[0];
-                                            }
-                                        }
-                                        else
-                                        {
-                                            data += (uintptr_t)data & 0x01;
-                                            for (int i = 0; i < 4; i++)
-                                            {
-                                                mapIdx[t][i] = (uint16_t)((uint16_t*)data + 1 - (uint16_t*)map);
-                                                data += 2 + 2 * read_le_u16(data);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                    }
-                    else
-                    {
-                        uint16_t[]* mapIdx = &CVT_PIECE(be)->dtzMapIdx;
-                        uint8_t* flags = &CVT_PIECE(be)->dtzFlags;
-
-                        for (int t = 0; t < num; t++)
-                        {
-                            if ((flags[t] & 2) != 0)
-                            {
-                                //  if (!(flags[t] & 16))
-                                if ((flags[t] & 16) == 0)
-                                {
-                                    for (int i = 0; i < 4; i++)
-                                    {
-                                        mapIdx[t][i] = (uint16_t)(data + 1 - (uint8_t*)map);
-                                        data += 1 + data[0];
-                                    }
-                                }
-                                else
-                                {
-                                    data += (uintptr_t)data & 0x01;
-                                    for (int i = 0; i < 4; i++)
-                                    {
-                                        mapIdx[t][i] = (uint16_t)((uint16_t*)data + 1 - (uint16_t*)map);
-                                        data += 2 + 2 * read_le_u16(data);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    data += (uintptr_t)data & 0x01;
-                }
-
-                for (int t = 0; t < num; t++)
-                {
-                    ei[t].precomp->indexTable = data;
-                    data += size[t][0][0];
-                    if (split)
-                    {
-                        ei[num + t].precomp->indexTable = data;
-                        data += size[t][1][0];
-                    }
-                }
-
-                for (int t = 0; t < num; t++)
-                {
-                    ei[t].precomp->sizeTable = (uint16_t*)data;
-                    data += size[t][0][1];
-                    if (split)
-                    {
-                        ei[num + t].precomp->sizeTable = (uint16_t*)data;
-                        data += size[t][1][1];
-                    }
-                }
-
-                for (int t = 0; t < num; t++)
-                {
-                    //  data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3f);
-                    data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3fUL);
-                    ei[t].precomp->data = data;
-                    data += size[t][0][2];
-                    if (split)
-                    {
-                        //  data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3f);
-                        data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3fUL);
-                        ei[num + t].precomp->data = data;
-                        data += size[t][1][2];
-                    }
-                }
-
-                if (type == DTM && be->hasPawns)
-                {
-                    CVT_PAWN(be)->dtmSwitched = calc_key_from_pieces(ei[0].pieces, be->num) != be->key;
+                    size[i, j] = new ulong[3]; // TODO: make stackalloc:
                 }
             }
 
-            Log("init_table returning true");
+            for (int t = 0; t < num; t++)
+            {
+                byte flags = default;
+
+                fixed (size_t* sizePtr = size[t, 0])
+                    ei[t].precomp = setup_pairs(&data, tb_size[t, 0], sizePtr, &flags, type);
+
+                if (type == DTZ)
+                {
+                    if (!be.hasPawns)
+                    {
+                        (be as PieceEntry).dtzFlags[0] = flags;
+                    }
+                    else
+                    {
+                        (be as PawnEntry).dtzFlags[t] = flags;
+                    }
+                }
+                if (split)
+                {
+                    fixed (size_t* sizePtr = size[t, 1])
+                        ei[num + t].precomp = setup_pairs(&data, tb_size[t, 1], sizePtr, &flags, type);
+                }
+                else if (type != DTZ)
+                {
+                    ei[num + t].precomp = default;
+                }
+            }
+
+
+            if (type == DTM && !be.dtmLossOnly)
+            {
+                ushort* map = (ushort*)data;
+                if (be is PieceEntry)
+                {
+                    (be as PieceEntry).dtmMap = map;
+                }
+                else
+                {
+                    (be as PawnEntry).dtmMap = map;
+                }
+
+
+                ref ushort[,,] refMapIdx = ref (be is PawnEntry) ? ref ((be as  PawnEntry).dtmMapIdx)
+                                                                 : ref ((be as PieceEntry).dtmMapIdx);
+
+                //  ushort(*mapIdx)[2][2] = be->hasPawns ? &PAWN(be)->dtmMapIdx[0] : &PIECE(be)->dtmMapIdx;
+                for (int t = 0; t < num; t++)
+                {
+                    for (int i = 0; i < 2; i++)
+                    {
+                        refMapIdx[t, 0, i] = (ushort)(data + 1 - (byte*)map);
+                        data += 2 + 2 * read_le_u16(data);
+                    }
+                    if (split)
+                    {
+                        for (int i = 0; i < 2; i++)
+                        {
+                            refMapIdx[t, 1, i] = (ushort)(data + 1 - (byte*)map);
+                            data += 2 + 2 * read_le_u16(data);
+                        }
+                    }
+                }
+            }
+
+            if (type == DTZ)
+            {
+                //  void* map = data;
+                //  *(be->hasPawns ? &PAWN(be)->dtzMap : &PIECE(be)->dtzMap) = map;
+
+                ushort* map1 = (ushort*)data;
+                if (be is PieceEntry)
+                {
+                    (be as PieceEntry).dtzMap = map1;
+                }
+                else
+                {
+                    (be as PawnEntry).dtzMap = map1;
+                }
+
+                //      ushort(*mapIdx)[4] = be->hasPawns ? &PAWN(be)->dtzMapIdx[0]
+                //                                        : &PIECE(be)->dtzMapIdx;
+                ref ushort[,] refMapIdx = ref (be is PawnEntry) ? ref ((be as PawnEntry).dtzMapIdx)
+                                                                : ref ((be as PieceEntry).dtzMapIdx);
+
+                byte[] flags = be.hasPawns ? (be as PawnEntry).dtzFlags
+                                           : (be as PieceEntry).dtzFlags;
+                for (int t = 0; t < num; t++)
+                {
+                    if (IntBool(flags[t] & 2))
+                    {
+                        if (!IntBool((flags[t] & 16)))
+                        {
+                            for (int i = 0; i < 4; i++)
+                            {
+                                refMapIdx[t, i] = (ushort)(data + 1 - (byte*)map1);
+                                data += 1 + data[0];
+                            }
+                        }
+                        else
+                        {
+                            data += ((IntPtr)data).ToInt64() & 0x01;
+                            for (int i = 0; i < 4; i++)
+                            {
+                                refMapIdx[t, i] = (ushort)(data + 1 - (byte*)map1);
+                                data += 2 + 2 * read_le_u16(data);
+                            }
+                        }
+                    }
+                }
+                data += ((IntPtr)data).ToInt64() & 0x01;
+            }
+
+            for (int t = 0; t < num; t++)
+            {
+                ei[t].precomp->indexTable = data;
+                data += size[t, 0][0];
+                if (split)
+                {
+                    ei[num + t].precomp->indexTable = data;
+                    data += size[t, 1][0];
+                }
+            }
+
+            for (int t = 0; t < num; t++)
+            {
+                ei[t].precomp->sizeTable = (uint16_t*)data;
+                data += size[t, 0][1];
+                if (split)
+                {
+                    ei[num + t].precomp->sizeTable = (uint16_t*)data;
+                    data += size[t, 1][1];
+                }
+            }
+
+            for (int t = 0; t < num; t++)
+            {
+                //  data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3f);
+                data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3fUL);
+                ei[t].precomp->data = data;
+                data += size[t, 0][2];
+                if (split)
+                {
+                    //  data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3f);
+                    data = (uint8_t*)(((uintptr_t)data + 0x3f) & ~0x3fUL);
+                    ei[num + t].precomp->data = data;
+                    data += size[t, 1][2];
+                }
+            }
+
+            if (type == DTM && be.hasPawns)
+            {
+                fixed (uint8_t* pcs = ei[0].pieces)
+                    (be as PawnEntry).dtmSwitched = calc_key_from_pieces(pcs, be.num) != be.key;
+            }
+
+            //Log("init_table returning true");
 
             return true;
         }
@@ -1049,7 +997,7 @@ namespace Lizard.Logic.Tablebase
             int hashIdx = (int)(key >> (64 - TB_HASHBITS));
             while ((tbHash[hashIdx].key != 0) && tbHash[hashIdx].key != key)
                 hashIdx = (hashIdx + 1) & ((1 << TB_HASHBITS) - 1);
-            //  if (!tbHash[hashIdx].ptr)
+
             if (tbHash[hashIdx].ptr == null)
             {
                 *success = 0;
@@ -1057,8 +1005,8 @@ namespace Lizard.Logic.Tablebase
                 return 0;
             }
 
-            BaseEntry* be = tbHash[hashIdx].ptr;
-            if ((type == DTM && !be->hasDtm) || (type == DTZ && !be->hasDtz))
+            BaseEntry be = tbHash[hashIdx].ptr;
+            if ((type == DTM && !be.hasDtm) || (type == DTZ && !be.hasDtz))
             {
                 *success = 0;
                 Log($"probe_table's type mismatch, returning 0");
@@ -1066,15 +1014,15 @@ namespace Lizard.Logic.Tablebase
             }
 
             // Use double-checked locking to reduce locking overhead
-            //  if (!atomic_load_explicit(&be->ready[type], memory_order_acquire)) {
-            if (!be->ready[type])
+            //  if (!atomic_load_explicit(&be.ready[type], memory_order_acquire)) {
+            if (!be.ready[type])
             {
                 LOCK(tbMutex);
 
-                //  if (!atomic_load_explicit(&be->ready[type], memory_order_relaxed)) {
-                if (!be->ready[type])
+                //  if (!atomic_load_explicit(&be.ready[type], memory_order_relaxed)) {
+                if (!be.ready[type])
                 {
-                    string str = prt_str(pos, be->key != key);
+                    string str = prt_str(pos, be.key != key);
                     if (!init_table(be, str, type))
                     {
                         tbHash[hashIdx].ptr = null; // mark as deleted
@@ -1083,18 +1031,18 @@ namespace Lizard.Logic.Tablebase
                         Log($"probe_table couldn't init_table, returning 0");
                         return 0;
                     }
-                    //atomic_store_explicit(&be->ready[type], true, memory_order_release);
-                    be->ready[type] = true;
+                    //atomic_store_explicit(&be.ready[type], true, memory_order_release);
+                    be.ready[type] = true;
                 }
                 UNLOCK(tbMutex);
             }
 
             bool bside, flip;
-            if (!be->symmetric)
+            if (!be.symmetric)
             {
-                flip = key != be->key;
+                flip = key != be.key;
                 bside = ((pos->turn ? 1 : 0) == WHITE) == flip;
-                if (type == DTM && be->hasPawns && CVT_PAWN(be)->dtmSwitched)
+                if (type == DTM && be.hasPawns && (be as PawnEntry).dtmSwitched)
                 {
                     flip = !flip;
                     bside = !bside;
@@ -1106,88 +1054,105 @@ namespace Lizard.Logic.Tablebase
                 bside = false;
             }
 
+            Span<EncInfo> ei = be.first_ei(type);
+            ref EncInfo thisEI = ref ei[0];
             int* p = stackalloc int[TB_PIECES];
-            size_t idx;
+            ulong idx;
             int t = 0;
-            uint8_t flags = 0;
-            int v = 0;
+            byte flags = 0;
 
-            //EncInfo* ei = first_ei(be, type);
-            int ptrIdx = (be->hasPawns) ? (type == WDL ? 0 : type == DTM ? 8 : 20) : (type == WDL ? 0 : type == DTM ? 2 : 4);
-
-            fixed (EncInfo* ei_PIECE = &CVT_PAWN(be)->ei[ptrIdx], ei_PAWN = &CVT_PAWN(be)->ei[ptrIdx])
+            if (!be.hasPawns)
             {
-                EncInfo* ei = (be->hasPawns) ? ei_PAWN : ei_PIECE;
-
-                //  I hate this language, part II
-
-                if (!be->hasPawns)
+                if (type == DTZ)
                 {
-                    if (type == DTZ)
+                    flags = (be as PieceEntry).dtzFlags[0];
+                    if (IntBool(flags & 1) != bside && !be.symmetric)
                     {
-                        flags = CVT_PIECE(be)->dtzFlags;
-                        if ((flags & 1) != (bside ? 1 : 0) && !be->symmetric)
-                        {
-                            *success = -1;
-                            return 0;
-                        }
+                        *success = -1;
+                        return 0;
                     }
-                    ei = type != DTZ ? &ei[(bside ? 1 : 0)] : ei;
-                    for (int i = 0; i < be->num;)
-                        i = fill_squares(pos, ei->pieces, flip, 0, p, i);
-                    idx = encode_piece(p, ei, be);
-                }
-                else
-                {
-                    int i = fill_squares(pos, ei->pieces, flip, flip ? 0x38 : 0, p, 0);
-                    t = leading_pawn(p, be, type != DTM ? FILE_ENC : RANK_ENC);
-                    if (type == DTZ)
-                    {
-                        flags = CVT_PAWN(be)->dtzFlags[t];
-                        if ((flags & 1) != (bside ? 1 : 0) && !be->symmetric)
-                        {
-                            *success = -1;
-                            return 0;
-                        }
-                    }
-                    ei = type == WDL ? &ei[t + 4 * (bside ? 1 : 0)]
-                        : type == DTM ? &ei[t + 6 * (bside ? 1 : 0)] : &ei[t];
-                    while (i < be->num)
-                        i = fill_squares(pos, ei->pieces, flip, flip ? 0x38 : 0, p, i);
-                    idx = type != DTM ? encode_pawn_f(p, ei, be) : encode_pawn_r(p, ei, be);
                 }
 
-                uint8_t* w = decompress_pairs(ei->precomp, idx);
-                if (type == WDL)
-                    return (int)w[0] - 2;
-
-                v = w[0] + ((w[1] & 0x0f) << 8);
-
-                if (type == DTM)
+                thisEI = ref type != DTZ ? ref ei[BoolInt(bside)] : ref ei[0];
+                for (int i = 0; i < be.num;)
                 {
-                    if (!be->dtmLossOnly)
-                        v = (int)from_le_u16(be->hasPawns
-                                         ? CVT_PAWN(be)->dtmMap[CVT_PAWN(be)->dtmMapIdx[t][(bside ? 1 : 0)][s] + v]
-                                          : CVT_PIECE(be)->dtmMap[CVT_PIECE(be)->dtmMapIdx[(bside ? 1 : 0)][s] + v]);
+                    fixed (uint8_t* pcs = thisEI.pieces)
+                        i = fill_squares(pos, pcs, flip, 0, p, i);
                 }
-                else
+
+                fixed (EncInfo* eiPtr = &thisEI)
+                    idx = encode_piece(p, eiPtr, be);
+            }
+            else
+            {
+                int i;
+                fixed (uint8_t* pcs = ei[0].pieces)
+                    i = fill_squares(pos, pcs, flip, flip ? 0x38 : 0, p, 0);
+
+                t = leading_pawn(p, be, type != DTM ? FILE_ENC : RANK_ENC);
+                if (type == DTZ)
                 {
-                    if ((flags & 2) != 0)
+                    flags = (be as PawnEntry).dtzFlags[t];
+                    if (((flags & 1) == 0 ? false : true) != bside && !be.symmetric)
                     {
-                        int m = WdlToMap[s + 2];
-                        //  if (!(flags & 16))
-                        if ((flags & 16) == 0)
-                            v = be->hasPawns
-                               ? ((uint8_t*)CVT_PAWN(be)->dtzMap)[CVT_PAWN(be)->dtzMapIdx[t][m] + v]
-                               : ((uint8_t*)CVT_PIECE(be)->dtzMap)[CVT_PIECE(be)->dtzMapIdx[m] + v];
-                        else
-                            v = (int)from_le_u16(be->hasPawns
-                                             ? ((uint16_t*)CVT_PAWN(be)->dtzMap)[CVT_PAWN(be)->dtzMapIdx[t][m] + v]
-                                              : ((uint16_t*)CVT_PIECE(be)->dtzMap)[CVT_PIECE(be)->dtzMapIdx[m] + v]);
+                        *success = -1;
+                        return 0;
                     }
-                    //  if (!(flags & PAFlags[s + 2]) || (s & 1))
-                    if ((flags & PAFlags[s + 2]) == 0 || ((s & 1) != 0))
-                        v *= 2;
+                }
+
+                thisEI = ref type == WDL ? ref ei[t + 4 * BoolInt(bside)]
+                                         : ref type == DTM ? ref ei[t + 6 * BoolInt(bside)] : ref ei[t];
+                while (i < be.num)
+                {
+                    fixed (uint8_t* pcs = thisEI.pieces)
+                        i = fill_squares(pos, pcs, flip, flip ? 0x38 : 0, p, i);
+                }
+
+                fixed (EncInfo* eiPtr = &thisEI)
+                    idx = type != DTM ? encode_pawn_f(p, eiPtr, be) : encode_pawn_r(p, eiPtr, be);
+            }
+
+            byte* _w = decompress_pairs(thisEI.precomp, idx);
+            Span<byte> w = new Span<byte>(_w, 2);
+
+            if (type == WDL)
+            {
+                return (int)w[0] - 2;
+            }
+
+            int v = w[0] + ((w[1] & 0x0f) << 8);
+
+            if (type == DTM)
+            {
+                if (!be.dtmLossOnly)
+                {
+                    v = (int)from_le_u16(be.hasPawns
+                                     ? (be as  PawnEntry).dtmMap[(be as  PawnEntry).dtmMapIdx[t, bside ? 1 : 0, s] + v]
+                                     : (be as PieceEntry).dtmMap[(be as PieceEntry).dtmMapIdx[0, bside ? 1 : 0, s] + v]);
+                }
+            }
+            else
+            {
+                if ((flags & 2) != 0)
+                {
+                    int m = WdlToMap[s + 2];
+                    if ((flags & 16) == 0)
+                    {
+                        v = be.hasPawns
+                           ? ((byte*)(be as  PawnEntry).dtzMap)[(be as  PawnEntry).dtzMapIdx[t, m] + v]
+                           : ((byte*)(be as PieceEntry).dtzMap)[(be as PieceEntry).dtzMapIdx[0, m] + v];
+                    }
+                    else
+                    {
+                        v = (int)from_le_u16(be.hasPawns
+                                         ? ((byte*)(be as  PawnEntry).dtzMap)[(be as  PawnEntry).dtzMapIdx[t, m] + v]
+                                         : ((byte*)(be as PieceEntry).dtzMap)[(be as PieceEntry).dtzMapIdx[0, m] + v]);
+                    }
+                }
+
+                if ((flags & PAFlags[s + 2]) == 0 || (s & 1) != 0)
+                {
+                    v *= 2;
                 }
             }
 
@@ -1926,16 +1891,6 @@ namespace Lizard.Logic.Tablebase
         }
 
 
-        public static PieceEntry* CVT_PIECE(BaseEntry* be)
-        {
-            return (PieceEntry*)be;
-        }
-
-        public static PawnEntry* CVT_PAWN(BaseEntry* be)
-        {
-            return (PawnEntry*)be;
-        }
-
         static uint32_t from_le_u32(uint32_t x)
         {
             return x;
@@ -1985,7 +1940,7 @@ namespace Lizard.Logic.Tablebase
                 Options = FileOptions.RandomAccess
             };
 
-            Log($"Found {path}!");
+            //Log($"Found {path}!");
 
             return File.Open(path, fso);
         }

@@ -189,9 +189,12 @@ namespace Lizard.Logic.Tablebase
 
         #region Static readonly stuff
 
-        public static readonly uint TB_RESULT_CHECKMATE = TB_SET_WDL(0, TB_WIN);
-        public static readonly uint TB_RESULT_STALEMATE = TB_SET_WDL(0, TB_DRAW);
-        public static readonly uint TB_RESULT_FAILED = 0xFFFFFFFF;
+        //public static readonly uint TB_RESULT_CHECKMATE = TB_SET_WDL(0, TB_WIN);
+        //public static readonly uint TB_RESULT_STALEMATE = TB_SET_WDL(0, TB_DRAW);
+
+        public const uint TB_RESULT_CHECKMATE = 4;
+        public const uint TB_RESULT_STALEMATE = 2;
+        public const uint TB_RESULT_FAILED = 0xFFFFFFFF;
 
         #endregion
 
@@ -314,86 +317,69 @@ namespace Lizard.Logic.Tablebase
             }
         };
 
-        public struct BaseEntry
+        public abstract class BaseEntry
         {
             public ulong key;
-            public byte*[] data;
+            public byte*[] data = new byte*[3];
             //public MemoryMappedFile[] mapping;
 
 
             //  TODO: This is supposed to be atomic
-            public fixed bool ready[3];
+            public bool[] ready = new bool[3];
             public byte num;
             public bool symmetric, hasPawns, hasDtm, hasDtz;
 
             public bool kk_enc;
-            public fixed byte pawns[2];
+            public byte[] pawns = new byte[2];
 
             public bool dtmLossOnly;
 
-            public BaseEntry()
-            {
-                data = new byte*[3];
-                //mapping = new MemoryMappedFile[3];
-                //ready = new bool[3];
+            public abstract Span<EncInfo> first_ei(int type);
 
-                //pawns = new byte[2];
+            public BaseEntry() { }
+        };
+
+        public class PieceEntry : BaseEntry
+        {
+            public EncInfo[] ei = new EncInfo[2 + 2 + 1];
+            public ushort* dtmMap;
+            public ushort[,,] dtmMapIdx = new ushort[1, 2, 2];
+            public void* dtzMap;
+            public ushort[,] dtzMapIdx = new ushort[1, 4];
+            public byte[] dtzFlags = new byte[1];
+
+            public PieceEntry() { }
+
+            public override Span<EncInfo> first_ei(int type)
+            {
+                int start = type == WDL ? 0 : type == DTM ? 2 : 4;
+                return new Span<EncInfo>(ei, start, 5 - start);
             }
         };
 
-        public struct PieceEntry
+        public class PawnEntry : BaseEntry
         {
-            public BaseEntry be;
-            public EncInfo[] ei; // 2 + 2 + 1
+            public EncInfo[] ei = new EncInfo[4 * 2 + 6 * 2 + 4]; // == 24
             public ushort* dtmMap;
-            public ushort[][] dtmMapIdx;
+            public ushort[,,] dtmMapIdx = new ushort[6, 2, 2];
             public void* dtzMap;
-            public ushort[] dtzMapIdx;
-            public byte dtzFlags;
-
-            public PieceEntry()
-            {
-                ei = new EncInfo[5];
-                dtmMapIdx = [[0, 0], [0, 0]];
-                dtzMapIdx = new ushort[4];
-            }
-        };
-
-        public struct PawnEntry
-        {
-            public BaseEntry be;
-            public EncInfo[] ei; // 4 * 2 + 6 * 2 + 4
-            public ushort* dtmMap;
-            public ushort[][][] dtmMapIdx;
-            public void* dtzMap;
-            public ushort[][] dtzMapIdx;
-            public byte[] dtzFlags;
+            public ushort[,] dtzMapIdx = new ushort[4, 4];
+            public byte[] dtzFlags = new byte[4];
             public bool dtmSwitched;
 
-            public PawnEntry()
+            public PawnEntry() { }
+
+            public override Span<EncInfo> first_ei(int type)
             {
-                ei = new EncInfo[24];
-
-                dtmMapIdx = new ushort[6][][];
-                for (int i = 0; i < 6; i++)
-                {
-                    dtmMapIdx[i] = new ushort[2][] { new ushort[2], new ushort[2] };
-                }
-
-                dtzMapIdx = new ushort[4][];
-                for (int i = 0; i < 4; i++)
-                {
-                    dtzMapIdx[i] = new ushort[4];
-                }
-
-                dtzFlags = new byte[4];
+                int start = type == WDL ? 0 : type == DTM ? 8 : 20;
+                return new Span<EncInfo>(ei, start, 24 - start);
             }
         };
 
         public struct TbHashEntry
         {
             public ulong key;
-            public BaseEntry* ptr;
+            public BaseEntry ptr;
 
             public TbHashEntry()
             {
@@ -495,16 +481,16 @@ namespace Lizard.Logic.Tablebase
                 white = black;
                 black = tmp;
             }
-            return popcount(white & pos->queens) * PRIME_WHITE_QUEEN +
-                   popcount(white & pos->rooks) * PRIME_WHITE_ROOK +
+            return popcount(white & pos->queens)  * PRIME_WHITE_QUEEN +
+                   popcount(white & pos->rooks)   * PRIME_WHITE_ROOK +
                    popcount(white & pos->bishops) * PRIME_WHITE_BISHOP +
                    popcount(white & pos->knights) * PRIME_WHITE_KNIGHT +
-                   popcount(white & pos->pawns) * PRIME_WHITE_PAWN +
-                   popcount(black & pos->queens) * PRIME_BLACK_QUEEN +
-                   popcount(black & pos->rooks) * PRIME_BLACK_ROOK +
+                   popcount(white & pos->pawns)   * PRIME_WHITE_PAWN +
+                   popcount(black & pos->queens)  * PRIME_BLACK_QUEEN +
+                   popcount(black & pos->rooks)   * PRIME_BLACK_ROOK +
                    popcount(black & pos->bishops) * PRIME_BLACK_BISHOP +
                    popcount(black & pos->knights) * PRIME_BLACK_KNIGHT +
-                   popcount(black & pos->pawns) * PRIME_BLACK_PAWN;
+                   popcount(black & pos->pawns)   * PRIME_BLACK_PAWN;
         }
 
         // Produce a 64-bit material key corresponding to the material combination
@@ -517,16 +503,16 @@ namespace Lizard.Logic.Tablebase
             mirror = ((mirror != 0) ? 8 : 0);
 
             return
-                (ulong)pcs[WHITE_QUEEN ^ mirror] * PRIME_WHITE_QUEEN +
-           (ulong)pcs[WHITE_ROOK ^ mirror] * PRIME_WHITE_ROOK +
-           (ulong)pcs[WHITE_BISHOP ^ mirror] * PRIME_WHITE_BISHOP +
-           (ulong)pcs[WHITE_KNIGHT ^ mirror] * PRIME_WHITE_KNIGHT +
-           (ulong)pcs[WHITE_PAWN ^ mirror] * PRIME_WHITE_PAWN +
-           (ulong)pcs[BLACK_QUEEN ^ mirror] * PRIME_BLACK_QUEEN +
-           (ulong)pcs[BLACK_ROOK ^ mirror] * PRIME_BLACK_ROOK +
-           (ulong)pcs[BLACK_BISHOP ^ mirror] * PRIME_BLACK_BISHOP +
-           (ulong)pcs[BLACK_KNIGHT ^ mirror] * PRIME_BLACK_KNIGHT +
-           (ulong)pcs[BLACK_PAWN ^ mirror] * PRIME_BLACK_PAWN;
+                (ulong)pcs[WHITE_QUEEN ^ mirror]  * PRIME_WHITE_QUEEN +
+                (ulong)pcs[WHITE_ROOK ^ mirror]   * PRIME_WHITE_ROOK +
+                (ulong)pcs[WHITE_BISHOP ^ mirror] * PRIME_WHITE_BISHOP +
+                (ulong)pcs[WHITE_KNIGHT ^ mirror] * PRIME_WHITE_KNIGHT +
+                (ulong)pcs[WHITE_PAWN ^ mirror]   * PRIME_WHITE_PAWN +
+                (ulong)pcs[BLACK_QUEEN ^ mirror]  * PRIME_BLACK_QUEEN +
+                (ulong)pcs[BLACK_ROOK ^ mirror]   * PRIME_BLACK_ROOK +
+                (ulong)pcs[BLACK_BISHOP ^ mirror] * PRIME_BLACK_BISHOP +
+                (ulong)pcs[BLACK_KNIGHT ^ mirror] * PRIME_BLACK_KNIGHT +
+                (ulong)pcs[BLACK_PAWN ^ mirror]   * PRIME_BLACK_PAWN;
         }
 
         // Produce a 64-bit material key corresponding to the material combination

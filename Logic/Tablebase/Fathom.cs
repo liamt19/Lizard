@@ -113,5 +113,8 @@ namespace Lizard.Logic.Tablebase
             data = null;
             mmf.Dispose();
         }
+
+        public static bool IntBool(int i) => i != 0 ? true : false;
+        public static int BoolInt(bool b) => b ? 1 : 0;
     }
 }
