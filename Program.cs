@@ -19,6 +19,9 @@ namespace Lizard
 
         public static void Main(string[] args)
         {
+            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\");
+            tb_init();
+
             if (args.Length == 1)
             {
                 if (args[0] == "bench")
@@ -34,8 +37,6 @@ namespace Lizard
             }
 
             InitializeAll();
-            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\");
-            tb_init();
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
