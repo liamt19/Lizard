@@ -10,6 +10,9 @@
         public const int ScoreTTWin = ScoreMate - 512;
         public const int ScoreTTLoss = -ScoreTTWin;
 
+        public const int ScoreTBWin = ScoreMateMax;
+        public const int ScoreTBWinMax = ScoreMateMax - 256;
+
         public const int ScoreMateMax = ScoreMate - 256;
         public const int ScoreMatedMax = -ScoreMateMax;
 

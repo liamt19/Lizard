@@ -31,6 +31,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public ulong Nodes;
 
+        public ulong TBHits = 0;
+
         /// <summary>
         /// The index of this thread within the SearchPool, which starts at 0 for the MainSearchThread, 
         /// 1 for the first non-main thread, etc.

@@ -1,5 +1,4 @@
-﻿
-using static Lizard.Logic.Tablebase.TBProbeHeader;
+﻿using static Lizard.Logic.Tablebase.TBProbeHeader;
 
 namespace Lizard.Logic.Tablebase
 {
@@ -33,9 +32,9 @@ namespace Lizard.Logic.Tablebase
             return m;
         }
 
-        public static TbMove FromResult(uint _res)
+        public static TbMove FromResult(uint _res) => FromResult((int)_res);
+        public static TbMove FromResult(int res)
         {
-            int res = (int)_res;
             uint retVal = 0;
 
             retVal = TB_SET_FROM(retVal, TB_GET_FROM(res));

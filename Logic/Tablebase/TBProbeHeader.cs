@@ -547,6 +547,7 @@ namespace Lizard.Logic.Tablebase
 
 
 
+        public static string GetWDLResult(int result) => GetWDLResult((uint)result);
         public static string GetWDLResult(uint result)
         {
             return result switch
@@ -560,9 +561,10 @@ namespace Lizard.Logic.Tablebase
             };
         }
 
-        public static string GetDTZResult(uint result)
+        public static string GetDTZResult(uint result) => GetDTZResult((int)result);
+        public static string GetDTZResult(int result)
         {
-            uint wdl = (uint)TB_GET_WDL((int)result);
+            uint wdl = (uint)TB_GET_WDL(result);
             return wdl switch
             {
                 TB_RESULT_CHECKMATE => "Checkmate",
@@ -593,6 +595,18 @@ namespace Lizard.Logic.Tablebase
 
             arr = arr.OrderByDescending(wdl => TB_GET_WDL((int)wdl))
                      .ThenBy(dtz => TB_GET_DTZ(dtz))
+                     .ToArray();
+
+            arr.CopyTo(span);
+        }
+
+        public static void OrderResults(RootProbeMove* entries, int size)
+        {
+            Span<RootProbeMove> span = new Span<RootProbeMove>(entries, size);
+            RootProbeMove[] arr = span.ToArray();
+
+            arr = arr.OrderByDescending(r => r.WDL)
+                     .ThenBy(r => r.DTZ)
                      .ToArray();
 
             arr.CopyTo(span);

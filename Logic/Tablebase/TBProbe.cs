@@ -2046,7 +2046,7 @@ namespace Lizard.Logic.Tablebase
             int v = probe_wdl(&pos, &success);
             if (success == 0)
             {
-                Log("probe_wdl failed");
+                //Log("probe_wdl failed");
                 return TB_RESULT_FAILED;
             }
             return (unsigned)(v + 2);
@@ -2063,7 +2063,7 @@ namespace Lizard.Logic.Tablebase
         }
 
 
-        public static uint tb_probe_root(Position pos, uint* results)
+        public static uint tb_probe_root(Position pos, RootProbeMove* results)
         {
             var root = tb_probe_root(
                 pos.bb.Colors[White],
@@ -2078,7 +2078,7 @@ namespace Lizard.Logic.Tablebase
                 (uint)(pos.State->CastleStatus == CastlingStatus.None ? 0 : 1),
                 (uint)pos.State->EPSquare,
                 (pos.ToMove == White ? true : false),
-                results
+                (uint*)results
                 );
 
 
@@ -2087,40 +2087,15 @@ namespace Lizard.Logic.Tablebase
 
             for (int i = 0; i < size; i++)
             {
-                int r = (int)results[i];
-
-                var from = TB_GET_FROM(r);
-                var to = TB_GET_TO(r);
-                var wdl = TB_GET_WDL(r);
-                var dtz = TB_GET_DTZ(results[i]);
-
-                Log($"Results[{i} = {results[i]}]" +
-                    $"\t from:{IndexToString(from)}" +
-                    $"\t to: {IndexToString(to)}" +
-                    $"\t wdl: {GetWDLResult((uint)wdl)}" +
-                    $"\t dtz: {dtz}" +
-                    $"\t promo: {TB_GET_PROMOTES(r)}" +
-                    $"\t ep: {TB_GET_EP(r)}");
+                Log($"Results[{i}]\t {results[i]}");
             }
 
             OrderResults(results, size);
             Log("SORTED\n");
+
             for (int i = 0; i < size; i++)
             {
-                int r = (int)results[i];
-
-                var from = TB_GET_FROM(r);
-                var to = TB_GET_TO(r);
-                var wdl = TB_GET_WDL(r);
-                var dtz = TB_GET_DTZ(results[i]);
-
-                Log($"Results[{i} = {results[i]}]" +
-                    $"\t from:{IndexToString(from)}" +
-                    $"\t to: {IndexToString(to)}" +
-                    $"\t wdl: {GetWDLResult((uint)wdl)}" +
-                    $"\t dtz: {dtz}" +
-                    $"\t promo: {TB_GET_PROMOTES(r)}" +
-                    $"\t ep: {TB_GET_EP(r)}");
+                Log($"Results[{i}]\t {results[i]}");
             }
 
             return root;

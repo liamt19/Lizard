@@ -34,69 +34,36 @@ namespace Lizard
             }
 
             InitializeAll();
+            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\");
+            tb_init();
 
             p = new Position(owner: SearchPool.MainThread);
             info = new SearchInformation(p);
 
-
-            TBProbe.SetSyzygyPath("D:\\Data\\Tablebase\\tablebase.lichess.ovh\\tables\\standard\\3-4-5\\");
-            tb_init();
-
-            uint res = 0;
-
             if (false)
             {
-                p.LoadFromFEN("4k3/8/4P3/4K3/8/8/8/8 w - - 0 1");
-                Log($"\tRoot probe: {GetDTZResult(tb_probe_root(p, &res))} and res is {res}");
+                RootProbeMove* rvs = stackalloc RootProbeMove[TB_MAX_MOVES];
+                p.LoadFromFEN("4k3/3r4/8/8/4K3/8/1Q6/8 w - - 0 1");
+                var rootRet = tb_probe_root(p, rvs);
 
+                Log($"\ttb_probe_root: {GetDTZResult(rootRet)}");
 
-                p.LoadFromFEN("4k3/8/4P3/4K3/8/8/8/8 w - - 0 1");
-                Log($"\twdl: {GetWDLResult(tb_probe_wdl(p))}");
+                int r = (int)rootRet;
 
-                p.TryMakeMove("Kd6");   //  Now only a draw with Kd8
-                Log($"\tShould be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
+                var from = TB_GET_FROM(r);
+                var to = TB_GET_TO(r);
+                var wdl = TB_GET_WDL(r);
+                var dtz = TB_GET_DTZ(rootRet);
+                var promo = TB_GET_PROMOTES(r);
 
-                p.TryMakeMove("Kd8");
-                Log($"\tShould be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
-
-                p.LoadFromFEN("4k3/8/3KP3/8/8/8/8/8 b - - 1 1");
-                Log($"\tReset position, should still be a draw -> {GetWDLResult(tb_probe_wdl(p))}");
-
-                p.TryMakeMove("Kf8");
-                Log($"\tWhite is winning now -> {GetWDLResult(tb_probe_wdl(p))}");
-
-                p.LoadFromFEN("5k2/8/3KP3/8/8/8/8/8 w - - 2 2");
-                res = 0;
-                Log($"\tRoot probe: {GetDTZResult(tb_probe_root(p, &res))} and res is {res}");
+                Log($"rootRet" +
+                    $"\t from:{IndexToString(from)}" +
+                    $"\t to: {IndexToString(to)}" +
+                    $"\t wdl: {GetWDLResult((uint)wdl)}" +
+                    $"\t dtz: {dtz}" +
+                    $"\t promo: {promo}" +
+                    $"\t ep: {TB_GET_EP(r)}");
             }
-
-            uint* rvs = stackalloc uint[TB_MAX_MOVES];
-            //p.LoadFromFEN("7k/8/P5K1/8/8/8/8/8 w - - 0 1");
-            p.LoadFromFEN("4k2q/2K5/8/8/3Q4/8/8/8 w - - 0 1");
-            //p.LoadFromFEN("4k2q/2K5/8/3Q4/8/8/8/8 w - - 0 1");
-            res = 0;
-            var rootRet = tb_probe_root(p, rvs);
-            
-            Log($"\ttb_probe_root: {GetDTZResult(rootRet)}");
-
-            int r = (int)rootRet;
-
-            var from = TB_GET_FROM(r);
-            var to = TB_GET_TO(r);
-            var wdl = TB_GET_WDL(r);
-            var dtz = TB_GET_DTZ(rootRet);
-            var promo = TB_GET_PROMOTES(r);
-
-
-
-            Log($"rootRet" +
-                $"\t from:{IndexToString(from)}" +
-                $"\t to: {IndexToString(to)}" +
-                $"\t wdl: {GetWDLResult((uint)wdl)}" +
-                $"\t dtz: {dtz}" +
-                $"\t promo: {promo}" +
-                $"\t ep: {TB_GET_EP(r)}");
-
 
 
 

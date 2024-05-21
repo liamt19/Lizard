@@ -634,6 +634,7 @@ namespace Lizard.Logic.Util
                 sb.Append(" nodes " + nodes);
                 sb.Append(" nps " + nodesPerSec);
                 sb.Append(" hashfull " + TranspositionTable.GetHashFull());
+                sb.Append(" tbhits " + thisThread.TBHits);
 
                 sb.Append(" pv");
                 for (int j = 0; j < MaxPly; j++)

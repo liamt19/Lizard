@@ -2,6 +2,7 @@
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
+using Lizard.Logic.Tablebase;
 using Lizard.Logic.Threads;
 
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
@@ -72,6 +73,7 @@ namespace Lizard.Logic.Search
             int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
+            int maxScore = ScoreInfinite;
             short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
@@ -152,6 +154,51 @@ namespace Lizard.Logic.Search
             {
                 return ttScore;
             }
+
+
+            if (!isRoot && !doSkip)
+            {
+                int cardinality = (int)popcount(bb.Occupancy);
+
+                if ((cardinality >= TBProbe.TB_MaxCardinality || cardinality >= TBProbe.TB_MaxCardinalityDTM)
+                    && pos.State->CastleStatus == CastlingStatus.None
+                    && pos.State->HalfmoveClock == 0)
+                {
+                    uint result = TBProbe.tb_probe_wdl(pos);
+
+                    if (result != TBProbeHeader.TB_RESULT_FAILED)
+                    {
+                        thisThread.TBHits++;
+
+                        score = result == TBProbeHeader.TB_WIN  ?  ScoreTBWin - ss->Ply : 
+                                result == TBProbeHeader.TB_LOSS ? -ScoreTBWin + ss->Ply : 0;
+
+                        var bound = result == TBProbeHeader.TB_WIN  ? TTNodeType.Alpha : 
+                                    result == TBProbeHeader.TB_LOSS ? TTNodeType.Beta  : TTNodeType.Exact;
+
+                        if ((bound == TTNodeType.Exact) || (bound == TTNodeType.Alpha ? score >= beta : score <= alpha))
+                        {
+                            tte->Update(pos.Hash, MakeTTScore((short)score, ss->Ply), bound, depth, Move.Null, ScoreNone, ss->TTPV);
+                            return score;
+                        }
+
+                        if (isPV)
+                        {
+                            if (bound == TTNodeType.Alpha)
+                            {
+                                bestScore = score;
+                                alpha = Math.Max(alpha, score);
+                            }
+                            else
+                                maxScore = score;
+                        }
+                    }
+
+                }
+            }
+
+
+
 
             if (ss->InCheck)
             {
@@ -675,6 +722,11 @@ namespace Lizard.Logic.Search
                     //  If we skipped the only legal move we had, return alpha instead of an erroneous mate/draw score.
                     bestScore = alpha;
                 }
+            }
+
+            if (isPV)
+            {
+                bestScore = Math.Min(bestScore, maxScore);
             }
 
             if (bestScore <= alpha)

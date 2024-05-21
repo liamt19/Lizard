@@ -117,6 +117,7 @@
                 var td = Threads[i];
 
                 td.Nodes = 0;
+                td.TBHits = 0;
 
                 td.CompletedDepth = 0;
                 td.RootDepth = 0;
