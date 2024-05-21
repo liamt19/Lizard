@@ -2279,17 +2279,15 @@ namespace Lizard.Logic.Tablebase
         private static bool test_tb(string file, string ext) => test_tb(file + ext);
         private static bool test_tb(string file)
         {
-            var fs = OpenSingleFile(SyzygyPath + file);
-            if (fs == null)
+            if (!File.Exists(SyzygyPath + file))
             {
                 return false;
             }
 
-            long size = fs.Length;
-            if ((size & 63) != 16)
+            FileInfo info = new FileInfo(SyzygyPath + file);
+            if ((info.Length & 63) != 16)
             {
                 Log($"Incomplete tablebase file {file}\n");
-                fs.Close();
                 return false;
             }
 
@@ -2298,14 +2296,18 @@ namespace Lizard.Logic.Tablebase
 
         public static uint8_t* map_tb(string name, string suffix)
         {
-            var fd = OpenSingleFile(SyzygyPath + name + suffix);
-            //  TODO: this leaks
-
-            MemoryMappedFile mapping = MemoryMappedFile.CreateFromFile(fd, name + suffix, 0, MemoryMappedFileAccess.Read, HandleInheritability.None, true);
-            var accessView = mapping.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
-
             uint8_t* ptr = null;
-            accessView.SafeMemoryMappedViewHandle.AcquirePointer(ref ptr);
+            try
+            {
+                MemoryMappedFile mapping = MemoryMappedFile.CreateFromFile(SyzygyPath + name + suffix, FileMode.Open, null, 0, MemoryMappedFileAccess.Read);
+                var accessView = mapping.CreateViewAccessor(0, 0, MemoryMappedFileAccess.Read);
+
+                accessView.SafeMemoryMappedViewHandle.AcquirePointer(ref ptr);
+            } catch (Exception e)
+            {
+                Console.WriteLine(e);
+                Console.Error.WriteLine(e);
+            }
 
             return ptr;
         }
