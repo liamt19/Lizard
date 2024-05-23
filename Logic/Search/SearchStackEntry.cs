@@ -102,7 +102,7 @@ namespace Lizard.Logic.Search
         public Move Killer0;
 
         /// <summary>
-        /// Killer0's score will be at this offset when <see cref="MovePicker"/> casts it as a <see cref="ScoredMove"/>. 
+        /// Killer0's score will be at this offset when <see cref="MovePicker_ded"/> casts it as a <see cref="ScoredMove"/>. 
         /// </summary>
         [FieldOffset(52)]
         private fixed byte _pad3[4];
@@ -115,7 +115,7 @@ namespace Lizard.Logic.Search
         public Move Killer1;
 
         /// <summary>
-        /// Killer1's score will be at this offset when <see cref="MovePicker"/> casts it as a <see cref="ScoredMove"/>. 
+        /// Killer1's score will be at this offset when <see cref="MovePicker_ded"/> casts it as a <see cref="ScoredMove"/>. 
         /// </summary>
         [FieldOffset(60)]
         private fixed byte _pad4[4];

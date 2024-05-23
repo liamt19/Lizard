@@ -9,16 +9,6 @@ namespace Lizard.Logic.Search
 
     public unsafe class MovePicker
     {
-        static MovePicker()
-        {
-            int off0 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer0").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
-            int off1 = ((FieldOffsetAttribute)typeof(SearchStackEntry).GetField("Killer1").GetCustomAttributes(typeof(FieldOffsetAttribute), true)[0]).Value;
-
-            Assert(off0 == off1 - sizeof(ScoredMove),
-                $"The offset of Killer1 must be exactly 8 bytes after Killer0. " +
-                 "Killer0 is at {off0}, and Killer1 is at {off1}");
-        }
-
         public string StageName
         {
             get
@@ -34,12 +24,8 @@ namespace Lizard.Logic.Search
 
         private readonly Position pos;
 
-        private readonly short* mainHistory;
-        private readonly short* captureHistory;
-
         private readonly PieceToHistory*[] continuations;
         private readonly int depth;
-        private ScoredMove TTMove;
         private int previousSquare;
 
         private int stage;
@@ -50,30 +36,30 @@ namespace Lizard.Logic.Search
         private ScoredMove* endBadCaptures;
 
         private int killerNumber = 0;
-        private Move k0;
         private Move k1;
+        private Move k2;
+
+        private Move TTMove;
 
         private int genSize = 0;
 
 
-        public MovePicker(Position pos, short* mainHistory, short* captureHistory, PieceToHistory*[] contHist,
-                          Move* killers, ScoredMove* moveBuffer, int depth,
-                          Move ttMove, int previousSquare = SquareNB)
+        public MovePicker(Position pos, SearchStackEntry* ss, ScoredMove* moveBuffer,
+                          Move ttMove, int depth, int previousSquare = SquareNB)
         {
             this.pos = pos;
-
-            //  The SearchThread's HistoryTable field isn't pinned, so trying to store this information as "private HistoryTable* history"
-            //  will cause a crash if/when the GC decides to move the field somewhere else.
-            //  We either need to store a reference to the SearchThread itself, or to the main/capture histories within the HistoryTable.
-            this.mainHistory = mainHistory;
-            this.captureHistory = captureHistory;
-
-            this.continuations = contHist;
+            this.continuations = 
+            [
+                                         null, (ss - 1)->ContinuationHistory,
+                (ss - 2)->ContinuationHistory, null,
+                (ss - 4)->ContinuationHistory, null,
+                (ss - 6)->ContinuationHistory,
+            ];
 
             //  The "killers" parameter that was passed is a ScoredMove array, not a Move array.
             //  The second move is at killers[2] instead of killers[1].
-            k0 = *(killers + 0);
-            k1 = *(killers + 2);
+            k1 = ss->Killer0;
+            k2 = ss->Killer1;
 
             this.moveBufferStart = moveBuffer;
             this.depth = depth;
@@ -85,11 +71,11 @@ namespace Lizard.Logic.Search
                           (depth > 0 ? NegamaxTT :
                                        QuiesceTT);
 
-            if (!ttMove.Equals(Move.Null))
+            TTMove = ttMove;
+
+            if (!ttMove.IsNull())
             {
-                //  We have a ttMove, so try to convert it to a normal move.
-                TTMove = new ScoredMove(ref ttMove);
-                if (!this.pos.IsPseudoLegal(TTMove.Move))
+                if (!this.pos.IsPseudoLegal(ttMove))
                 {
                     //  The ttMove we got isn't pseudo-legal, so skip the TT stage.
                     stage++;
@@ -97,11 +83,11 @@ namespace Lizard.Logic.Search
 
                 //  In case the TTMove is also a killer, then we overwrite the killer with a null move
                 //  because we don't want to end up returning it twice in NextMove().
-                if (k0.Equals(TTMove))
-                    k0 = Move.Null;
-
                 if (k1.Equals(TTMove))
                     k1 = Move.Null;
+
+                if (k2.Equals(TTMove))
+                    k2 = Move.Null;
             }
             else
             {
@@ -111,11 +97,11 @@ namespace Lizard.Logic.Search
         }
 
         /// <summary>
-        /// Returns true if the current move has a static exchange value greater than <c>-(currentMove-&gt;Score)</c>
+        /// Returns true if the current move has a static exchange value greater than 1
         /// </summary>
         private bool SelectGoodCaptures()
         {
-            if (Searches.SEE_GE(pos, currentMove->Move, -currentMove->Score))
+            if (Searches.SEE_GE(pos, currentMove->Move, 1))
             {
                 return true;
             }
@@ -132,8 +118,8 @@ namespace Lizard.Logic.Search
         {
             return number switch
             {
-                0 => k0 != Move.Null && (pos.bb.GetPieceAtIndex(k0.To) == None) && pos.IsPseudoLegal(k0),
                 1 => k1 != Move.Null && (pos.bb.GetPieceAtIndex(k1.To) == None) && pos.IsPseudoLegal(k1),
+                2 => k2 != Move.Null && (pos.bb.GetPieceAtIndex(k2.To) == None) && pos.IsPseudoLegal(k2),
                 _ => false,
             };
         }
@@ -143,8 +129,8 @@ namespace Lizard.Logic.Search
         /// </summary>
         private bool SelectQuiets()
         {
-            return !currentMove->Move.Equals(k0)
-                 && !currentMove->Move.Equals(k1);
+            return !currentMove->Move.Equals(k1)
+                && !currentMove->Move.Equals(k2);
         }
 
         /// <summary>
@@ -172,12 +158,12 @@ namespace Lizard.Logic.Search
                 case NegamaxTT:
                 case EvasionsTT:
                 case QuiesceTT:
-                    ++stage;
-                    return TTMove.Move;
+                    stage++;
+                    return TTMove;
 
 
-                case CapturesInit:
-                case QuiesceCapturesInit:
+                case NMCapturesInit:
+                case QSCapturesInit:
                     currentMove = endBadCaptures = moveBufferStart;
                     genSize = pos.GenAll<GenLoud>(currentMove);
 
@@ -185,7 +171,7 @@ namespace Lizard.Logic.Search
 
                     ScoreCaptures();
                     PartialSort(currentMove, lastMove);
-                    ++stage;
+                    stage++;
                     goto Top;
 
 
@@ -196,28 +182,21 @@ namespace Lizard.Logic.Search
                     }
 
                     stage = Killers;
-
                     //  Fallthrough
                     goto case Killers;
 
 
                 case Killers:
 
-                    if (killerNumber == 0 && KillerWorks(killerNumber))
-                    {
-                        killerNumber++;
-                        return k0;
-                    }
-
+                    killerNumber++;
                     if (killerNumber == 1 && KillerWorks(killerNumber))
-                    {
-                        killerNumber++;
                         return k1;
-                    }
+
+                    if (killerNumber == 2 && KillerWorks(killerNumber))
+                        return k2;
 
 
                     stage = QuietsInit;
-
                     //  Fallthrough
                     goto case QuietsInit;
 
@@ -230,7 +209,7 @@ namespace Lizard.Logic.Search
                         lastMove = currentMove + genSize;
 
                         ScoreQuiets();
-                        PartialSort(currentMove, lastMove, -3000 * depth);
+                        PartialSort(currentMove, lastMove);
                     }
 
                     stage = Quiets;
@@ -400,6 +379,7 @@ namespace Lizard.Logic.Search
         public void ScoreCaptures()
         {
             ref Bitboard bb = ref pos.bb;
+            ref HistoryTable history = ref pos.Owner.History;
 
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
@@ -418,49 +398,75 @@ namespace Lizard.Logic.Search
                     capturedPiece = Rook;
                 }
 
-                iter->Score = (13 * GetPieceValue(capturedPiece)) + -9999;// (captureHistory[pos.ToMove, pos.bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / 12);
+                iter->Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) +
+                    history.CaptureHistory[pos.ToMove, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor;
             }
         }
 
         public void ScoreQuiets()
         {
+            ref Bitboard bb = ref pos.bb;
+            ref HistoryTable history = ref pos.Owner.History;
+
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
+                Move m = iter->Move;
+                int moveTo = m.To;
+                int moveFrom = m.From;
 
-                iter->Score = -9999 + //(2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
-                              (2 * (*continuations[0])[contIdx]) +
-                                  (*continuations[1])[contIdx] +
-                                  (*continuations[3])[contIdx] +
-                                  (*continuations[5])[contIdx];
+                int pt = bb.GetPieceAtIndex(moveFrom);
+                int contIdx = PieceToHistory.GetIndex(pos.ToMove, pt, moveTo);
 
-                if ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(iter->Move.From)] & SquareBB[iter->Move.To]) != 0)
+                iter->Score = 2 * history.MainHistory[pos.ToMove, m] +
+                             (2 * (*continuations[1])[contIdx]) +
+                                  (*continuations[2])[contIdx] +
+                                  (*continuations[4])[contIdx] +
+                                  (*continuations[6])[contIdx];
+
+                if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                 {
-                    iter->Score += 10000;
+                    iter->Score += OrderingGivesCheckBonus;
                 }
             }
 
         }
 
+
         public void ScoreEvasions()
         {
             ref Bitboard bb = ref pos.bb;
+            ref HistoryTable history = ref pos.Owner.History;
+
+            const int CapturesFirst = HistoryTable.NormalClamp * 1000;
+
             for (ScoredMove* iter = currentMove; iter != lastMove; ++iter)
             {
-                if ((bb.GetPieceAtIndex(iter->Move.To) != None) || iter->Move.EnPassant)
+                Move m = iter->Move;
+                int moveTo = m.To;
+                int moveFrom = m.From;
+
+                Assert(m.Castle is false, "ScoreEvasions tried scoring a castling move!");
+
+                int pt = bb.GetPieceAtIndex(moveFrom);
+                int capturedPiece = bb.GetPieceAtIndex(moveTo);
+                
+                if (m.EnPassant)
+                    capturedPiece = Pawn;
+
+                if (capturedPiece != None)
                 {
-                    int capturedPiece = iter->Move.EnPassant ? Piece.Pawn : bb.GetPieceAtIndex(iter->Move.To);
-                    iter->Score = GetPieceValue(capturedPiece) + 10000;
+                    //  MVV and LVA
+                    iter->Score = GetPieceValue(capturedPiece) - pt + CapturesFirst;
                 }
                 else
                 {
-                    int contIdx = PieceToHistory.GetIndex(pos.ToMove, pos.bb.GetPieceAtIndex(iter->Move.From), iter->Move.To);
+                    int contIdx = PieceToHistory.GetIndex(pos.ToMove, pt, moveTo);
 
-                    iter->Score = -9999 + //(2 * mainHistory[HistoryTable.HistoryIndex(pos.ToMove, iter->Move)]) +
-                                  (2 * (*continuations[0])[contIdx]) +
-                                      (*continuations[1])[contIdx] +
-                                      (*continuations[3])[contIdx] +
-                                      (*continuations[5])[contIdx];
+                    iter->Score = (2 * history.MainHistory[pos.ToMove, m]) +
+                                  (2 * (*continuations[1])[contIdx]) +
+                                       (*continuations[2])[contIdx] +
+                                       (*continuations[4])[contIdx] +
+                                       (*continuations[6])[contIdx];
                 }
 
             }
@@ -471,8 +477,8 @@ namespace Lizard.Logic.Search
         {
             public const int NegamaxTT = 0;
 
-            public const int CapturesInit = NegamaxTT + 1;
-            public const int Captures = CapturesInit + 1;
+            public const int NMCapturesInit = NegamaxTT + 1;
+            public const int Captures = NMCapturesInit + 1;
             public const int Killers = Captures + 1;
             public const int QuietsInit = Killers + 1;
             public const int Quiets = QuietsInit + 1;
@@ -487,8 +493,8 @@ namespace Lizard.Logic.Search
 
 
             public const int QuiesceTT = 20;
-            public const int QuiesceCapturesInit = QuiesceTT + 1;
-            public const int QuiesceCaptures = QuiesceCapturesInit + 1;
+            public const int QSCapturesInit = QuiesceTT + 1;
+            public const int QuiesceCaptures = QSCapturesInit + 1;
             public const int QuiesceChecksInit = QuiesceCaptures + 1;
             public const int QuiesceChecks = QuiesceChecksInit + 1;
         }
