@@ -118,7 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="L1536x4x8_g75_s20-580" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\L1536x4x8_g75_s20-580.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="L1536x5x8_g75_s20-550" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\L1536x5x8_g75_s20-550.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>

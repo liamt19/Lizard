@@ -11,7 +11,7 @@ namespace Lizard.Logic.NN
     [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 4;
+        public const int InputBuckets = 5;
         public const int InputSize = 768;
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
@@ -21,15 +21,14 @@ namespace Lizard.Logic.NN
         private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
-        private const bool SelectOutputBucket = (OutputBuckets != 1);
 
         public static readonly int SIMD_CHUNKS_512 = HiddenSize / Vector512<short>.Count;
         public static readonly int SIMD_CHUNKS_256 = HiddenSize / Vector256<short>.Count;
 
         /// <summary>
-        /// (768x4 -> 1536)x2 -> 8
+        /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x4x8_g75_s20-580.bin";
+        public const string NetworkName = "L1536x5x8_g75_s20-550.bin";
 
 
         public static readonly short* FeatureWeights;
@@ -47,14 +46,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 1, 1, 5, 5, 4, 4,
-            2, 2, 2, 2, 6, 6, 6, 6,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
-            3, 3, 3, 3, 7, 7, 7, 7,
+            0, 0, 1, 1, 6, 6, 5, 5,
+            2, 2, 3, 3, 8, 8, 7, 7,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -243,7 +242,10 @@ namespace Lizard.Logic.NN
             Vector256<short> zeroVec = Vector256<short>.Zero;
             Vector256<int> sum = Vector256<int>.Zero;
 
-            int outputBucket = SelectOutputBucket ? (int)((popcount(pos.bb.Occupancy) - 2) / 4) : 0;
+            //  Formula from BlackMarlin
+            int occ = (int)popcount(pos.bb.Occupancy);
+            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
+
             var ourData =   (accumulator[pos.ToMove]);
             var theirData = (accumulator[Not(pos.ToMove)]);
             var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));

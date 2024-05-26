@@ -48,7 +48,9 @@ namespace Lizard.Logic.NN
                 RefreshAccumulatorPerspective(pos, Black);
             }
 
-            int outputBucket = (SelectOutputBucket) ? (int)((popcount(pos.bb.Occupancy) - 2) / 4) : 0;
+            //  Formula from BlackMarlin
+            int occ = (int)popcount(pos.bb.Occupancy);
+            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
             var ourData =   (short*)(accumulator[pos.ToMove]);
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);
