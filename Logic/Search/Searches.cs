@@ -401,7 +401,9 @@ namespace Lizard.Logic.Search
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
                         //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -LMRExchangeBase * depth))
+
+                        int threshold = isCapture ? (-LMRExchangeBase * depth) : (-LMRExchangeQuiet * depth * depth);
+                        if (!SEE_GE(pos, m, threshold))
                         {
                             continue;
                         }
@@ -516,7 +518,7 @@ namespace Lizard.Logic.Search
                            (*(ss - 2)->ContinuationHistory)[histIdx] + 
                            (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (histScore / (4096 * HistoryReductionMultiplier));
+                    R -= (histScore / (1024 * HistoryReductionMultiplier));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
@@ -868,7 +870,7 @@ namespace Lizard.Logic.Search
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -QSearchSEEThreshold))
                     {
                         //  This move loses a significant amount of material
                         continue;

@@ -155,12 +155,14 @@
         /// </summary>
         public static int LMRExchangeBase = 216;
 
+        public static int LMRExchangeQuiet = 45;
+
 
 
         /// <summary>
-        /// For LMR, the reduction of a move is modified by it's history divided by (4096 * this value).
+        /// For LMR, the reduction of a move is modified by it's history divided by (1024 * this value).
         /// </summary>
-        public static int HistoryReductionMultiplier = 3;
+        public static int HistoryReductionMultiplier = 12;
 
 
 
@@ -202,7 +204,7 @@
         /// <summary>
         /// Quiet moves that give check will be given this additional bonus.
         /// </summary>
-        public static int OrderingGivesCheckBonus = 10345;
+        public const int OrderingGivesCheckBonus = 10000;
 
         /// <summary>
         /// The multiplier for the value of a piece being captured to add to a capturing move's score.
@@ -250,6 +252,8 @@
         /// </summary>
         public static int StatMalusMax = 1787;
 
+        public static int QSearchSEEThreshold = 90;
+
 
 
         public static int SEEValue_Pawn = 112;
@@ -263,5 +267,10 @@
         public static int ValueBishop = 1058;
         public static int ValueRook = 1553;
         public static int ValueQueen = 3127;
+
+        public static int Dummy1 = 1;
+        public static int Dummy2 = 10;
+        public static int Dummy3 = 100;
+        public static int Dummy4 = 1000;
     }
 }

@@ -62,7 +62,7 @@ namespace Lizard.Logic.UCI
         /// Sets the <see cref="MinValue"/> and <see cref="MaxValue"/> to be a percentage of the <see cref="DefaultValue"/>, 
         /// which is based on <see cref="AutoMinMaxMultiplier"/> ( Currently <inheritdoc cref="AutoMinMaxMultiplier"/>).
         /// </summary>
-        public void AutoMinMax()
+        public void AutoMinMax(double factor = AutoMinMaxMultiplier)
         {
             if (FieldHandle.FieldType != typeof(int))
             {
@@ -71,8 +71,8 @@ namespace Lizard.Logic.UCI
             }
 
             int v = int.Parse(DefaultValue);
-            MinValue = (int)(v * (1 - AutoMinMaxMultiplier));
-            MaxValue = (int)(v * (1 + AutoMinMaxMultiplier));
+            MinValue = (int)(v * (1 - factor));
+            MaxValue = (int)(v * (1 + factor));
         }
 
 

@@ -613,45 +613,45 @@ namespace Lizard.Logic.UCI
             Options[nameof(MultiPV)].SetMinMax(1, 5);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
-            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);
-            Options[nameof(SingularExtensionsNumerator)].AutoMinMax();
-            Options[nameof(SingularExtensionsBeta)].AutoMinMax();
+            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(3, 10);
+            Options[nameof(SingularExtensionsNumerator)].SetMinMax(4, 12);
+            Options[nameof(SingularExtensionsBeta)].SetMinMax(14, 28);
             Options[nameof(SingularExtensionsDepthAugment)].SetMinMax(-3, 1);
 
-            Options[nameof(NMPMinDepth)].SetMinMax(1, 9);
-            Options[nameof(NMPReductionBase)].SetMinMax(1, 9);
-            Options[nameof(NMPReductionDivisor)].SetMinMax(1, 9);
+            Options[nameof(NMPMinDepth)].SetMinMax(3, 9);
+            Options[nameof(NMPReductionBase)].SetMinMax(2, 9);
+            Options[nameof(NMPReductionDivisor)].SetMinMax(2, 9);
 
-            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 12);
-            Options[nameof(ReverseFutilityPruningPerDepth)].AutoMinMax();
+            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 10);
+            Options[nameof(ReverseFutilityPruningPerDepth)].SetMinMax(32, 58);
 
-            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 8);
-            Options[nameof(ProbCutBeta)].AutoMinMax();
-            Options[nameof(ProbCutBetaImproving)].AutoMinMax();
+            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 5);
+            Options[nameof(ProbCutBeta)].SetMinMax(160, 230);
+            Options[nameof(ProbCutBetaImproving)].SetMinMax(80, 120);
 
-            Options[nameof(LMRExtensionThreshold)].AutoMinMax();
-            Options[nameof(LMRExchangeBase)].AutoMinMax();
+            Options[nameof(LMRExtensionThreshold)].SetMinMax(90, 160);
+            Options[nameof(LMRExchangeBase)].SetMinMax(186, 246);
+            Options[nameof(LMRExchangeQuiet)].SetMinMax(25, 65);
 
-            Options[nameof(HistoryReductionMultiplier)].SetMinMax(1, 9);
+            Options[nameof(HistoryReductionMultiplier)].SetMinMax(6, 18);
 
-            Options[nameof(FutilityExchangeBase)].AutoMinMax();
+            Options[nameof(FutilityExchangeBase)].SetMinMax(165, 210);
 
-            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
-            Options[nameof(AspirationWindowMargin)].AutoMinMax();
+            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(3, 7);
+            Options[nameof(AspirationWindowMargin)].SetMinMax(7, 15);
 
-            Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
+            Options[nameof(HistoryCaptureBonusMargin)].SetMinMax(130, 175);
 
-            Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
-            Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();
-            Options[nameof(OrderingHistoryDivisor)].AutoMinMax();
+            Options[nameof(OrderingVictimValueMultiplier)].SetMinMax(9, 19);
+            Options[nameof(OrderingHistoryDivisor)].SetMinMax(7, 16);
 
-            Options[nameof(StatBonusMult)].AutoMinMax();
-            Options[nameof(StatBonusSub)].AutoMinMax();
-            Options[nameof(StatBonusMax)].AutoMinMax();
+            Options[nameof(StatBonusMult)].AutoMinMax(0.2);
+            Options[nameof(StatBonusSub)].AutoMinMax(0.2);
+            Options[nameof(StatBonusMax)].AutoMinMax(0.1);
 
-            Options[nameof(StatMalusMult)].AutoMinMax();
-            Options[nameof(StatMalusSub)].AutoMinMax();
-            Options[nameof(StatMalusMax)].AutoMinMax();
+            Options[nameof(StatMalusMult)].AutoMinMax(0.1);
+            Options[nameof(StatMalusSub)].AutoMinMax(0.1);
+            Options[nameof(StatMalusMax)].AutoMinMax(0.1);
 
             Options[nameof(SEEValue_Pawn)].AutoMinMax();
             Options[nameof(SEEValue_Knight)].AutoMinMax();
@@ -664,6 +664,14 @@ namespace Lizard.Logic.UCI
             Options[nameof(ValueBishop)].AutoMinMax();
             Options[nameof(ValueRook)].AutoMinMax();
             Options[nameof(ValueQueen)].AutoMinMax();
+
+            Options[nameof(QSearchSEEThreshold)].SetMinMax(65, 115);
+
+            Options[nameof(Dummy1)].SetMinMax(-3, 4);
+            Options[nameof(Dummy2)].AutoMinMax();
+            Options[nameof(Dummy3)].AutoMinMax();
+            Options[nameof(Dummy4)].AutoMinMax();
+
 
 
             foreach (var optName in Options.Keys)
