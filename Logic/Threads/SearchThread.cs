@@ -358,6 +358,7 @@ namespace Lizard.Logic.Threads
             int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
             RootMove lastBestRootMove = new RootMove(Move.Null);
+            int stability = 0;
 
             //  The main thread may only go up to 64
             //  Other threads can go until depth 256
@@ -444,6 +445,16 @@ namespace Lizard.Logic.Threads
                     return;
                 }
 
+                
+                if (lastBestRootMove.Move == RootMoves[0].Move)
+                {
+                    stability++;
+                }
+                else
+                {
+                    stability = 0;
+                }
+
                 lastBestRootMove.Move = RootMoves[0].Move;
                 lastBestRootMove.Score = RootMoves[0].Score;
                 lastBestRootMove.Depth = RootMoves[0].Depth;
@@ -457,7 +468,7 @@ namespace Lizard.Logic.Threads
                     }
                 }
 
-                if (SoftTimeUp(tm))
+                if (SoftTimeUp(tm, stability))
                 {
                     break;
                 }
@@ -483,7 +494,10 @@ namespace Lizard.Logic.Threads
             }
         }
 
-        private bool SoftTimeUp(TimeManager tm)
+        private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
+        private static int StabilityMax = StabilityCoefficients.Length - 1;
+
+        private bool SoftTimeUp(TimeManager tm, int stability)
         {
             if (!tm.HasSoftTime)
                 return false;
@@ -493,7 +507,7 @@ namespace Lizard.Logic.Threads
             if (RootDepth > 7)
             {
                 double proportion = NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes;
-                multFactor = (1.5 - proportion) * 1.25;
+                multFactor = ((1.5 - proportion) * 1.75) * StabilityCoefficients[Math.Min(stability, StabilityMax)];
             }
 
             if (tm.GetSearchTime() >= tm.SoftTimeLimit * multFactor)
