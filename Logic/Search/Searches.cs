@@ -512,9 +512,9 @@ namespace Lizard.Logic.Search
                         R--;
 
                     var histScore = 2 * history.MainHistory[us, m] + 
-                           (*(ss - 1)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 2)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 4)->ContinuationHistory)[histIdx];
+                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] + 
+                                        (*(ss - 2)->ContinuationHistory)[histIdx] + 
+                                        (*(ss - 4)->ContinuationHistory)[histIdx];
 
                     R -= (histScore / (4096 * HistoryReductionMultiplier));
 
