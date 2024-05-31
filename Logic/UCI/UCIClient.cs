@@ -551,6 +551,11 @@ namespace Lizard.Logic.UCI
                                         TranspositionTable.Initialize(newValue);
                                         LogString("Changed '" + key + "' from " + prevValue + " to " + newValue + " mb");
                                     }
+                                    else if (opt.Name == nameof(Quantization))
+                                    {
+                                        opt.FieldHandle.SetValue(null, newValue);
+                                        Bucketed768.Initialize(Bucketed768.NetworkName);
+                                    }
                                     else
                                     {
                                         opt.FieldHandle.SetValue(null, newValue);
@@ -664,6 +669,8 @@ namespace Lizard.Logic.UCI
             Options[nameof(ValueBishop)].AutoMinMax();
             Options[nameof(ValueRook)].AutoMinMax();
             Options[nameof(ValueQueen)].AutoMinMax();
+
+            Options[nameof(Quantization)].SetMinMax(128, 512);
 
 
             foreach (var optName in Options.Keys)

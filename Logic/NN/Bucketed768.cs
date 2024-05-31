@@ -16,9 +16,9 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
-        public const int QA = 255;
-        public const int QB = 64;
-        private const int QAB = QA * QB;
+        public static int QA => SearchOptions.Quantization;
+        public static int QB = 64;
+        private static int QAB => QA * QB;
 
         public const int OutputScale = 400;
 
@@ -28,7 +28,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_g75_s20-550.bin";
+        public const string NetworkName = "L1536x5x8_g75_s20-550-params.bin";
 
 
         public static readonly short* FeatureWeights;
@@ -100,24 +100,27 @@ namespace Lizard.Logic.NN
                 }
             }
 
+            //  Set QB to the largest number such that (QA * 1.98 * QB) < 32767
+            QB = (short)Math.Floor(short.MaxValue / (QA * 1.98));
+
             for (int i = 0; i < FeatureWeightElements; i++)
             {
-                FeatureWeights[i] = br.ReadInt16();
+                FeatureWeights[i] = (short)(br.ReadSingle() * QA);
             }
 
             for (int i = 0; i < FeatureBiasElements; i++)
             {
-                FeatureBiases[i] = br.ReadInt16();
+                FeatureBiases[i] = (short)(br.ReadSingle() * QA);
             }
 
             for (int i = 0; i < LayerWeightElements; i++)
             {
-                LayerWeights[i] = br.ReadInt16();
+                LayerWeights[i] = (short)(br.ReadSingle() * QB);
             }
 
             for (int i = 0; i < LayerBiasElements; i++)
             {
-                LayerBiases[i] = br.ReadInt16();
+                LayerBiases[i] = (short)(br.ReadSingle() * QA * QB);
             }
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
