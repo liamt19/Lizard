@@ -165,8 +165,8 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 1001);
-                    Environment.Exit(1001);
+                    LogString("[INFO]: Exiting with code " + 0);
+                    Environment.Exit(0);
                 }
                 else if (cmd == "isready")
                 {
@@ -610,7 +610,7 @@ namespace Lizard.Logic.UCI
             //SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
-            Options[nameof(MultiPV)].SetMinMax(1, 5);
+            Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
             Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);

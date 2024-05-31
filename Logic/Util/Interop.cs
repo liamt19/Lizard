@@ -15,111 +15,21 @@ namespace Lizard.Logic.Util
         /// </summary>
         public static unsafe void prefetch(void* address)
         {
-            if (Sse.IsSupported)
-            {
-                Sse.Prefetch0(address);
-            }
+            if (Sse.IsSupported) Sse.Prefetch0(address);
         }
 
+        public static ulong popcount(ulong value) => ulong.PopCount(value);
 
-        /// <summary>
-        /// Returns the number of bits set in <paramref name="value"/> using <c>_mm_popcnt_u64</c>
-        /// </summary>
-        public static ulong popcount(ulong value)
-        {
-            if (Popcnt.X64.IsSupported)
-            {
-                return Popcnt.X64.PopCount(value);
-            }
-            else
-            {
-                return ulong.PopCount(value);
-            }
-        }
+        public static int lsb(ulong value) => ((int)ulong.TrailingZeroCount(value));
 
-        /// <summary>
-        /// Returns true if <paramref name="value"/> has more than one bit set.
-        /// </summary>
-        public static bool MoreThanOne(ulong value)
-        {
-            return poplsb(value) != 0;
-        }
-
-        /// <summary>
-        /// Returns the number of trailing least significant zero bits in <paramref name="value"/> using <c>Bmi1.X64.TrailingZeroCount</c>. 
-        /// So lsb(100_2) returns 2.
-        /// </summary>
-        public static int lsb(ulong value)
-        {
-            if (Bmi1.X64.IsSupported)
-            {
-                return (int)Bmi1.X64.TrailingZeroCount(value);
-            }
-            else
-            {
-                return (int)ulong.TrailingZeroCount(value);
-            }
-        }
-
-        /// <summary>
-        /// Sets the least significant bit to 0 using <c>Bmi1.X64.ResetLowestSetBit</c>. 
-        /// So PopLsb(10110_2) returns 10100_2.
-        /// </summary>
-        public static ulong poplsb(ulong value)
-        {
-            if (Bmi1.X64.IsSupported)
-            {
-                return Bmi1.X64.ResetLowestSetBit(value);
-            }
-            else
-            {
-                return value & (value - 1);
-            }
-        }
-
-        /// <summary>
-        /// Returns the number of trailing least significant zero bits in <paramref name="value"/> using <c>_mm_tzcnt_64</c>,
-        /// and clears the lowest set bit with <c>_blsr_u64</c>.
-        /// </summary>
         public static unsafe int poplsb(ulong* value)
         {
-            if (Bmi1.X64.IsSupported)
-            {
-                int sq = (int)Bmi1.X64.TrailingZeroCount(*value);
-                *value = Bmi1.X64.ResetLowestSetBit(*value);
-                return sq;
-            }
-            else
-            {
-                int sq = (int)ulong.TrailingZeroCount(*value);
-                *value = *value & (*value - 1);
-                return sq;
-            }
+            int sq = lsb(*value);
+            *value = *value & (*value - 1);
+            return sq;
         }
 
-        /// <summary>
-        /// Returns the index of the most significant bit (highest, toward the square H8) 
-        /// set in the mask <paramref name="value"/> using <c>Lzcnt.X64.LeadingZeroCount</c>
-        /// </summary>
-        public static int msb(ulong value)
-        {
-            if (Lzcnt.X64.IsSupported)
-            {
-                return (int)(63 - Lzcnt.X64.LeadingZeroCount(value));
-            }
-            else
-            {
-                return BitOperations.Log2(value - 1) + 1;
-            }
-        }
-
-        /// <summary>
-        /// Returns <paramref name="value"/> with the most significant bit set to 0.
-        /// </summary>
-        public static ulong popmsb(ulong value)
-        {
-            return value ^ (1UL << msb(value));
-        }
+        public static bool MoreThanOne(ulong value) => (value & (value - 1)) != 0;
 
 
         /// <summary>

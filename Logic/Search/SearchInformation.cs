@@ -34,6 +34,7 @@
         /// The number of nodes the search should stop at.
         /// </summary>
         public ulong MaxNodes = MaxSearchNodes;
+        public bool IsGoNodesCommand => MaxNodes != MaxSearchNodes;
 
 
         /// <summary>

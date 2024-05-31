@@ -11,17 +11,10 @@ namespace Lizard.Logic.Transposition
     [StructLayout(LayoutKind.Explicit, Size = 32)]
     public unsafe struct TTCluster
     {
-        [FieldOffset(0)]
-        private TTEntry _elem0;
-
-        [FieldOffset(10)]
-        private TTEntry _elem1;
-
-        [FieldOffset(20)]
-        private TTEntry _elem2;
-
-        [FieldOffset(30)]
-        private fixed byte _pad[2];
+        [FieldOffset( 0)] private TTEntry _elem0;
+        [FieldOffset(10)] private TTEntry _elem1;
+        [FieldOffset(20)] private TTEntry _elem2;
+        [FieldOffset(30)] private fixed byte _pad[2];
 
         /// <summary>
         /// Initializes the memory for this TTCluster instance.

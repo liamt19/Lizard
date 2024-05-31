@@ -8,7 +8,6 @@ using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
-    [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
         public const int InputBuckets = 5;

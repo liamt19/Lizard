@@ -29,17 +29,12 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public static byte Age = 0;
 
-        private static bool Initialized = false;
-
         static TranspositionTable()
         {
-            if (!Initialized)
-            {
-                Initialize(SearchOptions.Hash);
+            Initialize(SearchOptions.Hash);
 
-                Assert(ClusterCount > MinTTClusters,
-                    $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
-            }
+            Assert(ClusterCount > MinTTClusters,
+                $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
         }
 
         /// <summary>

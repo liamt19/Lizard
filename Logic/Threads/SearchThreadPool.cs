@@ -29,7 +29,7 @@
         /// Set to true by the main thread when we are nearing the maximum search time / maximum node count,
         /// or when the UCI receives a "stop" command
         /// </summary>
-        public volatile bool StopThreads;
+        public volatile bool StopThreads = true;
 
         public Barrier Blocker;
 

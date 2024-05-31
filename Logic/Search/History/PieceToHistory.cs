@@ -18,22 +18,10 @@ namespace Lizard.Logic.Search.History
         private const int DimX = PieceNB * 2;
         private const int DimY = SquareNB;
 
-        /// <summary>
-        /// 12 * 64 == 768 elements
-        /// </summary>
         public const nuint Length = DimX * DimY;
-
-        /// <summary>
-        /// 2 * (<inheritdoc cref="Length"/>) == 1536 bytes
-        /// </summary>
         public const nuint ByteSize = sizeof(short) * Length;
 
         public PieceToHistory() { }
-
-        public void Dispose()
-        {
-            NativeMemory.AlignedFree(_History);
-        }
 
         public StatEntry this[int pc, int pt, int sq]
         {
@@ -64,6 +52,11 @@ namespace Lizard.Logic.Search.History
         public void Alloc()
         {
             _History = (StatEntry*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+        }
+
+        public void Dispose()
+        {
+            NativeMemory.AlignedFree(_History);
         }
 
         /// <summary>

@@ -191,18 +191,6 @@ namespace Lizard.Logic.Util
             return sb.ToString();
         }
 
-        public static class Direction
-        {
-            public const int NORTH = 8;
-            public const int EAST = 1;
-            public const int SOUTH = -NORTH;
-            public const int WEST = -EAST;
-
-            public const int NORTH_EAST = NORTH + EAST;
-            public const int SOUTH_EAST = SOUTH + EAST;
-            public const int SOUTH_WEST = SOUTH + WEST;
-            public const int NORTH_WEST = NORTH + WEST;
-        }
 
         /// <summary>
         /// Returns the <see cref="Direction"/> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
@@ -219,20 +207,7 @@ namespace Lizard.Logic.Util
             return (color == Color.White) ? Shift(Direction.NORTH, b) : Shift(Direction.SOUTH, b);
         }
 
-        /// <summary>
-        /// Returns a bitboard with bits set 1 "below" the bits in <paramref name="b"/>.
-        /// So Backward(Color.White) with a bitboard that has A2 set will return one with A1 set,
-        /// and Backward(Color.Black) returns one with A3 set instead.
-        /// </summary>
-        public static ulong Backward(int color, ulong b)
-        {
-            if (color == Color.White)
-            {
-                return Shift(Direction.SOUTH, b);
-            }
 
-            return Shift(Direction.NORTH, b);
-        }
 
         /// <summary>
         /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
@@ -663,29 +638,14 @@ namespace Lizard.Logic.Util
         {
             if (Evaluation.IsScoreMate(score))
             {
-                //  "mateIn" is returned in plies, but we want it in actual moves
-                if (score > 0)
-                {
-                    return "mate " + ((ScoreMate - score + 1) / 2);
-                }
-                else
-                {
-                    return "mate " + ((-ScoreMate - score) / 2);
-                }
-
-                //return "mate " + mateIn;
+                return "mate " + ((score > 0) ? (( ScoreMate - score + 1) / 2) : 
+                                                ((-ScoreMate - score    ) / 2));
             }
             else
             {
                 const double NormalizeEvalFactor = 2.4;
                 return "cp " + (int)(score / NormalizeEvalFactor);
             }
-        }
-
-        public static int ConvertRange(int originalStart, int originalEnd, int newStart, int newEnd, int value)
-        {
-            double scale = (double)(newEnd - newStart) / (originalEnd - originalStart);
-            return (int)(newStart + (value - originalStart) * scale);
         }
 
 

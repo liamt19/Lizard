@@ -33,18 +33,6 @@
             Reset();
         }
 
-        public ulong GetPieces(int pc, (int, int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6]);
-        public ulong GetPieces(int pc, (int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5]);
-        public ulong GetPieces(int pc, (int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4]);
-        public ulong GetPieces(int pc, (int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3]);
-        public ulong GetPieces(int pc, (int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2]);
-        public ulong GetPieces(int pc, int type) => Colors[pc] & (Pieces[type]);
-        public ulong GetPieces((int, int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6];
-        public ulong GetPieces((int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5];
-        public ulong GetPieces((int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4];
-        public ulong GetPieces((int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3];
-        public ulong GetPieces((int, int) types) => Pieces[types.Item1] | Pieces[types.Item2];
-        public ulong GetPieces(int type) => Pieces[type];
 
         public string SquareToString(int idx)
         {

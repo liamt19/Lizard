@@ -80,12 +80,19 @@ namespace Lizard.Logic.Search
             bool improving = false;
 
 
-            if (thisThread.IsMain && ((++thisThread.CheckupCount) >= SearchThread.CheckupMax))
+            if (thisThread.IsMain)
             {
-                thisThread.CheckupCount = 0;
-                //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (info.TimeManager.CheckUp() ||
-                    SearchPool.GetNodeCount() >= info.MaxNodes)
+                if ((++thisThread.CheckupCount) >= SearchThread.CheckupMax)
+                {
+                    thisThread.CheckupCount = 0;
+                    //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
+                    if (info.TimeManager.CheckUp())
+                    {
+                        SearchPool.StopThreads = true;
+                    }
+                }
+
+                if (info.IsGoNodesCommand && SearchPool.GetNodeCount() >= info.MaxNodes)
                 {
                     SearchPool.StopThreads = true;
                 }
