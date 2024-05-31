@@ -924,7 +924,7 @@ namespace Lizard.Logic.Search
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : 
                                                      TTNodeType.Beta);
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, ss->TTPV);
 
             return bestScore;
         }
