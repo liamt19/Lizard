@@ -752,7 +752,6 @@ namespace Lizard.Logic.Search
             }
 
             if (!isPV
-                && tte->Depth >= ttDepth
                 && ttScore != ScoreNone
                 && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
