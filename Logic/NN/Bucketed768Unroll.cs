@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int StopBefore = HiddenSize / N;
+        private const int StopBefore = L1_SIZE / N;
 
         private const int AVX512_1024HL = 1024 / 32;
         private const int AVX512_1536HL = 1536 / 32;
@@ -31,6 +31,7 @@ namespace Lizard.Logic.NN
         private const int AVX256_1024HL = 1024 / 16;
         private const int AVX256_1536HL = 1536 / 16;
 
+#if NO
         public static int GetEvaluationUnrolled512(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
@@ -54,8 +55,8 @@ namespace Lizard.Logic.NN
 
             var ourData =   (short*)(accumulator[pos.ToMove]);
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);
-            var ourWeights =   (LayerWeights + (outputBucket * (HiddenSize * 2)));
-            var theirWeights = (LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
+            var ourWeights =   (L2Weights + (outputBucket * (L1_SIZE * 2)));
+            var theirWeights = (L2Weights + (outputBucket * (L1_SIZE * 2)) + L1_SIZE);
 
             #region R_STM
 
@@ -501,8 +502,9 @@ namespace Lizard.Logic.NN
 
             int output = NNUE.SumVectorNoHadd(sumVec);
 
-            return (output / QA + LayerBiases[outputBucket]) * 400 / (QA * QB);
+            return (output / QA + L2Biases[outputBucket]) * 400 / (QA * QB);
         }
+#endif
 
     }
 }

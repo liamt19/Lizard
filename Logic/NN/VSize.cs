@@ -18,6 +18,10 @@
 
 
         ///<summary> == 8 </summary>
+        public const int Float = Vector256Size / sizeof(float);
+
+
+        ///<summary> == 8 </summary>
         public const int UInt = Vector256Size / sizeof(uint);
 
         ///<summary> == 16 </summary>

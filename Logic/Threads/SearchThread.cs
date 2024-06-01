@@ -169,7 +169,7 @@ namespace Lizard.Logic.Threads
 
             History = new HistoryTable();
 
-            const int CacheSize = Bucketed768.InputBuckets * 2;
+            const int CacheSize = Bucketed768.INPUT_BUCKETS * 2;
             CachedBuckets = new BucketCache[CacheSize];
             for (int i = 0; i < CacheSize; i++)
             {
@@ -332,11 +332,11 @@ namespace Lizard.Logic.Threads
             SearchStackEntry* ss = _SearchStackBlock + 10;
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
-                (ss + i)->Clear();
-                (ss + i)->Ply = (short)i;
-                (ss + i)->PV = (Move*)AlignedAllocZeroed((nuint)(MaxPly * sizeof(Move)), AllocAlignment);
-                (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
-            }
+                    (ss + i)->Clear();
+                    (ss + i)->Ply = (short)i;
+                    (ss + i)->PV = (Move*)AlignedAllocZeroed((nuint)(MaxPly * sizeof(Move)), AllocAlignment);
+                    (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
+                }
 
             Bucketed768.ResetCaches(this);
 
