@@ -104,7 +104,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
-        public BucketCache* CachedBuckets;
+        public BucketCache[] CachedBuckets;
+        //public BucketCache* CachedBuckets;
 
         public ulong[] NodeTable;
 
@@ -170,8 +171,9 @@ namespace Lizard.Logic.Threads
 
             History = new HistoryTable();
 
-            
-            CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
+
+            //CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
+            CachedBuckets = new BucketCache[BucketCacheSize];
             for (int i = 0; i < BucketCacheSize; i++)
             {
                 CachedBuckets[i] = new BucketCache();
@@ -536,7 +538,7 @@ namespace Lizard.Logic.Threads
             //  And free up the memory we allocated for this thread.
             History.Dispose();
 
-            NativeMemory.AlignedFree(CachedBuckets);
+            //NativeMemory.AlignedFree(CachedBuckets);
 
             //  Destroy the underlying system thread
             _SysThread.Join();
