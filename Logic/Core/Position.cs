@@ -85,8 +85,11 @@ namespace Lizard.Logic.Core
         public readonly bool UpdateNN;
 
 
-        public readonly int* CastlingRookSquares;
-        public readonly ulong* CastlingRookPaths;
+        //public readonly int* CastlingRookSquares;
+        //public readonly ulong* CastlingRookPaths;
+
+        public int[] CastlingRookSquares;
+        public ulong[] CastlingRookPaths;
 
         public bool IsChess960 = false;
 
@@ -109,8 +112,12 @@ namespace Lizard.Logic.Core
         public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread owner = null)
         {
             MaterialCountNonPawn = new int[2];
-            CastlingRookSquares = (int*) AlignedAllocZeroed(sizeof(int) * (int)CastlingStatus.All, AllocAlignment);
-            CastlingRookPaths = (ulong*) AlignedAllocZeroed(sizeof(ulong) * (int)CastlingStatus.All, AllocAlignment);
+
+            //CastlingRookSquares = (int*) AlignedAllocZeroed(sizeof(int) * (int)CastlingStatus.All, AllocAlignment);
+            //CastlingRookPaths = (ulong*)AlignedAllocZeroed(sizeof(ulong) * (int)CastlingStatus.All, AllocAlignment);
+
+            CastlingRookSquares = new int[(int)CastlingStatus.All];
+            CastlingRookPaths = new ulong[(int)CastlingStatus.All];
 
 
             this.UpdateNN = createAccumulators;
@@ -170,6 +177,9 @@ namespace Lizard.Logic.Core
 
                 NativeMemory.AlignedFree((void*)_accumulatorBlock);
             }
+
+            //NativeMemory.AlignedFree(CastlingRookSquares);
+            //NativeMemory.AlignedFree(CastlingRookPaths);
 
             NativeMemory.AlignedFree((void*)_stateBlock);
         }
