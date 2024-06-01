@@ -104,8 +104,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
-        public BucketCache[] CachedBuckets;
-        //public BucketCache* CachedBuckets;
+        //public BucketCache[] CachedBuckets;
+        public BucketCache* CachedBuckets;
 
         public ulong[] NodeTable;
 
@@ -172,8 +172,8 @@ namespace Lizard.Logic.Threads
             History = new HistoryTable();
 
 
-            //CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
-            CachedBuckets = new BucketCache[BucketCacheSize];
+            CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
+            //CachedBuckets = new BucketCache[BucketCacheSize];
             for (int i = 0; i < BucketCacheSize; i++)
             {
                 CachedBuckets[i] = new BucketCache();
