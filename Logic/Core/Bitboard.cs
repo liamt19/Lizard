@@ -92,13 +92,13 @@
         {
             PieceTypes[idx] = pt;
 
-            Assert((Colors[pc] & SquareBB[idx]) == 0, $"{ColorToString(pc)} already has a piece on the square {IndexToString(idx)}");
-            Assert((Pieces[pt] & SquareBB[idx]) == 0, $"A {PieceToString(pt)} already exists on the square {IndexToString(idx)}");
+            Assert((Colors[pc] & SquareBB(idx)) == 0, $"{ColorToString(pc)} already has a piece on the square {IndexToString(idx)}");
+            Assert((Pieces[pt] & SquareBB(idx)) == 0, $"A {PieceToString(pt)} already exists on the square {IndexToString(idx)}");
 
-            Colors[pc] ^= SquareBB[idx];
-            Pieces[pt] ^= SquareBB[idx];
+            Colors[pc] ^= SquareBB(idx);
+            Pieces[pt] ^= SquareBB(idx);
 
-            Occupancy |= SquareBB[idx];
+            Occupancy |= SquareBB(idx);
         }
 
         /// <summary>
@@ -108,13 +108,13 @@
         {
             PieceTypes[idx] = Piece.None;
 
-            Assert((Colors[pc] & SquareBB[idx]) != 0, $"{ColorToString(pc)} doesn't have a piece to remove on the square {IndexToString(idx)}");
-            Assert((Pieces[pt] & SquareBB[idx]) != 0, $"The square {IndexToString(idx)} doesn't have a {PieceToString(pt)} to remove");
+            Assert((Colors[pc] & SquareBB(idx)) != 0, $"{ColorToString(pc)} doesn't have a piece to remove on the square {IndexToString(idx)}");
+            Assert((Pieces[pt] & SquareBB(idx)) != 0, $"The square {IndexToString(idx)} doesn't have a {PieceToString(pt)} to remove");
 
-            Colors[pc] ^= SquareBB[idx];
-            Pieces[pt] ^= SquareBB[idx];
+            Colors[pc] ^= SquareBB(idx);
+            Pieces[pt] ^= SquareBB(idx);
 
-            Occupancy ^= SquareBB[idx];
+            Occupancy ^= SquareBB(idx);
         }
 
         /// <summary>
@@ -135,7 +135,7 @@
         /// </summary>
         public int GetColorAtIndex(int idx)
         {
-            return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
+            return ((Colors[Color.White] & SquareBB(idx)) != 0) ? Color.White : Color.Black;
         }
 
         /// <summary>
@@ -151,7 +151,7 @@
         /// </summary>
         public bool IsColorSet(int pc, int idx)
         {
-            return (Colors[pc] & SquareBB[idx]) != 0;
+            return (Colors[pc] & SquareBB(idx)) != 0;
         }
 
         /// <summary>
@@ -231,7 +231,7 @@
                     if ((temp & us) != 0)
                     {
                         //  If the blocker is ours, then the candidate on the square "idx" is a pinner
-                        *pinners |= SquareBB[idx];
+                        *pinners |= SquareBB(idx);
                     }
                 }
             }

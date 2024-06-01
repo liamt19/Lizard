@@ -256,6 +256,10 @@ namespace Lizard.Logic.Util
             return color ^ 1;
         }
 
+        public static ulong SquareBB(int sq)
+        {
+            return (1UL << sq);
+        }
 
         /// <summary>
         /// Returns the name of the <paramref name="color"/>.

@@ -6,28 +6,27 @@ namespace Lizard.Logic.Transposition
     {
         private const int DefaultSeed = 0xBEEF;
 
-        private static ulong[][][] ColorPieceSquareHashes = new ulong[ColorNB][][];
-        private static ulong[] CastlingRightsHashes = new ulong[ColorNB * 2];
-        private static ulong[] EnPassantFileHashes = new ulong[8];
-        private static ulong BlackHash;
-        private static Random rand = new Random(DefaultSeed);
+        private static readonly ulong* ColorPieceSquareHashes;
+        private static readonly ulong* CastlingRightsHashes;
+        private static readonly ulong* EnPassantFileHashes;
+        private static readonly ulong BlackHash;
 
-        [ModuleInitializer]
-        public static void Initialize()
+        private static int HashIndex(int pc, int pt, int sq) => (pc * PieceNB * SquareNB) + (pt * SquareNB) + sq;
+
+        static Zobrist()
         {
+            Random rand = new Random(DefaultSeed);
 
-            ColorPieceSquareHashes[Color.White] = new ulong[6][];
-            ColorPieceSquareHashes[Color.Black] = new ulong[6][];
+            ColorPieceSquareHashes = (ulong*)AlignedAllocZeroed(sizeof(ulong) * ColorNB * PieceNB * SquareNB, AllocAlignment);
+            CastlingRightsHashes   = (ulong*)AlignedAllocZeroed(sizeof(ulong) * ColorNB * 2, AllocAlignment);
+            EnPassantFileHashes    = (ulong*)AlignedAllocZeroed(sizeof(ulong) * 8, AllocAlignment);
 
             for (int pt = Piece.Pawn; pt <= Piece.King; pt++)
             {
-                ColorPieceSquareHashes[Color.White][pt] = new ulong[64];
-                ColorPieceSquareHashes[Color.Black][pt] = new ulong[64];
-
                 for (int i = 0; i < 64; i++)
                 {
-                    ColorPieceSquareHashes[Color.White][pt][i] = rand.NextUlong();
-                    ColorPieceSquareHashes[Color.Black][pt][i] = rand.NextUlong();
+                    ColorPieceSquareHashes[HashIndex(White, pt, i)] = rand.NextUlong();
+                    ColorPieceSquareHashes[HashIndex(Black, pt, i)] = rand.NextUlong();
                 }
             }
 
@@ -56,41 +55,22 @@ namespace Lizard.Logic.Transposition
             while (white != 0)
             {
                 int idx = poplsb(&white);
-                hash ^= ColorPieceSquareHashes[Color.White][bb.PieceTypes[idx]][idx];
+                hash ^= ColorPieceSquareHashes[HashIndex(White, bb.GetPieceAtIndex(idx), idx)];
             }
 
             while (black != 0)
             {
                 int idx = poplsb(&black);
-                hash ^= ColorPieceSquareHashes[Color.Black][bb.PieceTypes[idx]][idx];
+                hash ^= ColorPieceSquareHashes[HashIndex(Black, bb.GetPieceAtIndex(idx), idx)];
             }
 
-            if ((position.State->CastleStatus & CastlingStatus.WK) != 0)
-            {
-                hash ^= CastlingRightsHashes[0];
-            }
-            if ((position.State->CastleStatus & CastlingStatus.WQ) != 0)
-            {
-                hash ^= CastlingRightsHashes[1];
-            }
-            if ((position.State->CastleStatus & CastlingStatus.BK) != 0)
-            {
-                hash ^= CastlingRightsHashes[2];
-            }
-            if ((position.State->CastleStatus & CastlingStatus.BQ) != 0)
-            {
-                hash ^= CastlingRightsHashes[3];
-            }
+            hash ^= (position.State->CastleStatus.HasFlag(CastlingStatus.WK)) ? CastlingRightsHashes[0] : 0;
+            hash ^= (position.State->CastleStatus.HasFlag(CastlingStatus.WQ)) ? CastlingRightsHashes[1] : 0;
+            hash ^= (position.State->CastleStatus.HasFlag(CastlingStatus.BK)) ? CastlingRightsHashes[2] : 0;
+            hash ^= (position.State->CastleStatus.HasFlag(CastlingStatus.BQ)) ? CastlingRightsHashes[3] : 0;
 
-            if (position.State->EPSquare != EPNone)
-            {
-                hash ^= EnPassantFileHashes[GetIndexFile(position.State->EPSquare)];
-            }
-
-            if (position.ToMove == Color.Black)
-            {
-                hash ^= BlackHash;
-            }
+            hash ^= (position.State->EPSquare != EPNone) ? EnPassantFileHashes[GetIndexFile(position.State->EPSquare)] : 0;
+            hash ^= (position.ToMove == Color.Black) ? BlackHash : 0;
 
             return hash;
         }
@@ -106,7 +86,7 @@ namespace Lizard.Logic.Transposition
             Assert(color is White or Black, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece color! (should be 0 or 1)");
             Assert(pt is >= Pawn and <= King, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
 
-            hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
+            hash ^= ColorPieceSquareHashes[HashIndex(color, pt, from)] ^ ColorPieceSquareHashes[HashIndex(color, pt, to)];
         }
 
         /// <summary>
@@ -118,7 +98,7 @@ namespace Lizard.Logic.Transposition
             Assert(pt is >= Pawn and <= King, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
             Assert(idx is >= A1 and <= H8, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid square! (should be 0 <= idx <= 63)");
 
-            hash ^= ColorPieceSquareHashes[color][pt][idx];
+            hash ^= ColorPieceSquareHashes[HashIndex(color, pt, idx)];
         }
 
         /// <summary>

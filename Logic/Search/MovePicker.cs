@@ -434,7 +434,7 @@ namespace Lizard.Logic.Search
                                   (*continuations[3])[contIdx] +
                                   (*continuations[5])[contIdx];
 
-                if ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(iter->Move.From)] & SquareBB[iter->Move.To]) != 0)
+                if ((pos.State->CheckSquares[pos.bb.GetPieceAtIndex(iter->Move.From)] & SquareBB(iter->Move.To)) != 0)
                 {
                     iter->Score += 10000;
                 }

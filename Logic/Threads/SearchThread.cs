@@ -22,6 +22,7 @@ namespace Lizard.Logic.Threads
     /// </summary>
     public unsafe class SearchThread : IDisposable
     {
+        public const int BucketCacheSize = Bucketed768.InputBuckets * 2;
         public const int CheckupMax = 512;
 
         private bool _Disposed = false;
@@ -103,9 +104,9 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
-        public BucketCache[] CachedBuckets;
+        public BucketCache* CachedBuckets;
 
-        public ulong[][] NodeTable;
+        public ulong[] NodeTable;
 
         /// <summary>
         /// The system Thread that this SearchThread is running on.
@@ -169,18 +170,14 @@ namespace Lizard.Logic.Threads
 
             History = new HistoryTable();
 
-            const int CacheSize = Bucketed768.InputBuckets * 2;
-            CachedBuckets = new BucketCache[CacheSize];
-            for (int i = 0; i < CacheSize; i++)
+            
+            CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
+            for (int i = 0; i < BucketCacheSize; i++)
             {
                 CachedBuckets[i] = new BucketCache();
             }
 
-            NodeTable = new ulong[SquareNB][];
-            for (int sq = 0; sq < SquareNB; sq++)
-            {
-                NodeTable[sq] = new ulong[SquareNB];
-            }
+            NodeTable = new ulong[SquareNB * SquareNB];
 
             _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
             if (IsMain)
@@ -340,10 +337,7 @@ namespace Lizard.Logic.Threads
 
             Bucketed768.ResetCaches(this);
 
-            for (int sq = 0; sq < SquareNB; sq++)
-            {
-                Array.Clear(NodeTable[sq]);
-            }
+            Array.Clear(NodeTable);
 
             //  Create a copy of the SearchPool's root SearchInformation instance.
             SearchInformation info = SearchPool.SharedInfo;
@@ -506,7 +500,7 @@ namespace Lizard.Logic.Threads
             double multFactor = 1.0;
             if (RootDepth > 7)
             {
-                double proportion = NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes;
+                double proportion = NodeTable[RootMoves[0].Move.MoveMask] / (double)Nodes;
                 multFactor = ((1.5 - proportion) * 1.75) * StabilityCoefficients[Math.Min(stability, StabilityMax)];
             }
 
@@ -541,6 +535,8 @@ namespace Lizard.Logic.Threads
 
             //  And free up the memory we allocated for this thread.
             History.Dispose();
+
+            NativeMemory.AlignedFree(CachedBuckets);
 
             //  Destroy the underlying system thread
             _SysThread.Join();

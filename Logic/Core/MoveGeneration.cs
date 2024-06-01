@@ -143,7 +143,7 @@
 
                 if (State->EPSquare != EPNone)
                 {
-                    if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
+                    if (evasions && (targets & (SquareBB(State->EPSquare + up))) != 0)
                     {
                         //  When in check, we can only en passant if the pawn being captured is the one giving check
                         return size;
@@ -246,7 +246,7 @@
             }
 
             //  If we are doing non-captures with check and our king isn't blocking a check, then skip generating king moves
-            if (!(quietChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) == 0))
+            if (!(quietChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB(ourKing)) == 0))
             {
                 ulong moves = NeighborsMask[ourKing] & (evasions ? ~us : targets);
                 if (quietChecks)
@@ -282,7 +282,7 @@
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.WK)
                         && (occ & CastlingRookPaths[(int)CastlingStatus.WK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WK]] & us) != 0)
+                        && (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)CastlingStatus.WK]) & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
@@ -291,7 +291,7 @@
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
                         && (occ & CastlingRookPaths[(int)CastlingStatus.WQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WQ]] & us) != 0)
+                        && (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)CastlingStatus.WQ]) & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
@@ -302,7 +302,7 @@
                 {
                     if (State->CastleStatus.HasFlag(CastlingStatus.BK)
                         && (occ & CastlingRookPaths[(int)CastlingStatus.BK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BK]] & us) != 0)
+                        && (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)CastlingStatus.BK]) & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
@@ -311,7 +311,7 @@
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
                         && (occ & CastlingRookPaths[(int)CastlingStatus.BQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BQ]] & us) != 0)
+                        && (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)CastlingStatus.BQ]) & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
@@ -401,7 +401,7 @@
                 int idx = poplsb(&ourPieces);
                 ulong moves = bb.AttackMask(idx, ToMove, pt, occ) & targets;
 
-                if (checks && (pt == Queen || ((State->BlockingPieces[Not(ToMove)] & SquareBB[idx]) == 0)))
+                if (checks && (pt == Queen || ((State->BlockingPieces[Not(ToMove)] & SquareBB(idx)) == 0)))
                 {
                     moves &= State->CheckSquares[pt];
                 }
@@ -484,7 +484,7 @@
             size = GenNormalQS(list, Queen, allowChecks, size);
 
 
-            if ((allowChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) != 0))
+            if ((allowChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB(ourKing)) != 0))
             {
                 ulong moves = NeighborsMask[ourKing] & them;
                 if (allowChecks)
@@ -674,7 +674,7 @@
             {
                 for (int promotionPiece = Queen; promotionPiece >= Knight; promotionPiece--)
                 {
-                    if (isCapture || allowChecks && (SquareBB[promotionSquare] & State->CheckSquares[promotionPiece]) != 0)
+                    if (isCapture || allowChecks && (SquareBB(promotionSquare) & State->CheckSquares[promotionPiece]) != 0)
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNew(from, promotionSquare, promotionPiece);

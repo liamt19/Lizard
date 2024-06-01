@@ -6,12 +6,8 @@
     /// </summary>
     public static unsafe class PrecomputedData
     {
-        /// <summary>
-        /// Index using [depth][moveIndex]
-        /// </summary>
-        public static readonly int[][] LogarithmicReductionTable = new int[MaxPly][];
-
-        public static readonly int[][] LMPTable = new int[2][];
+        private static readonly int* LogarithmicReductionTable = (int*)AlignedAllocZeroed(sizeof(int) * MaxPly * MoveListSize, AllocAlignment);
+        private static readonly int* LMPTable = (int*)AlignedAllocZeroed(sizeof(int) * 2 * MaxPly, AllocAlignment);
 
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
@@ -38,11 +34,6 @@
         public static readonly ulong* BlackPawnAttackMasks = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
 
         public static readonly ulong** PawnAttackMasks = (ulong**)AlignedAllocZeroed(sizeof(ulong) * 2, AllocAlignment);
-
-        /// <summary>
-        /// At each index, contains a ulong equal to (1UL << index).
-        /// </summary>
-        public static readonly ulong* SquareBB = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * SquareNB), AllocAlignment);
 
         /// <summary>
         /// Bitboards with bits set at every index that exists in a line between two indices.
@@ -96,7 +87,6 @@
 
         public static void Initialize()
         {
-            DoSquareBB();
             DoPieceRays();
 
             DoNeighbors();
@@ -109,14 +99,6 @@
             DoReductionTable();
 
             DoRayBBs();
-        }
-
-        private static void DoSquareBB()
-        {
-            for (int s = 0; s <= 63; ++s)
-            {
-                SquareBB[s] = 1UL << s;
-            }
         }
 
         /// <summary>
@@ -155,15 +137,15 @@
 
                 for (int s2 = 0; s2 < 64; s2++)
                 {
-                    if ((RookRays[s1] & SquareBB[s2]) != 0)
+                    if ((RookRays[s1] & SquareBB(s2)) != 0)
                     {
-                        RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | SquareBB[s1] | SquareBB[s2];
-                        XrayBB[s1][s2] = (GetRookMoves(SquareBB[s1], s2) & RookRays[s1]) | SquareBB[s1] | SquareBB[s2];
+                        RayBB[s1][s2] = (RookRays[s1] & RookRays[s2]) | SquareBB(s1) | SquareBB(s2);
+                        XrayBB[s1][s2] = (GetRookMoves(SquareBB(s1), s2) & RookRays[s1]) | SquareBB(s1) | SquareBB(s2);
                     }
-                    else if ((BishopRays[s1] & SquareBB[s2]) != 0)
+                    else if ((BishopRays[s1] & SquareBB(s2)) != 0)
                     {
-                        RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | SquareBB[s1] | SquareBB[s2];
-                        XrayBB[s1][s2] = (GetBishopMoves(SquareBB[s1], s2) & BishopRays[s1]) | SquareBB[s1] | SquareBB[s2];
+                        RayBB[s1][s2] = (BishopRays[s1] & BishopRays[s2]) | SquareBB(s1) | SquareBB(s2);
+                        XrayBB[s1][s2] = (GetBishopMoves(SquareBB(s1), s2) & BishopRays[s1]) | SquareBB(s1) | SquareBB(s2);
                     }
                     else
                     {
@@ -298,50 +280,45 @@
                     int f2 = GetIndexFile(s2);
                     int r2 = GetIndexRank(s2);
 
-                    if ((RookRays[s1] & SquareBB[s2]) != 0)
+                    if ((RookRays[s1] & SquareBB(s2)) != 0)
                     {
-                        BetweenBB[s1][s2] = GetRookMoves(SquareBB[s2], s1) & GetRookMoves(SquareBB[s1], s2);
-                        LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB[s2];
+                        BetweenBB[s1][s2] = GetRookMoves(SquareBB(s2), s1) & GetRookMoves(SquareBB(s1), s2);
+                        LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
                     }
-                    else if ((BishopRays[s1] & SquareBB[s2]) != 0)
+                    else if ((BishopRays[s1] & SquareBB(s2)) != 0)
                     {
-                        BetweenBB[s1][s2] = GetBishopMoves(SquareBB[s2], s1) & GetBishopMoves(SquareBB[s1], s2);
-                        LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB[s2];
+                        BetweenBB[s1][s2] = GetBishopMoves(SquareBB(s2), s1) & GetBishopMoves(SquareBB(s1), s2);
+                        LineBB[s1][s2] = BetweenBB[s1][s2] | SquareBB(s2);
                     }
                     else
                     {
                         BetweenBB[s1][s2] = 0;
-                        LineBB[s1][s2] = SquareBB[s2];
+                        LineBB[s1][s2] = SquareBB(s2);
                     }
                 }
             }
         }
 
+
+        public static int GetReduction(int depth, int moveIndex) => LogarithmicReductionTable[(depth * MoveListSize) + moveIndex];
+        public static int GetLMP(bool improving, int depth) => LMPTable[(improving.AsInt() * MaxPly) + depth];
         private static void DoReductionTable()
         {
             for (int depth = 0; depth < MaxPly; depth++)
             {
-                LogarithmicReductionTable[depth] = new int[MoveListSize];
                 for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
                 {
-                    //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
-                    LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
-
-                    if (LogarithmicReductionTable[depth][moveIndex] < 1)
-                    {
-                        LogarithmicReductionTable[depth][moveIndex] = 0;
-                    }
+                    int log = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
+                    LogarithmicReductionTable[(depth * MoveListSize) + moveIndex] = Math.Max(log, 0);
                 }
             }
 
             const int improving = 1;
             const int not_improving = 0;
-            LMPTable[not_improving] = new int[MaxPly];
-            LMPTable[improving] = new int[MaxPly];
             for (int depth = 0; depth < MaxPly; depth++)
             {
-                LMPTable[not_improving][depth] = (3 + (depth * depth)) / 2;
-                LMPTable[improving][depth] = 3 + (depth * depth);
+                LMPTable[(MaxPly * not_improving) + depth] = (3 + (depth * depth)) / 2;
+                LMPTable[(MaxPly * improving) + depth] = 3 + (depth * depth);
             }
         }
     }

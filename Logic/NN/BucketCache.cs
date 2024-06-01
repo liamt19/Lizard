@@ -5,7 +5,8 @@
         /// <summary>
         /// 2 Boards, 1 for each perspective
         /// </summary>
-        public Bitboard[] Boards = new Bitboard[ColorNB];
+        public Bitboard WhiteBoard = new Bitboard();
+        public Bitboard BlackBoard = new Bitboard();
         public Accumulator Accumulator = new Accumulator();
 
         public BucketCache() { }

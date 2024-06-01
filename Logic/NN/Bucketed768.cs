@@ -171,7 +171,7 @@ namespace Lizard.Logic.NN
             }
 
             ref BucketCache cache = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref cache.Boards[perspective];
+            ref Bitboard entryBB = ref ((perspective == White) ? ref cache.WhiteBoard : ref cache.BlackBoard);
             ref Accumulator entryAcc = ref cache.Accumulator;
 
             accumulator.CopyTo(ref entryAcc, perspective);
@@ -188,7 +188,7 @@ namespace Lizard.Logic.NN
             int thisBucket = KingBuckets[ourKing];
 
             ref BucketCache rtEntry = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref rtEntry.Boards[perspective];
+            ref Bitboard entryBB = ref ((perspective == White) ? ref rtEntry.WhiteBoard : ref rtEntry.BlackBoard);
             ref Accumulator entryAcc = ref rtEntry.Accumulator;
 
             var ourAccumulation = (short*)entryAcc[perspective];
@@ -447,12 +447,12 @@ namespace Lizard.Logic.NN
 
         public static void ResetCaches(SearchThread td)
         {
-            for (int bIdx = 0; bIdx < td.CachedBuckets.Length; bIdx++)
+            for (int bIdx = 0; bIdx < SearchThread.BucketCacheSize; bIdx++)
             {
                 ref BucketCache bc = ref td.CachedBuckets[bIdx];
                 bc.Accumulator.ResetWithBiases(FeatureBiases, sizeof(short) * HiddenSize);
-                bc.Boards[White].Reset();
-                bc.Boards[Black].Reset();
+                bc.WhiteBoard.Reset();
+                bc.BlackBoard.Reset();
             }
         }
     }

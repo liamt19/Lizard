@@ -223,12 +223,12 @@ namespace Lizard.Logic.Data
                 //  This isn't done for pawns though since their notation is always unambiguous
                 if (popcount(multPieces) > 1 && pt != Pawn)
                 {
-                    if ((multPieces & GetFileBB(moveFrom)) == SquareBB[moveFrom])
+                    if ((multPieces & GetFileBB(moveFrom)) == SquareBB(moveFrom))
                     {
                         //  If this piece is alone on its file, we only specify the file.
                         sb.Append(GetFileChar(GetIndexFile(moveFrom)));
                     }
-                    else if ((multPieces & GetRankBB(moveFrom)) == SquareBB[moveFrom])
+                    else if ((multPieces & GetRankBB(moveFrom)) == SquareBB(moveFrom))
                     {
                         //  If this piece wasn't alone on its file, but is alone on its rank, then include the rank.
                         sb.Append(GetIndexRank(moveFrom) + 1);

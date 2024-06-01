@@ -394,10 +394,10 @@ namespace Lizard.Logic.Search
                 {
                     if (skipQuiets == false)
                     {
-                        skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
+                        skipQuiets = legalMoves >= GetLMP(improving, depth);
                     }
 
-                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
 
                     if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
                     {
@@ -500,7 +500,7 @@ namespace Lizard.Logic.Search
                     && !(isPV && isCapture))
                 {
 
-                    int R = LogarithmicReductionTable[depth][legalMoves];
+                    int R = GetReduction(depth, legalMoves);
 
                     //  Reduce if our static eval is declining
                     if (!improving)
@@ -580,7 +580,7 @@ namespace Lizard.Logic.Search
                 if (isRoot)
                 {
                     //  Update the NodeTM table with the number of nodes that were searched in this subtree.
-                    thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
+                    thisThread.NodeTable[m.MoveMask] += thisThread.Nodes - prevNodes;
                 }
 
                 if (SearchPool.StopThreads)
@@ -835,7 +835,7 @@ namespace Lizard.Logic.Search
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
                 bool isCapture = (theirPiece != None && !m.Castle);
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB(moveTo)) != 0);
 
                 movesMade++;
 
@@ -1081,8 +1081,8 @@ namespace Lizard.Logic.Search
             if (swap <= 0)
                 return true;
 
-            //  ulong occ = bb.Occupancy ^ SquareBB[from] ^ SquareBB[to];
-            ulong occ = (bb.Occupancy ^ SquareBB[from]) | SquareBB[to];
+            //  ulong occ = bb.Occupancy ^ SquareBB(from) ^ SquareBB(to);
+            ulong occ = (bb.Occupancy ^ SquareBB(from)) | SquareBB(to);
 
             ulong attackers = bb.AttackersTo(to, occ);
             ulong stmAttackers;
@@ -1114,7 +1114,7 @@ namespace Lizard.Logic.Search
 
                 if ((temp = stmAttackers & bb.Pieces[Pawn]) != 0)
                 {
-                    occ ^= SquareBB[lsb(temp)];
+                    occ ^= SquareBB(lsb(temp));
                     if ((swap = GetPieceValue(Pawn) - swap) < res)
                         break;
 
@@ -1122,13 +1122,13 @@ namespace Lizard.Logic.Search
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Knight]) != 0)
                 {
-                    occ ^= SquareBB[lsb(temp)];
+                    occ ^= SquareBB(lsb(temp));
                     if ((swap = GetPieceValue(Knight) - swap) < res)
                         break;
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Bishop]) != 0)
                 {
-                    occ ^= SquareBB[lsb(temp)];
+                    occ ^= SquareBB(lsb(temp));
                     if ((swap = GetPieceValue(Bishop) - swap) < res)
                         break;
 
@@ -1136,7 +1136,7 @@ namespace Lizard.Logic.Search
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Rook]) != 0)
                 {
-                    occ ^= SquareBB[lsb(temp)];
+                    occ ^= SquareBB(lsb(temp));
                     if ((swap = GetPieceValue(Rook) - swap) < res)
                         break;
 
@@ -1144,7 +1144,7 @@ namespace Lizard.Logic.Search
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Queen]) != 0)
                 {
-                    occ ^= SquareBB[lsb(temp)];
+                    occ ^= SquareBB(lsb(temp));
                     if ((swap = GetPieceValue(Queen) - swap) < res)
                         break;
 
