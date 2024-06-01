@@ -104,8 +104,7 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public HistoryTable History;
 
-        //public BucketCache[] CachedBuckets;
-        public BucketCache* CachedBuckets;
+        public BucketCache[] CachedBuckets;
 
         public ulong[] NodeTable;
 
@@ -171,9 +170,7 @@ namespace Lizard.Logic.Threads
 
             History = new HistoryTable();
 
-
-            CachedBuckets = (BucketCache*) AlignedAllocZeroed((nuint)sizeof(BucketCache) * BucketCacheSize, AllocAlignment);
-            //CachedBuckets = new BucketCache[BucketCacheSize];
+            CachedBuckets = new BucketCache[BucketCacheSize];
             for (int i = 0; i < BucketCacheSize; i++)
             {
                 CachedBuckets[i] = new BucketCache();
@@ -526,7 +523,7 @@ namespace Lizard.Logic.Threads
 
             if (disposing)
             {
-                Assert(Searching == false, "The thread {ToString()} had its Dispose({disposing}) method called Searching was {Searching}!");
+                Assert(Searching == false, $"The thread {ToString()} had its Dispose({disposing}) method called Searching was {Searching}!");
 
                 //  Set quit to True, and pulse the condition to allow the thread in IdleLoop to exit.
                 Quit = true;
@@ -534,11 +531,11 @@ namespace Lizard.Logic.Threads
                 PrepareToSearch();
             }
 
+            for (int i = 0; i < BucketCacheSize; i++)
+                CachedBuckets[i].Accumulator.Dispose();
 
             //  And free up the memory we allocated for this thread.
             History.Dispose();
-
-            //NativeMemory.AlignedFree(CachedBuckets);
 
             //  Destroy the underlying system thread
             _SysThread.Join();

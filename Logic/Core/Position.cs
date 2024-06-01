@@ -16,11 +16,6 @@ namespace Lizard.Logic.Core
         public int FullMoves = 1;
         public int ToMove;
 
-        /// <summary>
-        /// The sum of the non-pawn material in the position, indexed by piece color.
-        /// </summary>
-        public int[] MaterialCountNonPawn;
-
         public bool InCheck;
         public bool InDoubleCheck;
 
@@ -84,16 +79,23 @@ namespace Lizard.Logic.Core
         /// </summary>
         public readonly bool UpdateNN;
 
+        /// <summary>
+        /// The sum of the non-pawn material in the position, indexed by piece color.
+        /// </summary>
+        public readonly int[] _MaterialCountNonPawn;
 
-        public readonly int* CastlingRookSquares;
-        public readonly ulong* CastlingRookPaths;
+        private readonly int[] _CastlingRookSquares;
+        private readonly ulong[] _CastlingRookPaths;
 
         public bool IsChess960 = false;
 
 
-        public bool CastlingImpeded(ulong occ, CastlingStatus cr) => (occ & CastlingRookPaths[(int)cr]) != 0;
-        public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB(CastlingRookSquares[(int)cr]) & us) != 0;
-
+        public bool CastlingImpeded(ulong occ, CastlingStatus cr) => (occ & CastlingRookPath(cr)) != 0;
+        public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB(CastlingRookSquare(cr)) & us) != 0;
+        public int CastlingRookSquare(CastlingStatus cr) => Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_CastlingRookSquares), (int)cr);
+        public ulong CastlingRookPath(CastlingStatus cr) => Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_CastlingRookPaths), (int)cr);
+        public ref int NonPawnMaterial(int pc) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_MaterialCountNonPawn), pc);
+        public bool HasNonPawnMaterial(int pc) => (NonPawnMaterial(pc) > 0);
 
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
@@ -108,10 +110,10 @@ namespace Lizard.Logic.Core
         /// </summary>
         public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread owner = null)
         {
-            MaterialCountNonPawn = new int[2];
+            _MaterialCountNonPawn = new int[2];
 
-            CastlingRookSquares = (int*) AlignedAllocZeroed(sizeof(int) * (int)CastlingStatus.All, AllocAlignment);
-            CastlingRookPaths = (ulong*)AlignedAllocZeroed(sizeof(ulong) * (int)CastlingStatus.All, AllocAlignment);
+            _CastlingRookSquares = new int[(int)CastlingStatus.All];
+            _CastlingRookPaths = new ulong[(int)CastlingStatus.All];
 
 
             this.UpdateNN = createAccumulators;
@@ -171,9 +173,6 @@ namespace Lizard.Logic.Core
 
                 NativeMemory.AlignedFree((void*)_accumulatorBlock);
             }
-
-            NativeMemory.AlignedFree(CastlingRookSquares);
-            NativeMemory.AlignedFree(CastlingRookPaths);
 
             NativeMemory.AlignedFree((void*)_stateBlock);
         }
@@ -312,7 +311,7 @@ namespace Lizard.Logic.Core
 
                 if (theirPiece != Pawn)
                 {
-                    MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
+                    NonPawnMaterial(theirColor) -= GetPieceValue(theirPiece);
                 }
 
                 //  Reset the halfmove clock
@@ -374,7 +373,7 @@ namespace Lizard.Logic.Core
                 State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
                 State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
-                MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
+                NonPawnMaterial(ourColor) += GetPieceValue(move.PromotionTo);
             }
 
             State->Hash.ZobristChangeToMove();
@@ -424,7 +423,7 @@ namespace Lizard.Logic.Core
 
                 bb.AddPiece(moveTo, ourColor, ourPiece);
 
-                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.PromotionTo);
+                NonPawnMaterial(ourColor) -= GetPieceValue(move.PromotionTo);
             }
             else if (move.Castle)
             {
@@ -455,7 +454,7 @@ namespace Lizard.Logic.Core
 
                     if (State->CapturedPiece != Pawn)
                     {
-                        MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
+                        NonPawnMaterial(theirColor) += GetPieceValue(State->CapturedPiece);
                     }
                 }
             }
@@ -622,12 +621,12 @@ namespace Lizard.Logic.Core
                                 (c == White) ?                  CastlingStatus.WQ :
                                                                 CastlingStatus.BQ;
 
-            CastlingRookSquares[(int)cr] = rfrom;
+            _CastlingRookSquares[(int)cr] = rfrom;
 
             int kto = ((cr & CastlingStatus.Kingside) != CastlingStatus.None ? G1 : C1) ^ (56 * c);
             int rto = ((cr & CastlingStatus.Kingside) != CastlingStatus.None ? F1 : D1) ^ (56 * c);
 
-            CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
+            _CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB(kfrom) | SquareBB(rfrom));
 
             State->CastleStatus |= cr;
         }
@@ -784,7 +783,7 @@ namespace Lizard.Logic.Core
                 if (move.Castle)
                 {
                     var thisCr = move.RelevantCastlingRight;
-                    int rookSq = CastlingRookSquares[(int)thisCr];
+                    int rookSq = CastlingRookSquare(thisCr);
 
                     if ((SquareBB(rookSq) & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
                     {
@@ -925,11 +924,11 @@ namespace Lizard.Logic.Core
         /// </summary>
         private CastlingStatus GetCastlingForRook(int sq)
         {
-            CastlingStatus cr = sq == CastlingRookSquares[(int)CastlingStatus.WQ] ? CastlingStatus.WQ :
-                                sq == CastlingRookSquares[(int)CastlingStatus.WK] ? CastlingStatus.WK :
-                                sq == CastlingRookSquares[(int)CastlingStatus.BQ] ? CastlingStatus.BQ :
-                                sq == CastlingRookSquares[(int)CastlingStatus.BK] ? CastlingStatus.BK : 
-                                                                                    CastlingStatus.None;
+            CastlingStatus cr = sq == CastlingRookSquare(CastlingStatus.WQ) ? CastlingStatus.WQ :
+                                sq == CastlingRookSquare(CastlingStatus.WK) ? CastlingStatus.WK :
+                                sq == CastlingRookSquare(CastlingStatus.BQ) ? CastlingStatus.BQ :
+                                sq == CastlingRookSquare(CastlingStatus.BK) ? CastlingStatus.BK : 
+                                                                              CastlingStatus.None;
 
             return cr;
         }
@@ -1177,8 +1176,8 @@ namespace Lizard.Logic.Core
 
             State->CapturedPiece = None;
 
-            MaterialCountNonPawn[Color.White] = bb.MaterialCount(Color.White, true);
-            MaterialCountNonPawn[Color.Black] = bb.MaterialCount(Color.Black, true);
+            NonPawnMaterial(White) = bb.MaterialCount(Color.White, true);
+            NonPawnMaterial(Black) = bb.MaterialCount(Color.Black, true);
 
             if (UpdateNN)
             {
@@ -1265,19 +1264,19 @@ namespace Lizard.Logic.Core
             {
                 if (State->CastleStatus.HasFlag(CastlingStatus.WK))
                 {
-                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WK])) : 'K');
+                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus.WK))) : 'K');
                 }
                 if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
                 {
-                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WQ])) : 'Q');
+                    fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquare(CastlingStatus.WQ))) : 'Q');
                 }
                 if (State->CastleStatus.HasFlag(CastlingStatus.BK))
                 {
-                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BK])) : 'k');
+                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus.BK))) : 'k');
                 }
                 if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
                 {
-                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BQ])) : 'q');
+                    fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquare(CastlingStatus.BQ))) : 'q');
                 }
             }
             else
