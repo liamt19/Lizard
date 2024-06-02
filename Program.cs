@@ -77,11 +77,7 @@ namespace Lizard
 
         private static void DoInputLoop()
         {
-#if DEV
-            Log("Lizard (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-#else
-            Log("Lizard version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-#endif
+            Log("Lizard version " + EngineBuildVersion + "\r\n");
 
             ThreadSetup setup = new ThreadSetup();
             while (true)

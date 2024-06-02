@@ -10,8 +10,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "10.3";
-        public const string EngineTagLine = "RyuJIT unrolls anything challenge (impossible)";
+        public const string EngineBuildVersion = "10.4";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
