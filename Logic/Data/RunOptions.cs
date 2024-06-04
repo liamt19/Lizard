@@ -2,7 +2,7 @@
 
 #define USE_AGGRESSIVE_INLINING
 
-//#define USE_SKIP_INIT
+#define USE_SKIP_INIT
 
 //#define SKIP_INIT_IN_DEBUG
 
@@ -20,8 +20,10 @@
 
 
 //  I prefer to have SkipInit off while debugging since the values that you mouse over can have confusing values
-#if RELEASE || DEV || SKIP_INIT_IN_DEBUG
-[module: System.Runtime.CompilerServices.SkipLocalsInit]
+#if RELEASE || SKIP_INIT_IN_DEBUG
+global using SkipInit = System.Runtime.CompilerServices.SkipLocalsInitAttribute;
+#else
+global using SkipInit = Lizard.Logic.Data.RunOptions.SkipInitDummyAttribute;
 #endif
 
 #endif
@@ -52,6 +54,9 @@ namespace Lizard.Logic.Data
         public const bool HasSkipInit = true;
 #else
         public const bool HasSkipInit = false;
+
+        [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+        public sealed class SkipInitDummyAttribute : System.Attribute { }
 #endif
 
     }
