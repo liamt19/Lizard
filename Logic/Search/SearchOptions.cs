@@ -211,11 +211,6 @@
         /// </summary>
         public static int OrderingVictimValueMultiplier = 14;
 
-        /// <summary>
-        /// The multiplier for the CaptureHistory heuristic to add to that move's score.
-        /// </summary>
-        public static int OrderingHistoryDivisor = 11;
-
 
 
         /// <summary>

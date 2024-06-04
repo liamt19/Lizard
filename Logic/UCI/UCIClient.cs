@@ -643,7 +643,6 @@ namespace Lizard.Logic.UCI
 
             Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
             Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();
-            Options[nameof(OrderingHistoryDivisor)].AutoMinMax();
 
             Options[nameof(StatBonusMult)].AutoMinMax();
             Options[nameof(StatBonusSub)].AutoMinMax();
