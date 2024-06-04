@@ -89,7 +89,7 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor);
+                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
                 {
