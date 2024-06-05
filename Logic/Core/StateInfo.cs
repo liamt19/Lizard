@@ -57,6 +57,9 @@ namespace Lizard.Logic.Core
         public int CapturedPiece = None;
 
         [FieldOffset(120)]
+        public ulong PawnHash = 0;
+
+        [FieldOffset(128)]
         public Accumulator* Accumulator;
 
         public StateInfo()

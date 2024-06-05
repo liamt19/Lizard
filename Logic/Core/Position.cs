@@ -34,6 +34,7 @@ namespace Lizard.Logic.Core
         public bool Checked => InCheck || InDoubleCheck;
 
         public ulong Hash => State->Hash;
+        public ulong PawnHash => State->PawnHash;
 
 
         /// <summary>
@@ -333,6 +334,7 @@ namespace Lizard.Logic.Core
                     int idxPawn = ((bb.Pieces[Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Pawn);
                     State->Hash.ZobristToggleSquare(theirColor, Pawn, idxPawn);
+                    State->PawnHash.ZobristToggleSquare(theirColor, Pawn, idxPawn);
 
                     //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
                     State->CapturedPiece = Pawn;
@@ -348,6 +350,8 @@ namespace Lizard.Logic.Core
                         State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
                     }
                 }
+
+                State->PawnHash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
 
                 //  Reset the halfmove clock
                 State->HalfmoveClock = 0;
@@ -369,6 +373,8 @@ namespace Lizard.Logic.Core
 
                 State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
                 State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
+
+                State->PawnHash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
 
                 MaterialCountNonPawn[ourColor] += GetPieceValue(move.PromotionTo);
             }
@@ -589,7 +595,8 @@ namespace Lizard.Logic.Core
 
             SetCheckInfo();
 
-            State->Hash = Zobrist.GetHash(this);
+            State->PawnHash = 0;
+            State->Hash = Zobrist.GetHash(this, &State->PawnHash);
         }
 
 

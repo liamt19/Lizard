@@ -212,6 +212,7 @@
         public static int OrderingVictimValueMultiplier = 14;
 
 
+        public static int CorrectionHistoryDivisor = 32;
 
         /// <summary>
         /// The value multiplied by the depth
