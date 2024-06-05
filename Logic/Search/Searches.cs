@@ -710,7 +710,9 @@ namespace Lizard.Logic.Search
             }
 
             if (!ss->InCheck
-                && (bestMove == Move.Null || !pos.IsCapture(bestMove)))
+                && (bestMove == Move.Null || !pos.IsCapture(bestMove))
+                && (bestMove != Move.Null || bestScore < ss->StaticEval)
+                && (bestScore < beta || bestScore > ss->StaticEval))
             {
                 var factor = (bestScore - ss->StaticEval) * depth / 8;
                 var bonus = Math.Clamp(factor, -256, 256);
