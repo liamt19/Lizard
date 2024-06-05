@@ -306,6 +306,10 @@ namespace Lizard.Logic.Core
                     //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
                     RemoveCastling(GetCastlingForRook(moveTo));
                 }
+                else if (theirPiece == Pawn)
+                {
+                    State->PawnHash.ZobristToggleSquare(theirColor, Pawn, moveTo);
+                }
 
                 if (theirPiece != Pawn)
                 {
