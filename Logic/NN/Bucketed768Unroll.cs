@@ -27,9 +27,11 @@ namespace Lizard.Logic.NN
 
         private const int AVX512_1024HL = 1024 / 32;
         private const int AVX512_1536HL = 1536 / 32;
+        private const int AVX512_2048HL = 2048 / 32;
 
         private const int AVX256_1024HL = 1024 / 16;
         private const int AVX256_1536HL = 1536 / 16;
+        private const int AVX256_2048HL = 2048 / 16;
 
         public static int GetEvaluationUnrolled512(Position pos)
         {
@@ -204,6 +206,9 @@ namespace Lizard.Logic.NN
             if (StopBefore == AVX256_1024HL)
                 goto NSTM;
 
+            if (StopBefore == AVX512_2048HL)
+                goto NSTM;
+
             var c_us_64 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 64 * N)));
             var c_us_65 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 65 * N)));
             var c_us_66 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 66 * N)));
@@ -271,6 +276,77 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_93, SIMDClass.MultiplyLow(c_us_93, VectorT.LoadAligned(ourWeights + 93 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_94, SIMDClass.MultiplyLow(c_us_94, VectorT.LoadAligned(ourWeights + 94 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_95, SIMDClass.MultiplyLow(c_us_95, VectorT.LoadAligned(ourWeights + 95 * N))));
+
+            if (StopBefore == AVX256_1536HL)
+                goto NSTM;
+
+            var c_us_96 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 96 * N)));
+            var c_us_97 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 97 * N)));
+            var c_us_98 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 98 * N)));
+            var c_us_99 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 99 * N)));
+            var c_us_100 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 100 * N)));
+            var c_us_101 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 101 * N)));
+            var c_us_102 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 102 * N)));
+            var c_us_103 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 103 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_96, SIMDClass.MultiplyLow(c_us_96, VectorT.LoadAligned(ourWeights + 96 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_97, SIMDClass.MultiplyLow(c_us_97, VectorT.LoadAligned(ourWeights + 97 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_98, SIMDClass.MultiplyLow(c_us_98, VectorT.LoadAligned(ourWeights + 98 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_99, SIMDClass.MultiplyLow(c_us_99, VectorT.LoadAligned(ourWeights + 99 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_100, SIMDClass.MultiplyLow(c_us_100, VectorT.LoadAligned(ourWeights + 100 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_101, SIMDClass.MultiplyLow(c_us_101, VectorT.LoadAligned(ourWeights + 101 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_102, SIMDClass.MultiplyLow(c_us_102, VectorT.LoadAligned(ourWeights + 102 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_103, SIMDClass.MultiplyLow(c_us_103, VectorT.LoadAligned(ourWeights + 103 * N))));
+
+            var c_us_104 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 104 * N)));
+            var c_us_105 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 105 * N)));
+            var c_us_106 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 106 * N)));
+            var c_us_107 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 107 * N)));
+            var c_us_108 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 108 * N)));
+            var c_us_109 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 109 * N)));
+            var c_us_110 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 110 * N)));
+            var c_us_111 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 111 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_104, SIMDClass.MultiplyLow(c_us_104, VectorT.LoadAligned(ourWeights + 104 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_105, SIMDClass.MultiplyLow(c_us_105, VectorT.LoadAligned(ourWeights + 105 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_106, SIMDClass.MultiplyLow(c_us_106, VectorT.LoadAligned(ourWeights + 106 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_107, SIMDClass.MultiplyLow(c_us_107, VectorT.LoadAligned(ourWeights + 107 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_108, SIMDClass.MultiplyLow(c_us_108, VectorT.LoadAligned(ourWeights + 108 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_109, SIMDClass.MultiplyLow(c_us_109, VectorT.LoadAligned(ourWeights + 109 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_110, SIMDClass.MultiplyLow(c_us_110, VectorT.LoadAligned(ourWeights + 110 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_111, SIMDClass.MultiplyLow(c_us_111, VectorT.LoadAligned(ourWeights + 111 * N))));
+
+            var c_us_112 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 112 * N)));
+            var c_us_113 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 113 * N)));
+            var c_us_114 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 114 * N)));
+            var c_us_115 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 115 * N)));
+            var c_us_116 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 116 * N)));
+            var c_us_117 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 117 * N)));
+            var c_us_118 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 118 * N)));
+            var c_us_119 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 119 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_112, SIMDClass.MultiplyLow(c_us_112, VectorT.LoadAligned(ourWeights + 112 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_113, SIMDClass.MultiplyLow(c_us_113, VectorT.LoadAligned(ourWeights + 113 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_114, SIMDClass.MultiplyLow(c_us_114, VectorT.LoadAligned(ourWeights + 114 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_115, SIMDClass.MultiplyLow(c_us_115, VectorT.LoadAligned(ourWeights + 115 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_116, SIMDClass.MultiplyLow(c_us_116, VectorT.LoadAligned(ourWeights + 116 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_117, SIMDClass.MultiplyLow(c_us_117, VectorT.LoadAligned(ourWeights + 117 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_118, SIMDClass.MultiplyLow(c_us_118, VectorT.LoadAligned(ourWeights + 118 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_119, SIMDClass.MultiplyLow(c_us_119, VectorT.LoadAligned(ourWeights + 119 * N))));
+
+            var c_us_120 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 120 * N)));
+            var c_us_121 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 121 * N)));
+            var c_us_122 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 122 * N)));
+            var c_us_123 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 123 * N)));
+            var c_us_124 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 124 * N)));
+            var c_us_125 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 125 * N)));
+            var c_us_126 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 126 * N)));
+            var c_us_127 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 127 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_120, SIMDClass.MultiplyLow(c_us_120, VectorT.LoadAligned(ourWeights + 120 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_121, SIMDClass.MultiplyLow(c_us_121, VectorT.LoadAligned(ourWeights + 121 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_122, SIMDClass.MultiplyLow(c_us_122, VectorT.LoadAligned(ourWeights + 122 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_123, SIMDClass.MultiplyLow(c_us_123, VectorT.LoadAligned(ourWeights + 123 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_124, SIMDClass.MultiplyLow(c_us_124, VectorT.LoadAligned(ourWeights + 124 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_125, SIMDClass.MultiplyLow(c_us_125, VectorT.LoadAligned(ourWeights + 125 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_126, SIMDClass.MultiplyLow(c_us_126, VectorT.LoadAligned(ourWeights + 126 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_127, SIMDClass.MultiplyLow(c_us_127, VectorT.LoadAligned(ourWeights + 127 * N))));
 
             #endregion
 
@@ -425,6 +501,9 @@ namespace Lizard.Logic.NN
             if (StopBefore == AVX256_1024HL)
                 goto END;
 
+            if (StopBefore == AVX512_2048HL)
+                goto END;
+
             var c_them_64 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 64 * N)));
             var c_them_65 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 65 * N)));
             var c_them_66 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 66 * N)));
@@ -492,6 +571,77 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_93, SIMDClass.MultiplyLow(c_them_93, VectorT.LoadAligned(theirWeights + 93 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_94, SIMDClass.MultiplyLow(c_them_94, VectorT.LoadAligned(theirWeights + 94 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_95, SIMDClass.MultiplyLow(c_them_95, VectorT.LoadAligned(theirWeights + 95 * N))));
+
+            if (StopBefore == AVX256_1536HL)
+                goto END;
+
+            var c_them_96 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 96 * N)));
+            var c_them_97 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 97 * N)));
+            var c_them_98 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 98 * N)));
+            var c_them_99 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 99 * N)));
+            var c_them_100 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 100 * N)));
+            var c_them_101 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 101 * N)));
+            var c_them_102 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 102 * N)));
+            var c_them_103 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 103 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_96, SIMDClass.MultiplyLow(c_them_96, VectorT.LoadAligned(theirWeights + 96 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_97, SIMDClass.MultiplyLow(c_them_97, VectorT.LoadAligned(theirWeights + 97 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_98, SIMDClass.MultiplyLow(c_them_98, VectorT.LoadAligned(theirWeights + 98 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_99, SIMDClass.MultiplyLow(c_them_99, VectorT.LoadAligned(theirWeights + 99 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_100, SIMDClass.MultiplyLow(c_them_100, VectorT.LoadAligned(theirWeights + 100 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_101, SIMDClass.MultiplyLow(c_them_101, VectorT.LoadAligned(theirWeights + 101 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_102, SIMDClass.MultiplyLow(c_them_102, VectorT.LoadAligned(theirWeights + 102 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_103, SIMDClass.MultiplyLow(c_them_103, VectorT.LoadAligned(theirWeights + 103 * N))));
+
+            var c_them_104 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 104 * N)));
+            var c_them_105 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 105 * N)));
+            var c_them_106 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 106 * N)));
+            var c_them_107 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 107 * N)));
+            var c_them_108 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 108 * N)));
+            var c_them_109 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 109 * N)));
+            var c_them_110 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 110 * N)));
+            var c_them_111 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 111 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_104, SIMDClass.MultiplyLow(c_them_104, VectorT.LoadAligned(theirWeights + 104 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_105, SIMDClass.MultiplyLow(c_them_105, VectorT.LoadAligned(theirWeights + 105 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_106, SIMDClass.MultiplyLow(c_them_106, VectorT.LoadAligned(theirWeights + 106 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_107, SIMDClass.MultiplyLow(c_them_107, VectorT.LoadAligned(theirWeights + 107 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_108, SIMDClass.MultiplyLow(c_them_108, VectorT.LoadAligned(theirWeights + 108 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_109, SIMDClass.MultiplyLow(c_them_109, VectorT.LoadAligned(theirWeights + 109 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_110, SIMDClass.MultiplyLow(c_them_110, VectorT.LoadAligned(theirWeights + 110 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_111, SIMDClass.MultiplyLow(c_them_111, VectorT.LoadAligned(theirWeights + 111 * N))));
+
+            var c_them_112 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 112 * N)));
+            var c_them_113 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 113 * N)));
+            var c_them_114 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 114 * N)));
+            var c_them_115 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 115 * N)));
+            var c_them_116 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 116 * N)));
+            var c_them_117 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 117 * N)));
+            var c_them_118 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 118 * N)));
+            var c_them_119 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 119 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_112, SIMDClass.MultiplyLow(c_them_112, VectorT.LoadAligned(theirWeights + 112 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_113, SIMDClass.MultiplyLow(c_them_113, VectorT.LoadAligned(theirWeights + 113 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_114, SIMDClass.MultiplyLow(c_them_114, VectorT.LoadAligned(theirWeights + 114 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_115, SIMDClass.MultiplyLow(c_them_115, VectorT.LoadAligned(theirWeights + 115 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_116, SIMDClass.MultiplyLow(c_them_116, VectorT.LoadAligned(theirWeights + 116 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_117, SIMDClass.MultiplyLow(c_them_117, VectorT.LoadAligned(theirWeights + 117 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_118, SIMDClass.MultiplyLow(c_them_118, VectorT.LoadAligned(theirWeights + 118 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_119, SIMDClass.MultiplyLow(c_them_119, VectorT.LoadAligned(theirWeights + 119 * N))));
+
+            var c_them_120 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 120 * N)));
+            var c_them_121 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 121 * N)));
+            var c_them_122 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 122 * N)));
+            var c_them_123 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 123 * N)));
+            var c_them_124 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 124 * N)));
+            var c_them_125 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 125 * N)));
+            var c_them_126 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 126 * N)));
+            var c_them_127 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 127 * N)));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_120, SIMDClass.MultiplyLow(c_them_120, VectorT.LoadAligned(theirWeights + 120 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_121, SIMDClass.MultiplyLow(c_them_121, VectorT.LoadAligned(theirWeights + 121 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_122, SIMDClass.MultiplyLow(c_them_122, VectorT.LoadAligned(theirWeights + 122 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_123, SIMDClass.MultiplyLow(c_them_123, VectorT.LoadAligned(theirWeights + 123 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_124, SIMDClass.MultiplyLow(c_them_124, VectorT.LoadAligned(theirWeights + 124 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_125, SIMDClass.MultiplyLow(c_them_125, VectorT.LoadAligned(theirWeights + 125 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_126, SIMDClass.MultiplyLow(c_them_126, VectorT.LoadAligned(theirWeights + 126 * N))));
+            sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_127, SIMDClass.MultiplyLow(c_them_127, VectorT.LoadAligned(theirWeights + 127 * N))));
 
             #endregion
 
