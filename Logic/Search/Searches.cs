@@ -174,8 +174,12 @@ namespace Lizard.Logic.Search
                 //  We don't overwrite that TT's StatEval score yet though.
                 unadjustedEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
+                /*
                 short newEval = (short)(unadjustedEval + history.CorrectionHistory[pos, us] / CorrectionHistoryDivisor);
                 eval = ss->StaticEval = newEval;
+                */
+
+                eval = ss->StaticEval = AdjustEval(pos, us, unadjustedEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -188,8 +192,8 @@ namespace Lizard.Logic.Search
                 //  Get the static evaluation and store it in the empty TT slot.
                 unadjustedEval = NNUE.GetEvaluation(pos);
 
-                short newEval = (short)(unadjustedEval + history.CorrectionHistory[pos, us] / CorrectionHistoryDivisor);
-                eval = ss->StaticEval = newEval;
+                eval = ss->StaticEval = AdjustEval(pos, us, unadjustedEval);
+
                 tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, unadjustedEval, ss->TTPV);
             }
 
@@ -707,8 +711,8 @@ namespace Lizard.Logic.Search
 
             if (!ss->InCheck)
             {
-                var factor = (bestScore - ss->StaticEval) * depth / 8;
-                var bonus = Math.Clamp(factor, -CorrectionHistoryTable.CorrectionHistoryClamp / 4, CorrectionHistoryTable.CorrectionHistoryClamp / 4);
+                var factor = (bestScore - ss->StaticEval);
+                var bonus = Math.Clamp(factor, -256, 256);
                 history.CorrectionHistory[pos, us] <<= bonus;
             }
 
@@ -785,8 +789,7 @@ namespace Lizard.Logic.Search
                 {
                     unadjustedEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                    short newEval = (short)(unadjustedEval + history.CorrectionHistory[pos, us] / CorrectionHistoryDivisor);
-                    eval = ss->StaticEval = newEval;
+                    eval = ss->StaticEval = AdjustEval(pos, us, unadjustedEval);
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
@@ -801,8 +804,7 @@ namespace Lizard.Logic.Search
                     //  so for simplicity we can use the previous static eval but negative.
                     unadjustedEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
 
-                    short newEval = (short)(unadjustedEval + history.CorrectionHistory[pos, us] / CorrectionHistoryDivisor);
-                    eval = ss->StaticEval = newEval;
+                    eval = ss->StaticEval = AdjustEval(pos, us, unadjustedEval);
                 }
 
                 if (eval >= beta)
@@ -1024,6 +1026,11 @@ namespace Lizard.Logic.Search
 
                 history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= -quietMoveBonus;
             }
+        }
+
+        private static short AdjustEval(Position pos, int us, short unadjustedEval)
+        {
+            return (short)(unadjustedEval + pos.Owner.History.CorrectionHistory[pos, us] / CorrectionHistoryDivisor);
         }
 
 
