@@ -94,6 +94,7 @@ namespace Lizard.Logic.Core
 
         public bool CastlingImpeded(ulong occ, CastlingStatus cr) => (occ & CastlingRookPaths[(int)cr]) != 0;
         public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & us) != 0;
+        public bool IsCapture(Move m) => ((bb.GetPieceAtIndex(m.To) != None && !m.Castle) || m.EnPassant);
 
 
         /// <summary>

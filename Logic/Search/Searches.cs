@@ -709,9 +709,10 @@ namespace Lizard.Logic.Search
                 tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, unadjustedEval, ss->TTPV);
             }
 
-            if (!ss->InCheck)
+            if (!ss->InCheck
+                && (bestMove == Move.Null || !pos.IsCapture(bestMove)))
             {
-                var factor = (bestScore - ss->StaticEval);
+                var factor = (bestScore - ss->StaticEval) * depth / 8;
                 var bonus = Math.Clamp(factor, -256, 256);
                 history.CorrectionHistory[pos, us] <<= bonus;
             }
