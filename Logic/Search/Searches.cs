@@ -522,8 +522,8 @@ namespace Lizard.Logic.Search
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
                         R--;
 
-                    //history.PawnHistory[pos, us, ourPiece, m.To] + 
-                    var histScore = 2 * history.MainHistory[us, m] +
+                    var histScore = history.PawnHistory[pos, us, ourPiece, m.To] + 
+                                    2 * history.MainHistory[us, m] +
                                     2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
                                         (*(ss - 2)->ContinuationHistory)[histIdx] +
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
@@ -1006,7 +1006,7 @@ namespace Lizard.Logic.Search
                     ss->Killer0 = bestMove;
                 }
 
-                //history.PawnHistory[pos, thisColor, thisPiece, moveTo] <<= quietMoveBonus;
+                history.PawnHistory[pos, thisColor, thisPiece, moveTo] <<= quietMoveBonus;
                 history.MainHistory[thisColor, bestMove] <<= bestMoveBonus;
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
 
@@ -1015,7 +1015,7 @@ namespace Lizard.Logic.Search
                     Move m = quietMoves[i];
                     thisPiece = bb.GetPieceAtIndex(m.From);
 
-                    //history.PawnHistory[pos, thisColor, thisPiece, m.To] <<= -quietMovePenalty;
+                    history.PawnHistory[pos, thisColor, thisPiece, m.To] <<= -quietMovePenalty;
                     history.MainHistory[thisColor, m] <<= -quietMovePenalty;
                     UpdateContinuations(ss, thisColor, thisPiece, m.To, -quietMovePenalty);
                 }
