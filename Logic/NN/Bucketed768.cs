@@ -16,8 +16,8 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 2048;
         public const int OutputBuckets = 8;
 
-        public const int QA = 275;
-        public const int QB = 60;
+        public const int QA = 258;
+        public const int QB = 64;
         private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
@@ -28,7 +28,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L2048x5x8_cos_g9914_s51-310.bin";
+        public const string NetworkName = "L2048x5x8_cos_g9914_s51-570-rq_258_64.bin";
 
 
         public static readonly short* FeatureWeights;
