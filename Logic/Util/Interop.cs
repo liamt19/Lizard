@@ -169,5 +169,29 @@ namespace Lizard.Logic.Util
             return block;
         }
 
+
+        [DllImport("libc", SetLastError = true)]
+        private static extern int madvise(IntPtr addr, UIntPtr length, int advice);
+        private const int MADV_HUGEPAGE = 14;
+        public static unsafe void AdviseHugePage(void* addr, nuint length)
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                return;
+            }
+
+            try
+            {
+                int result = madvise(new IntPtr(addr), length, MADV_HUGEPAGE);
+                if (result != 0)
+                {
+                    Console.WriteLine($"info string madvise failed with result {result} and error {Marshal.GetLastSystemError()}");
+                }
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine($"info string madvise threw {exc.GetType()}");
+            }
+        }
     }
 }
