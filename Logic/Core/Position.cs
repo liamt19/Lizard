@@ -1059,6 +1059,7 @@ namespace Lizard.Logic.Core
                 State->PliesFromNull = 0;
 
                 //  TODO: set GamePly to 0 here?
+                GamePly = 0;
 
                 for (int i = 0; i < splits.Length; i++)
                 {
