@@ -57,6 +57,12 @@ namespace Lizard.Logic.Core
         public int CapturedPiece = None;
 
         [FieldOffset(120)]
+        public int PliesFromNull = 0;
+
+        [FieldOffset(124)]
+        private int _align = 0;
+
+        [FieldOffset(128)]
         public Accumulator* Accumulator;
 
         public StateInfo()
