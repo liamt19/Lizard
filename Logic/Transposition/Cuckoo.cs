@@ -1,16 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Lizard.Logic.Transposition
+﻿namespace Lizard.Logic.Transposition
 {
     public static unsafe class Cuckoo
     {
-        private static Move* Moves;
-        private static ulong* Keys;
+        private static readonly Move* Moves;
+        private static readonly ulong* Keys;
 
         private const int TableSize = 8192;
 
@@ -59,41 +52,34 @@ namespace Lizard.Logic.Transposition
                 {
                     Knight => KnightMasks[idx],
                     Bishop => GetBishopMoves(0, idx),
-                    Rook => GetRookMoves(0, idx),
-                    Queen => GetBishopMoves(0, idx) | GetRookMoves(0, idx),
-                    _ => NeighborsMask[idx],
+                    Rook   => GetRookMoves(0, idx),
+                    Queen  => GetBishopMoves(0, idx) | GetRookMoves(0, idx),
+                    _      => NeighborsMask[idx],
                 };
             }
         }
 
         public static bool HasCycle(Position pos, int ply)
         {
+            ref Bitboard bb = ref pos.bb;
             StateInfo* st = pos.State;
             int dist = Math.Min(st->HalfmoveClock, st->PliesFromNull);
 
             if (dist < 3)
                 return false;
 
-            ref Bitboard bb = ref pos.bb;
-            ulong ogHash = st->Hash;
-
             ulong HashFromStack(int i) => pos.StartingState[pos.GamePly - i].Hash;
 
-            //ulong other = ~(st[0].Hash ^ st[-1].Hash);
+            int slot;
             ulong other = ~(HashFromStack(0) ^ HashFromStack(1));
-            for (int d = 3; d <= dist; d += 2)
+            for (int i = 3; i <= dist; i += 2)
             {
-                //other ^= ~(st[-d-1].Hash ^ st[-d].Hash);
-                ulong now = HashFromStack(d);
-                other ^= ~(now ^ HashFromStack(d - 1));
+                other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
 
-                var diff = ogHash ^ now;
-                int slot = Hash1(diff);
+                var diff = st->Hash ^ HashFromStack(i);
 
-                if (diff != Keys[slot])
-                    slot = Hash2(diff);
-
-                if (diff != Keys[slot])
+                if (diff != Keys[(slot = Hash1(diff))] &&
+                    diff != Keys[(slot = Hash2(diff))])
                     continue;
 
                 Move m = Moves[slot];
@@ -102,7 +88,7 @@ namespace Lizard.Logic.Transposition
 
                 if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0)
                 {
-                    if (ply > d)
+                    if (ply > i)
                         return true;
 
                     int pc = (bb.GetPieceAtIndex(moveFrom) != None) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
