@@ -385,7 +385,7 @@ namespace Lizard.Logic.Threads
                     int alpha = AlphaStart;
                     int beta = BetaStart;
                     int window = ScoreInfinite;
-                    int score = RootMoves[PVIndex].PreviousScore;
+                    int score = RootMoves[PVIndex].AverageScore;
                     SelDepth = 0;
 
                     if (RootDepth >= 5)
