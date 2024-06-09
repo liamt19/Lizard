@@ -799,6 +799,7 @@ namespace Lizard.Logic.Search
                     if (!ss->TTHit)
                         tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, false);
 
+                    if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
                     return eval;
                 }
 
@@ -919,6 +920,8 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
+                            if (Math.Abs(bestScore) < ScoreTTWin) bestScore = ((4 * bestScore + beta) / 5);
+
                             //  Beta cut
                             break;
                         }
