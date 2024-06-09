@@ -397,7 +397,7 @@ namespace Lizard.Logic.Threads
 
                     while (true)
                     {
-                        score = Logic.Search.Searches.Negamax<RootNode>(ref info, ss, alpha, beta, Math.Max(1, RootDepth), false);
+                        score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, RootDepth), false);
 
                         StableSort(ref RootMoves, PVIndex);
 

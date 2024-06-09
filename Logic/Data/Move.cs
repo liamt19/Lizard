@@ -104,6 +104,7 @@ namespace Lizard.Logic.Data
         }
 
 
+        public Move(int from, int to) => _data = (ushort)(to | (from << 6));
         public void SetNew(int from, int to) => _data = (ushort)(to | (from << 6));
 
         public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
