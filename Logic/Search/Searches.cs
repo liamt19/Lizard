@@ -236,7 +236,7 @@ namespace Lizard.Logic.Search
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.MaterialCountNonPawn[pos.ToMove] > 0)
             {
-                int reduction = 5 + (depth / 5) + Math.Min((eval - beta) / 173, 3);
+                int reduction = NMPReductionBase + (depth / NMPReductionDivisor) + Math.Min((eval - beta) / NMPEvalDivisor, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
 

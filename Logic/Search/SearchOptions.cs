@@ -88,6 +88,9 @@
         /// </summary>
         public static int NMPReductionDivisor = 5;
 
+        public static int NMPEvalDivisor = 173;
+        public static int NMPEvalMin = 3;
+
 
 
         /// <summary>
