@@ -28,7 +28,6 @@ namespace Lizard.Logic.Util
 
         public const nuint AllocAlignment = 64;
 
-
         public const ulong FileABB = 0x0101010101010101UL;
         public const ulong FileBBB = FileABB << 1;
         public const ulong FileCBB = FileABB << 2;
@@ -52,24 +51,8 @@ namespace Lizard.Logic.Util
         public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
-
-
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-
-        /// <summary>
-        /// Set to true if multiple instances of this engine are running.
-        /// <br></br>
-        /// If there are, then the log file to not be written to unless <see cref="UCIClient.WriteToConcurrentLogs"/> = <see langword="true"/>.
-        /// </summary>
-        public static bool IsRunningConcurrently = false;
-
-        /// <summary>
-        /// The process ID for this engine instance. This is only used to determine the name of the log file to write to.
-        /// </summary>
-        public static int ProcessID;
-
-        public const bool NO_LOG_FILE = true;
 
         /// <summary>
         /// Writes the string <paramref name="s"/> to the debugger, and to the log file if in UCI mode or to the console otherwise.
@@ -80,76 +63,10 @@ namespace Lizard.Logic.Util
             {
                 Console.WriteLine(s);
             }
-            else if (!NO_LOG_FILE)
-            {
-                UCIClient.LogString("[LOG]: " + s);
-            }
 
             Debug.WriteLine(s);
         }
 
-
-        /// <summary>
-        /// If there are multiple instances of this engine running, we won't write to the ucilog file.
-        /// <br></br>
-        /// This uses a FileStream to access it and a mutex to make writes atomic, so having multiple
-        /// processes all doing that at the same time is needlessly risky.
-        /// </summary>
-        public static void CheckConcurrency()
-        {
-            Process thisProc = Process.GetCurrentProcess();
-            ProcessID = thisProc.Id;
-
-            var selfProcs = Process.GetProcesses().Where(x => x.ProcessName == thisProc.ProcessName).ToList();
-
-            int concurrencyCount = 0;
-            int duplicates = 0;
-
-            var thisTime = thisProc.StartTime.Ticks;
-
-            for (int i = 0; i < selfProcs.Count; i++)
-            {
-                try
-                {
-                    //  Windows doesn't like you touching the "System Idle Process" (0) or "System" (4)
-                    //  and will throw an error if you try to get their MainModules,
-                    //  so in case you prefer to rename the engine binary to "Idle" this will hopefully avoid that issue :)
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && (selfProcs[i].Id == 0 || selfProcs[i].Id == 4))
-                    {
-                        continue;
-                    }
-
-                    //  Ensure that the processes are exactly the same as this one.
-                    //  This checks their entire path, since multiple engine instance concern is
-                    //  only if they are started from the same path.
-                    if (selfProcs[i].MainModule?.FileName != thisProc.MainModule?.FileName)
-                    {
-                        continue;
-                    }
-                }
-                catch (Exception e)
-                {
-                    //  This will be a Win32Exception for trying to enumerate the modules of a SYSTEM process
-                    concurrencyCount++;
-                    continue;
-                }
-
-                duplicates++;
-
-                if (selfProcs[i].StartTime.Ticks < thisTime)
-                {
-                    //  This instance was launched after another, so increase this one's count
-                    concurrencyCount++;
-                }
-            }
-
-            //  If this is the only instance, this should be 0
-            if (concurrencyCount != 0)
-            {
-                Log("Running concurrently! (" + concurrencyCount + " other process" + (concurrencyCount > 1 ? "es" : string.Empty) + ")");
-                IsRunningConcurrently = true;
-            }
-        }
 
         public static string GetCompilerInfo()
         {
@@ -579,9 +496,9 @@ namespace Lizard.Logic.Util
         }
 
 
-        public static string FormatSearchInformationMultiPV(ref SearchInformation info)
+        public static string FormatSearchInformationMultiPV(Position pos)
         {
-            SearchThread thisThread = info.Position.Owner;
+            SearchThread thisThread = pos.Owner;
 
             List<RootMove> rootMoves = thisThread.RootMoves;
             int multiPV = Math.Min(MultiPV, rootMoves.Count);
@@ -642,7 +559,7 @@ namespace Lizard.Logic.Util
                         break;
                     }
 
-                    sb.Append(" " + rm.PV[j].ToString(info.Position.IsChess960));
+                    sb.Append(" " + rm.PV[j].ToString(pos.IsChess960));
                 }
 
 

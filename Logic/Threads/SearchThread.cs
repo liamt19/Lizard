@@ -309,7 +309,7 @@ namespace Lizard.Logic.Threads
             SearchPool.WaitForSearchFinished();
 
             //  Search is finished, now give the UCI output.
-            SearchPool.SharedInfo.OnSearchFinish?.Invoke(ref SearchPool.SharedInfo);
+            SearchPool.SharedInfo.OnSearchFinish?.Invoke();
             TimeManager.ResetTimer();
 
             //  If the main program thread called BlockCallerUntilFinished,
@@ -419,7 +419,7 @@ namespace Lizard.Logic.Threads
 
                     if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1))
                     {
-                        info.OnDepthFinish?.Invoke(ref info);
+                        info.OnDepthFinish?.Invoke();
                     }
                 }
 
@@ -464,7 +464,7 @@ namespace Lizard.Logic.Threads
                     }
                 }
 
-                if (SoftTimeUp(info, stability))
+                if (SoftTimeUp(stability))
                 {
                     break;
                 }
@@ -475,7 +475,7 @@ namespace Lizard.Logic.Threads
                 }
             }
 
-            if (IsMain && RootDepth >= MaxDepth && info.NodeLimit != MaxSearchNodes && !SearchPool.StopThreads)
+            if (IsMain && RootDepth >= MaxDepth && info.HasNodeLimit && !SearchPool.StopThreads)
             {
                 //  If this was a "go nodes x" command, it is possible for the main thread to hit the
                 //  maximum depth before hitting the requested node count (causing an infinite wait).
@@ -493,7 +493,7 @@ namespace Lizard.Logic.Threads
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
         private static int StabilityMax = StabilityCoefficients.Length - 1;
 
-        private bool SoftTimeUp(SearchInformation info, int stability)
+        private bool SoftTimeUp(int stability)
         {
             if (!TimeManager.HasSoftTime)
                 return false;

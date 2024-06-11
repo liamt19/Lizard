@@ -7,22 +7,11 @@ namespace Lizard.Logic.UCI
 {
     public unsafe class UCIClient
     {
-
-        private Position pos;
+        private readonly Position pos;
         private SearchInformation info;
-        private ThreadSetup setup;
-
-        private const string LogFileName = @".\ucilog.txt";
-
-        /// <summary>
-        /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
-        /// where # is a (hopefully) unique number for this instance.
-        /// </summary>
-        private const bool WriteToConcurrentLogs = false;
+        private readonly ThreadSetup setup;
 
         private static Dictionary<string, UCIOption> Options;
-
-        private static object LogFileLock = new object();
 
         public static bool Active = false;
 
@@ -32,15 +21,9 @@ namespace Lizard.Logic.UCI
 
             setup = new ThreadSetup();
             pos = new Position(owner: SearchPool.MainThread);
-            info = new SearchInformation(pos, DefaultSearchDepth);
-            info.OnDepthFinish = OnDepthDone;
-            info.OnSearchFinish = OnSearchDone;
-            if (File.Exists(LogFileName))
-            {
-                LogString("\n\n**************************************************\n"
-                    + CenteredString(DateTime.Now.ToString(), 50) + "\n"
-                    + "**************************************************");
-            }
+            info = new SearchInformation(pos);
+            info.OnDepthFinish = SearchThreadPool.OnDepthDone;
+            info.OnSearchFinish = SearchThreadPool.OnSearchDone;
         }
 
         /// <summary>
@@ -49,59 +32,8 @@ namespace Lizard.Logic.UCI
         public static void SendString(string s)
         {
             Console.WriteLine(s);
-            LogString("[OUT]: " + s);
         }
 
-        /// <summary>
-        /// Appends the string <paramref name="s"/> to the file <see cref="LogFileName"/>
-        /// </summary>
-        public static void LogString(string s, bool newLine = true)
-        {
-            if (NO_LOG_FILE)
-            {
-                return;
-            }
-
-            lock (LogFileLock)
-            {
-                try
-                {
-                    string fileToWrite = LogFileName;
-
-                    if (IsRunningConcurrently)
-                    {
-                        if (WriteToConcurrentLogs)
-                        {
-                            fileToWrite = @".\ucilog_" + ProcessID + ".txt";
-                        }
-                        else
-                        {
-                            //  Concurrent logging off, just return here.
-                            return;
-                        }
-                    }
-
-                    using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
-                    using StreamWriter sw = new StreamWriter(fs);
-
-                    if (newLine)
-                    {
-                        sw.WriteLine(s);
-                    }
-                    else
-                    {
-                        sw.Write(s);
-                    }
-
-                    sw.Flush();
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("ERROR LogString('" + s + "') failed!");
-                    Console.WriteLine(e.ToString());
-                }
-            }
-        }
 
         /// <summary>
         /// Blocks until a command is sent in the standard input stream
@@ -120,8 +52,6 @@ namespace Lizard.Logic.UCI
             string[] splits = input.Split(" ");
             cmd = splits[0].ToLower();
             string[] param = splits.ToList().GetRange(1, splits.Length - 1).ToArray();
-
-            LogString("[IN]: " + input);
 
             return param;
         }
@@ -147,8 +77,6 @@ namespace Lizard.Logic.UCI
             }
             SendString("uciok");
 
-            LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
-
             //  In case a "ucinewgame" isn't sent for the first game
             HandleNewGame();
             InputLoop();
@@ -165,8 +93,7 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 1001);
-                    Environment.Exit(1001);
+                    Environment.Exit(0);
                 }
                 else if (cmd == "isready")
                 {
@@ -202,19 +129,9 @@ namespace Lizard.Logic.UCI
                                 {
                                     info.Position.MakeMove(m);
                                 }
-                                else
-                                {
-                                    LogString("[ERROR]: Failed doing extra moves! '" + param[i] + "' didn't work with FEN " + info.Position.GetFEN());
-                                }
 
                                 setup.SetupMoves.Add(m);
                             }
-
-                            LogString("[INFO]: New FEN is " + info.Position.GetFEN());
-                        }
-                        else
-                        {
-                            LogString("[INFO]: Set position to " + InitialFEN);
                         }
                     }
                     else
@@ -234,15 +151,10 @@ namespace Lizard.Logic.UCI
                                     {
                                         info.Position.MakeMove(m);
                                     }
-                                    else
-                                    {
-                                        LogString("[ERROR]: Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
-                                    }
 
                                     setup.SetupMoves.Add(m);
                                 }
 
-                                LogString("[INFO]: New FEN is " + info.Position.GetFEN());
                                 hasExtraMoves = true;
                                 break;
                             }
@@ -257,7 +169,6 @@ namespace Lizard.Logic.UCI
 
                         if (!hasExtraMoves)
                         {
-                            LogString("[INFO]: Set position to " + fen);
                             info.Position.LoadFromFEN(fen);
                         }
 
@@ -276,7 +187,6 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "leave")
                 {
-                    LogString("[INFO]: Leaving");
                     Active = false;
                     return;
                 }
@@ -308,11 +218,7 @@ namespace Lizard.Logic.UCI
                         //  param[2] == "value"
                         HandleSetOption(optName, optValue);
                     }
-                    catch (Exception e)
-                    {
-                        LogString("[ERROR]: Failed parsing setoption command, got '" + param.ToString() + "'");
-                        LogString(e.ToString());
-                    }
+                    catch (Exception e) { }
 
                 }
                 else if (cmd == "tune")
@@ -347,7 +253,6 @@ namespace Lizard.Logic.UCI
         {
             if (TimeManager.IsRunning)
             {
-                LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
                 return;
             }
 
@@ -363,8 +268,7 @@ namespace Lizard.Logic.UCI
             {
                 if (param[i] == "movetime")
                 {
-                    info.SetMoveTime(int.Parse(param[i + 1]));
-                    LogString("[INFO]: MaxSearchTime is set to " + TimeManager.HardTimeLimit);
+                    TimeManager.MoveTime = int.Parse(param[i + 1]);
 
                     isMoveTimeCommand = true;
                 }
@@ -377,7 +281,6 @@ namespace Lizard.Logic.UCI
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
                         info.DepthLimit = reqDepth;
-                        LogString("[INFO]: MaxDepth is set to " + info.DepthLimit);
                     }
 
                 }
@@ -390,7 +293,6 @@ namespace Lizard.Logic.UCI
                     if (ulong.TryParse(param[i + 1], out ulong reqNodes))
                     {
                         info.NodeLimit = reqNodes;
-                        LogString("[INFO]: MaxNodes is set to " + info.NodeLimit);
                     }
                 }
                 else if (param[i] == "infinite")
@@ -431,43 +333,13 @@ namespace Lizard.Logic.UCI
         }
 
 
-        /// <summary>
-        /// Sends the "info depth (number) ..." string to the UCI
-        /// </summary>
-        private void OnDepthDone(ref SearchInformation info)
-        {
-            SendString(FormatSearchInformationMultiPV(ref info));
-        }
-
-
-
-        private void OnSearchDone(ref SearchInformation info)
-        {
-            var bestThread = SearchPool.GetBestThread();
-            if (bestThread.RootMoves.Count == 0)
-            {
-                SendString("bestmove 0000");
-                return;
-            }
-
-            Move bestThreadMove = bestThread.RootMoves[0].Move;
-
-            if (bestThreadMove.IsNull())
-            {
-                ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
-                int size = info.Position.GenLegal(legal);
-                bestThreadMove = legal[0].Move;
-            }
-
-            SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
-        }
-
         private static void HandleNewGame()
         {
             SearchPool.MainThread.WaitForThreadFinished();
             TranspositionTable.Clear();
             Search.Searches.HandleNewGame();
         }
+
 
         private void HandleSetOption(string optName, string optValue)
         {
@@ -497,8 +369,6 @@ namespace Lizard.Logic.UCI
                             }
                             else
                             {
-                                LogString("[ERROR]: setoption commands for booleans need to have a \"value\" of 'True/False' or '1/0', " +
-                                    "and '" + optValue + "' wasn't one of those!");
                                 return;
                             }
 
@@ -513,46 +383,33 @@ namespace Lizard.Logic.UCI
                                     if (opt.Name == nameof(Threads))
                                     {
                                         SearchPool.Resize(newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + SearchPool.ThreadCount);
                                     }
                                     else if (opt.Name == nameof(Hash))
                                     {
                                         TranspositionTable.Initialize(newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + newValue + " mb");
                                     }
                                     else
                                     {
                                         opt.FieldHandle.SetValue(null, newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
                                     }
                                 }
                                 else
                                 {
-                                    LogString("[ERROR]: '" + key + "' needs a value between [" + opt.MinValue + ", " + opt.MaxValue + "], " +
-                                        "and '" + optValue + "' isn't in that range!");
                                     return;
                                 }
                             }
                             else
                             {
-                                LogString("[ERROR]: setoption commands for integers need to have a numerical value, " +
-                                    "and '" + optValue + "' isn't!");
                                 return;
                             }
 
                         }
                     }
-                    catch (Exception e)
-                    {
-                        LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
-                        LogString(e.ToString());
-                    }
+                    catch (Exception e) { }
 
                     return;
                 }
             }
-
-            LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
         }
 
         public static void ProcessUCIOptions()

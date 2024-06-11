@@ -23,7 +23,8 @@
         public static bool HasSoftTime => SoftTimeLimit != -1;
         public static double SoftTimeLimit = -1;
 
-        public static int HardTimeLimit = 5000;
+        public static bool HasHardTimeLimit => HardTimeLimit != MaxSearchTime;
+        public static int HardTimeLimit = MaxSearchTime;
 
         public static int MovesToGo = DefaultMovesToGo;
 
@@ -46,9 +47,6 @@
         public static void StartTimer() => SearchTimer.Start();
 
         public static void ResetTimer() => SearchTimer.Reset();
-
-        public static void RestartTimer() => SearchTimer.Restart();
-
 
         public static double GetSearchTime() => SearchTimer.Elapsed.TotalMilliseconds;
         public static bool IsRunning => SearchTimer.IsRunning;

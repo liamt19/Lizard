@@ -145,6 +145,34 @@
         }
 
 
+        public static void OnSearchDone()
+        {
+            var bestThread = SearchPool.GetBestThread();
+            if (bestThread.RootMoves.Count == 0)
+            {
+                Console.WriteLine("bestmove 0000");
+                return;
+            }
+
+            Position pos = bestThread.RootPosition;
+            Move bestThreadMove = bestThread.RootMoves[0].Move;
+
+            if (bestThreadMove.IsNull())
+            {
+                ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+                int size = pos.GenLegal(legal);
+                bestThreadMove = legal[0].Move;
+            }
+
+            Console.WriteLine("bestmove " + bestThreadMove.ToString(pos.IsChess960));
+        }
+
+
+        public static void OnDepthDone()
+        {
+            Position pos = SearchPool.MainThread.RootPosition;
+            Console.WriteLine(FormatSearchInformationMultiPV(pos));
+        }
 
 
         public SearchThread GetBestThread()

@@ -65,8 +65,6 @@ namespace Lizard
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
 
-            Utilities.CheckConcurrency();
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
@@ -464,13 +462,12 @@ namespace Lizard
             Searches.HandleNewGame();
 
             info = new SearchInformation(p, MaxDepth);
-            TimeManager.HardTimeLimit = SearchConstants.MaxSearchTime;
 
             for (int i = 1; i < param.Length; i++)
             {
                 if (param[i] == "movetime" && i < param.Length - 1 && int.TryParse(param[i + 1], out int moveTime))
                 {
-                    info.SetMoveTime(moveTime);
+                    TimeManager.MoveTime = moveTime;
                 }
                 else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
                 {
