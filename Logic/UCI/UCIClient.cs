@@ -345,24 +345,16 @@ namespace Lizard.Logic.UCI
         /// <param name="param">List of parameters sent with the "go" command.</param>
         private void HandleGo(string[] param)
         {
-            if (info.SearchActive)
+            if (TimeManager.IsRunning)
             {
                 LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
                 return;
             }
 
-            TimeManager tm = info.TimeManager;
-
             //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
-            info.MaxNodes = MaxSearchNodes;
-            tm.MaxSearchTime = MaxSearchTime;
-            info.MaxDepth = MaxDepth;
-
-            if (info.SearchFinishedCalled)
-            {
-                info.SearchFinishedCalled = false;
-                LogString("[INFO]: Reusing old SearchInfo object, info.SearchFinishedCalled was true");
-            }
+            info.NodeLimit = MaxSearchNodes;
+            TimeManager.HardTimeLimit = MaxSearchTime;
+            info.DepthLimit = MaxDepth;
 
             bool isMoveTimeCommand = false;
             bool hasPlayerTime = false;
@@ -372,7 +364,7 @@ namespace Lizard.Logic.UCI
                 if (param[i] == "movetime")
                 {
                     info.SetMoveTime(int.Parse(param[i + 1]));
-                    LogString("[INFO]: MaxSearchTime is set to " + tm.MaxSearchTime);
+                    LogString("[INFO]: MaxSearchTime is set to " + TimeManager.HardTimeLimit);
 
                     isMoveTimeCommand = true;
                 }
@@ -384,8 +376,8 @@ namespace Lizard.Logic.UCI
                     }
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
-                        info.MaxDepth = reqDepth;
-                        LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
+                        info.DepthLimit = reqDepth;
+                        LogString("[INFO]: MaxDepth is set to " + info.DepthLimit);
                     }
 
                 }
@@ -397,34 +389,34 @@ namespace Lizard.Logic.UCI
                     }
                     if (ulong.TryParse(param[i + 1], out ulong reqNodes))
                     {
-                        info.MaxNodes = reqNodes;
-                        LogString("[INFO]: MaxNodes is set to " + info.MaxNodes);
+                        info.NodeLimit = reqNodes;
+                        LogString("[INFO]: MaxNodes is set to " + info.NodeLimit);
                     }
                 }
                 else if (param[i] == "infinite")
                 {
-                    Assert(info.MaxNodes == MaxSearchNodes, $"go infinite should have MaxNodes == {MaxSearchNodes}, but it was {info.MaxNodes}");
-                    Assert(tm.MaxSearchTime == MaxSearchTime, $"go infinite should have MaxSearchTime == {MaxSearchTime}, but it was {tm.MaxSearchTime}");
-                    Assert(info.MaxDepth == MaxDepth, $"go infinite should have MaxDepth == {MaxDepth}, but it was {info.MaxDepth}");
+                    Assert(info.NodeLimit == MaxSearchNodes, $"go infinite should have MaxNodes == {MaxSearchNodes}, but it was {info.NodeLimit}");
+                    Assert(TimeManager.HardTimeLimit == MaxSearchTime, $"go infinite should have MaxSearchTime == {MaxSearchTime}, but it was {TimeManager.HardTimeLimit}");
+                    Assert(info.DepthLimit == MaxDepth, $"go infinite should have MaxDepth == {MaxDepth}, but it was {info.DepthLimit}");
 
-                    info.MaxNodes = MaxSearchNodes;
-                    tm.MaxSearchTime = MaxSearchTime;
-                    info.MaxDepth = MaxDepth;
+                    info.NodeLimit = MaxSearchNodes;
+                    TimeManager.HardTimeLimit = MaxSearchTime;
+                    info.DepthLimit = MaxDepth;
                 }
                 else if ((param[i] == "wtime" && info.Position.ToMove == Color.White) ||
                          (param[i] == "btime" && info.Position.ToMove == Color.Black))
                 {
-                    tm.PlayerTime = int.Parse(param[i + 1]);
+                    TimeManager.PlayerTime = int.Parse(param[i + 1]);
                     hasPlayerTime = true;
                 }
                 else if ((param[i] == "winc" && info.Position.ToMove == Color.White) ||
                          (param[i] == "binc" && info.Position.ToMove == Color.Black))
                 {
-                    tm.PlayerIncrement = int.Parse(param[i + 1]);
+                    TimeManager.PlayerIncrement = int.Parse(param[i + 1]);
                 }
                 else if (param[i] == "movestogo")
                 {
-                    tm.MovesToGo = int.Parse(param[i + 1]);
+                    TimeManager.MovesToGo = int.Parse(param[i + 1]);
                 }
             }
 
@@ -432,7 +424,7 @@ namespace Lizard.Logic.UCI
             //  then we make one ourselves
             if (!isMoveTimeCommand && hasPlayerTime)
             {
-                info.TimeManager.MakeMoveTime();
+                TimeManager.MakeMoveTime();
             }
 
             SearchPool.StartSearch(info.Position, ref info, setup);
@@ -451,46 +443,23 @@ namespace Lizard.Logic.UCI
 
         private void OnSearchDone(ref SearchInformation info)
         {
-            info.SearchActive = false;
-
-            //  TODO: make sure we can't send illegal moves
-            if (!info.SearchFinishedCalled)
+            var bestThread = SearchPool.GetBestThread();
+            if (bestThread.RootMoves.Count == 0)
             {
-                info.SearchFinishedCalled = true;
-
-                var bestThread = SearchPool.GetBestThread();
-
-                if (bestThread.RootMoves.Count == 0)
-                {
-                    LogString("[ERROR]: bestThread.RootMoves.Count was 0!\n" + info.ToString());
-                    SendString("bestmove 0000");
-                    return;
-                }
-
-                Move bestThreadMove = bestThread.RootMoves[0].Move;
-
-                Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove,
-                    $"MainThread's best move = {SearchPool.MainThread.RootMoves[0].Move} was different than the BestThread's = {bestThreadMove}!");
-
-                if (bestThreadMove.IsNull())
-                {
-                    ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
-                    int size = info.Position.GenLegal(legal);
-                    bestThreadMove = legal[0].Move;
-
-                    LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
-                }
-                else if (!info.Position.IsLegal(bestThreadMove))
-                {
-                    LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal for FEN '" + info.Position.GetFEN() + "'");
-                }
-
-                SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
+                SendString("bestmove 0000");
+                return;
             }
-            else
+
+            Move bestThreadMove = bestThread.RootMoves[0].Move;
+
+            if (bestThreadMove.IsNull())
             {
-                LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
+                ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+                int size = info.Position.GenLegal(legal);
+                bestThreadMove = legal[0].Move;
             }
+
+            SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
         }
 
         private static void HandleNewGame()

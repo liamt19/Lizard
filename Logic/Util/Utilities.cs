@@ -586,7 +586,7 @@ namespace Lizard.Logic.Util
             List<RootMove> rootMoves = thisThread.RootMoves;
             int multiPV = Math.Min(MultiPV, rootMoves.Count);
 
-            double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
+            double time = Math.Max(1, Math.Round(TimeManager.GetSearchTime()));
             double nodes = SearchPool.GetNodeCount();
             int nodesPerSec = (int)(nodes / (time / 1000));
 

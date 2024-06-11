@@ -101,7 +101,6 @@
 
             StopThreads = false;
             SharedInfo = rootInfo;          //  Initialize the shared SearchInformation
-            SharedInfo.SearchActive = true; //  And mark this search as having started
 
             ScoredMove* moves = stackalloc ScoredMove[MoveListSize];
             int size = rootPosition.GenLegal(moves);
@@ -141,7 +140,7 @@
                 }
             }
 
-            SharedInfo.TimeManager.StartTimer();
+            TimeManager.StartTimer();
             MainThread.PrepareToSearch();
         }
 
@@ -206,7 +205,7 @@
             Assert(Blocker.ParticipantCount == 1,
                 "BlockCallerUntilFinished was called, but the barrier had {Blocker.ParticipantCount} participants (should have been 1)!");
 
-            if (SharedInfo.SearchActive == false)
+            if (TimeManager.IsRunning == false)
             {
                 //  Don't block if we aren't searching.
                 return;

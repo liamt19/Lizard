@@ -310,9 +310,7 @@ namespace Lizard.Logic.Threads
 
             //  Search is finished, now give the UCI output.
             SearchPool.SharedInfo.OnSearchFinish?.Invoke(ref SearchPool.SharedInfo);
-            SearchPool.SharedInfo.TimeManager.ResetTimer();
-
-            SearchPool.SharedInfo.SearchActive = false;
+            TimeManager.ResetTimer();
 
             //  If the main program thread called BlockCallerUntilFinished,
             //  then the Blocker's ParticipantCount will be 2 instead of 1.
@@ -348,8 +346,6 @@ namespace Lizard.Logic.Threads
             //  Create a copy of the SearchPool's root SearchInformation instance.
             SearchInformation info = SearchPool.SharedInfo;
 
-            TimeManager tm = info.TimeManager;
-
             //  And set it's Position to this SearchThread's unique copy.
             //  (The Position that SearchPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
             info.Position = RootPosition;
@@ -366,7 +362,7 @@ namespace Lizard.Logic.Threads
             while (++RootDepth < maxDepth)
             {
                 //  The main thread is not allowed to search past info.MaxDepth
-                if (IsMain && RootDepth > info.MaxDepth)
+                if (IsMain && RootDepth > info.DepthLimit)
                     break;
 
                 if (SearchPool.StopThreads)
@@ -468,7 +464,7 @@ namespace Lizard.Logic.Threads
                     }
                 }
 
-                if (SoftTimeUp(tm, stability))
+                if (SoftTimeUp(info, stability))
                 {
                     break;
                 }
@@ -479,7 +475,7 @@ namespace Lizard.Logic.Threads
                 }
             }
 
-            if (IsMain && RootDepth >= MaxDepth && info.MaxNodes != MaxSearchNodes && !SearchPool.StopThreads)
+            if (IsMain && RootDepth >= MaxDepth && info.NodeLimit != MaxSearchNodes && !SearchPool.StopThreads)
             {
                 //  If this was a "go nodes x" command, it is possible for the main thread to hit the
                 //  maximum depth before hitting the requested node count (causing an infinite wait).
@@ -497,9 +493,9 @@ namespace Lizard.Logic.Threads
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
         private static int StabilityMax = StabilityCoefficients.Length - 1;
 
-        private bool SoftTimeUp(TimeManager tm, int stability)
+        private bool SoftTimeUp(SearchInformation info, int stability)
         {
-            if (!tm.HasSoftTime)
+            if (!TimeManager.HasSoftTime)
                 return false;
 
             //  Base values taken from Clarity
@@ -510,7 +506,7 @@ namespace Lizard.Logic.Threads
                 multFactor = ((1.5 - proportion) * 1.75) * StabilityCoefficients[Math.Min(stability, StabilityMax)];
             }
 
-            if (tm.GetSearchTime() >= tm.SoftTimeLimit * multFactor)
+            if (TimeManager.GetSearchTime() >= TimeManager.SoftTimeLimit * multFactor)
             {
                 return true;
             }

@@ -464,7 +464,7 @@ namespace Lizard
             Searches.HandleNewGame();
 
             info = new SearchInformation(p, MaxDepth);
-            info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
+            TimeManager.HardTimeLimit = SearchConstants.MaxSearchTime;
 
             for (int i = 1; i < param.Length; i++)
             {
@@ -474,15 +474,15 @@ namespace Lizard
                 }
                 else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
                 {
-                    info.TimeManager.MaxSearchTime = time;
+                    TimeManager.HardTimeLimit = time;
                 }
                 else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
                 {
-                    info.MaxDepth = depth;
+                    info.DepthLimit = depth;
                 }
                 else if (param[i] == "nodes" && i < param.Length - 1 && ulong.TryParse(param[i + 1], out ulong reqNodes))
                 {
-                    info.MaxNodes = reqNodes;
+                    info.NodeLimit = reqNodes;
                 }
             }
 
@@ -600,25 +600,6 @@ namespace Lizard
 
                 SearchBench.Go(depth);
             }
-        }
-
-
-        private static void DotTraceProfile(int depth = 24)
-        {
-            info.TimeManager.MaxSearchTime = 30000;
-            info.MaxDepth = depth;
-
-#if JB
-            JetBrains.Profiler.Api.MeasureProfiler.StartCollectingData();
-#endif
-            SearchPool.StartSearch(p, ref info);
-            SearchPool.BlockCallerUntilFinished();
-
-#if JB
-            JetBrains.Profiler.Api.MeasureProfiler.SaveData();
-#endif
-
-            Environment.Exit(123);
         }
 
     }

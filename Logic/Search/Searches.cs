@@ -90,8 +90,8 @@ namespace Lizard.Logic.Search
             {
                 thisThread.CheckupCount = 0;
                 //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (SearchPool.SharedInfo.TimeManager.CheckUp() ||
-                    SearchPool.GetNodeCount() >= SearchPool.SharedInfo.MaxNodes)
+                if (TimeManager.CheckUp() ||
+                    SearchPool.GetNodeCount() >= SearchPool.SharedInfo.NodeLimit)
                 {
                     SearchPool.StopThreads = true;
                 }

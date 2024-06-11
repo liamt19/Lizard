@@ -2,6 +2,9 @@
 {
     public static unsafe class EvaluationConstants
     {
+        public const int AlphaStart = -ScoreMate;
+        public const int BetaStart = ScoreMate;
+
         public const short ScoreNone = 32760;
         public const int ScoreInfinite = 31200;
         public const int ScoreMate = 30000;

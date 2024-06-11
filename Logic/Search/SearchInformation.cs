@@ -7,81 +7,31 @@
         /// </summary>
         public delegate void ActionRef<T>(ref T info);
 
-        /// <summary>
-        /// The method to call (which must accept a <see langword="ref"/> <see cref="SearchInformation"/> parameter)
-        /// during a search just before the depth increases.
-        /// <br></br>
-        /// By default, this will print out the "info depth # ..." string.
-        /// </summary>
         public ActionRef<SearchInformation>? OnDepthFinish;
-
-        /// <summary>
-        /// The method to call (which must accept a <see langword="ref"/> <see cref="SearchInformation"/> parameter)
-        /// when a search is finished.
-        /// <br></br>
-        /// By default, this will print "bestmove (move)".
-        /// </summary>
         public ActionRef<SearchInformation>? OnSearchFinish;
 
+
+
+        public int DepthLimit = MaxDepth;
+        public ulong NodeLimit = MaxSearchNodes;
         public Position Position;
 
-        /// <summary>
-        /// The depth to stop the search at.
-        /// </summary>
-        public int MaxDepth = DefaultSearchDepth;
+        public bool IsInfinite => DepthLimit == Utilities.MaxDepth && TimeManager.HardTimeLimit == SearchConstants.MaxSearchTime;
 
-        /// <summary>
-        /// The number of nodes the search should stop at.
-        /// </summary>
-        public ulong MaxNodes = MaxSearchNodes;
-
-
-        /// <summary>
-        /// Set to true the first time that OnSearchFinish is invoked.
-        /// </summary>
-        public bool SearchFinishedCalled = false;
-
-        /// <summary>
-        /// Set to true while a search is ongoing, and false otherwise.
-        /// </summary>
-        public bool SearchActive = false;
-
-
-        public TimeManager TimeManager;
-
-        public bool IsInfinite => MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime;
-
-        public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
-        {
-        }
-
-        public SearchInformation(Position p, int depth) : this(p, depth, SearchConstants.DefaultSearchTime)
-        {
-        }
-
-        public SearchInformation(Position p, int depth, int searchTime)
+        public SearchInformation(Position p, int depth = MaxDepth, int searchTime = 5000)
         {
             this.Position = p;
-            this.MaxDepth = depth;
+            this.DepthLimit = depth;
 
-            this.TimeManager = new TimeManager();
-            this.TimeManager.MaxSearchTime = searchTime;
+            TimeManager.HardTimeLimit = searchTime;
 
             this.OnDepthFinish = PrintSearchInfo;
             this.OnSearchFinish = PrintBestMove;
         }
 
-        public static SearchInformation Infinite(Position p)
-        {
-            SearchInformation si = new SearchInformation(p, Utilities.MaxDepth, SearchConstants.MaxSearchTime);
-            si.MaxNodes = MaxSearchNodes;
-            return si;
-        }
-
         public void SetMoveTime(int moveTime)
         {
-            TimeManager.MaxSearchTime = moveTime;
-            TimeManager.HasMoveTime = true;
+            TimeManager.MoveTime = moveTime;
         }
 
         /// <summary>
@@ -103,8 +53,8 @@
 
         public override string ToString()
         {
-            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime());
+            return "MaxDepth: " + DepthLimit + ", " + "MaxNodes: " + NodeLimit + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
+                 + "SearchTime: " + TimeManager.GetSearchTime();
         }
     }
 }
