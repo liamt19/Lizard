@@ -322,7 +322,7 @@ namespace Lizard.Logic.Search
 
 
             if (ttMove.Equals(Move.Null)
-                && cutNode
+                && (cutNode || isPV)
                 && depth >= ExtraCutNodeReductionMinDepth)
             {
                 //  We expected this node to be a bad one, so give it an extra depth reduction
