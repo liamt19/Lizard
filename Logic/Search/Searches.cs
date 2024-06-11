@@ -308,7 +308,7 @@ namespace Lizard.Logic.Search
                     if (score >= probBeta)
                     {
                         //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 4, !cutNode);
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
                     }
 
                     pos.UnmakeMove(m);
