@@ -58,7 +58,7 @@
         {
             double currentTime = GetSearchTime();
 
-            if (currentTime > (HardTimeLimit - (HasMoveTime ? MoveTimeBuffer : TimerBuffer)))
+            if (currentTime > (HardTimeLimit - MoveTimeBuffer))
             {
                 //  Stop if we are close to going over the max time
                 return true;
@@ -76,7 +76,10 @@
         /// </summary>
         public static void MakeMoveTime()
         {
-            int hardLimit = Math.Clamp(PlayerIncrement + (PlayerTime / MovesToGo), 1, PlayerTime - TimerBuffer);
+            //  Clamp between [1, time - 50]
+            int hardLimit = Math.Min(PlayerIncrement + (PlayerTime / MovesToGo), PlayerTime - TimerBuffer);
+            hardLimit = Math.Max(hardLimit, 1);
+
 
             //  Values from Clarity, then slightly adjusted
             SoftTimeLimit = 0.65 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
