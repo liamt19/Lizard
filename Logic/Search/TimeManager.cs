@@ -77,7 +77,7 @@
         public static void MakeMoveTime()
         {
             //  Clamp between [1, time - 50]
-            int hardLimit = Math.Min(PlayerIncrement + (PlayerTime / MovesToGo), PlayerTime - TimerBuffer);
+            int hardLimit = Math.Min(PlayerIncrement + (PlayerTime / 2), PlayerTime - TimerBuffer);
             hardLimit = Math.Max(hardLimit, 1);
 
 
