@@ -21,12 +21,9 @@
         /// </summary>
         public int GenPawns<GenType>(ScoredMove* list, ulong targets, int size) where GenType : MoveGenerationType
         {
-            bool loudMoves   = typeof(GenType) == typeof(GenLoud);
-            bool quiets      = typeof(GenType) == typeof(GenQuiets);
-            bool quietChecks = typeof(GenType) == typeof(GenQChecks);
-            bool evasions    = typeof(GenType) == typeof(GenEvasions);
+            bool loudMoves = typeof(GenType) == typeof(GenLoud);
+            bool evasions = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
-
 
             ulong rank7 = (ToMove == White) ? Rank7BB : Rank2BB;
             ulong rank3 = (ToMove == White) ? Rank3BB : Rank6BB;
@@ -59,14 +56,6 @@
                     //  Only include pushes which block the check
                     moves &= targets;
                     twoMoves &= targets;
-                }
-
-                if (quietChecks)
-                {
-                    //  Only include pushes that cause a discovered check, or directly check the king
-                    ulong discoveryPawns = State->BlockingPieces[theirColor] & ~GetFileBB(theirKing);
-                    moves &= PawnAttackMasks[theirColor][theirKing] | Shift(up, discoveryPawns);
-                    twoMoves &= PawnAttackMasks[theirColor][theirKing] | Shift(up + up, discoveryPawns);
                 }
 
                 while (moves != 0)
@@ -117,47 +106,42 @@
                 }
             }
 
-            if (!(quiets || quietChecks))
+            //  Don't generate captures for quiets
+            ulong capturesL = Shift(up + Direction.WEST, notPromotingPawns) & captureSquares;
+            ulong capturesR = Shift(up + Direction.EAST, notPromotingPawns) & captureSquares;
+
+            while (capturesL != 0)
             {
-                //  Don't generate captures for quiets
-                ulong capturesL = Shift(up + Direction.WEST, notPromotingPawns) & captureSquares;
-                ulong capturesR = Shift(up + Direction.EAST, notPromotingPawns) & captureSquares;
+                int to = poplsb(&capturesL);
 
-                while (capturesL != 0)
+                ref Move m = ref list[size++].Move;
+                m.SetNew(to - up - Direction.WEST, to);
+            }
+
+            while (capturesR != 0)
+            {
+                int to = poplsb(&capturesR);
+
+                ref Move m = ref list[size++].Move;
+                m.SetNew(to - up - Direction.EAST, to);
+            }
+
+            if (State->EPSquare != EPNone)
+            {
+                if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
                 {
-                    int to = poplsb(&capturesL);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.WEST, to);
-
+                    //  When in check, we can only en passant if the pawn being captured is the one giving check
+                    return size;
                 }
 
-                while (capturesR != 0)
+                ulong mask = notPromotingPawns & PawnAttackMasks[theirColor][State->EPSquare];
+                while (mask != 0)
                 {
-                    int to = poplsb(&capturesR);
+                    int from = poplsb(&mask);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - Direction.EAST, to);
-
-                }
-
-                if (State->EPSquare != EPNone)
-                {
-                    if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
-                    {
-                        //  When in check, we can only en passant if the pawn being captured is the one giving check
-                        return size;
-                    }
-
-                    ulong mask = notPromotingPawns & PawnAttackMasks[theirColor][State->EPSquare];
-                    while (mask != 0)
-                    {
-                        int from = poplsb(&mask);
-
-                        ref Move m = ref list[size++].Move;
-                        m.SetNew(from, State->EPSquare);
-                        m.EnPassant = true;
-                    }
+                    m.SetNew(from, State->EPSquare);
+                    m.EnPassant = true;
                 }
             }
 
@@ -166,38 +150,14 @@
 
             int NewMakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
             {
-                int highPiece = Knight;
-                int lowPiece = Queen;
+                int lowPiece = Knight;
 
-                if (quiets && isCapture)
+                if (loudMoves && !isCapture)
                 {
-                    return size;
+                    lowPiece = Queen;
                 }
 
-                if (evasions || nonEvasions)
-                {
-                    //  All promotions are valid
-                    highPiece = Queen;
-                    lowPiece = Knight;
-                }
-
-                if (loudMoves)
-                {
-                    //  GenLoud makes all promotions for captures, and only makes Queens for non-capture promotions
-                    highPiece = Queen;
-                    lowPiece = isCapture ? Knight : Queen;
-                }
-
-                if (quiets)
-                {
-                    //  GenQuiets only makes underpromotions
-                    lowPiece = Knight;
-                    highPiece = Rook;
-                }
-
-                //  GenQChecks makes nothing.
-
-                for (int promotionPiece = lowPiece; promotionPiece <= highPiece; promotionPiece++)
+                for (int promotionPiece = lowPiece; promotionPiece <= Queen; promotionPiece++)
                 {
                     ref Move m = ref list[size++].Move;
                     m.SetNew(from, promotionSquare, promotionPiece);
@@ -216,9 +176,7 @@
         public int GenAll<GenType>(ScoredMove* list, int size = 0) where GenType : MoveGenerationType
         {
             bool loudMoves   = typeof(GenType) == typeof(GenLoud);
-            bool quiets      = typeof(GenType) == typeof(GenQuiets);
             bool evasions    = typeof(GenType) == typeof(GenEvasions);
-            bool quietChecks = typeof(GenType) == typeof(GenQChecks);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
             ulong us = bb.Colors[ToMove];
@@ -239,39 +197,25 @@
                         :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
-                size = GenNormal(list, Knight, quietChecks, targets, size);
-                size = GenNormal(list, Bishop, quietChecks, targets, size);
-                size = GenNormal(list, Rook, quietChecks, targets, size);
-                size = GenNormal(list, Queen, quietChecks, targets, size);
+                size = GenNormal(list, Knight, targets, size);
+                size = GenNormal(list, Bishop, targets, size);
+                size = GenNormal(list, Rook, targets, size);
+                size = GenNormal(list, Queen, targets, size);
             }
 
-            //  If we are doing non-captures with check and our king isn't blocking a check, then skip generating king moves
-            if (!(quietChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) == 0))
+            ulong moves = NeighborsMask[ourKing] & (evasions ? ~us : targets);
+            while (moves != 0)
             {
-                ulong moves = NeighborsMask[ourKing] & (evasions ? ~us : targets);
-                if (quietChecks)
-                {
-                    //  If we ARE doing non-captures with check and our king is a blocker,
-                    //  then only generate moves that get the king off of any shared ranks/files.
-                    //  Note we can't move our king from one shared ray to another since we can only move diagonally 1 square
-                    //  and their king would be attacking ours.
-                    moves &= ~bb.AttackMask(theirKing, Not(ToMove), Queen, occ);
-                }
+                int to = poplsb(&moves);
 
-                while (moves != 0)
-                {
-                    int to = poplsb(&moves);
+                ref Move m = ref list[size++].Move;
+                m.SetNew(ourKing, to);
+            }
 
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, to);
-
-                }
-
-                if ((quiets || nonEvasions) && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
-                {
-                    //  Only do castling moves if we are doing non-captures or we aren't in check.
-                    size = GenCastlingMoves(list, size);
-                }
+            if (nonEvasions && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
+            {
+                //  Only do castling moves if we are doing non-captures or we aren't in check.
+                size = GenCastlingMoves(list, size);
             }
 
             return size;
@@ -386,7 +330,7 @@
         /// <para></para>
         /// If <paramref name="checks"/> is true, then only pseudo-legal moves that give check will be generated.
         /// </summary>
-        public int GenNormal(ScoredMove* list, int pt, bool checks, ulong targets, int size)
+        public int GenNormal(ScoredMove* list, int pt, ulong targets, int size)
         {
             // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
@@ -400,11 +344,6 @@
             {
                 int idx = poplsb(&ourPieces);
                 ulong moves = bb.AttackMask(idx, ToMove, pt, occ) & targets;
-
-                if (checks && (pt == Queen || ((State->BlockingPieces[Not(ToMove)] & SquareBB[idx]) == 0)))
-                {
-                    moves &= State->CheckSquares[pt];
-                }
 
                 while (moves != 0)
                 {
