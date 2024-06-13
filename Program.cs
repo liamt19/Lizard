@@ -109,7 +109,7 @@ namespace Lizard
                 }
                 else if (input.Equals("listmoves"))
                 {
-                    PrintMoves(true);
+                    PrintMoves();
                 }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
@@ -304,49 +304,15 @@ namespace Lizard
         }
 
 
-        private static void PrintMoves(bool full = false)
+        private static void PrintMoves()
         {
             ScoredMove* pseudo = stackalloc ScoredMove[MoveListSize];
             int pseudoCnt = p.GenPseudoLegal(pseudo);
-
             Log("Pseudo: [" + Stringify(pseudo, p, pseudoCnt) + "]");
 
             ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
             int legalCnt = p.GenLegal(legal);
-
             Log("Legal: [" + Stringify(legal, p, legalCnt) + "]");
-
-
-            if (full)
-            {
-                Log("\n");
-
-                if (p.Checked)
-                {
-                    ScoredMove* evasions = stackalloc ScoredMove[MoveListSize];
-                    int evasionsSize = p.GenAll<GenEvasions>(evasions);
-                    Log("Evasions: [" + Stringify(evasions, p, evasionsSize) + "]");
-                }
-                else
-                {
-                    ScoredMove* nonEvasions = stackalloc ScoredMove[MoveListSize];
-                    int nonEvasionsSize = p.GenAll<GenNonEvasions>(nonEvasions);
-                    Log("Non-Evasions: [" + Stringify(nonEvasions, p, nonEvasionsSize) + "]");
-                }
-
-                ScoredMove* captures = stackalloc ScoredMove[MoveListSize];
-                int capturesSize = p.GenAll<GenLoud>(captures);
-                Log("Captures: [" + Stringify(captures, p, capturesSize) + "]");
-
-                ScoredMove* quiets = stackalloc ScoredMove[MoveListSize];
-                int quietsSize = p.GenAll<GenQuiets>(quiets);
-                Log("Quiets: [" + Stringify(quiets, p, quietsSize) + "]");
-
-                ScoredMove* checks = stackalloc ScoredMove[MoveListSize];
-                int checksSize = p.GenAll<GenQChecks>(checks);
-                Log("Checks: [" + Stringify(checks, p, checksSize) + "]");
-                Log("\n\n");
-            }
         }
 
 

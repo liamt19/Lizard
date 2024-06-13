@@ -280,7 +280,7 @@ namespace Lizard.Logic.Search
                 //  nnnnnnnn/PPPPPPPP/1N1N4/1rbrB3/1QbR1q2/1nRn4/2B5/3K3k w - - 0 1
                 //  This position has 88 different captures (the most I could come up with), so 128 as a limit is fair.
                 ScoredMove* captures = stackalloc ScoredMove[NormalListCapacity];
-                int numCaps = pos.GenAll<GenLoud>(captures);
+                int numCaps = pos.GenAll<GenNoisy>(captures);
                 AssignProbCutScores(ref bb, captures, numCaps);
 
                 for (int i = 0; i < numCaps; i++)
