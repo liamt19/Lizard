@@ -2,7 +2,7 @@
 {
     public unsafe partial class Position
     {
-        /// Almost everything in this file is based heavily on the move generation of Stockfish.
+        /// The "GenNoisy" approach was inspired by the move generation of Stockfish.
 
 
         /// <summary>
@@ -21,8 +21,8 @@
         /// </summary>
         public int GenPawns<GenType>(ScoredMove* list, ulong targets, int size) where GenType : MoveGenerationType
         {
-            bool loudMoves = typeof(GenType) == typeof(GenLoud);
-            bool evasions = typeof(GenType) == typeof(GenEvasions);
+            bool noisyMoves  = typeof(GenType) == typeof(GenNoisy);
+            bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
             ulong rank7 = (ToMove == White) ? Rank7BB : Rank2BB;
@@ -45,7 +45,7 @@
 
             int theirKing = State->KingSquares[theirColor];
 
-            if (!loudMoves)
+            if (!noisyMoves)
             {
                 //  Include pawn pushes
                 ulong moves = Forward(ToMove, notPromotingPawns) & emptySquares;
@@ -152,7 +152,7 @@
             {
                 int lowPiece = Knight;
 
-                if (loudMoves && !isCapture)
+                if (noisyMoves && !isCapture)
                 {
                     lowPiece = Queen;
                 }
@@ -175,7 +175,7 @@
         /// </summary>
         public int GenAll<GenType>(ScoredMove* list, int size = 0) where GenType : MoveGenerationType
         {
-            bool loudMoves   = typeof(GenType) == typeof(GenLoud);
+            bool noisyMoves  = typeof(GenType) == typeof(GenNoisy);
             bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
@@ -193,7 +193,7 @@
             {
                 targets = evasions    ? LineBB[ourKing][lsb(State->Checkers)]
                         : nonEvasions ? ~us
-                        : loudMoves   ? them
+                        : noisyMoves   ? them
                         :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
@@ -278,9 +278,9 @@
             int numMoves = (State->Checkers != 0) ? GenAll<GenEvasions>(legal) :
                                                     GenAll<GenNonEvasions>(legal);
 
-            int ourKing = State->KingSquares[ToMove];
+            int ourKing   = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
-            ulong pinned = State->BlockingPieces[ToMove];
+            ulong pinned  = State->BlockingPieces[ToMove];
 
             ScoredMove* curr = legal;
             ScoredMove* end = legal + numMoves;
