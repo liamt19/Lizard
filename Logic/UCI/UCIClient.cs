@@ -639,6 +639,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(FutilityExchangeBase)].AutoMinMax();
 
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
+            Options[nameof(SkipQuietsMinDepth)].SetMinMax(3, 13);
+            Options[nameof(QSSeeThreshold)].SetMinMax(30, 150);
+
             Options[nameof(AspirationWindowMargin)].AutoMinMax();
 
             Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();

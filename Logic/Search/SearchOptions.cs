@@ -183,6 +183,9 @@
         public static int ExtraCutNodeReductionMinDepth = 5;
 
 
+        public static int SkipQuietsMinDepth = 8;
+        public static int QSSeeThreshold = 90;
+
 
         /// <summary>
         /// If the evaluation at the next depth is within this margin from the previous evaluation,

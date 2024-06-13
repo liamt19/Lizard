@@ -398,7 +398,7 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
+                    if (skipQuiets && depth <= SkipQuietsMinDepth && !(givesCheck || isCapture))
                     {
                         continue;
                     }
@@ -880,7 +880,7 @@ namespace Lizard.Logic.Search
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeThreshold))
                     {
                         //  This move loses a significant amount of material
                         continue;
