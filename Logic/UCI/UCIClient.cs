@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿
+#pragma warning disable CS0162 // Unreachable code detected
+
+using System.Reflection;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
@@ -12,13 +15,7 @@ namespace Lizard.Logic.UCI
         private SearchInformation info;
         private ThreadSetup setup;
 
-        private const string LogFileName = @".\ucilog.txt";
-
-        /// <summary>
-        /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
-        /// where # is a (hopefully) unique number for this instance.
-        /// </summary>
-        private const bool WriteToConcurrentLogs = false;
+        private static readonly string LogFileName = $".\\ucilog_{ProcessID}.txt";
 
         private static Dictionary<string, UCIOption> Options;
 
@@ -67,19 +64,6 @@ namespace Lizard.Logic.UCI
                 try
                 {
                     string fileToWrite = LogFileName;
-
-                    if (IsRunningConcurrently)
-                    {
-                        if (WriteToConcurrentLogs)
-                        {
-                            fileToWrite = @".\ucilog_" + ProcessID + ".txt";
-                        }
-                        else
-                        {
-                            //  Concurrent logging off, just return here.
-                            return;
-                        }
-                    }
 
                     using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
                     using StreamWriter sw = new StreamWriter(fs);
@@ -165,8 +149,8 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 1001);
-                    Environment.Exit(1001);
+                    LogString("[INFO]: Exiting with code " + 0);
+                    Environment.Exit(0);
                 }
                 else if (cmd == "isready")
                 {
@@ -591,7 +575,7 @@ namespace Lizard.Logic.UCI
             Options = new Dictionary<string, UCIOption>();
 
             //  Get all "public static" fields, and specifically exclude constant fields (which have field.IsLiteral == true)
-            List<FieldInfo>? fields = typeof(SearchOptions).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
+            List<FieldInfo> fields = typeof(SearchOptions).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
 
             foreach (FieldInfo field in fields)
             {
@@ -610,7 +594,7 @@ namespace Lizard.Logic.UCI
             //SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
-            Options[nameof(MultiPV)].SetMinMax(1, 5);
+            Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
             Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);

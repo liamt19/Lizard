@@ -8,13 +8,7 @@ namespace Lizard.Logic.NN
     /// </summary>
     public unsafe struct Accumulator
     {
-        //  Intellisense incorrectly marks "var accumulation = accumulator[perspectives[p]]" in FeatureTransformer.TransformFeatures
-        //  as an error when this uses a primary constructor with "size" as a parameter.
-        //  https://github.com/dotnet/roslyn/issues/69663
-
         public const int ByteSize = Bucketed768.HiddenSize * sizeof(short);
-
-        public static int VectorCount => Bucketed768.HiddenSize / VSize.Short;
 
         public readonly Vector256<short>* White;
         public readonly Vector256<short>* Black;

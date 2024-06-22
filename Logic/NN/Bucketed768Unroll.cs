@@ -11,6 +11,7 @@ using VInt = System.Runtime.Intrinsics.Vector256<int>;
 using VShort = System.Runtime.Intrinsics.Vector256<short>;
 #endif
 
+#pragma warning disable CS0162 // Unreachable code detected
 
 namespace Lizard.Logic.NN
 {
@@ -501,7 +502,7 @@ namespace Lizard.Logic.NN
 
             int output = NNUE.SumVectorNoHadd(sumVec);
 
-            return (output / QA + LayerBiases[outputBucket]) * 400 / (QA * QB);
+            return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
         }
 
     }
