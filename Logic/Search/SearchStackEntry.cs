@@ -13,112 +13,22 @@ namespace Lizard.Logic.Search
     {
         public static SearchStackEntry NullEntry = new SearchStackEntry();
 
-        /// <summary>
-        /// The move that the Negamax/QSearch loop is currently on (or Move.Null for Null Move Pruning) at the current <see cref="Ply"/>
-        /// <para></para>
-        /// This is set before every recursive call to Negamax/QSearch.
-        /// </summary>
-        [FieldOffset(0)]
-        public Move CurrentMove;
-
-        /// <summary>
-        /// When legal moves are generated, this move will be skipped.
-        /// <br></br>
-        /// This is used in Singular Extension searches to determine if every other move is significantly worse
-        /// than the excluded one, and if so we will look at the excluded one more deeply.
-        /// </summary>
-        [FieldOffset(4)]
-        public Move Skip;
-
-        /// <summary>
-        /// A pointer to a 2D array of scores (short[12][64]) for a particular move.
-        /// <br></br>
-        /// This should be updated after a move is made, and before a recursive call to Negamax/QSearch.
-        /// </summary>
-        [FieldOffset(8)]
-        public PieceToHistory* ContinuationHistory;
-
-
-
-        /// <summary>
-        /// The number of times that previous moves had their search depth extended by two.
-        /// </summary>
-        [FieldOffset(16)]
-        public int DoubleExtensions;
-
-        /// <summary>
-        /// The number of moves made by both players thus far, which is generally the depth of the search times two.
-        /// </summary>
-        [FieldOffset(20)]
-        public short Ply;
-
-        /// <summary>
-        /// The static evaluation for the position at the current <see cref="Ply"/>.
-        /// </summary>
-        [FieldOffset(22)]
-        public short StaticEval;
-
-        /// <summary>
-        /// Whether or not the side to move is in check at the current <see cref="Ply"/>.
-        /// </summary>
-        [FieldOffset(24)]
-        public bool InCheck;
-
-        /// <summary>
-        /// Set to true for PV/Root searches, or if <see cref="TTHit"/> is <see langword="true"/> 
-        /// and the TT entry had TTPV true when it was updated.
-        /// </summary>
-        [FieldOffset(25)]
-        public bool TTPV;
-
-        /// <summary>
-        /// Set to true if there was an acceptable <see cref="TTEntry"/> for the position at the current <see cref="Ply"/>.
-        /// </summary>
-        [FieldOffset(26)]
-        public bool TTHit;
-
-        [FieldOffset(27)]
-        private fixed byte _pad0[5];
-
-
-
-        /// <summary>
-        /// A pointer to an array of <see cref="Move"/> created with <see cref="AlignedAllocZeroed"/>, which represents the current PV.
-        /// <para></para>
-        /// This must be set on a per-thread basis, and before that thread's search begins.
-        /// </summary>
-        [FieldOffset(32)]
-        public Move* PV;
-
-        [FieldOffset(40)]
-        private fixed byte _pad1[8];
-
-
-
-        /// <summary>
-        /// The first killer move for the current <see cref="Ply"/>.
-        /// </summary>
-        [FieldOffset(48)]
-        public Move Killer0;
-
-        /// <summary>
-        /// Killer0's score will be at this offset when <see cref="MovePicker"/> casts it as a <see cref="ScoredMove"/>. 
-        /// </summary>
-        [FieldOffset(52)]
-        private fixed byte _pad3[4];
-
-        /// <summary>
-        /// The second killer move for the current <see cref="Ply"/>, 
-        /// which is given Killer0's Move before Killer0 is overwritten with a new one.
-        /// </summary>
-        [FieldOffset(56)]
-        public Move Killer1;
-
-        /// <summary>
-        /// Killer1's score will be at this offset when <see cref="MovePicker"/> casts it as a <see cref="ScoredMove"/>. 
-        /// </summary>
-        [FieldOffset(60)]
-        private fixed byte _pad4[4];
+        [FieldOffset( 0)] public Move CurrentMove;
+        [FieldOffset( 4)] public Move Skip;
+        [FieldOffset( 8)] public PieceToHistory* ContinuationHistory;
+        [FieldOffset(16)] public int DoubleExtensions;
+        [FieldOffset(20)] public short Ply;
+        [FieldOffset(22)] public short StaticEval;
+        [FieldOffset(24)] public bool InCheck;
+        [FieldOffset(25)] public bool TTPV;
+        [FieldOffset(26)] public bool TTHit;
+        [FieldOffset(27)] private fixed byte _pad0[5];
+        [FieldOffset(32)] public Move* PV;
+        [FieldOffset(40)] private fixed byte _pad1[8];
+        [FieldOffset(48)] public Move Killer0;
+        [FieldOffset(52)] private fixed byte _pad2[4];
+        [FieldOffset(56)] public Move Killer1;
+        [FieldOffset(60)] private fixed byte _pad3[4];
 
 
         public SearchStackEntry()

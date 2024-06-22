@@ -53,21 +53,10 @@ namespace Lizard.Logic.Util
         public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
 
-
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
-        /// <summary>
-        /// Set to true if multiple instances of this engine are running.
-        /// <br></br>
-        /// If there are, then the log file to not be written to unless <see cref="UCIClient.WriteToConcurrentLogs"/> = <see langword="true"/>.
-        /// </summary>
-        public static bool IsRunningConcurrently = false;
-
-        /// <summary>
-        /// The process ID for this engine instance. This is only used to determine the name of the log file to write to.
-        /// </summary>
-        public static int ProcessID;
+        public static int ProcessID => Environment.ProcessId;
 
         public const bool NO_LOG_FILE = true;
 
@@ -82,74 +71,14 @@ namespace Lizard.Logic.Util
             }
             else if (!NO_LOG_FILE)
             {
+#pragma warning disable CS0162 // Unreachable code detected
                 UCIClient.LogString("[LOG]: " + s);
+#pragma warning restore CS0162 // Unreachable code detected
             }
 
             Debug.WriteLine(s);
         }
 
-
-        /// <summary>
-        /// If there are multiple instances of this engine running, we won't write to the ucilog file.
-        /// <br></br>
-        /// This uses a FileStream to access it and a mutex to make writes atomic, so having multiple
-        /// processes all doing that at the same time is needlessly risky.
-        /// </summary>
-        public static void CheckConcurrency()
-        {
-            Process thisProc = Process.GetCurrentProcess();
-            ProcessID = thisProc.Id;
-
-            var selfProcs = Process.GetProcesses().Where(x => x.ProcessName == thisProc.ProcessName).ToList();
-
-            int concurrencyCount = 0;
-            int duplicates = 0;
-
-            var thisTime = thisProc.StartTime.Ticks;
-
-            for (int i = 0; i < selfProcs.Count; i++)
-            {
-                try
-                {
-                    //  Windows doesn't like you touching the "System Idle Process" (0) or "System" (4)
-                    //  and will throw an error if you try to get their MainModules,
-                    //  so in case you prefer to rename the engine binary to "Idle" this will hopefully avoid that issue :)
-                    if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && (selfProcs[i].Id == 0 || selfProcs[i].Id == 4))
-                    {
-                        continue;
-                    }
-
-                    //  Ensure that the processes are exactly the same as this one.
-                    //  This checks their entire path, since multiple engine instance concern is
-                    //  only if they are started from the same path.
-                    if (selfProcs[i].MainModule?.FileName != thisProc.MainModule?.FileName)
-                    {
-                        continue;
-                    }
-                }
-                catch (Exception e)
-                {
-                    //  This will be a Win32Exception for trying to enumerate the modules of a SYSTEM process
-                    concurrencyCount++;
-                    continue;
-                }
-
-                duplicates++;
-
-                if (selfProcs[i].StartTime.Ticks < thisTime)
-                {
-                    //  This instance was launched after another, so increase this one's count
-                    concurrencyCount++;
-                }
-            }
-
-            //  If this is the only instance, this should be 0
-            if (concurrencyCount != 0)
-            {
-                Log("Running concurrently! (" + concurrencyCount + " other process" + (concurrencyCount > 1 ? "es" : string.Empty) + ")");
-                IsRunningConcurrently = true;
-            }
-        }
 
         public static string GetCompilerInfo()
         {
@@ -166,10 +95,7 @@ namespace Lizard.Logic.Util
 
             sb.Append(IsAOTAttribute.IsAOT() ? "AOT " : string.Empty);
 
-            if (HasSkipInit)
-            {
-                sb.Append("SkipInit ");
-            }
+            sb.Append(HasSkipInit ? "SkipInit " : string.Empty);
 
             sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
 
@@ -190,23 +116,12 @@ namespace Lizard.Logic.Util
             return sb.ToString();
         }
 
-        public static class Direction
-        {
-            public const int NORTH = 8;
-            public const int EAST = 1;
-            public const int SOUTH = -NORTH;
-            public const int WEST = -EAST;
-
-            public const int NORTH_EAST = NORTH + EAST;
-            public const int SOUTH_EAST = SOUTH + EAST;
-            public const int SOUTH_WEST = SOUTH + WEST;
-            public const int NORTH_WEST = NORTH + WEST;
-        }
 
         /// <summary>
         /// Returns the <see cref="Direction"/> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
         /// </summary>
         public static int ShiftUpDir(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
+
 
         /// <summary>
         /// Returns a bitboard with bits set 1 "above" the bits in <paramref name="b"/>.
@@ -215,23 +130,9 @@ namespace Lizard.Logic.Util
         /// </summary>
         public static ulong Forward(int color, ulong b)
         {
-            return (color == Color.White) ? Shift(Direction.NORTH, b) : Shift(Direction.SOUTH, b);
+            return Shift(ShiftUpDir(color), b);
         }
 
-        /// <summary>
-        /// Returns a bitboard with bits set 1 "below" the bits in <paramref name="b"/>.
-        /// So Backward(Color.White) with a bitboard that has A2 set will return one with A1 set,
-        /// and Backward(Color.Black) returns one with A3 set instead.
-        /// </summary>
-        public static ulong Backward(int color, ulong b)
-        {
-            if (color == Color.White)
-            {
-                return Shift(Direction.SOUTH, b);
-            }
-
-            return Shift(Direction.NORTH, b);
-        }
 
         /// <summary>
         /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
@@ -239,18 +140,17 @@ namespace Lizard.Logic.Util
         public static ulong Shift(int dir, ulong b)
         {
             return dir == Direction.NORTH ? b << 8
-                : dir == Direction.SOUTH ? b >> 8
-                : dir == Direction.NORTH + Direction.NORTH ? b << 16
-                : dir == Direction.SOUTH + Direction.SOUTH ? b >> 16
-                : dir == Direction.EAST ? (b & ~FileHBB) << 1
-                : dir == Direction.WEST ? (b & ~FileABB) >> 1
-                : dir == Direction.NORTH_EAST ? (b & ~FileHBB) << 9
-                : dir == Direction.NORTH_WEST ? (b & ~FileABB) << 7
-                : dir == Direction.SOUTH_EAST ? (b & ~FileHBB) >> 7
-                : dir == Direction.SOUTH_WEST ? (b & ~FileABB) >> 9
-                : 0;
+                 : dir == Direction.SOUTH ? b >> 8
+                 : dir == Direction.NORTH + Direction.NORTH ? b << 16
+                 : dir == Direction.SOUTH + Direction.SOUTH ? b >> 16
+                 : dir == Direction.EAST  ? (b & ~FileHBB) << 1
+                 : dir == Direction.WEST  ? (b & ~FileABB) >> 1
+                 : dir == Direction.NORTH_EAST ? (b & ~FileHBB) << 9
+                 : dir == Direction.NORTH_WEST ? (b & ~FileABB) << 7
+                 : dir == Direction.SOUTH_EAST ? (b & ~FileHBB) >> 7
+                 : dir == Direction.SOUTH_WEST ? (b & ~FileABB) >> 9
+                 : 0;
         }
-
 
 
         /// <summary>
@@ -261,6 +161,7 @@ namespace Lizard.Logic.Util
             return FileABB << GetIndexFile(idx);
         }
 
+
         /// <summary>
         /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
         /// </summary>
@@ -268,8 +169,6 @@ namespace Lizard.Logic.Util
         {
             return Rank1BB << (8 * GetIndexRank(idx));
         }
-
-
 
 
         /// <summary>
@@ -290,9 +189,10 @@ namespace Lizard.Logic.Util
             {
                 Color.White => nameof(Color.White),
                 Color.Black => nameof(Color.Black),
-                _ => "None"
+                _           => "None"
             };
         }
+
 
         /// <summary>
         /// Returns the numerical value of the <paramref name="colorName"/>.
@@ -303,9 +203,10 @@ namespace Lizard.Logic.Util
             {
                 "white" => Color.White,
                 "black" => Color.Black,
-                _ => Color.ColorNB
+                _       => Color.ColorNB
             };
         }
+
 
         /// <summary>
         /// Returns the name of the piece of type <paramref name="n"/>.
@@ -314,15 +215,16 @@ namespace Lizard.Logic.Util
         {
             return n switch
             {
-                Piece.Pawn => nameof(Piece.Pawn),
+                Piece.Pawn   => nameof(Piece.Pawn),
                 Piece.Knight => nameof(Piece.Knight),
                 Piece.Bishop => nameof(Piece.Bishop),
-                Piece.Rook => nameof(Piece.Rook),
-                Piece.Queen => nameof(Piece.Queen),
-                Piece.King => nameof(Piece.King),
-                _ => "None"
+                Piece.Rook   => nameof(Piece.Rook),
+                Piece.Queen  => nameof(Piece.Queen),
+                Piece.King   => nameof(Piece.King),
+                _            => "None"
             };
         }
+
 
         /// <summary>
         /// Returns the type of the piece called <paramref name="pieceName"/>.
@@ -331,15 +233,16 @@ namespace Lizard.Logic.Util
         {
             return pieceName.ToLower() switch
             {
-                "pawn" => Piece.Pawn,
+                "pawn"   => Piece.Pawn,
                 "knight" => Piece.Knight,
                 "bishop" => Piece.Bishop,
-                "rook" => Piece.Rook,
-                "queen" => Piece.Queen,
-                "king" => Piece.King,
-                _ => Piece.None
+                "rook"   => Piece.Rook,
+                "queen"  => Piece.Queen,
+                "king"   => Piece.King,
+                _        => Piece.None
             };
         }
+
 
         /// <summary>
         /// Returns the first letter of the name of the piece of type <paramref name="pieceType"/>, so PieceToFENChar(0 [Piece.Pawn]) returns 'P'.
@@ -348,15 +251,16 @@ namespace Lizard.Logic.Util
         {
             return pieceType switch
             {
-                Piece.Pawn => 'P',
+                Piece.Pawn   => 'P',
                 Piece.Knight => 'N',
                 Piece.Bishop => 'B',
-                Piece.Rook => 'R',
-                Piece.Queen => 'Q',
-                Piece.King => 'K',
-                _ => ' '
+                Piece.Rook   => 'R',
+                Piece.Queen  => 'Q',
+                Piece.King   => 'K',
+                _            => ' '
             };
         }
+
 
         /// <summary>
         /// Returns the numerical piece type of the piece given its FEN character <paramref name="fenChar"/>.
@@ -371,10 +275,9 @@ namespace Lizard.Logic.Util
                 'r' => Piece.Rook,
                 'q' => Piece.Queen,
                 'k' => Piece.King,
-                _ => Piece.None
+                _   => Piece.None
             };
         }
-
 
 
         /// <summary>
@@ -410,20 +313,24 @@ namespace Lizard.Logic.Util
         /// </summary>
         public static char GetFileChar(int fileNumber) => (char)(97 + fileNumber);
 
+
         /// <summary>
         /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
         /// </summary>
         public static int GetFileInt(char fileLetter) => fileLetter - 97;
+
 
         /// <summary>
         /// Returns the file (x coordinate) for the index, which is between A=0 and H=7.
         /// </summary>
         public static int GetIndexFile(int index) => index & 7;
 
+
         /// <summary>
         /// Returns the rank (y coordinate) for the index, which is between 0 and 7.
         /// </summary>
         public static int GetIndexRank(int index) => index >> 3;
+
 
         /// <summary>
         /// Sets <paramref name="x"/> to the file of <paramref name="index"/>, and <paramref name="y"/> to its rank.
@@ -434,6 +341,7 @@ namespace Lizard.Logic.Util
             y = index / 8;
         }
 
+
         /// <summary>
         /// Returns the index of the square with the rank <paramref name="x"/> and file <paramref name="y"/>.
         /// </summary>
@@ -441,6 +349,7 @@ namespace Lizard.Logic.Util
         {
             return (y * 8) + x;
         }
+
 
         /// <summary>
         /// Returns the rank and file of the square <paramref name="idx"/>, which looks like "a1" or "e4".
@@ -458,7 +367,6 @@ namespace Lizard.Logic.Util
         {
             return CoordToIndex(GetFileInt(s[0]), int.Parse(s[1].ToString()) - 1);
         }
-
 
 
         /// <summary>
@@ -563,15 +471,18 @@ namespace Lizard.Logic.Util
             return new string(' ', leftPadding) + s + new string(' ', rightPadding);
         }
 
+
         public static bool EqualsIgnoreCase(this string s, string other)
         {
             return s.Equals(other, StringComparison.OrdinalIgnoreCase);
         }
 
+
         public static bool StartsWithIgnoreCase(this string s, string other)
         {
             return s.StartsWith(other, StringComparison.OrdinalIgnoreCase);
         }
+
 
         public static bool ContainsIgnoreCase(this string s, string other)
         {
@@ -655,6 +566,7 @@ namespace Lizard.Logic.Util
             return sb.ToString();
         }
 
+
         /// <summary>
         /// Returns an appropriately formatted string representing the Score, which is either "cp #" or "mate #".
         /// </summary>
@@ -679,12 +591,6 @@ namespace Lizard.Logic.Util
                 const double NormalizeEvalFactor = 2.4;
                 return "cp " + (int)(score / NormalizeEvalFactor);
             }
-        }
-
-        public static int ConvertRange(int originalStart, int originalEnd, int newStart, int newEnd, int value)
-        {
-            double scale = (double)(newEnd - newStart) / (originalEnd - originalStart);
-            return (int)(newStart + (value - originalStart) * scale);
         }
 
 
@@ -722,10 +628,12 @@ namespace Lizard.Logic.Util
             }
         }
 
+
         public static int AsInt(this bool v)
         {
             return v ? 1 : 0;
         }
+
 
         public static bool AsBool(this int v)
         {

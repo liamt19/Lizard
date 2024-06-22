@@ -5,6 +5,8 @@ using VectorT = System.Runtime.Intrinsics.Vector512;
 using VectorT = System.Runtime.Intrinsics.Vector256;
 #endif
 
+#pragma warning disable CS0162 // Unreachable code detected
+
 namespace Lizard.Logic.NN
 {
     public static unsafe class FunUnrollThings

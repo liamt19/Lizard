@@ -8,7 +8,6 @@ using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
-    [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
         public const int InputBuckets = 5;
@@ -18,18 +17,13 @@ namespace Lizard.Logic.NN
 
         public const int QA = 255;
         public const int QB = 64;
-        private const int QAB = QA * QB;
 
         public const int OutputScale = 400;
-
-        public static readonly int SIMD_CHUNKS_512 = HiddenSize / Vector512<short>.Count;
-        public static readonly int SIMD_CHUNKS_256 = HiddenSize / Vector256<short>.Count;
 
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
         public const string NetworkName = "L1536x5x8_g75_s20-550.bin";
-
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -42,7 +36,7 @@ namespace Lizard.Logic.NN
         private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
-        public static long ExpectedNetworkSize => (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
+        private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
@@ -64,7 +58,7 @@ namespace Lizard.Logic.NN
             FeatureBiases = (short*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
 
             LayerWeights = (short*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
-            LayerBiases = (short*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, VSize.Short));
+            LayerBiases = (short*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
 
             string networkToLoad = NetworkName;
 
@@ -88,7 +82,7 @@ namespace Lizard.Logic.NN
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
-                Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
+                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {stream.Position} / {stream.Length}");
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
                 if (exitIfFail)
                 {
@@ -242,6 +236,8 @@ namespace Lizard.Logic.NN
             Vector256<short> zeroVec = Vector256<short>.Zero;
             Vector256<int> sum = Vector256<int>.Zero;
 
+            int SimdChunks = HiddenSize / Vector256<short>.Count;
+
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
@@ -251,7 +247,7 @@ namespace Lizard.Logic.NN
             var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
             var theirWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
 
-            for (int i = 0; i < SIMD_CHUNKS_256; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
                 Vector256<short> mult = clamp * ourWeights[i];
@@ -262,7 +258,7 @@ namespace Lizard.Logic.NN
                 sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
             }
 
-            for (int i = 0; i < SIMD_CHUNKS_256; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
                 Vector256<short> mult = clamp * theirWeights[i];
@@ -275,7 +271,7 @@ namespace Lizard.Logic.NN
 
             int output = Vector256.Sum(sum);
 
-            return (output / QA + LayerBiases[outputBucket]) * OutputScale / QAB;
+            return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
         }
 
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)

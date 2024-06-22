@@ -1,7 +1,5 @@
 ﻿namespace Lizard.Logic.Util
 {
-    //  SkipStaticConstructor since this introduces some unnecessary strings
-    [SkipStaticConstructor]
     public static class FishBench
     {
         private static Dictionary<string, ulong[]> FENDict = new Dictionary<string, ulong[]>()

@@ -43,7 +43,7 @@ namespace Lizard
             }
 
 
-            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+            Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) {
                 if (!SearchPool.StopThreads)
                 {
                     //  If a search is ongoing, stop it instead of closing the console.
@@ -64,8 +64,6 @@ namespace Lizard
 
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
-
-            Utilities.CheckConcurrency();
 
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,

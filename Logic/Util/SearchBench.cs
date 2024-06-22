@@ -1,6 +1,5 @@
 ﻿namespace Lizard.Logic.Util
 {
-    [SkipStaticConstructor]
     public static class SearchBench
     {
 
