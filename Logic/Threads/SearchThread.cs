@@ -377,6 +377,8 @@ namespace Lizard.Logic.Threads
                     rm.PreviousScore = rm.Score;
                 }
 
+                int usedDepth = RootDepth;
+
                 for (PVIndex = 0; PVIndex < multiPV; PVIndex++)
                 {
                     if (SearchPool.StopThreads)
@@ -388,7 +390,7 @@ namespace Lizard.Logic.Threads
                     int score = RootMoves[PVIndex].AverageScore;
                     SelDepth = 0;
 
-                    if (RootDepth >= 5)
+                    if (usedDepth >= 5)
                     {
                         window = AspirationWindowMargin;
                         alpha = Math.Max(AlphaStart, score - window);
@@ -397,7 +399,7 @@ namespace Lizard.Logic.Threads
 
                     while (true)
                     {
-                        score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, RootDepth), false);
+                        score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, usedDepth), false);
 
                         StableSort(ref RootMoves, PVIndex);
 
@@ -408,10 +410,12 @@ namespace Lizard.Logic.Threads
                         {
                             beta = (alpha + beta) / 2;
                             alpha = Math.Max(alpha - window, AlphaStart);
+                            usedDepth = RootDepth;
                         }
                         else if (score >= beta)
                         {
                             beta = Math.Min(beta + window, BetaStart);
+                            usedDepth = Math.Max(usedDepth - 1, RootDepth - 5);
                         }
                         else
                             break;
@@ -445,7 +449,7 @@ namespace Lizard.Logic.Threads
                     return;
                 }
 
-                
+
                 if (lastBestRootMove.Move == RootMoves[0].Move)
                 {
                     stability++;
