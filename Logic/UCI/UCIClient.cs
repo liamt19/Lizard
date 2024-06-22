@@ -624,8 +624,8 @@ namespace Lizard.Logic.UCI
             Options[nameof(NMPEvalDivisor)].AutoMinMax();
             Options[nameof(NMPEvalMin)].SetMinMax(0, 6); 
 
-            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 12);
-            Options[nameof(ReverseFutilityPruningPerDepth)].AutoMinMax();
+            Options[nameof(RFPMaxDepth)].SetMinMax(4, 12);
+            Options[nameof(RFPMargin)].AutoMinMax();
 
             Options[nameof(ProbCutMinDepth)].SetMinMax(1, 8);
             Options[nameof(ProbCutBeta)].AutoMinMax();
@@ -639,6 +639,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(FutilityExchangeBase)].AutoMinMax();
 
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
+            Options[nameof(SkipQuietsMaxDepth)].SetMinMax(3, 13);
+            Options[nameof(QSSeeThreshold)].SetMinMax(30, 150);
+
             Options[nameof(AspirationWindowMargin)].AutoMinMax();
 
             Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
@@ -702,7 +705,7 @@ namespace Lizard.Logic.UCI
         {
             string output =
                 "" +
-                "SingularExtensionsMinDepth, 7\r\nSingularExtensionsNumerator, 9\r\nSingularExtensionsBeta, 22\r\nSingularExtensionsDepthAugment, -1\r\nNMPMinDepth, 6\r\nNMPReductionBase, 5\r\nNMPReductionDivisor, 5\r\nReverseFutilityPruningMaxDepth, 7\r\nReverseFutilityPruningPerDepth, 47\r\nProbCutBeta, 191\r\nProbCutBetaImproving, 100\r\nProbCutMinDepth, 2\r\nLMRExtensionThreshold, 131\r\nLMRExchangeBase, 216\r\nHistoryReductionMultiplier, 3\r\nFutilityExchangeBase, 181\r\nExtraCutNodeReductionMinDepth, 5\r\nAspirationWindowMargin, 11\r\nHistoryCaptureBonusMargin, 158\r\nOrderingGivesCheckBonus, 10345\r\nOrderingVictimValueMultiplier, 14\r\nOrderingHistoryDivisor, 11\r\nStatBonusMult, 170\r\nStatBonusSub, 95\r\nStatBonusMax, 1822\r\nStatMalusMult, 466\r\nStatMalusSub, 97\r\nStatMalusMax, 1787\r\nSEEValue_Pawn, 112\r\nSEEValue_Knight, 794\r\nSEEValue_Bishop, 868\r\nSEEValue_Rook, 1324\r\nSEEValue_Queen, 2107\r\nValuePawn, 199\r\nValueKnight, 920\r\nValueBishop, 1058\r\nValueRook, 1553\r\nValueQueen, 3127" +
+                "SingularExtensionsMinDepth, 5\r\nSingularExtensionsNumerator, 10\r\nSingularExtensionsBeta, 25\r\nSingularExtensionsDepthAugment, 0\r\nNMPMinDepth, 6\r\nNMPReductionBase, 4\r\nNMPReductionDivisor, 4\r\nNMPEvalDivisor, 197\r\nNMPEvalMin, 2\r\nReverseFutilityPruningMaxDepth, 6\r\nReverseFutilityPruningPerDepth, 47\r\nProbCutBeta, 245\r\nProbCutBetaImproving, 105\r\nLMRExtensionThreshold, 123\r\nLMRExchangeBase, 212\r\nHistoryReductionMultiplier, 3\r\nFutilityExchangeBase, 186\r\nExtraCutNodeReductionMinDepth, 4\r\nSkipQuietsMaxDepth, 9\r\nQSSeeThreshold, 78\r\nAspirationWindowMargin, 12\r\nHistoryCaptureBonusMargin, 166\r\nOrderingGivesCheckBonus, 9611\r\nOrderingVictimValueMultiplier, 14\r\nStatBonusMult, 178\r\nStatBonusSub, 81\r\nStatBonusMax, 1592\r\nStatMalusMult, 574\r\nStatMalusSub, 109\r\nStatMalusMax, 1569\r\nSEEValue_Pawn, 103\r\nSEEValue_Knight, 863\r\nSEEValue_Bishop, 1009\r\nSEEValue_Rook, 1396\r\nSEEValue_Queen, 2222\r\nValuePawn, 170\r\nValueKnight, 797\r\nValueBishop, 975\r\nValueRook, 1604\r\nValueQueen, 3149" +
                 "";
 
             var lines = output.Split("\r\n");

@@ -205,20 +205,20 @@ namespace Lizard.Logic.Search
             //  We accept Reverse Futility Pruning for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
-            //  at a depth at or below the max (currently 7)
+            //  at a depth at or below the max (currently 6)
             //  which don't have a TT move,
             //  so long as:
             //  The static evaluation (eval) is below a TT win or a mate score,
             //  the eval would cause a beta cutoff,
             //  and the eval is significantly above beta.
-            if (UseReverseFutilityPruning
+            if (UseRFP
                 && !ss->TTPV
                 && !doSkip
-                && depth <= ReverseFutilityPruningMaxDepth
+                && depth <= RFPMaxDepth
                 && ttMove.Equals(Move.Null)
                 && (eval < ScoreAssuredWin)
                 && (eval >= beta)
-                && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
+                && (eval - GetRFPMargin(depth, improving)) >= beta)
             {
                 return (eval + beta) / 2;
             }
@@ -233,7 +233,7 @@ namespace Lizard.Logic.Search
             //  The previous node didn't start a singular extension search,
             //  the previous node didn't start a null move search,
             //  and we have non-pawn material (important for Zugzwang).
-            if (UseNullMovePruning
+            if (UseNMP
                 && !isPV
                 && depth >= NMPMinDepth
                 && eval >= beta
@@ -326,7 +326,7 @@ namespace Lizard.Logic.Search
                 && depth >= ExtraCutNodeReductionMinDepth)
             {
                 //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 6).
+                //  if the depth is at or above a threshold (currently 4).
                 depth--;
             }
 
@@ -398,7 +398,7 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
+                    if (skipQuiets && depth <= SkipQuietsMaxDepth && !(givesCheck || isCapture))
                     {
                         continue;
                     }
@@ -418,7 +418,7 @@ namespace Lizard.Logic.Search
                 //  non-root nodes
                 //  which aren't a response to a previous singular extension search,
                 //  haven't already been extended significantly,
-                //  and have a depth at or above 7 (or 8 for PV searches + PV TT entry hits),
+                //  and have a depth at or above 5 (or 6 for PV searches + PV TT entry hits),
                 //  so long as:
                 //  The current move is the TT hit's move,
                 //  the TT hit's score isn't a definitive win/loss,
@@ -880,7 +880,7 @@ namespace Lizard.Logic.Search
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeThreshold))
                     {
                         //  This move loses a significant amount of material
                         continue;
@@ -1053,9 +1053,9 @@ namespace Lizard.Logic.Search
         /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
         /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
-        private static int GetReverseFutilityMargin(int depth, bool improving)
+        private static int GetRFPMargin(int depth, bool improving)
         {
-            return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;
+            return (depth - (improving ? 1 : 0)) * RFPMargin;
         }
 
 
