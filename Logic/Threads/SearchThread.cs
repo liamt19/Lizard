@@ -420,7 +420,7 @@ namespace Lizard.Logic.Threads
                         else
                             break;
 
-                        window += window / 2;
+                        window = (int)(window * 1.6);
                     }
 
                     StableSort(ref RootMoves, 0, PVIndex + 1);
