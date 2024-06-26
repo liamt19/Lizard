@@ -40,7 +40,8 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
+                    sm.Score = (!Searches.SEE_GE(pos, m, 0) ? -1000000 : 0) + 
+                               (GetPieceValue(capturedPiece)) +
                                (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
@@ -88,7 +89,8 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
+                    sm.Score = (!Searches.SEE_GE(pos, m, 0) ? -1000000 : 0) +
+                               (GetPieceValue(capturedPiece)) +
                                (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
