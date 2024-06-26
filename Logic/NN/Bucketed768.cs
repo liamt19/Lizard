@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-550.bin";
+        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
