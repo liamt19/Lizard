@@ -218,6 +218,9 @@
         public static int OrderingVictimValueMultiplier = 14;
 
 
+        public const int CorrectionScale = 1024;
+        public const int CorrectionGrain = 256;
+        public const short CorrectionMax = CorrectionGrain * 64;
 
         /// <summary>
         /// The value multiplied by the depth

@@ -576,6 +576,8 @@ namespace Lizard.Logic.Threads
             History.MainHistory.Clear();
             History.CaptureHistory.Clear();
 
+            History.CorrectionHistory.Clear();
+
             for (int i = 0; i < 2; i++)
             {
                 History.Continuations[i][0].Clear();
