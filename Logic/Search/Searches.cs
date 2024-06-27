@@ -710,8 +710,7 @@ namespace Lizard.Logic.Search
                 tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, ss->TTPV);
 
                 if (!ss->InCheck
-                    && !bestMove.IsNull()
-                    && !pos.IsCapture(bestMove)
+                    && (bestMove.IsNull() || !pos.IsCapture(bestMove))
                     && ((bound == TTNodeType.Exact)
                      || (bound == TTNodeType.Beta  && bestScore <= ss->StaticEval)
                      || (bound == TTNodeType.Alpha && bestScore >= ss->StaticEval)))
