@@ -21,14 +21,15 @@ namespace Lizard.Logic.Core
         [FieldOffset( 64)] public fixed ulong Pinners[2];
         [FieldOffset( 80)] public fixed int KingSquares[2];
         [FieldOffset( 88)] public ulong Hash = 0;
-        [FieldOffset( 96)] public ulong Checkers = 0;
-        [FieldOffset(104)] public int HalfmoveClock = 0;
-        [FieldOffset(108)] public int EPSquare = EPNone;
-        [FieldOffset(112)] public int CapturedPiece = None;
-        [FieldOffset(116)] public int PliesFromNull = 0;
-        [FieldOffset(120)] public CastlingStatus CastleStatus = CastlingStatus.None;
-        [FieldOffset(124)] private fixed byte _pad0[4];
-        [FieldOffset(128)] public Accumulator* Accumulator;
+        [FieldOffset( 96)] public ulong PawnHash = 0;
+        [FieldOffset(104)] public ulong Checkers = 0;
+        [FieldOffset(112)] public int HalfmoveClock = 0;
+        [FieldOffset(116)] public int EPSquare = EPNone;
+        [FieldOffset(120)] public int CapturedPiece = None;
+        [FieldOffset(124)] public int PliesFromNull = 0;
+        [FieldOffset(128)] public CastlingStatus CastleStatus = CastlingStatus.None;
+        [FieldOffset(132)] private fixed byte _pad0[4];
+        [FieldOffset(136)] public Accumulator* Accumulator;
 
         public StateInfo()
         {

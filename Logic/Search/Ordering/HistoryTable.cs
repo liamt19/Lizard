@@ -19,6 +19,8 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public readonly CaptureHistoryTable CaptureHistory;
 
+        public readonly CorrectionHistoryTable CorrectionHistory;
+
         /// <summary>
         /// Index with [inCheck] [Capture]
         /// <para></para>
@@ -32,6 +34,7 @@ namespace Lizard.Logic.Search.History
         {
             MainHistory = new MainHistoryTable();
             CaptureHistory = new CaptureHistoryTable();
+            CorrectionHistory = new CorrectionHistoryTable();
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
@@ -53,6 +56,7 @@ namespace Lizard.Logic.Search.History
         {
             MainHistory.Dispose();
             CaptureHistory.Dispose();
+            CorrectionHistory.Dispose();
 
             for (int i = 0; i < 2; i++)
             {
