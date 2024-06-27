@@ -82,7 +82,7 @@ namespace Lizard.Logic.Search
 
             int startingAlpha = alpha;
 
-            short unadjustedEval = ScoreNone;
+            short rawEval = ScoreNone;
             short eval = ss->StaticEval;
 
             bool doSkip = ss->Skip != Move.Null;
@@ -173,15 +173,15 @@ namespace Lizard.Logic.Search
             {
                 //  Use the static evaluation from the previous call to Negamax,
                 //  which has the same position as this one.
-                unadjustedEval = eval = ss->StaticEval;
+                rawEval = eval = ss->StaticEval;
             }
             else if (ss->TTHit)
             {
                 //  Use the static evaluation from the TT if it had one, or get a new one.
                 //  We don't overwrite that TT's StatEval score yet though.
-                unadjustedEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, unadjustedEval);
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -192,11 +192,11 @@ namespace Lizard.Logic.Search
             else
             {
                 //  Get the static evaluation and store it in the empty TT slot.
-                unadjustedEval = NNUE.GetEvaluation(pos);
+                rawEval = NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, unadjustedEval);
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, unadjustedEval, ss->TTPV);
+                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
@@ -707,15 +707,16 @@ namespace Lizard.Logic.Search
 
                 Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
 
-                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, unadjustedEval, ss->TTPV);
+                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, ss->TTPV);
 
                 if (!ss->InCheck
+                    && !bestMove.IsNull()
                     && !pos.IsCapture(bestMove)
                     && ((bound == TTNodeType.Exact)
-                     || (bound == TTNodeType.Beta && bestScore <= ss->StaticEval)
+                     || (bound == TTNodeType.Beta  && bestScore <= ss->StaticEval)
                      || (bound == TTNodeType.Alpha && bestScore >= ss->StaticEval)))
                 {
-                    UpdateCorrectionHistory(pos, ss, bestScore, Math.Min(depth + 1, 16));
+                    UpdateCorrectionHistory(pos, bestScore - ss->StaticEval, Math.Min(depth + 1, 16));
                 }
             }
 
@@ -1042,19 +1043,20 @@ namespace Lizard.Logic.Search
         }
 
 
-        private static short AdjustEval(SearchThread thread, int us, short unadjustedEval)
+        private static short AdjustEval(SearchThread thread, int us, short rawEval)
         {
-            return (short)(unadjustedEval + thread.History.CorrectionHistory[thread, us] / CorrectionGrain);
+            return (short)(rawEval + thread.History.CorrectionHistory[thread, us] / CorrectionGrain);
         }
 
 
-        private static void UpdateCorrectionHistory(Position pos, SearchStackEntry* ss, int bestScore, int depth)
+        private static void UpdateCorrectionHistory(Position pos, int delta, int depth)
         {
             ref var histVal = ref pos.Owner.History.CorrectionHistory[CorrectionIndex(pos, pos.ToMove)];
 
             var oldFactor = histVal * (CorrectionScale - depth);
-            var newFactor = (bestScore - ss->StaticEval) * CorrectionGrain * depth;
+            var newFactor = delta * CorrectionGrain * depth;
             var bonus = (oldFactor + newFactor) / CorrectionScale;
+
             histVal = (CorrectionStatEntry)Math.Clamp(bonus, -CorrectionMax, CorrectionMax);
         }
 
