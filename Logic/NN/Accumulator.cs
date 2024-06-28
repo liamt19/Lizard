@@ -14,8 +14,6 @@ namespace Lizard.Logic.NN
 
         public const int ByteSize = Bucketed768.L1_SIZE * sizeof(short);
 
-        public static int VectorCount => Bucketed768.L1_SIZE / VSize.Short;
-
         public readonly Vector256<short>* White;
         public readonly Vector256<short>* Black;
 

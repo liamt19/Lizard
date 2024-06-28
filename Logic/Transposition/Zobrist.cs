@@ -12,6 +12,9 @@ namespace Lizard.Logic.Transposition
         private static ulong BlackHash;
         private static Random rand = new Random(DefaultSeed);
 
+        public static ulong HashForPiece(int pc, int pt, int sq) => ColorPieceSquareHashes[pc][pt][sq];
+        public static ulong ColorHash => BlackHash;
+
         [ModuleInitializer]
         public static void Initialize()
         {

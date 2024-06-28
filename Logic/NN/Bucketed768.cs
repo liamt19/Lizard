@@ -13,7 +13,6 @@ using static Lizard.Logic.NN.FunUnrollThings;
 
 namespace Lizard.Logic.NN
 {
-    [SkipStaticConstructor]
     public static unsafe partial class Bucketed768
     {
         public const int INPUT_BUCKETS = 5;
@@ -32,16 +31,16 @@ namespace Lizard.Logic.NN
         public static readonly int SIMD_CHUNKS_256 = L1_SIZE / Vector256<short>.Count;
 
 #if USE_AVX2
-        public const int L1_CHUNK_SIZE = VSize.Short;
-        public const int L2_CHUNK_SIZE = VSize.Float;
-        public const int L3_CHUNK_SIZE = VSize.Float;
+        public static readonly int L1_CHUNK_SIZE = Vector256<short>.Count;
+        public static readonly int L2_CHUNK_SIZE = Vector256<float>.Count;
+        public static readonly int L3_CHUNK_SIZE = Vector256<float>.Count;
 #else
         public static readonly int L1_CHUNK_SIZE = 1;
         public static readonly int L2_CHUNK_SIZE = 1;
         public static readonly int L3_CHUNK_SIZE = 1;
 #endif
 
-        public const string NetworkName = "morelayers_1280x5_16_32_8-435-params.bin";
+        public const string NetworkName = "morelayers_1280x5_16_32_8-475-params.bin";
 
         private static readonly UQNetContainer UQNet;
         public static readonly NetContainer<short, float> Net;
@@ -103,7 +102,7 @@ namespace Lizard.Logic.NN
             if (stream.Position + toRead > stream.Length)
             {
                 Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
-                Console.WriteLine("It expects to read " + toRead + " bytes, but the stream's position is " + stream.Position + "/" + stream.Length);
+                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {stream.Position} / {stream.Length}");
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
                 if (exitIfFail)
                 {

@@ -11,6 +11,7 @@ using VInt = System.Runtime.Intrinsics.Vector256<int>;
 using VShort = System.Runtime.Intrinsics.Vector256<short>;
 #endif
 
+#pragma warning disable CS0162 // Unreachable code detected
 
 namespace Lizard.Logic.NN
 {
@@ -49,7 +50,9 @@ namespace Lizard.Logic.NN
                 RefreshAccumulatorPerspective(pos, Black);
             }
 
-            int outputBucket = (int)((popcount(pos.bb.Occupancy) - 2) / 4);
+            //  Formula from BlackMarlin
+            int occ = (int)popcount(pos.bb.Occupancy);
+            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
             var ourData =   (short*)(accumulator[pos.ToMove]);
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);
@@ -500,7 +503,7 @@ namespace Lizard.Logic.NN
 
             int output = NNUE.SumVectorNoHadd(sumVec);
 
-            return (output / QA + L2Biases[outputBucket]) * 400 / (QA * QB);
+            return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
         }
 #endif
 

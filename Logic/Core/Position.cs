@@ -247,6 +247,7 @@ namespace Lizard.Logic.Core
             State++;
 
             State->HalfmoveClock++;
+            State->PliesFromNull++;
             GamePly++;
 
             if (ToMove == Black)
@@ -511,6 +512,7 @@ namespace Lizard.Logic.Core
             State->Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
             State->HalfmoveClock++;
+            State->PliesFromNull = 0;
 
             SetCheckInfo();
 
@@ -1054,8 +1056,10 @@ namespace Lizard.Logic.Core
                 NativeMemory.Clear(State, StateInfo.StateCopySize);
                 State->CastleStatus = CastlingStatus.None;
                 State->HalfmoveClock = 0;
+                State->PliesFromNull = 0;
 
                 //  TODO: set GamePly to 0 here?
+                GamePly = 0;
 
                 for (int i = 0; i < splits.Length; i++)
                 {

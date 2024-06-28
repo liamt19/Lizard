@@ -121,17 +121,9 @@
                 newSearchTime = PlayerTime;
             }
 
-            /*
-            At 15+0.15
-            Score of SoftNodeTM vs Baseline: 156 - 99 - 254  [0.556] 509
-            ...      SoftNodeTM playing White: 133 - 9 - 113  [0.743] 255
-            ...      SoftNodeTM playing Black: 23 - 90 - 141  [0.368] 254
-            ...      White vs Black: 223 - 32 - 254  [0.688] 509
-            Elo difference: 39.1 +/- 21.4, LOS: 100.0 %, DrawRatio: 49.9 %
-            SPRT: llr 2.9 (100.4%), lbound -2.25, ubound 2.89 - H1 was accepted
-            */
-            //  Values from Clarity
-            SoftTimeLimit = 0.6 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
+
+            //  Values from Clarity, then slightly adjusted
+            SoftTimeLimit = 0.65 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
 
             MaxSearchTime = newSearchTime;
             Log("Setting search time to " + SoftTimeLimit + ", hard limit at " + newSearchTime);

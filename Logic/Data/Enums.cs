@@ -99,6 +99,19 @@
         public const int H = 7;
     }
 
+    public static class Direction
+    {
+        public const int NORTH = 8;
+        public const int EAST = 1;
+        public const int SOUTH = -NORTH;
+        public const int WEST = -EAST;
+
+        public const int NORTH_EAST = NORTH + EAST;
+        public const int SOUTH_EAST = SOUTH + EAST;
+        public const int SOUTH_WEST = SOUTH + WEST;
+        public const int NORTH_WEST = NORTH + WEST;
+    }
+
     public static class Squares
     {
         public const int A1 = 0;

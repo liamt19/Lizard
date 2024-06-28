@@ -27,19 +27,14 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// The age of the TT, which is increased for every call to <see cref="Threads.SearchThread.MainThreadSearch"/>.
         /// </summary>
-        public static ushort Age = 0;
-
-        private static bool Initialized = false;
+        public static byte Age = 0;
 
         static TranspositionTable()
         {
-            if (!Initialized)
-            {
-                Initialize(SearchOptions.Hash);
+            Initialize(SearchOptions.Hash);
 
-                Assert(ClusterCount > MinTTClusters,
-                    $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
-            }
+            Assert(ClusterCount > MinTTClusters,
+                $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
         }
 
         /// <summary>
@@ -59,7 +54,9 @@ namespace Lizard.Logic.Transposition
             }
 
             ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*)AlignedAllocZeroed(((nuint)sizeof(TTCluster) * (nuint)ClusterCount), AllocAlignment);
+            Clusters = (TTCluster*)AlignedAllocZeroed(((nuint)sizeof(TTCluster) * (nuint)ClusterCount), (1024 * 1024));
+            AdviseHugePage(Clusters, ((nuint)sizeof(TTCluster) * (nuint)ClusterCount));
+
             for (ulong i = 0; i < ClusterCount; i++)
             {
                 Clusters[i] = new TTCluster();
@@ -113,8 +110,6 @@ namespace Lizard.Logic.Transposition
                 //  If the entry's key matches, or the entry is empty, then pick this one.
                 if (tte[i].Key == key || tte[i].IsEmpty)
                 {
-                    tte[i].AgePVType = (sbyte)(Age | (tte[i].AgePVType & (TT_AGE_INC - 1)));
-
                     tte = &tte[i];
 
                     //  We return true if the entry isn't empty, which means that tte is valid.
@@ -130,8 +125,8 @@ namespace Lizard.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if (((replace->_depth - (TT_AGE_CYCLE + Age - replace->AgePVType)) & TT_AGE_MASK) >
-                    ((tte[i]._depth - (TT_AGE_CYCLE + Age - tte[i].AgePVType)) & TT_AGE_MASK))
+                if ((replace->RawDepth - replace->RelAge(TranspositionTable.Age)) >
+                    (  tte[i].RawDepth -   tte[i].RelAge(TranspositionTable.Age)))
                 {
                     replace = &tte[i];
                 }
@@ -175,7 +170,7 @@ namespace Lizard.Logic.Transposition
 
                 for (int j = 0; j < EntriesPerCluster; j++)
                 {
-                    if (!cluster[j].IsEmpty && (cluster[j].AgePVType & TT_AGE_MASK) == (Age & TT_AGE_MASK))
+                    if (!cluster[j].IsEmpty && (cluster[j].Age) == (Age & TT_AGE_MASK))
                     {
                         entries++;
                     }

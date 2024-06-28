@@ -41,7 +41,7 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor);
+                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
                 {
@@ -89,7 +89,7 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / OrderingHistoryDivisor);
+                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
                 {
@@ -114,7 +114,7 @@ namespace Lizard.Logic.Search.Ordering
         /// Assigns scores to each of the <paramref name="size"/> moves in the <paramref name="list"/>.
         /// <br></br>
         /// This is only called for ProbCut, so the only moves in <paramref name="list"/> should be generated 
-        /// using <see cref="GenLoud"/>, which only generates captures and promotions.
+        /// using <see cref="GenNoisy"/>, which only generates captures and promotions.
         /// </summary>
         public static void AssignProbCutScores(ref Bitboard bb, ScoredMove* list, int size)
         {

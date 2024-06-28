@@ -43,7 +43,7 @@ namespace Lizard
             }
 
 
-            Console.CancelKeyPress += delegate (object? sender, ConsoleCancelEventArgs e) {
+            Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) {
                 if (!SearchPool.StopThreads)
                 {
                     //  If a search is ongoing, stop it instead of closing the console.
@@ -65,8 +65,6 @@ namespace Lizard
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
 
-            Utilities.CheckConcurrency();
-
             //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
             //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
             //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
@@ -77,11 +75,7 @@ namespace Lizard
 
         private static void DoInputLoop()
         {
-#if DEV
-            Log("Lizard (DEV) version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-#else
-            Log("Lizard version " + EngineBuildVersion + " - " + EngineTagLine + "\r\n");
-#endif
+            Log("Lizard version " + EngineBuildVersion + "\r\n");
 
             ThreadSetup setup = new ThreadSetup();
             while (true)
@@ -113,7 +107,7 @@ namespace Lizard
                 }
                 else if (input.Equals("listmoves"))
                 {
-                    PrintMoves(true);
+                    PrintMoves();
                 }
                 else if (input.StartsWithIgnoreCase("move "))
                 {
@@ -308,49 +302,15 @@ namespace Lizard
         }
 
 
-        private static void PrintMoves(bool full = false)
+        private static void PrintMoves()
         {
             ScoredMove* pseudo = stackalloc ScoredMove[MoveListSize];
             int pseudoCnt = p.GenPseudoLegal(pseudo);
-
             Log("Pseudo: [" + Stringify(pseudo, p, pseudoCnt) + "]");
 
             ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
             int legalCnt = p.GenLegal(legal);
-
             Log("Legal: [" + Stringify(legal, p, legalCnt) + "]");
-
-
-            if (full)
-            {
-                Log("\n");
-
-                if (p.Checked)
-                {
-                    ScoredMove* evasions = stackalloc ScoredMove[MoveListSize];
-                    int evasionsSize = p.GenAll<GenEvasions>(evasions);
-                    Log("Evasions: [" + Stringify(evasions, p, evasionsSize) + "]");
-                }
-                else
-                {
-                    ScoredMove* nonEvasions = stackalloc ScoredMove[MoveListSize];
-                    int nonEvasionsSize = p.GenAll<GenNonEvasions>(nonEvasions);
-                    Log("Non-Evasions: [" + Stringify(nonEvasions, p, nonEvasionsSize) + "]");
-                }
-
-                ScoredMove* captures = stackalloc ScoredMove[MoveListSize];
-                int capturesSize = p.GenAll<GenLoud>(captures);
-                Log("Captures: [" + Stringify(captures, p, capturesSize) + "]");
-
-                ScoredMove* quiets = stackalloc ScoredMove[MoveListSize];
-                int quietsSize = p.GenAll<GenQuiets>(quiets);
-                Log("Quiets: [" + Stringify(quiets, p, quietsSize) + "]");
-
-                ScoredMove* checks = stackalloc ScoredMove[MoveListSize];
-                int checksSize = p.GenAll<GenQChecks>(checks);
-                Log("Checks: [" + Stringify(checks, p, checksSize) + "]");
-                Log("\n\n");
-            }
         }
 
 

@@ -1,7 +1,12 @@
-﻿using System.Text;
+﻿
+#pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
+#pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
+
+using System.Text;
 
 namespace Lizard.Logic.Data
 {
+
 
     public unsafe struct Move
     {
@@ -104,6 +109,7 @@ namespace Lizard.Logic.Data
         }
 
 
+        public Move(int from, int to) => _data = (ushort)(to | (from << 6));
         public void SetNew(int from, int to) => _data = (ushort)(to | (from << 6));
 
         public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);

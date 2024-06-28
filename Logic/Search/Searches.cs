@@ -50,7 +50,7 @@ namespace Lizard.Logic.Search
         ///     The depth to search to, which is then extended by QSearch.
         /// </param>
         /// <returns>The evaluation of the best move.</returns>
-        public static int Negamax<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
+        public static int Negamax<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
         {
             bool isRoot = typeof(NodeType) == typeof(RootNode);
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
@@ -59,10 +59,16 @@ namespace Lizard.Logic.Search
             //  by checking all of the available captures after the last move (in depth 1).
             if (depth <= 0)
             {
-                return QSearch<NodeType>(ref info, ss, alpha, beta, depth);
+                return QSearch<NodeType>(pos, ss, alpha, beta, depth);
             }
 
-            Position pos = info.Position;
+            if (!isRoot && alpha < ScoreDraw && Cuckoo.HasCycle(pos, ss->Ply))
+            {
+                alpha = ScoreDraw;
+                if (alpha >= beta)
+                    return alpha;
+            }
+
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
@@ -84,8 +90,8 @@ namespace Lizard.Logic.Search
             {
                 thisThread.CheckupCount = 0;
                 //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (info.TimeManager.CheckUp() ||
-                    SearchPool.GetNodeCount() >= info.MaxNodes)
+                if (SearchPool.SharedInfo.TimeManager.CheckUp() ||
+                    SearchPool.GetNodeCount() >= SearchPool.SharedInfo.MaxNodes)
                 {
                     SearchPool.StopThreads = true;
                 }
@@ -199,20 +205,20 @@ namespace Lizard.Logic.Search
             //  We accept Reverse Futility Pruning for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
-            //  at a depth at or below the max (currently 7)
+            //  at a depth at or below the max (currently 6)
             //  which don't have a TT move,
             //  so long as:
             //  The static evaluation (eval) is below a TT win or a mate score,
             //  the eval would cause a beta cutoff,
             //  and the eval is significantly above beta.
-            if (UseReverseFutilityPruning
+            if (UseRFP
                 && !ss->TTPV
                 && !doSkip
-                && depth <= ReverseFutilityPruningMaxDepth
+                && depth <= RFPMaxDepth
                 && ttMove.Equals(Move.Null)
                 && (eval < ScoreAssuredWin)
                 && (eval >= beta)
-                && (eval - GetReverseFutilityMargin(depth, improving)) >= beta)
+                && (eval - GetRFPMargin(depth, improving)) >= beta)
             {
                 return (eval + beta) / 2;
             }
@@ -227,7 +233,7 @@ namespace Lizard.Logic.Search
             //  The previous node didn't start a singular extension search,
             //  the previous node didn't start a null move search,
             //  and we have non-pawn material (important for Zugzwang).
-            if (UseNullMovePruning
+            if (UseNMP
                 && !isPV
                 && depth >= NMPMinDepth
                 && eval >= beta
@@ -236,14 +242,14 @@ namespace Lizard.Logic.Search
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.MaterialCountNonPawn[pos.ToMove] > 0)
             {
-                int reduction = NMPReductionBase + (depth / NMPReductionDivisor);
+                int reduction = NMPReductionBase + (depth / NMPReductionDivisor) + Math.Min((eval - beta) / NMPEvalDivisor, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
-                info.Position.MakeNullMove();
-                score = -Negamax<NonPVNode>(ref info, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
-                info.Position.UnmakeNullMove();
+                pos.MakeNullMove();
+                score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
+                pos.UnmakeNullMove();
 
                 if (score >= beta)
                 {
@@ -274,7 +280,7 @@ namespace Lizard.Logic.Search
                 //  nnnnnnnn/PPPPPPPP/1N1N4/1rbrB3/1QbR1q2/1nRn4/2B5/3K3k w - - 0 1
                 //  This position has 88 different captures (the most I could come up with), so 128 as a limit is fair.
                 ScoredMove* captures = stackalloc ScoredMove[NormalListCapacity];
-                int numCaps = pos.GenAll<GenLoud>(captures);
+                int numCaps = pos.GenAll<GenNoisy>(captures);
                 AssignProbCutScores(ref bb, captures, numCaps);
 
                 for (int i = 0; i < numCaps; i++)
@@ -297,12 +303,12 @@ namespace Lizard.Logic.Search
 
                     pos.MakeMove(m);
 
-                    score = -QSearch<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
+                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
 
                     if (score >= probBeta)
                     {
                         //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(ref info, ss + 1, -probBeta, -probBeta + 1, depth - 4, !cutNode);
+                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
                     }
 
                     pos.UnmakeMove(m);
@@ -316,11 +322,11 @@ namespace Lizard.Logic.Search
 
 
             if (ttMove.Equals(Move.Null)
-                && cutNode
+                && (cutNode || isPV)
                 && depth >= ExtraCutNodeReductionMinDepth)
             {
                 //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 6).
+                //  if the depth is at or above a threshold (currently 4).
                 depth--;
             }
 
@@ -392,7 +398,7 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= 8 && !(givesCheck || isCapture))
+                    if (skipQuiets && depth <= SkipQuietsMaxDepth && !(givesCheck || isCapture))
                     {
                         continue;
                     }
@@ -412,7 +418,7 @@ namespace Lizard.Logic.Search
                 //  non-root nodes
                 //  which aren't a response to a previous singular extension search,
                 //  haven't already been extended significantly,
-                //  and have a depth at or above 7 (or 8 for PV searches + PV TT entry hits),
+                //  and have a depth at or above 5 (or 6 for PV searches + PV TT entry hits),
                 //  so long as:
                 //  The current move is the TT hit's move,
                 //  the TT hit's score isn't a definitive win/loss,
@@ -432,7 +438,7 @@ namespace Lizard.Logic.Search
                     int singleDepth = (depth + SingularExtensionsDepthAugment) / 2;
 
                     ss->Skip = m;
-                    score = Negamax<NonPVNode>(ref info, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
+                    score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
                     ss->Skip = Move.Null;
 
                     if (score < singleBeta)
@@ -512,9 +518,9 @@ namespace Lizard.Logic.Search
                         R--;
 
                     var histScore = 2 * history.MainHistory[us, m] + 
-                           (*(ss - 1)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 2)->ContinuationHistory)[histIdx] + 
-                           (*(ss - 4)->ContinuationHistory)[histIdx];
+                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] + 
+                                        (*(ss - 2)->ContinuationHistory)[histIdx] + 
+                                        (*(ss - 4)->ContinuationHistory)[histIdx];
 
                     R -= (histScore / (4096 * HistoryReductionMultiplier));
 
@@ -524,7 +530,7 @@ namespace Lizard.Logic.Search
                     R = Math.Clamp(R, 1, newDepth);
                     int reducedDepth = (newDepth - R);
 
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
                     //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
                     //  before updating this move's continuation history.
@@ -537,7 +543,7 @@ namespace Lizard.Logic.Search
 
                         if (newDepth - 1 > reducedDepth)
                         {
-                            score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
 
                         int bonus = 0;
@@ -557,7 +563,7 @@ namespace Lizard.Logic.Search
                 }
                 else if (!isPV || legalMoves > 1)
                 {
-                    score = -Negamax<NonPVNode>(ref info, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                 }
 
                 if (isPV && (playedMoves == 1 || score > alpha))
@@ -565,7 +571,7 @@ namespace Lizard.Logic.Search
                     //  Do a new PV search here.
                     //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV[0] = Move.Null;
-                    score = -Negamax<PVNode>(ref info, ss + 1, -beta, -alpha, newDepth - 1, false);
+                    score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth - 1, false);
                 }
 
                 pos.UnmakeMove(m);
@@ -708,11 +714,17 @@ namespace Lizard.Logic.Search
         /// This is similar to Negamax, but there is far less pruning going on here, and we are only interested in ensuring that
         /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
         /// </summary>
-        public static int QSearch<NodeType>(ref SearchInformation info, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
+        public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
 
-            Position pos = info.Position;
+            if (alpha < ScoreDraw && Cuckoo.HasCycle(pos, ss->Ply))
+            {
+                alpha = ScoreDraw;
+                if (alpha >= beta)
+                    return alpha;
+            }
+
             SearchThread thisThread = pos.Owner;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
@@ -752,7 +764,6 @@ namespace Lizard.Logic.Search
             }
 
             if (!isPV
-                && tte->Depth >= ttDepth
                 && ttScore != ScoreNone
                 && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
@@ -788,6 +799,7 @@ namespace Lizard.Logic.Search
                     if (!ss->TTHit)
                         tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, false);
 
+                    if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
                     return eval;
                 }
 
@@ -868,7 +880,7 @@ namespace Lizard.Logic.Search
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -90))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeThreshold))
                     {
                         //  This move loses a significant amount of material
                         continue;
@@ -889,7 +901,7 @@ namespace Lizard.Logic.Search
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
-                score = -QSearch<NodeType>(ref info, ss + 1, -beta, -alpha, depth - 1);
+                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1);
                 pos.UnmakeMove(m);
 
                 if (score > bestScore)
@@ -908,6 +920,8 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
+                            if (Math.Abs(bestScore) < ScoreTTWin) bestScore = ((4 * bestScore + beta) / 5);
+
                             //  Beta cut
                             break;
                         }
@@ -924,7 +938,7 @@ namespace Lizard.Logic.Search
                       ((bestScore > startingAlpha) ? TTNodeType.Exact : 
                                                      TTNodeType.Beta);
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, ss->TTPV);
 
             return bestScore;
         }
@@ -1039,9 +1053,9 @@ namespace Lizard.Logic.Search
         /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
         /// static evaluation is <paramref name="improving"/> or not.
         /// </summary>
-        private static int GetReverseFutilityMargin(int depth, bool improving)
+        private static int GetRFPMargin(int depth, bool improving)
         {
-            return (depth - (improving ? 1 : 0)) * ReverseFutilityPruningPerDepth;
+            return (depth - (improving ? 1 : 0)) * RFPMargin;
         }
 
 

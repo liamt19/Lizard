@@ -1,4 +1,7 @@
-﻿using System.Reflection;
+﻿
+#pragma warning disable CS0162 // Unreachable code detected
+
+using System.Reflection;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
@@ -12,13 +15,7 @@ namespace Lizard.Logic.UCI
         private SearchInformation info;
         private ThreadSetup setup;
 
-        private const string LogFileName = @".\ucilog.txt";
-
-        /// <summary>
-        /// If this is true, then engine instances will attempt to write to their own "ucilog_#.txt" files, 
-        /// where # is a (hopefully) unique number for this instance.
-        /// </summary>
-        private const bool WriteToConcurrentLogs = false;
+        private static readonly string LogFileName = $".\\ucilog_{ProcessID}.txt";
 
         private static Dictionary<string, UCIOption> Options;
 
@@ -67,19 +64,6 @@ namespace Lizard.Logic.UCI
                 try
                 {
                     string fileToWrite = LogFileName;
-
-                    if (IsRunningConcurrently)
-                    {
-                        if (WriteToConcurrentLogs)
-                        {
-                            fileToWrite = @".\ucilog_" + ProcessID + ".txt";
-                        }
-                        else
-                        {
-                            //  Concurrent logging off, just return here.
-                            return;
-                        }
-                    }
 
                     using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
                     using StreamWriter sw = new StreamWriter(fs);
@@ -165,8 +149,8 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 1001);
-                    Environment.Exit(1001);
+                    LogString("[INFO]: Exiting with code " + 0);
+                    Environment.Exit(0);
                 }
                 else if (cmd == "isready")
                 {
@@ -591,7 +575,7 @@ namespace Lizard.Logic.UCI
             Options = new Dictionary<string, UCIOption>();
 
             //  Get all "public static" fields, and specifically exclude constant fields (which have field.IsLiteral == true)
-            List<FieldInfo>? fields = typeof(SearchOptions).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
+            List<FieldInfo> fields = typeof(SearchOptions).GetFields(BindingFlags.Public | BindingFlags.Static).Where(x => !x.IsLiteral).ToList();
 
             foreach (FieldInfo field in fields)
             {
@@ -610,7 +594,7 @@ namespace Lizard.Logic.UCI
             //SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
-            Options[nameof(MultiPV)].SetMinMax(1, 5);
+            Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
             Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);
@@ -621,9 +605,11 @@ namespace Lizard.Logic.UCI
             Options[nameof(NMPMinDepth)].SetMinMax(1, 9);
             Options[nameof(NMPReductionBase)].SetMinMax(1, 9);
             Options[nameof(NMPReductionDivisor)].SetMinMax(1, 9);
+            Options[nameof(NMPEvalDivisor)].AutoMinMax();
+            Options[nameof(NMPEvalMin)].SetMinMax(0, 6); 
 
-            Options[nameof(ReverseFutilityPruningMaxDepth)].SetMinMax(4, 12);
-            Options[nameof(ReverseFutilityPruningPerDepth)].AutoMinMax();
+            Options[nameof(RFPMaxDepth)].SetMinMax(4, 12);
+            Options[nameof(RFPMargin)].AutoMinMax();
 
             Options[nameof(ProbCutMinDepth)].SetMinMax(1, 8);
             Options[nameof(ProbCutBeta)].AutoMinMax();
@@ -637,13 +623,15 @@ namespace Lizard.Logic.UCI
             Options[nameof(FutilityExchangeBase)].AutoMinMax();
 
             Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
+            Options[nameof(SkipQuietsMaxDepth)].SetMinMax(3, 13);
+            Options[nameof(QSSeeThreshold)].SetMinMax(30, 150);
+
             Options[nameof(AspirationWindowMargin)].AutoMinMax();
 
             Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
 
             Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
             Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();
-            Options[nameof(OrderingHistoryDivisor)].AutoMinMax();
 
             Options[nameof(StatBonusMult)].AutoMinMax();
             Options[nameof(StatBonusSub)].AutoMinMax();
@@ -701,7 +689,7 @@ namespace Lizard.Logic.UCI
         {
             string output =
                 "" +
-                "SingularExtensionsMinDepth, 7\r\nSingularExtensionsNumerator, 9\r\nSingularExtensionsBeta, 22\r\nSingularExtensionsDepthAugment, -1\r\nNMPMinDepth, 6\r\nNMPReductionBase, 5\r\nNMPReductionDivisor, 5\r\nReverseFutilityPruningMaxDepth, 7\r\nReverseFutilityPruningPerDepth, 47\r\nProbCutBeta, 191\r\nProbCutBetaImproving, 100\r\nProbCutMinDepth, 2\r\nLMRExtensionThreshold, 131\r\nLMRExchangeBase, 216\r\nHistoryReductionMultiplier, 3\r\nFutilityExchangeBase, 181\r\nExtraCutNodeReductionMinDepth, 5\r\nAspirationWindowMargin, 11\r\nHistoryCaptureBonusMargin, 158\r\nOrderingGivesCheckBonus, 10345\r\nOrderingVictimValueMultiplier, 14\r\nOrderingHistoryDivisor, 11\r\nStatBonusMult, 170\r\nStatBonusSub, 95\r\nStatBonusMax, 1822\r\nStatMalusMult, 466\r\nStatMalusSub, 97\r\nStatMalusMax, 1787\r\nSEEValue_Pawn, 112\r\nSEEValue_Knight, 794\r\nSEEValue_Bishop, 868\r\nSEEValue_Rook, 1324\r\nSEEValue_Queen, 2107\r\nValuePawn, 199\r\nValueKnight, 920\r\nValueBishop, 1058\r\nValueRook, 1553\r\nValueQueen, 3127" +
+                "SingularExtensionsMinDepth, 5\r\nSingularExtensionsNumerator, 10\r\nSingularExtensionsBeta, 25\r\nSingularExtensionsDepthAugment, 0\r\nNMPMinDepth, 6\r\nNMPReductionBase, 4\r\nNMPReductionDivisor, 4\r\nNMPEvalDivisor, 197\r\nNMPEvalMin, 2\r\nReverseFutilityPruningMaxDepth, 6\r\nReverseFutilityPruningPerDepth, 47\r\nProbCutBeta, 245\r\nProbCutBetaImproving, 105\r\nLMRExtensionThreshold, 123\r\nLMRExchangeBase, 212\r\nHistoryReductionMultiplier, 3\r\nFutilityExchangeBase, 186\r\nExtraCutNodeReductionMinDepth, 4\r\nSkipQuietsMaxDepth, 9\r\nQSSeeThreshold, 78\r\nAspirationWindowMargin, 12\r\nHistoryCaptureBonusMargin, 166\r\nOrderingGivesCheckBonus, 9611\r\nOrderingVictimValueMultiplier, 14\r\nStatBonusMult, 178\r\nStatBonusSub, 81\r\nStatBonusMax, 1592\r\nStatMalusMult, 574\r\nStatMalusSub, 109\r\nStatMalusMax, 1569\r\nSEEValue_Pawn, 103\r\nSEEValue_Knight, 863\r\nSEEValue_Bishop, 1009\r\nSEEValue_Rook, 1396\r\nSEEValue_Queen, 2222\r\nValuePawn, 170\r\nValueKnight, 797\r\nValueBishop, 975\r\nValueRook, 1604\r\nValueQueen, 3149" +
                 "";
 
             var lines = output.Split("\r\n");
