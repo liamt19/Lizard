@@ -30,6 +30,9 @@ namespace Lizard.Logic.NN
         public static Vector256<float> _mm256_mul_ps(Vector256<float> a, Vector256<float> b) => Avx.Multiply(a, b);
         public static Vector256<float> _mm256_fmadd_ps(Vector256<float> a, Vector256<float> b, Vector256<float> c) => Fma.MultiplyAdd(a, b, c);
         public static Vector256<float> _mm256_castsi256_ps(Vector256<short> a) => a.AsSingle();
+        public static Vector256<float> _mm256_div_ps(Vector256<float> a, Vector256<float> b) => Avx.Divide(a, b); 
+        public static Vector256<float> _mm256_cvtepi32_ps(Vector256<int> a) => Avx.ConvertToVector256Single(a);
+        public static Vector256<float> _mm256_permute2f128_ps(Vector256<float> a, Vector256<float> b, [ConstantExpected] byte control) => Avx.Permute2x128(a, b, control);
         public static int _mm256_movemask_ps(Vector256<float> a) => Avx.MoveMask(a);
 
         public static Vector256<float> _mm256_loadu_ps(float* a) => Avx.LoadVector256(a);
@@ -72,6 +75,65 @@ namespace Lizard.Logic.NN
         public static int _mm_movemask_epi8(Vector128<byte> a) => Sse2.MoveMask(a);
 
         public static float _mm_cvtss_f32(Vector128<float> a) => a.GetElement(0);
+
+
+        public static Vector256<float> vec_mul_add_ps(Vector256<float> a, Vector256<float> b, Vector256<float> c) => _mm256_fmadd_ps(a, b, c);
+
+        public static Vector256<int> vec_dpwssd_epi32(Vector256<int> sum, Vector256<short> a, Vector256<short> b)
+        {
+            return _mm256_add_epi32(sum, _mm256_madd_epi16(a, b));
+        }
+
+        public static Vector256<float> vec_haddx8_cvtepi32_ps(Vector256<int>* vecs) {
+            var sum01 = _mm256_hadd_epi32(vecs[0], vecs[1]);
+            var sum23 = _mm256_hadd_epi32(vecs[2], vecs[3]);
+            var sum45 = _mm256_hadd_epi32(vecs[4], vecs[5]);
+            var sum67 = _mm256_hadd_epi32(vecs[6], vecs[7]);
+
+            var sum0123 = _mm256_hadd_epi32(sum01, sum23);
+            var sum4567 = _mm256_hadd_epi32(sum45, sum67);
+
+            var sumALow = _mm256_castsi256_si128(sum0123);
+            var sumAHi = _mm256_extracti128_si256(sum0123, 1);
+            var sumA = _mm_add_epi32(sumALow, sumAHi);
+
+            var sumBLow = _mm256_castsi256_si128(sum4567);
+            var sumBHi = _mm256_extracti128_si256(sum4567, 1);
+            var sumB = _mm_add_epi32(sumBLow, sumBHi);
+
+            var sumAB = _mm256_inserti128_si256(_mm256_castsi128_si256(sumA), sumB, 1);
+            return _mm256_cvtepi32_ps(sumAB);
+        }
+
+        public static Vector256<float> vec_hadd_psx8(Vector256<float>* vecs)
+        {
+            var sum01 = _mm256_hadd_ps(vecs[0], vecs[1]);
+            var sum23 = _mm256_hadd_ps(vecs[2], vecs[3]);
+            var sum45 = _mm256_hadd_ps(vecs[4], vecs[5]);
+            var sum67 = _mm256_hadd_ps(vecs[6], vecs[7]);
+
+            var sum0123 = _mm256_hadd_ps(sum01, sum23);
+            var sum4567 = _mm256_hadd_ps(sum45, sum67);
+
+            var sumA = _mm256_permute2f128_ps(sum0123, sum4567, 0x20);
+            var sumB = _mm256_permute2f128_ps(sum0123, sum4567, 0x31);
+            return _mm256_add_ps(sumA, sumB);
+        }
+
+        public static float vec_reduce_add_ps(Vector256<float> sum)
+        {
+            var upper_128 = _mm256_extractf128_ps(sum, 1);
+            var lower_128 = _mm256_castps256_ps128(sum);
+            var sum_128 = _mm_add_ps(upper_128, lower_128);
+
+            var upper_64 = _mm_movehl_ps(sum_128, sum_128);
+            var sum_64 = _mm_add_ps(upper_64, sum_128);
+
+            var upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
+            var sum_32 = _mm_add_ss(upper_32, sum_64);
+
+            return _mm_cvtss_f32(sum_32);
+        }
     }
 
 }

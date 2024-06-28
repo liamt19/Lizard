@@ -22,7 +22,8 @@ namespace Lizard.Logic.NN
         public const int L3_SIZE = 32;
         public const int OUTPUT_BUCKETS = 8;
 
-        private const int FT_QUANT = 512;
+        private const int FT_QUANT = 255;
+        private const int FT_SHIFT = 1;
         private const int L1_QUANT = 256;
 
         public const int OutputScale = 400;
@@ -31,10 +32,12 @@ namespace Lizard.Logic.NN
         public static readonly int SIMD_CHUNKS_256 = L1_SIZE / Vector256<short>.Count;
 
 #if USE_AVX2
+        public static readonly int FT_CHUNK_SIZE = Vector256<short>.Count;
         public static readonly int L1_CHUNK_SIZE = Vector256<short>.Count;
         public static readonly int L2_CHUNK_SIZE = Vector256<float>.Count;
         public static readonly int L3_CHUNK_SIZE = Vector256<float>.Count;
 #else
+        public static readonly int FT_CHUNK_SIZE = 1;
         public static readonly int L1_CHUNK_SIZE = 1;
         public static readonly int L2_CHUNK_SIZE = 1;
         public static readonly int L3_CHUNK_SIZE = 1;
@@ -156,22 +159,38 @@ namespace Lizard.Logic.NN
 
             for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
             {
+
+#if USE_AVX2
                 for (int i = 0; i < 2 * L1_SIZE / L1_CHUNK_SIZE; ++i)
                     for (int j = 0; j < L2_SIZE; ++j)
                         for (int k = 0; k < L1_CHUNK_SIZE; ++k)
                             Net.L1Weights[bucket][i * L1_CHUNK_SIZE * L2_SIZE
                                                 + j * L1_CHUNK_SIZE
                                                 + k] = (short)(MathF.Round(UQNet.L1Weights[i * L1_CHUNK_SIZE + k, bucket, j] * L1_QUANT));
+#else
+                for (int i = 0; i < 2; ++i)
+                    for (int j = 0; j < L2_SIZE; ++j)
+                        for (int k = 0; k < L1_SIZE; ++k)
+                            Net.L1Weights[bucket][i * L1_SIZE * L2_SIZE
+                                                + j * L1_SIZE
+                                                + k] = (short)(MathF.Round(UQNet.L1Weights[i * L1_SIZE + k, bucket, j] * L1_QUANT));
+#endif
 
                 for (int i = 0; i < L2_SIZE; ++i)
                     Net.L1Biases[bucket][i] = UQNet.L1Biases[bucket, i];
 
+#if USE_AVX2
                 for (int i = 0; i < L2_SIZE / L2_CHUNK_SIZE; ++i)
                     for (int j = 0; j < L3_SIZE; ++j)
                         for (int k = 0; k < L2_CHUNK_SIZE; ++k)
                             Net.L2Weights[bucket][i * L2_CHUNK_SIZE * L3_SIZE
                                                 + j * L2_CHUNK_SIZE
                                                 + k] = UQNet.L2Weights[i * L2_CHUNK_SIZE + k, bucket, j];
+#else
+                for (int i = 0; i < L2_SIZE; ++i)
+                    for (int j = 0; j < L3_SIZE; ++j)
+                        Net.L2Weights[bucket][j * L2_SIZE + i] = UQNet.L2Weights[i, bucket, j];
+#endif
 
                 for (int i = 0; i < L3_SIZE; ++i)
                     Net.L2Biases[bucket][i] = UQNet.L2Biases[bucket, i];
@@ -299,9 +318,7 @@ namespace Lizard.Logic.NN
             if (accumulator.NeedsRefresh[Black])
                 RefreshAccumulatorPerspective(pos, Black);
 
-            int* L1OutputsUs   = stackalloc int[L2_SIZE];
-            int* L1OutputsThem = stackalloc int[L2_SIZE];
-            float* L2Inputs  = stackalloc float[L2_SIZE];
+            float* L1Outputs = stackalloc float[L2_SIZE];
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
 
@@ -309,119 +326,118 @@ namespace Lizard.Logic.NN
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
-            var ourData   = (short*)(accumulator[pos.ToMove]);
-            var theirData = (short*)(accumulator[Not(pos.ToMove)]);
+            var us   = (short*)(accumulator[pos.ToMove]);
+            var them = (short*)(accumulator[Not(pos.ToMove)]);
 
 #if USE_AVX2
-            ActivateFTAndAffineL1Sparse(ourData,   Net.L1Weights[outputBucket], L1OutputsUs);
-            ActivateFTAndAffineL1Sparse(theirData, Net.L1Weights[outputBucket] + L1_SIZE * L2_SIZE, L1OutputsThem);
+            ActivateFT(us, them,  Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+            ActivateL1(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+            ActivateL2(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
 #else
-            ActivateFTAndAffineL1Fallback(ourData,   Net.L1Weights[outputBucket], L1OutputsUs);
-            ActivateFTAndAffineL1Fallback(theirData, Net.L1Weights[outputBucket] + L1_SIZE * L2_SIZE, L1OutputsThem);
-#endif
-
-            for (int i = 0; i < L2_SIZE; ++i)
-            {
-                L2Inputs[i] = ((float)L1OutputsUs[i] + L1OutputsThem[i]) / ((float)FT_QUANT * L1_QUANT) + Net.L1Biases[outputBucket][i];
-            }
-
-#if USE_AVX2
-            ActivateL1AndAffineL2(L2Inputs,  Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
-            ActivateL2AndAffineL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
-#else
-            ActivateL1AndAffineL2Fallback(L2Inputs,  Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
-            ActivateL2AndAffineL3Fallback(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+            ActivateFTFallback(us, them,  Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+            ActivateL1Fallback(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+            ActivateL2Fallback(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
 #endif
 
             return (int)(L3Output * OutputScale);
         }
 
 
-        public static void ActivateFTAndAffineL1Sparse(short* inputs, short* weights, int* output)
+        public static void ActivateFT(short* us, short* them, short* weights, float* biases, float* output)
         {
             var sums = stackalloc Vector256<int>[L2_SIZE];
-            var wVecs = (Vector256<short>*)(weights);
-            var inputsVecs = (Vector256<short>*)(inputs);
 
             var zero = _mm256_setzero_epi16();
             var one = _mm256_set1_epi16(FT_QUANT);
+            int weightOffset = 0;
 
-            int* nnz_indices = stackalloc int[L1_SIZE / L1_CHUNK_SIZE];
-            int total_nnz = 0;
-
-            for (int i = 0; i < L1_SIZE / L1_CHUNK_SIZE; i++)
+            for (int perspective = 0; perspective < 2; perspective++)
             {
-                var chunk = inputsVecs[i];
-                var cmpgt = _mm256_cmpgt_epi16(chunk, zero);
-                if (_mm256_movemask_epi8(cmpgt.AsByte()) != 0)
+                short* acc = perspective == 0 ? us : them;
+
+                for (int i = 0; i < L1_SIZE; i += L1_CHUNK_SIZE)
                 {
-                    nnz_indices[total_nnz++] = i;
+                    // Activate feature transformers
+                    var input = _mm256_load_si256(&acc[i]);
+                    var clipped = _mm256_min_epi16(_mm256_max_epi16(input, zero), one);
+
+                    //var squared = _mm256_srli_epi16(_mm256_mullo_epi16(clipped, clipped), FT_SHIFT);
+                    var squared = _mm256_srli_epi16(clipped, FT_SHIFT);
+
+                    // Affine transform for L1
+                    var weight = (Vector256<short>*)(&weights[i * L2_SIZE + weightOffset]);
+                    for (int outp = 0; outp < L2_SIZE; outp++)
+                        sums[outp] = vec_dpwssd_epi32(sums[outp], squared, weight[outp]);
                 }
+
+                weightOffset += L1_SIZE * L2_SIZE;
             }
 
-            for (int nnz = 0; nnz < total_nnz; ++nnz)
+            for (int i = 0; i < L2_SIZE; i += L2_CHUNK_SIZE)
             {
-                int i = nnz_indices[nnz];
-                var row = &wVecs[i * L2_SIZE];
-                var activated = _mm256_min_epi16(one, _mm256_max_epi16(inputsVecs[i], zero));
+                // Convert into floats, and activate L1
+                var biasVec = _mm256_loadu_ps(&biases[i]);
 
-                for (int j = 0; j < L2_SIZE; j++)
-                {
-                    sums[j] = _mm256_add_epi32(sums[j], _mm256_madd_epi16(activated, row[j]));
-                }
-            }
+                //var sumDiv = _mm256_set1_ps((float)(FT_QUANT * FT_QUANT * L1_QUANT >> FT_SHIFT));
+                var sumDiv = _mm256_set1_ps((float)(FT_QUANT * L1_QUANT >> FT_SHIFT));
 
-            for (int i = 0; i < L2_SIZE / L2_CHUNK_SIZE; ++i)
-            {
-                var sum0123 = hadd_epi32x4(&sums[i * L2_CHUNK_SIZE]);
-                var sum4567 = hadd_epi32x4(&sums[i * L2_CHUNK_SIZE + 4]);
-                var sum = combine_m256i(sum0123, sum4567);
-                _mm256_storeu_si256(output + i * L2_CHUNK_SIZE, sum);
+                var sumPs = _mm256_add_ps(_mm256_div_ps(vec_haddx8_cvtepi32_ps(&sums[i]), sumDiv), biasVec);
+                var zeroPs = _mm256_setzero_ps();
+
+
+                //var onePs = _mm256_set1_ps(1.0f);
+                //var clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zeroPs), onePs);
+                //var squared = _mm256_mul_ps(clipped, clipped);
+                var squared = _mm256_max_ps(sumPs, zeroPs);
+
+
+                _mm256_storeu_ps(&output[i], squared);
             }
         }
 
-        public static void ActivateL1AndAffineL2(float* inputs, float* weights, float* biases, float* output)
+        public static void ActivateL1(float* inputs, float* weights, float* biases, float* output)
         {
-            var sums = stackalloc Vector256<float>[L3_SIZE];
-            var inputVecs = (Vector256<float>*)(inputs);
-            var biasVecs = (Vector256<float>*)biases;
-            var outputVecs = (Vector256<float>*)output;
+            var sumVecs = stackalloc Vector256<float>[L3_SIZE];
 
-            var zero = _mm256_setzero_ps();
-
-            for (int i = 0; i < L2_SIZE / L2_CHUNK_SIZE; i++)
+            // Affine transform for L2
+            for (int i = 0; i < L2_SIZE; i += L2_CHUNK_SIZE)
             {
-                Vector256<float>* wVecs = (Vector256<float>*)(weights + i * L3_SIZE * L2_CHUNK_SIZE);
-                var activated = _mm256_max_ps(inputVecs[i], zero);
-
-                for (int j = 0; j < L3_SIZE; j++)
-                {
-                    sums[j] = _mm256_fmadd_ps(activated, wVecs[j], sums[j]);
-                }
+                var weightVecs = (Vector256<float>*)(&weights[i * L3_SIZE]);
+                var inputsVec = _mm256_loadu_ps(&inputs[i]);
+                for (int outp = 0; outp < L3_SIZE; outp++)
+                    sumVecs[outp] = vec_mul_add_ps(inputsVec, weightVecs[outp], sumVecs[outp]);
             }
 
-            for (int i = 0; i < L3_SIZE / L3_CHUNK_SIZE; i++)
+            var zero = _mm256_set1_ps(0.0f);
+            //var one = _mm256_set1_ps(1.0f);
+
+            // Activate L2
+            for (int i = 0; i < L3_SIZE; i += L3_CHUNK_SIZE)
             {
-                var sum0123 = hadd_psx4(&sums[i * L3_CHUNK_SIZE]);
-                var sum4567 = hadd_psx4(&sums[i * L3_CHUNK_SIZE + 4]);
-                outputVecs[i] = _mm256_add_ps(combine_m256(sum0123, sum4567), biasVecs[i]);
+                var biasVec = _mm256_loadu_ps(&biases[i]);
+                var sum = _mm256_add_ps(vec_hadd_psx8(&sumVecs[i]), biasVec);
+
+                //var clipped = _mm256_max_ps(_mm256_min_ps(sum, one), zero);
+                //var squared = _mm256_mul_ps(clipped, clipped);
+                var squared = _mm256_max_ps(sum, zero);
+
+                _mm256_storeu_ps(&output[i], squared);
             }
         }
 
-        public static void ActivateL2AndAffineL3(float* inputs, float* weights, float bias, ref float output)
+        public static void ActivateL2(float* inputs, float* weights, float bias, ref float output)
         {
-            var inputVecs = (Vector256<float>*)(inputs);
-            var wVecs = (Vector256<float>*)(weights);
+            var sumVec = _mm256_set1_ps(0.0f);
 
-            var sumVec = _mm256_setzero_ps();
-            var zero = _mm256_setzero_ps();
-
-            for (int i = 0; i < L3_SIZE / L3_CHUNK_SIZE; ++i)
+            // Affine transform for L3
+            for (int i = 0; i < L3_SIZE; i += L3_CHUNK_SIZE)
             {
-                sumVec = _mm256_fmadd_ps(_mm256_max_ps(inputVecs[i], zero), wVecs[i], sumVec);
+                var weightVec = _mm256_loadu_ps(&weights[i]);
+                var inputsVec = _mm256_loadu_ps(&inputs[i]);
+                sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
             }
 
-            output = _mm256_reduce_add_ps(sumVec) + bias;
+            output = bias + vec_reduce_add_ps(sumVec);
         }
 
 
@@ -607,121 +623,80 @@ namespace Lizard.Logic.NN
         }
 
 
-        public static void ActivateFTAndAffineL1Fallback(short* inputs, short* weights, int* output)
+        public static void ActivateFTFallback(short* us, short* them, short* weights, float* biases, float* output)
         {
-            int* sums = stackalloc int[L2_SIZE];
+            Span<int> sums = stackalloc int[L2_SIZE];
+            int weightOffset = 0;
 
-            for (int i = 0; i < L1_SIZE; ++i)
+            for (int perspective = 0; perspective < 2; perspective++)
             {
-                for (int j = 0; j < L2_SIZE; ++j)
+                short* acc = perspective == 0 ? us : them;
+                
+                for (int i = 0; i < L1_SIZE; i++) 
                 {
-                    sums[j] += Math.Max((int)inputs[i], 0) * weights[i * L2_SIZE + j];
+                    // Activate FT
+                    var clipped = Math.Clamp(acc[i], (short)0, (short)FT_QUANT);
+
+                    //var squared = (clipped * clipped) >> FT_SHIFT;
+                    var squared = (clipped) >> FT_SHIFT;
+
+                    // Affine transform for L1
+                    for (int outp = 0; outp < L2_SIZE; outp++) 
+                    {
+                        sums[outp] += squared * weights[weightOffset + outp * L1_SIZE + i];
+                    }
+                }
+                weightOffset += L1_SIZE * L2_SIZE;
+            }
+
+            for (int i = 0; i < L2_SIZE; i++)
+            {
+                // Convert into floats and activate L1
+
+                //var sumDiv = (float)(FT_QUANT * FT_QUANT * L1_QUANT >> FT_SHIFT);
+                var sumDiv = (float)(FT_QUANT * L1_QUANT >> FT_SHIFT);
+
+                var clipped = Math.Max((float)(sums[i]) / sumDiv + biases[i], 0.0f);
+
+                //output[i] = clipped * clipped;
+                output[i] = clipped;
+            }
+        }
+
+        public static void ActivateL1Fallback(float* inputs, float* weights, float* biases, float* output)
+        {
+            Span<float> sums = stackalloc float[L3_SIZE];
+
+            for (int i = 0; i < L3_SIZE; i++)
+                sums[i] = biases[i];
+
+            // Affine transform for L2
+            for (int i = 0; i < L2_SIZE; i++) {
+                for (int outp = 0; outp < L3_SIZE; outp++) {
+                    sums[outp] += inputs[i] * weights[outp * L2_SIZE + i];
                 }
             }
 
-            for (int i = 0; i < L2_SIZE; ++i)
-            {
-                output[i] = sums[i];
+            // Activate L2
+            for (int i = 0; i < L3_SIZE; i++) {
+                var clipped = Math.Max(sums[i], 0.0f);
+                //output[i] = clipped * clipped;
+                output[i] = clipped;
             }
         }
 
-        public static void ActivateL1AndAffineL2Fallback(float* inputs, float* weights, float* biases, float* output)
+        public static void ActivateL2Fallback(float* inputs, float* weights, float bias, ref float output)
         {
-            float* sums = stackalloc float[L3_SIZE];
+            float sum = bias;
 
-            for (int i = 0; i < L2_SIZE; ++i)
+            // Affine transform for L3
+            for (int i = 0; i < L3_SIZE; i++)
             {
-                for (int j = 0; j < L3_SIZE; ++j)
-                {
-                    sums[j] += Math.Max(inputs[i], 0.0f) * weights[i * L3_SIZE + j];
-                }
+                sum += inputs[i] * weights[i];
             }
 
-            for (int i = 0; i < L3_SIZE; ++i)
-            {
-                output[i] = sums[i] + biases[i];
-            }
+            output = sum;
         }
 
-        public static void ActivateL2AndAffineL3Fallback(float* inputs, float* weights, float bias, ref float output)
-        {
-            float sum = 0.0f;
-
-            for (int i = 0; i < L3_SIZE; ++i)
-            {
-                sum += Math.Max(inputs[i], 0.0f) * weights[i];
-            }
-
-            output = sum + bias;
-        }
-
-
-        public static float _mm256_reduce_add_ps(Vector256<float> sum)
-        {
-            var upper_128 = _mm256_extractf128_ps(sum, 1);
-            var lower_128 = _mm256_castps256_ps128(sum);
-            var sum_128 = _mm_add_ps(upper_128, lower_128);
-
-            var upper_64 = _mm_movehl_ps(sum_128, sum_128);
-            var sum_64 = _mm_add_ps(upper_64, sum_128);
-
-            var upper_32 = _mm_shuffle_ps(sum_64, sum_64, 1);
-            var sum_32 = _mm_add_ss(upper_32, sum_64);
-
-            return _mm_cvtss_f32(sum_32);
-        }
-
-        public static Vector256<int> combine_m256i(Vector256<int> in0, Vector256<int> in1)
-        {
-            var in0_low = _mm256_castsi256_si128(in0);
-            var in0_hi = _mm256_extracti128_si256(in0, 1);
-            var in0_m128 = _mm_add_epi32(in0_low, in0_hi);
-
-            var in1_low = _mm256_castsi256_si128(in1);
-            var in1_hi = _mm256_extracti128_si256(in1, 1);
-            var in1_m128 = _mm_add_epi32(in1_low, in1_hi);
-
-            return _mm256_inserti128_si256(_mm256_castsi128_si256(in0_m128), in1_m128, 1);
-        }
-
-        public static Vector256<int> hadd_epi32x4(Vector256<int>* inp)
-        {
-            var sum01 = _mm256_hadd_epi32(inp[0], inp[1]);
-            var sum23 = _mm256_hadd_epi32(inp[2], inp[3]);
-            return _mm256_hadd_epi32(sum01, sum23);
-        }
-
-        public static Vector256<float> combine_m256(Vector256<float> in0, Vector256<float> in1)
-        {
-            var in0_low = _mm256_castps256_ps128(in0);
-            var in0_hi = _mm256_extractf128_ps(in0, 1);
-            var in0_m128 = _mm_add_ps(in0_low, in0_hi);
-
-            var in1_low = _mm256_castps256_ps128(in1);
-            var in1_hi = _mm256_extractf128_ps(in1, 1);
-            var in1_m128 = _mm_add_ps(in1_low, in1_hi);
-
-            return _mm256_insertf128_ps(_mm256_castps128_ps256(in0_m128), in1_m128, 1);
-        }
-
-        public static Vector256<float> hadd_psx4(Vector256<float>* inp)
-        {
-            var sum01 = _mm256_hadd_ps(inp[0], inp[1]);
-            var sum23 = _mm256_hadd_ps(inp[2], inp[3]);
-            return _mm256_hadd_ps(sum01, sum23);
-        }
-
-        //  https://github.com/official-stockfish/nnue-pytorch/blob/master/docs/nnue.md#m256_process_chunk
-        public static void m256_process_chunk(ref Vector256<int> sum0, ref Vector256<int> sum1, Vector256<short> col0, Vector256<short> col1, Vector256<short> factor)
-        {
-            // We interleave the two columns, because madd adds adjacent values.
-            // This way we effectively add the results from both columns.
-            sum0 = _mm256_add_epi32(
-                sum0, _mm256_madd_epi16(factor, _mm256_unpacklo_epi16(col0, col1))
-            );
-            sum1 = _mm256_add_epi32(
-                sum1, _mm256_madd_epi16(factor, _mm256_unpackhi_epi16(col0, col1))
-            );
-        }
     }
 }
