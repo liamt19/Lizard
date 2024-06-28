@@ -808,6 +808,11 @@ namespace Lizard.Logic.Search
                     alpha = eval;
                 }
 
+                if (BestCaseCapture(pos) < alpha - eval)
+                {
+                    return eval;
+                }
+
                 bestScore = eval;
 
                 futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
@@ -1171,6 +1176,30 @@ namespace Lizard.Logic.Search
             }
 
             return res != 0;
+        }
+
+
+        private static int BestCaseCapture(Position pos)
+        {
+            ref Bitboard bb = ref pos.bb;
+            int them = Not(pos.ToMove);
+
+            int res = SEEValue_Pawn;
+            for (int pt = Queen; pt >= 0; pt--)
+            {
+                if ((bb.Pieces[pt] & bb.Colors[them]) != 0)
+                {
+                    res = GetSEEValue(pt);
+                    break;
+                }
+            }
+
+            if ((bb.Pieces[Pawn] & bb.Colors[them] & ((them == Black) ? Rank7BB : Rank2BB)) != 0)
+            {
+                res += SEEValue_Queen - SEEValue_Pawn;
+            }
+
+            return res;
         }
 
 
