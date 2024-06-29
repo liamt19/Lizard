@@ -494,7 +494,7 @@ namespace Lizard.Logic.Search
 
                 int newDepth = depth + extend;
 
-                if (depth >= 2
+                if (depth > 2
                     && legalMoves >= 2
                     && !(isPV && isCapture))
                 {
