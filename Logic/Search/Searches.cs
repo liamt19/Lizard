@@ -539,7 +539,6 @@ namespace Lizard.Logic.Search
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
                         newDepth += (score > (bestScore + LMRExtensionThreshold)) ? 1 : 0;
-                        newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
                         if (newDepth - 1 > reducedDepth)
                         {
