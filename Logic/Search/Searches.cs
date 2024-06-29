@@ -541,7 +541,7 @@ namespace Lizard.Logic.Search
                         newDepth += (score > (bestScore + LMRExtensionThreshold)) ? 1 : 0;
                         newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
-                        if (newDepth - 1 > reducedDepth)
+                        if (newDepth > reducedDepth)
                         {
                             score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
