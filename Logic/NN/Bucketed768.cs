@@ -23,14 +23,14 @@ namespace Lizard.Logic.NN
         public const int OUTPUT_BUCKETS = 8;
 
         private const int FT_QUANT = 255;
-        private const int FT_SHIFT = 3;
+        private const int FT_SHIFT = 1;
         private const int L1_QUANT = 64;
 
         public const int OutputScale = 400;
 
         public static readonly int SIMD_CHUNKS_512 = L1_SIZE / Vector512<short>.Count;
         public static readonly int SIMD_CHUNKS_256 = L1_SIZE / Vector256<short>.Count;
-        public static readonly int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
+        public const int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
 
 #if USE_AVX2
         public static readonly int FT_CHUNK_SIZE = Vector256<short>.Count;
