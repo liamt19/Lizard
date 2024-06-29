@@ -534,7 +534,7 @@ namespace Lizard.Logic.Search
 
                     //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
                     //  before updating this move's continuation history.
-                    if (score > alpha && R > 1)
+                    if (score > alpha && R > 3)
                     {
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
