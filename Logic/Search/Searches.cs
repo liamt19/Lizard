@@ -432,7 +432,7 @@ namespace Lizard.Logic.Search
                     && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin
                     && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
+                    && tte->Depth >= depth - 2)
                 {
                     int singleBeta = ttScore - (SingularExtensionsNumerator * depth / 10);
                     int singleDepth = (depth + SingularExtensionsDepthAugment) / 2;
