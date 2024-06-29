@@ -168,6 +168,28 @@ namespace Lizard.Logic.NN
             Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
         }
 
+        public static void NetStats(string layerName, sbyte* layer, int n)
+        {
+            long avg = 0;
+            int max = int.MinValue;
+            int min = int.MaxValue;
+            sbyte* ptr = (sbyte*)layer;
+            for (int i = 0; i < n; i++)
+            {
+                if (ptr[i] > max)
+                {
+                    max = ptr[i];
+                }
+                if (ptr[i] < min)
+                {
+                    min = ptr[i];
+                }
+                avg += ptr[i];
+            }
+
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+        }
+
 
 
         public static void Trace(Position pos)
