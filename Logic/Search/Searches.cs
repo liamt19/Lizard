@@ -428,7 +428,7 @@ namespace Lizard.Logic.Search
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SingularExtensionsMinDepth + (isPV && tte->PV ? 1 : 0))
+                    && depth >= (SingularExtensionsMinDepth + (isPV || tte->PV ? 1 : 0))
                     && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin
                     && ((tte->Bound & BoundLower) != 0)
