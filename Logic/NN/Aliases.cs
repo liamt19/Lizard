@@ -41,6 +41,8 @@ namespace Lizard.Logic.NN
         public static Vector256<int> _mm256_load_si256(int* mem_addr) => Avx.LoadAlignedVector256(mem_addr);
         public static void _mm256_storeu_si256(short* mem_addr, Vector256<short> a) => Avx.Store(mem_addr, a);
         public static void _mm256_storeu_si256(int* mem_addr, Vector256<int> a) => Avx.Store(mem_addr, a);
+        public static void _mm256_storeu_si256(byte* mem_addr, Vector256<byte> a) => Avx.Store(mem_addr, a);
+        public static void _mm256_storeu_si256(sbyte* mem_addr, Vector256<sbyte> a) => Avx.Store(mem_addr, a);
         public static void _mm256_storeu_ps(float* mem_addr, Vector256<float> a) => Avx.Store(mem_addr, a);
         public static void _mm256_store_si256(int* mem_addr, Vector256<int> a) => Avx.StoreAligned(mem_addr, a);
 
@@ -77,11 +79,27 @@ namespace Lizard.Logic.NN
         public static float _mm_cvtss_f32(Vector128<float> a) => a.GetElement(0);
 
 
+        public static Vector256<short> _mm256_maddubs_epi16(Vector256<byte> a, Vector256<sbyte> b) => Avx2.MultiplyAddAdjacent(a, b);
+        public static Vector256<byte> _mm256_packus_epi16(Vector256<short> a, Vector256<short> b) => Avx2.PackUnsignedSaturate(a, b);
+        public static Vector256<long> _mm256_permute4x64_epi64(Vector256<long> a, [ConstantExpected] byte control) => Avx2.Permute4x64(a, control);
+        
+
+        public static Vector256<sbyte> vec_packus_permute_epi16(Vector256<short> vec0, Vector256<short> vec1) {
+            var packed = _mm256_packus_epi16(vec0, vec1);
+
+            //  _MM_SHUFFLE(3, 1, 2, 0) == 0b11011000
+            return _mm256_permute4x64_epi64(packed.AsInt64(), 0b11_01_10_00).AsSByte();
+        }
+
         public static Vector256<float> vec_mul_add_ps(Vector256<float> a, Vector256<float> b, Vector256<float> c) => _mm256_fmadd_ps(a, b, c);
 
-        public static Vector256<int> vec_dpwssd_epi32(Vector256<int> sum, Vector256<short> a, Vector256<short> b)
+        public static Vector256<int> vec_dpwssd_epi32(Vector256<int> sum, Vector256<short> a, Vector256<short> b) => _mm256_add_epi32(sum, _mm256_madd_epi16(a, b));
+
+        public static Vector256<int> vec_dpbusd_epi32(Vector256<int> sum, Vector256<byte> a, Vector256<sbyte> b)
         {
-            return _mm256_add_epi32(sum, _mm256_madd_epi16(a, b));
+            var product16 = _mm256_maddubs_epi16(a, b);
+            var product32 = _mm256_madd_epi16(product16, _mm256_set1_epi16(1));
+            return _mm256_add_epi32(sum, product32);
         }
 
         public static Vector256<float> vec_haddx8_cvtepi32_ps(Vector256<int>* vecs) {

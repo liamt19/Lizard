@@ -9,11 +9,11 @@ using static Lizard.Logic.NN.Bucketed768;
 namespace Lizard.Logic.NN
 {
 
-    public unsafe struct NetContainer<T, U>
+    public unsafe struct NetContainer<T, W, U>
     {
         public readonly T* FTWeights;
         public readonly T* FTBiases;
-        public readonly T** L1Weights;
+        public readonly W** L1Weights;
         public readonly U** L1Biases;
         public readonly U** L2Weights;
         public readonly U** L2Biases;
@@ -26,7 +26,7 @@ namespace Lizard.Logic.NN
             FTBiases  = (T*)AlignedAllocZeroed((nuint)sizeof(T) * N_FTB);
 
 
-            L1Weights = (T**)AlignedAllocZeroed((nuint)sizeof(T*) * OUTPUT_BUCKETS);
+            L1Weights = (W**)AlignedAllocZeroed((nuint)sizeof(W*) * OUTPUT_BUCKETS);
             L1Biases  = (U**)AlignedAllocZeroed((nuint)sizeof(U*) * OUTPUT_BUCKETS);
             L2Weights = (U**)AlignedAllocZeroed((nuint)sizeof(U*) * OUTPUT_BUCKETS);
             L2Biases  = (U**)AlignedAllocZeroed((nuint)sizeof(U*) * OUTPUT_BUCKETS);
@@ -35,7 +35,7 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < OUTPUT_BUCKETS; i++)
             {
-                L1Weights[i] = (T*)AlignedAllocZeroed((nuint)sizeof(T) * (L1_SIZE * L2_SIZE * 2));
+                L1Weights[i] = (W*)AlignedAllocZeroed((nuint)sizeof(W) * (L1_SIZE * L2_SIZE * 2));
                 L1Biases[i]  = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L2_SIZE));
                 L2Weights[i] = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L2_SIZE * L3_SIZE ));
                 L2Biases[i]  = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L3_SIZE));
