@@ -126,7 +126,7 @@ namespace Lizard.Logic.Search
                 }
             }
 
-            (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
+            (ss + 1)->Killer0 = (ss + 2)->Killer0 = Move.Null;
 
             ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
             ss->InCheck = pos.Checked;
