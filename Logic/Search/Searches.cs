@@ -849,6 +849,8 @@ namespace Lizard.Logic.Search
                                 m.EnPassant ? SEEValue_Pawn                              : 
                                               0;
 
+                pessimism -= GetSEEValue(ourPiece);
+
                 if (eval + pessimism > beta && Math.Abs(eval + pessimism) < ScoreMate / 2)
                 {
                     return beta;
