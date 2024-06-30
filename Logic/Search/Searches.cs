@@ -196,8 +196,8 @@ namespace Lizard.Logic.Search
             {
                 //  We are improving if the static evaluation at this ply is better than what it was
                 //  when it was our turn 2 plies ago, (or 4 plies if we were in check).
-                improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 2)->StaticEval :
-                            (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval > (ss - 4)->StaticEval : true;
+                improving = (ss - 2)->StaticEval != ScoreNone ? ss->StaticEval >= (ss - 2)->StaticEval :
+                            (ss - 4)->StaticEval != ScoreNone ? ss->StaticEval >= (ss - 4)->StaticEval : true;
             }
 
 
