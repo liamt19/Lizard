@@ -502,8 +502,8 @@ namespace Lizard.Logic.Search
                     int R = LogarithmicReductionTable[depth][legalMoves];
 
                     //  Reduce if our static eval is declining
-                    if (!improving)
-                        R++;
+                    if (improving)
+                        R--;
 
                     //  Reduce if we think that this move is going to be a bad one
                     if (cutNode)
@@ -511,7 +511,7 @@ namespace Lizard.Logic.Search
 
                     //  Extend for PV searches
                     if (isPV)
-                        R--;
+                        R++;
 
                     //  Extend killer moves
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
