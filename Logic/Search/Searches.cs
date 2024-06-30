@@ -844,6 +844,16 @@ namespace Lizard.Logic.Search
 
                 movesMade++;
 
+                int pessimism = isCapture   ? GetSEEValue(theirPiece)                    :
+                                m.Promotion ? GetSEEValue(m.PromotionTo) - SEEValue_Pawn :
+                                m.EnPassant ? SEEValue_Pawn                              : 
+                                              0;
+
+                if (eval + pessimism > beta && Math.Abs(eval + pessimism) < ScoreMate / 2)
+                {
+                    return beta;
+                }
+
                 if (bestScore > ScoreTTLoss)
                 {
                     if (!(givesCheck || m.Promotion)
