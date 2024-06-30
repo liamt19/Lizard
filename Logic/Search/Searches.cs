@@ -303,12 +303,13 @@ namespace Lizard.Logic.Search
 
                     pos.MakeMove(m);
 
-                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
+                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, DepthQChecks, true);
 
                     if (score >= probBeta)
                     {
                         //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                        score = depth > 3 ? -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode) :
+                                            -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, true);
                     }
 
                     pos.UnmakeMove(m);
@@ -714,7 +715,7 @@ namespace Lizard.Logic.Search
         /// This is similar to Negamax, but there is far less pruning going on here, and we are only interested in ensuring that
         /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
         /// </summary>
-        public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
+        public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool fromPC = false) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
 
@@ -844,16 +845,19 @@ namespace Lizard.Logic.Search
 
                 movesMade++;
 
-                int pessimism = isCapture   ? GetSEEValue(theirPiece)                    :
+                if (!fromPC)
+                {
+                    int pessimism = isCapture ? GetSEEValue(theirPiece) :
                                 m.Promotion ? GetSEEValue(m.PromotionTo) - SEEValue_Pawn :
-                                m.EnPassant ? SEEValue_Pawn                              : 
+                                m.EnPassant ? SEEValue_Pawn :
                                               0;
 
-                pessimism -= GetSEEValue(ourPiece);
+                    pessimism -= GetSEEValue(ourPiece);
 
-                if (eval + pessimism > beta && Math.Abs(eval + pessimism) < ScoreMate / 2)
-                {
-                    return beta;
+                    if (eval + pessimism > beta && Math.Abs(eval + pessimism) < ScoreMate / 2)
+                    {
+                        return beta;
+                    }
                 }
 
                 if (bestScore > ScoreTTLoss)
@@ -913,7 +917,7 @@ namespace Lizard.Logic.Search
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
-                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1);
+                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1, fromPC);
                 pos.UnmakeMove(m);
 
                 if (score > bestScore)
