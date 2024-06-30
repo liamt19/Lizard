@@ -269,7 +269,7 @@ namespace Lizard.Logic.Search
             //  or the TT hit's depth is well below the current depth,
             //  or the TT hit's score is above beta + ProbCutBeta(Improving).
             int probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
-            const int seeThreshold = 1;
+            const int seeThreshold = -200;
             if (UseProbCut
                 && !isPV
                 && !doSkip
