@@ -510,8 +510,8 @@ namespace Lizard.Logic.Search
                         R++;
 
                     //  Extend for PV searches
-                    if (isPV)
-                        R--;
+                    if (!isPV)
+                        R++;
 
                     //  Extend killer moves
                     if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
