@@ -17,7 +17,7 @@ namespace Lizard.Logic.NN
     {
         public const int INPUT_BUCKETS = 5;
         public const int INPUT_SIZE = 768;
-        public const int L1_SIZE = 1280;
+        public const int L1_SIZE = 1536;
         public const int L2_SIZE = 16;
         public const int L3_SIZE = 32;
         public const int OUTPUT_BUCKETS = 8;
@@ -43,7 +43,7 @@ namespace Lizard.Logic.NN
         public static readonly int L3_CHUNK_SIZE = 1;
 #endif
 
-        public const string NetworkName = "morelayers_sqr-params-835.bin";
+        public const string NetworkName = "morelayers_sqr_1536-params-530.bin";
 
         private static readonly UQNetContainer UQNet;
         public static readonly NetContainer<short, float> Net;
