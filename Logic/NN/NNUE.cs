@@ -25,11 +25,11 @@ namespace Lizard.Logic.NN
             {
                 if (UseAvx)
                 {
-                    return (short)Bucketed768.GetEvaluationUnrolled512(pos);
+                    return (short)((Bucketed768.GetEvaluationUnrolled512(pos) / 16) * 16 - 1 + ((int)(pos.Hash & 0x2)));
                 }
                 else
                 {
-                    return (short)Bucketed768.GetEvaluation(pos);
+                    return (short)((Bucketed768.GetEvaluation(pos) / 16) * 16 - 1 + ((int)(pos.Hash & 0x2)));
                 }
             }
 
