@@ -11,6 +11,7 @@
 
             ulong totalNodes = 0;
             SearchInformation info = new SearchInformation(pos, depth);
+            info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
             info.OnDepthFinish = null;
             info.OnSearchFinish = null;
 

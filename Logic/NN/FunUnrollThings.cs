@@ -18,13 +18,15 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int HL = Bucketed768.HiddenSize;
+        private const int HL = Bucketed768.L1_SIZE;
         private const int StopBefore = HL / N;
 
         private const int AVX512_1024HL = 1024 / 32;
+        private const int AVX512_1280HL = 1280 / 32;
         private const int AVX512_1536HL = 1536 / 32;
 
         private const int AVX256_1024HL = 1024 / 16;
+        private const int AVX256_1280HL = 1280 / 16;
         private const int AVX256_1536HL = 1536 / 16;
 
 
@@ -74,6 +76,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 37 * N), VectorT.Load(add1 + 37 * N)), VectorT.Load(sub1 + 37 * N)), dst + 37 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 38 * N), VectorT.Load(add1 + 38 * N)), VectorT.Load(sub1 + 38 * N)), dst + 38 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 39 * N), VectorT.Load(add1 + 39 * N)), VectorT.Load(sub1 + 39 * N)), dst + 39 * N);
+
+            if (StopBefore == AVX512_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 40 * N), VectorT.Load(add1 + 40 * N)), VectorT.Load(sub1 + 40 * N)), dst + 40 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 41 * N), VectorT.Load(add1 + 41 * N)), VectorT.Load(sub1 + 41 * N)), dst + 41 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 42 * N), VectorT.Load(add1 + 42 * N)), VectorT.Load(sub1 + 42 * N)), dst + 42 * N);
@@ -122,6 +128,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 77 * N), VectorT.Load(add1 + 77 * N)), VectorT.Load(sub1 + 77 * N)), dst + 77 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 78 * N), VectorT.Load(add1 + 78 * N)), VectorT.Load(sub1 + 78 * N)), dst + 78 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 79 * N), VectorT.Load(add1 + 79 * N)), VectorT.Load(sub1 + 79 * N)), dst + 79 * N);
+
+            if (StopBefore == AVX256_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 80 * N), VectorT.Load(add1 + 80 * N)), VectorT.Load(sub1 + 80 * N)), dst + 80 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 81 * N), VectorT.Load(add1 + 81 * N)), VectorT.Load(sub1 + 81 * N)), dst + 81 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 82 * N), VectorT.Load(add1 + 82 * N)), VectorT.Load(sub1 + 82 * N)), dst + 82 * N);
@@ -188,6 +198,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 37 * N), VectorT.Load(add1 + 37 * N)), VectorT.Load(sub1 + 37 * N)), VectorT.Load(sub2 + 37 * N)), dst + 37 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 38 * N), VectorT.Load(add1 + 38 * N)), VectorT.Load(sub1 + 38 * N)), VectorT.Load(sub2 + 38 * N)), dst + 38 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 39 * N), VectorT.Load(add1 + 39 * N)), VectorT.Load(sub1 + 39 * N)), VectorT.Load(sub2 + 39 * N)), dst + 39 * N);
+
+            if (StopBefore == AVX512_1280HL)
+                return;
+            
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 40 * N), VectorT.Load(add1 + 40 * N)), VectorT.Load(sub1 + 40 * N)), VectorT.Load(sub2 + 40 * N)), dst + 40 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 41 * N), VectorT.Load(add1 + 41 * N)), VectorT.Load(sub1 + 41 * N)), VectorT.Load(sub2 + 41 * N)), dst + 41 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 42 * N), VectorT.Load(add1 + 42 * N)), VectorT.Load(sub1 + 42 * N)), VectorT.Load(sub2 + 42 * N)), dst + 42 * N);
@@ -236,6 +250,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 77 * N), VectorT.Load(add1 + 77 * N)), VectorT.Load(sub1 + 77 * N)), VectorT.Load(sub2 + 77 * N)), dst + 77 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 78 * N), VectorT.Load(add1 + 78 * N)), VectorT.Load(sub1 + 78 * N)), VectorT.Load(sub2 + 78 * N)), dst + 78 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 79 * N), VectorT.Load(add1 + 79 * N)), VectorT.Load(sub1 + 79 * N)), VectorT.Load(sub2 + 79 * N)), dst + 79 * N);
+
+            if (StopBefore == AVX256_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 80 * N), VectorT.Load(add1 + 80 * N)), VectorT.Load(sub1 + 80 * N)), VectorT.Load(sub2 + 80 * N)), dst + 80 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 81 * N), VectorT.Load(add1 + 81 * N)), VectorT.Load(sub1 + 81 * N)), VectorT.Load(sub2 + 81 * N)), dst + 81 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Load(src + 82 * N), VectorT.Load(add1 + 82 * N)), VectorT.Load(sub1 + 82 * N)), VectorT.Load(sub2 + 82 * N)), dst + 82 * N);
@@ -302,6 +320,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 37 * N), VectorT.Load(add1 + 37 * N)), VectorT.Load(add2 + 37 * N)), VectorT.Load(sub1 + 37 * N)), VectorT.Load(sub2 + 37 * N)), dst + 37 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 38 * N), VectorT.Load(add1 + 38 * N)), VectorT.Load(add2 + 38 * N)), VectorT.Load(sub1 + 38 * N)), VectorT.Load(sub2 + 38 * N)), dst + 38 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 39 * N), VectorT.Load(add1 + 39 * N)), VectorT.Load(add2 + 39 * N)), VectorT.Load(sub1 + 39 * N)), VectorT.Load(sub2 + 39 * N)), dst + 39 * N);
+
+            if (StopBefore == AVX512_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 40 * N), VectorT.Load(add1 + 40 * N)), VectorT.Load(add2 + 40 * N)), VectorT.Load(sub1 + 40 * N)), VectorT.Load(sub2 + 40 * N)), dst + 40 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 41 * N), VectorT.Load(add1 + 41 * N)), VectorT.Load(add2 + 41 * N)), VectorT.Load(sub1 + 41 * N)), VectorT.Load(sub2 + 41 * N)), dst + 41 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 42 * N), VectorT.Load(add1 + 42 * N)), VectorT.Load(add2 + 42 * N)), VectorT.Load(sub1 + 42 * N)), VectorT.Load(sub2 + 42 * N)), dst + 42 * N);
@@ -350,6 +372,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 77 * N), VectorT.Load(add1 + 77 * N)), VectorT.Load(add2 + 77 * N)), VectorT.Load(sub1 + 77 * N)), VectorT.Load(sub2 + 77 * N)), dst + 77 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 78 * N), VectorT.Load(add1 + 78 * N)), VectorT.Load(add2 + 78 * N)), VectorT.Load(sub1 + 78 * N)), VectorT.Load(sub2 + 78 * N)), dst + 78 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 79 * N), VectorT.Load(add1 + 79 * N)), VectorT.Load(add2 + 79 * N)), VectorT.Load(sub1 + 79 * N)), VectorT.Load(sub2 + 79 * N)), dst + 79 * N);
+
+            if (StopBefore == AVX256_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 80 * N), VectorT.Load(add1 + 80 * N)), VectorT.Load(add2 + 80 * N)), VectorT.Load(sub1 + 80 * N)), VectorT.Load(sub2 + 80 * N)), dst + 80 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 81 * N), VectorT.Load(add1 + 81 * N)), VectorT.Load(add2 + 81 * N)), VectorT.Load(sub1 + 81 * N)), VectorT.Load(sub2 + 81 * N)), dst + 81 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Subtract(VectorT.Add(VectorT.Add(VectorT.Load(src + 82 * N), VectorT.Load(add1 + 82 * N)), VectorT.Load(add2 + 82 * N)), VectorT.Load(sub1 + 82 * N)), VectorT.Load(sub2 + 82 * N)), dst + 82 * N);
@@ -416,6 +442,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 37 * N), VectorT.Load(add1 + 37 * N)), dst + 37 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 38 * N), VectorT.Load(add1 + 38 * N)), dst + 38 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 39 * N), VectorT.Load(add1 + 39 * N)), dst + 39 * N);
+
+            if (StopBefore == AVX512_1280HL)
+                return;
+
             VectorT.Store(VectorT.Add(VectorT.Load(src + 40 * N), VectorT.Load(add1 + 40 * N)), dst + 40 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 41 * N), VectorT.Load(add1 + 41 * N)), dst + 41 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 42 * N), VectorT.Load(add1 + 42 * N)), dst + 42 * N);
@@ -464,6 +494,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 77 * N), VectorT.Load(add1 + 77 * N)), dst + 77 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 78 * N), VectorT.Load(add1 + 78 * N)), dst + 78 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 79 * N), VectorT.Load(add1 + 79 * N)), dst + 79 * N);
+
+            if (StopBefore == AVX256_1280HL)
+                return;
+
             VectorT.Store(VectorT.Add(VectorT.Load(src + 80 * N), VectorT.Load(add1 + 80 * N)), dst + 80 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 81 * N), VectorT.Load(add1 + 81 * N)), dst + 81 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 82 * N), VectorT.Load(add1 + 82 * N)), dst + 82 * N);
@@ -528,6 +562,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 37 * N), VectorT.Load(sub1 + 37 * N)), dst + 37 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 38 * N), VectorT.Load(sub1 + 38 * N)), dst + 38 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 39 * N), VectorT.Load(sub1 + 39 * N)), dst + 39 * N);
+
+            if (StopBefore == AVX512_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 40 * N), VectorT.Load(sub1 + 40 * N)), dst + 40 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 41 * N), VectorT.Load(sub1 + 41 * N)), dst + 41 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 42 * N), VectorT.Load(sub1 + 42 * N)), dst + 42 * N);
@@ -576,6 +614,10 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 77 * N), VectorT.Load(sub1 + 77 * N)), dst + 77 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 78 * N), VectorT.Load(sub1 + 78 * N)), dst + 78 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 79 * N), VectorT.Load(sub1 + 79 * N)), dst + 79 * N);
+
+            if (StopBefore == AVX256_1280HL)
+                return;
+
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 80 * N), VectorT.Load(sub1 + 80 * N)), dst + 80 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 81 * N), VectorT.Load(sub1 + 81 * N)), dst + 81 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 82 * N), VectorT.Load(sub1 + 82 * N)), dst + 82 * N);
