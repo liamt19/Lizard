@@ -499,6 +499,11 @@ namespace Lizard.Logic.Core
             Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
             State->Accumulator->CopyTo(NextState->Accumulator);
 
+            NextState->Accumulator->Computed[White] = State->Accumulator->Computed[White];
+            NextState->Accumulator->Computed[Black] = State->Accumulator->Computed[Black];
+            NextState->Accumulator->Update[White].Clear();
+            NextState->Accumulator->Update[Black].Clear();
+
             State++;
 
             if (State->EPSquare != EPNone)
