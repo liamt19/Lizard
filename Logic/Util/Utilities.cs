@@ -383,13 +383,14 @@ namespace Lizard.Logic.Util
                 {
                     int idx = CoordToIndex(x, y);
                     int pt = bb.GetPieceAtIndex(idx);
+                    int pc = bb.GetColorAtIndex(idx);
 
-                    if (bb.IsColorSet(Color.White, idx))
+                    if (pc == White)
                     {
                         char c = PieceToFENChar(pt);
                         sb.Append(char.ToUpper(c) + " ");
                     }
-                    else if (bb.IsColorSet(Color.Black, idx))
+                    else if (pc == Black)
                     {
                         char c = PieceToFENChar(pt);
                         sb.Append(char.ToLower(c) + " ");

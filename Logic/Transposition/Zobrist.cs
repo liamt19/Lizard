@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Lizard.Logic.Transposition
 {
@@ -6,11 +7,11 @@ namespace Lizard.Logic.Transposition
     {
         private const int DefaultSeed = 0xBEEF;
 
-        private static ulong[][][] ColorPieceSquareHashes = new ulong[ColorNB][][];
-        private static ulong[] CastlingRightsHashes = new ulong[ColorNB * 2];
-        private static ulong[] EnPassantFileHashes = new ulong[8];
+        private static readonly ulong[][][] ColorPieceSquareHashes = new ulong[ColorNB][][];
+        private static readonly ulong[] CastlingRightsHashes = new ulong[ColorNB * 2];
+        private static readonly ulong[] EnPassantFileHashes = new ulong[8];
         private static ulong BlackHash;
-        private static Random rand = new Random(DefaultSeed);
+        private static readonly Random rand = new Random(DefaultSeed);
 
         public static ulong HashForPiece(int pc, int pt, int sq) => ColorPieceSquareHashes[pc][pt][sq];
         public static ulong ColorHash => BlackHash;
@@ -18,7 +19,6 @@ namespace Lizard.Logic.Transposition
         [ModuleInitializer]
         public static void Initialize()
         {
-
             ColorPieceSquareHashes[Color.White] = new ulong[6][];
             ColorPieceSquareHashes[Color.Black] = new ulong[6][];
 
@@ -59,13 +59,13 @@ namespace Lizard.Logic.Transposition
             while (white != 0)
             {
                 int idx = poplsb(&white);
-                hash ^= ColorPieceSquareHashes[Color.White][bb.PieceTypes[idx]][idx];
+                hash ^= ColorPieceSquareHashes[Color.White][bb.GetPieceAtIndex(idx)][idx];
             }
 
             while (black != 0)
             {
                 int idx = poplsb(&black);
-                hash ^= ColorPieceSquareHashes[Color.Black][bb.PieceTypes[idx]][idx];
+                hash ^= ColorPieceSquareHashes[Color.Black][bb.GetPieceAtIndex(idx)][idx];
             }
 
             if ((position.State->CastleStatus & CastlingStatus.WK) != 0)
@@ -109,7 +109,9 @@ namespace Lizard.Logic.Transposition
             Assert(color is White or Black, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece color! (should be 0 or 1)");
             Assert(pt is >= Pawn and <= King, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
 
-            hash ^= ColorPieceSquareHashes[color][pt][from] ^ ColorPieceSquareHashes[color][pt][to];
+            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
+            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
+            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), from) ^ Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), to);
         }
 
         /// <summary>
@@ -121,7 +123,9 @@ namespace Lizard.Logic.Transposition
             Assert(pt is >= Pawn and <= King, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
             Assert(idx is >= A1 and <= H8, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid square! (should be 0 <= idx <= 63)");
 
-            hash ^= ColorPieceSquareHashes[color][pt][idx];
+            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
+            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
+            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), idx);
         }
 
         /// <summary>
@@ -132,7 +136,7 @@ namespace Lizard.Logic.Transposition
             ulong change = (ulong)(prev & toRemove);
             while (change != 0)
             {
-                hash ^= CastlingRightsHashes[poplsb(&change)];
+                hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(CastlingRightsHashes), poplsb(&change));
             }
         }
 
@@ -141,7 +145,7 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public static void ZobristEnPassant(this ref ulong hash, int file)
         {
-            hash ^= EnPassantFileHashes[file];
+            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(EnPassantFileHashes), file);
         }
 
         /// <summary>
