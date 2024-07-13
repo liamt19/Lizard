@@ -13,7 +13,6 @@ ifndef OUT_PATH
 endif
 
 ifeq ($(OS),Windows_NT) 
-	
 	BINARY_SUFFIX = .exe
 	PDB_SUFF = pdb
 
@@ -36,16 +35,21 @@ RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
 
 INST_SET = native
 
+# Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
+ifneq ($(OS),Darwin)
+    OUT_DIR = -o ./
+endif
+
 #  self-contained              .NET Core won't need to be installed to run the binary
 #  -v quiet                    Silences CS#### warnings during building (e.g. "CS0162: Unreachable code detected")
-#  --property WarningLevel=0   Silences CS#### warnings during building
-#  -o ./                       Outputs the binary in the current directory
+#  -p:WarningLevel=0           Silences CS#### warnings during building
+#  $(OUT_DIR)                  Should be "-o ./", which outputs the binary in the current directory
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
 #  -p:DebugType=embedded       Places the PDB file inside the binary
 #  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
 #                              This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v quiet --property WarningLevel=0 -o ./ -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
