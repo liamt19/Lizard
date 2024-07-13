@@ -1080,11 +1080,11 @@ namespace Lizard.Logic.Search
             int from = m.From;
             int to = m.To;
 
-            int swap = GetSEEValue(bb.PieceTypes[to]) - threshold;
+            int swap = GetSEEValue(bb.GetPieceAtIndex(to)) - threshold;
             if (swap < 0)
                 return false;
 
-            swap = GetSEEValue(bb.PieceTypes[from]) - swap;
+            swap = GetSEEValue(bb.GetPieceAtIndex(from)) - swap;
             if (swap <= 0)
                 return true;
 

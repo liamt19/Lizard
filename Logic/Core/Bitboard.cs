@@ -33,19 +33,6 @@
             Reset();
         }
 
-        public ulong GetPieces(int pc, (int, int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6]);
-        public ulong GetPieces(int pc, (int, int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5]);
-        public ulong GetPieces(int pc, (int, int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4]);
-        public ulong GetPieces(int pc, (int, int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3]);
-        public ulong GetPieces(int pc, (int, int) types) => Colors[pc] & (Pieces[types.Item1] | Pieces[types.Item2]);
-        public ulong GetPieces(int pc, int type) => Colors[pc] & (Pieces[type]);
-        public ulong GetPieces((int, int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5] | Pieces[types.Item6];
-        public ulong GetPieces((int, int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4] | Pieces[types.Item5];
-        public ulong GetPieces((int, int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3] | Pieces[types.Item4];
-        public ulong GetPieces((int, int, int) types) => Pieces[types.Item1] | Pieces[types.Item2] | Pieces[types.Item3];
-        public ulong GetPieces((int, int) types) => Pieces[types.Item1] | Pieces[types.Item2];
-        public ulong GetPieces(int type) => Pieces[type];
-
         public string SquareToString(int idx)
         {
             return ColorToString(GetColorAtIndex(idx)) + " " +
@@ -89,13 +76,6 @@
             }
         }
 
-        /// <summary>
-        /// Returns true if White or Black has a piece on <paramref name="idx"/>
-        /// </summary>
-        public bool Occupied(int idx)
-        {
-            return PieceTypes[idx] != Piece.None;
-        }
 
         /// <summary>
         /// Adds a piece of type <paramref name="pt"/> and color <paramref name="pc"/> on the square <paramref name="idx"/>.
@@ -158,30 +138,13 @@
             return PieceTypes[idx];
         }
 
-        /// <summary>
-        /// Returns true if the square <paramref name="idx"/> has a piece of the <see cref="Color"/> <paramref name="pc"/> on it.
-        /// </summary>
-        public bool IsColorSet(int pc, int idx)
-        {
-            return (Colors[pc] & SquareBB[idx]) != 0;
-        }
-
-        /// <summary>
-        /// Returns a mask with a single bit set at the index of the <see cref="Color"/> <paramref name="pc"/>'s king.
-        /// </summary>
-        public ulong KingMask(int pc)
-        {
-            return Colors[pc] & Pieces[Piece.King];
-        }
 
         /// <summary>
         /// Returns the index of the square that the <see cref="Color"/> <paramref name="pc"/>'s king is on.
         /// </summary>
         public int KingIndex(int pc)
         {
-            Assert(lsb(KingMask(pc)) != SquareNB, $"KingIndex({ColorToString(pc)}) got a KingMask of {KingMask(pc)}");
-
-            return lsb(KingMask(pc));
+            return lsb(Colors[pc] & Pieces[Piece.King]);
         }
 
         /// <summary>
@@ -264,16 +227,6 @@
               | (BlackPawnAttackMasks[idx] & Colors[White] & Pieces[Pawn]);
         }
 
-        /// <summary>
-        /// Returns a ulong with bits set at the positions of every Knight, Bishop, Rook, and Queen that can attack the square <paramref name="idx"/>, 
-        /// given the board occupancy <paramref name="occupied"/>.
-        /// </summary>
-        public ulong AttackersToMajors(int idx, ulong occupied)
-        {
-            return (GetBishopMoves(occupied, idx) & (Pieces[Piece.Bishop] | Pieces[Piece.Queen]))
-                  | (GetRookMoves(occupied, idx) & (Pieces[Piece.Rook] | Pieces[Piece.Queen]))
-                  | (Pieces[Piece.Knight] & KnightMasks[idx]);
-        }
 
         /// <summary>
         /// Returns a mask of the squares that a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
@@ -283,13 +236,13 @@
         {
             return pt switch
             {
-                Pawn => PawnAttackMasks[pc][idx],
+                Pawn   => PawnAttackMasks[pc][idx],
                 Knight => KnightMasks[idx],
                 Bishop => GetBishopMoves(occupied, idx),
-                Rook => GetRookMoves(occupied, idx),
-                Queen => GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx),
-                King => NeighborsMask[idx],
-                _ => 0,
+                Rook   => GetRookMoves(occupied, idx),
+                Queen  => GetBishopMoves(occupied, idx) | GetRookMoves(occupied, idx),
+                King   => NeighborsMask[idx],
+                _      => 0,
             };
         }
 

@@ -58,7 +58,6 @@ namespace Lizard.Logic.Core
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
         /// </summary>
         public StateInfo* State;
-        public StateInfo* PreviousState => State == _SentinelStart ? null : (State - 1);
         public StateInfo* NextState => (State + 1);
 
 
@@ -141,8 +140,8 @@ namespace Lizard.Logic.Core
 
             if (UpdateNN && Owner == null)
             {
-                Log("WARN Position('" + fen + "', " + createAccumulators + ", ...) has ResetNN true and was given a nullptr for owner! (if ResetNN is true, an owner must be provided)");
-                Log("Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
+                Debug.WriteLine($"info string Position('{fen}', {createAccumulators}, ...) has NNUE enabled and was given a nullptr for owner! " +
+                                $"Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
                 Owner = SearchPool.MainThread;
             }
 
@@ -237,7 +236,7 @@ namespace Lizard.Logic.Core
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
             //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
-            Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
+            Unsafe.CopyBlock(NextState, State, (uint)StateInfo.StateCopySize);
 
             if (UpdateNN)
             {
@@ -497,7 +496,7 @@ namespace Lizard.Logic.Core
         public void MakeNullMove()
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
-            Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
+            Unsafe.CopyBlock(NextState, State, (uint)StateInfo.StateCopySize);
 
             if (UpdateNN)
             {
@@ -1206,7 +1205,10 @@ namespace Lizard.Logic.Core
                 for (int x = 0; x <= 7; x++)
                 {
                     int index = CoordToIndex(x, y);
-                    if (bb.IsColorSet(Color.White, index))
+                    int pc = bb.GetColorAtIndex(index);
+                    int pt = bb.GetPieceAtIndex(index);
+
+                    if (pt != None)
                     {
                         if (i != 0)
                         {
@@ -1214,38 +1216,9 @@ namespace Lizard.Logic.Core
                             i = 0;
                         }
 
-                        int pt = bb.GetPieceAtIndex(index);
-                        if (pt != Piece.None)
-                        {
-                            char c = PieceToFENChar(pt);
-                            fen.Append(char.ToUpper(c));
-                        }
-                        else
-                        {
-                            Log("WARN in GetFEN(), White's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
-                        }
-
-                        continue;
-                    }
-                    else if (bb.IsColorSet(Color.Black, index))
-                    {
-                        if (i != 0)
-                        {
-                            fen.Append(i);
-                            i = 0;
-                        }
-
-                        int pt = bb.GetPieceAtIndex(index);
-                        if (pt != Piece.None)
-                        {
-                            char c = PieceToFENChar(pt);
-                            fen.Append(char.ToLower(c));
-                        }
-                        else
-                        {
-                            Log("WARN in GetFEN(), Black's color is set for " + IndexToString(index) + ", but there isn't a piece on that square!");
-                        }
-
+                        char c = PieceToFENChar(pt);
+                        fen.Append(pc == White ? char.ToUpper(c) : 
+                                                 char.ToLower(c));
 
                         continue;
                     }
@@ -1253,15 +1226,13 @@ namespace Lizard.Logic.Core
                     {
                         i++;
                     }
+
                     if (x == 7)
-                    {
                         fen.Append(i);
-                    }
                 }
+
                 if (y != 0)
-                {
                     fen.Append('/');
-                }
             }
 
             fen.Append(ToMove == Color.White ? " w " : " b ");

@@ -193,7 +193,7 @@ namespace Lizard.Logic.Data
             int moveTo = To;
             int moveFrom = From;
 
-            int pt = bb.PieceTypes[moveFrom];
+            int pt = bb.GetPieceAtIndex(moveFrom);
 
             if (Castle)
             {
@@ -208,7 +208,7 @@ namespace Lizard.Logic.Data
             }
             else
             {
-                bool cap = bb.Occupied(moveTo);
+                bool cap = bb.GetPieceAtIndex(moveTo) != moveTo;
 
                 if (pt == Piece.Pawn)
                 {
