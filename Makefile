@@ -36,8 +36,10 @@ RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
 INST_SET = native
 
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
-ifneq ($(OS),Darwin)
-    OUT_DIR = -o ./
+ifeq ($(OS),Windows_NT)
+	OUT_DIR = -o ./
+else ifeq ($(OS),Linux)
+	OUT_DIR = -o ./
 endif
 
 #  self-contained              .NET Core won't need to be installed to run the binary
