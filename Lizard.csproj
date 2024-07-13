@@ -108,7 +108,7 @@
   <!-- The "instruction-set" argument is required for AOT to generate code with intrinsics -->
   <ItemGroup>
     <ilcArg Include="--Ot" />
-    <ilcArg Include="--instruction-set=native" />
+    <IlcArg Condition="$(IlcInstructionSet) == ''" Include="--instruction-set=native" />
   </ItemGroup>
 
   <!-- If "-p:EVALFILE=(path to network here...)" is passed during the MSBuild, this will set the EvalFile

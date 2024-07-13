@@ -22,8 +22,8 @@ namespace Lizard.Logic.Search.Ordering
             {
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
-                int moveTo = m.To;
-                int moveFrom = m.From;
+                int moveTo = m.GetTo();
+                int moveFrom = m.GetFrom();
 
                 if (m.Equals(ttMove))
                 {
@@ -37,7 +37,7 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     sm.Score = int.MaxValue - 2000000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
+                else if (bb.GetPieceAtIndex(moveTo) != None && !m.GetCastle())
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
@@ -78,14 +78,14 @@ namespace Lizard.Logic.Search.Ordering
             {
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
-                int moveTo = m.To;
-                int moveFrom = m.From;
+                int moveTo = m.GetTo();
+                int moveFrom = m.GetFrom();
 
                 if (m.Equals(ttMove))
                 {
                     sm.Score = int.MaxValue - 100000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None && !m.Castle)
+                else if (bb.GetPieceAtIndex(moveTo) != None && !m.GetCastle())
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
@@ -123,8 +123,8 @@ namespace Lizard.Logic.Search.Ordering
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
 
-                sm.Score = GetSEEValue(m.EnPassant ? Pawn : bb.GetPieceAtIndex(m.To));
-                if (m.Promotion)
+                sm.Score = GetSEEValue(m.GetEnPassant() ? Pawn : bb.GetPieceAtIndex(m.GetTo()));
+                if (m.GetPromotion())
                 {
                     //  Gives promotions a higher score than captures.
                     //  We can assume a queen promotion is better than most captures.

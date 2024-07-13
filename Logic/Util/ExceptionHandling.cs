@@ -5,7 +5,7 @@ namespace Lizard.Logic.Util
     public static class ExceptionHandling
     {
 
-        [MethodImpl(MethodImplOptions.NoInlining)]
+        [System.Runtime.CompilerServices.MethodImpl(MethodImplOptions.NoInlining)]
         [Conditional("ENABLE_ASSERTIONS")]
         public static void Assert(bool condition, string message)
         {

@@ -294,8 +294,8 @@ namespace Lizard.Logic.Search
 
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
 
-                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.Castle);
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
+                    bool isCap = (bb.GetPieceAtIndex(m.GetTo()) != None && !m.GetCastle());
+                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.GetFrom()), m.GetTo());
                     
                     ss->CurrentMove = m;
                     ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
@@ -374,11 +374,11 @@ namespace Lizard.Logic.Search
 
                 Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
 
-                int moveFrom = m.From;
-                int moveTo = m.To;
+                int moveFrom = m.GetFrom();
+                int moveTo = m.GetTo();
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
-                bool isCapture = (theirPiece != None && !m.Castle);
+                bool isCapture = (theirPiece != None && !m.GetCastle());
 
                 legalMoves++;
                 int extend = 0;
@@ -558,7 +558,7 @@ namespace Lizard.Logic.Search
                             bonus = StatBonus(newDepth - 1);
                         }
 
-                        UpdateContinuations(ss, us, ourPiece, m.To, bonus);
+                        UpdateContinuations(ss, us, ourPiece, m.GetTo(), bonus);
                     }
                 }
                 else if (!isPV || legalMoves > 1)
@@ -813,7 +813,7 @@ namespace Lizard.Logic.Search
                 futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
             }
 
-            int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
+            int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.GetTo();
             int legalMoves = 0;
             int movesMade = 0;
             int checkEvasions = 0;
@@ -835,18 +835,18 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
 
-                int moveFrom = m.From;
-                int moveTo = m.To;
+                int moveFrom = m.GetFrom();
+                int moveTo = m.GetTo();
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
-                bool isCapture = (theirPiece != None && !m.Castle);
+                bool isCapture = (theirPiece != None && !m.GetCastle());
                 bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
                 movesMade++;
 
                 if (bestScore > ScoreTTLoss)
                 {
-                    if (!(givesCheck || m.Promotion)
+                    if (!(givesCheck || m.GetPromotion())
                         && (prevSquare != moveTo)
                         && futility > -ScoreWin)
                     {
@@ -966,8 +966,8 @@ namespace Lizard.Logic.Search
                                 Move* quietMoves, int quietCount, Move* captureMoves, int captureCount)
         {
             ref HistoryTable history = ref pos.Owner.History;
-            int moveFrom = bestMove.From;
-            int moveTo = bestMove.To;
+            int moveFrom = bestMove.GetFrom();
+            int moveTo = bestMove.GetTo();
 
             ref Bitboard bb = ref pos.bb;
 
@@ -978,7 +978,7 @@ namespace Lizard.Logic.Search
             int quietMoveBonus = StatBonus(depth + 1);
             int quietMovePenalty = StatMalus(depth);
 
-            if (capturedPiece != None && !bestMove.Castle)
+            if (capturedPiece != None && !bestMove.GetCastle())
             {
                 history.CaptureHistory[thisColor, thisPiece, moveTo, capturedPiece] <<= quietMoveBonus;
             }
@@ -987,7 +987,7 @@ namespace Lizard.Logic.Search
 
                 int bestMoveBonus = (bestScore > beta + HistoryCaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
 
-                if (ss->Killer0 != bestMove && !bestMove.EnPassant)
+                if (ss->Killer0 != bestMove && !bestMove.GetEnPassant())
                 {
                     ss->Killer1 = ss->Killer0;
                     ss->Killer0 = bestMove;
@@ -1000,14 +1000,14 @@ namespace Lizard.Logic.Search
                 {
                     Move m = quietMoves[i];
                     history.MainHistory[thisColor, m] <<= -quietMovePenalty;
-                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -quietMovePenalty);
+                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.GetFrom()), m.GetTo(), -quietMovePenalty);
                 }
             }
 
             for (int i = 0; i < captureCount; i++)
             {
                 Move m = captureMoves[i];
-                history.CaptureHistory[thisColor, bb.GetPieceAtIndex(m.From), m.To, bb.GetPieceAtIndex(m.To)] <<= -quietMoveBonus;
+                history.CaptureHistory[thisColor, bb.GetPieceAtIndex(m.GetFrom()), m.GetTo(), bb.GetPieceAtIndex(m.GetTo())] <<= -quietMoveBonus;
             }
         }
 
@@ -1070,15 +1070,15 @@ namespace Lizard.Logic.Search
         /// </summary>
         public static bool SEE_GE(Position pos, in Move m, int threshold = 1)
         {
-            if (m.Castle || m.EnPassant || m.Promotion)
+            if (m.GetCastle() || m.GetEnPassant() || m.GetPromotion())
             {
                 return threshold <= 0;
             }
 
             ref Bitboard bb = ref pos.bb;
 
-            int from = m.From;
-            int to = m.To;
+            int from = m.GetFrom();
+            int to = m.GetTo();
 
             int swap = GetSEEValue(bb.GetPieceAtIndex(to)) - threshold;
             if (swap < 0)

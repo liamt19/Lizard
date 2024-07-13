@@ -1,4 +1,6 @@
-﻿namespace Lizard.Logic.Core
+﻿using System.Runtime.CompilerServices;
+
+namespace Lizard.Logic.Core
 {
     /// <summary>
     /// Manages the bitboards for a position, which are 64-bit number arrays for each piece type and color.
@@ -125,6 +127,7 @@
         /// <summary>
         /// Returns the <see cref="Color"/> of the piece on the square <paramref name="idx"/>
         /// </summary>
+        [MethodImpl(Inline)]
         public int GetColorAtIndex(int idx)
         {
             return ((Colors[Color.White] & SquareBB[idx]) != 0) ? Color.White : Color.Black;
@@ -133,6 +136,7 @@
         /// <summary>
         /// Returns the type of the <see cref="Piece"/> on the square <paramref name="idx"/>
         /// </summary>
+        [MethodImpl(Inline)]
         public int GetPieceAtIndex(int idx)
         {
             return PieceTypes[idx];
@@ -142,6 +146,7 @@
         /// <summary>
         /// Returns the index of the square that the <see cref="Color"/> <paramref name="pc"/>'s king is on.
         /// </summary>
+        [MethodImpl(Inline)]
         public int KingIndex(int pc)
         {
             return lsb(Colors[pc] & Pieces[Piece.King]);

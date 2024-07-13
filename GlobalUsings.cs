@@ -26,6 +26,5 @@ global using static Lizard.Logic.Util.Utilities;
 global using Color = Lizard.Logic.Data.Color;
 global using Debug = System.Diagnostics.Debug;
 global using Stopwatch = System.Diagnostics.Stopwatch;
-global using MethodImpl = System.Runtime.CompilerServices.MethodImplAttribute;
 global using MethodImplOptions = System.Runtime.CompilerServices.MethodImplOptions;
 global using Unsafe = System.Runtime.CompilerServices.Unsafe;

@@ -12,22 +12,26 @@ namespace Lizard.Logic.NN
 
         public PerspectiveUpdate() { }
 
+        [MethodImpl(Inline)]
         public void Clear()
         {
             AddCnt = SubCnt = 0;
         }
 
+        [MethodImpl(Inline)]
         public void PushSub(int sub1)
         {
             Subs[SubCnt++] = sub1;
         }
 
+        [MethodImpl(Inline)]
         public void PushSubAdd(int sub1, int add1)
         {
             Subs[SubCnt++] = sub1;
             Adds[AddCnt++] = add1;
         }
 
+        [MethodImpl(Inline)]
         public void PushSubSubAdd(int sub1, int sub2, int add1)
         {
             Subs[SubCnt++] = sub1;
@@ -35,6 +39,7 @@ namespace Lizard.Logic.NN
             Adds[AddCnt++] = add1;
         }
 
+        [MethodImpl(Inline)]
         public void PushSubSubAddAdd(int sub1, int sub2, int add1, int add2)
         {
             Subs[SubCnt++] = sub1;

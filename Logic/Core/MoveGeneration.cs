@@ -140,8 +140,7 @@
                     int from = poplsb(&mask);
 
                     ref Move m = ref list[size++].Move;
-                    m.SetNew(from, State->EPSquare);
-                    m.EnPassant = true;
+                    m.SetNewEnPassant(from, State->EPSquare);
                 }
             }
 
@@ -229,8 +228,7 @@
                         && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WK]] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
@@ -238,8 +236,7 @@
                         && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WQ]] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
                     }
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
@@ -249,8 +246,7 @@
                         && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BK]] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
@@ -258,8 +254,7 @@
                         && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BQ]] & us) != 0)
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
                     }
                 }
 
@@ -455,8 +450,7 @@
                         && HasCastlingRook(us, CastlingStatus.WK))
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
@@ -464,8 +458,7 @@
                         && HasCastlingRook(us, CastlingStatus.WQ))
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
                     }
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
@@ -475,8 +468,7 @@
                         && HasCastlingRook(us, CastlingStatus.BK))
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
                     }
 
                     if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
@@ -484,8 +476,7 @@
                         && HasCastlingRook(us, CastlingStatus.BQ))
                     {
                         ref Move m = ref list[size++].Move;
-                        m.SetNew(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
-                        m.Castle = true;
+                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
                     }
                 }
 

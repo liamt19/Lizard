@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Lizard.Logic.Transposition
 {
@@ -83,6 +84,7 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Returns a pointer to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
         /// </summary>
+        [MethodImpl(Inline)]
         public static TTCluster* GetCluster(ulong hash)
         {
             return Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64));
