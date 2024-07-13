@@ -16,18 +16,20 @@ who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). So
 ## Ratings
 <div align="center">
 
-| Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | Notes |
-| ---- | ------------ | ---- | ---- | --- |
-| 10.0 | Jan. 4 2024  | 3367 | 3402 | First non-Stockfish NNUE |
-| 10.1 | Jan. 13 2024 | 3429 | -    | Various improvements to search |
-| 10.2 | Feb. 9 2024 | 3499 | 3580    | Larger network, more tunes |
-| 10.3 | Mar. 8 2024 | 3510 | TBD    | Significant speedups, FRC support |
+| Version | Released | [CCRL 40/15](https://www.computerchess.org.uk/ccrl/4040/) | [CCRL Blitz](https://www.computerchess.org.uk/ccrl/404/) | [CCRL FRC](https://www.computerchess.org.uk/ccrl/404FRC/) | Notes |
+| ---- | ------------ | ---- | ---- | ---- | --- |
+| 10.0 | Jan. 4 2024  | 3367 | 3406 | -    | First non-Stockfish NNUE |
+| 10.1 | Jan. 13 2024 | 3430 | -    | -    | Various improvements to search |
+| 10.2 | Feb. 9 2024 | 3498 | 3585    | -    | Larger network, more tunes |
+| 10.3 | Mar. 8 2024 | 3512 | -    | 3600 | Significant speedups, FRC support |
+| 10.4 | Jun. 2 2024 | 3543 | 3635    | 3611 | Larger network, better time management |
+| 10.5 | Jul. 13 2024 | TBD | TBD | TBD | Significant speedups, DFRC data |
 
 </div>
 
 ## Features
 ### NNUE Evaluation:
-Version 10.3 uses a (768 -> 1536)x2 -> 1 neural network to evaluate positions, which was trained on 2 billion positions of [an Lc0 dataset](https://drive.google.com/file/d/1RFkQES3DpsiJqsOtUshENtzPfFgUmEff/view) using [Bullet](https://github.com/jw1912/bullet).
+Version 10.5 uses a (768x5 -> 1536)x2 -> 8 neural network to evaluate positions, which was trained on ~8 billion positions from a collection of Lc0 datasets using [Bullet](https://github.com/jw1912/bullet).
 
 In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
 For the sake of simplicity, this functionality is only possible on the [the HalfKA-HalfKP branch](../../tree/HalfKA-HalfKP).
