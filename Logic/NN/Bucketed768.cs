@@ -362,6 +362,7 @@ namespace Lizard.Logic.NN
             ref PerspectiveUpdate wUpdate = ref dst->Update[White];
             ref PerspectiveUpdate bUpdate = ref dst->Update[Black];
 
+            //  Remove any updates that are present
             wUpdate.Clear();
             bUpdate.Clear();
 
@@ -371,8 +372,6 @@ namespace Lizard.Logic.NN
                 //  We will need to fully refresh our perspective, but we can still do theirs.
                 dst->NeedsRefresh[us] = true;
 
-                var theirSrc = (*src)[them];
-                var theirDst = (*dst)[them];
                 ref PerspectiveUpdate theirUpdate = ref dst->Update[them];
 
                 int theirKing = pos.State->KingSquares[them];
@@ -432,31 +431,49 @@ namespace Lizard.Logic.NN
             }
         }
 
+        public static void MakeNullMove(Position pos)
+        {
+            pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
 
+            pos.NextState->Accumulator->Computed[White] = pos.State->Accumulator->Computed[White];
+            pos.NextState->Accumulator->Computed[Black] = pos.State->Accumulator->Computed[Black];
+            pos.NextState->Accumulator->Update[White].Clear();
+            pos.NextState->Accumulator->Update[Black].Clear();
+        }
+
+
+        //  The general concept here is based off of Stormphrax's implementation:
+        //  https://github.com/Ciekce/Stormphrax/commit/9b76f2a35531513239ed7078acc21294a11e75c6
         public static void ProcessUpdates(Position pos)
         {
             StateInfo* st = pos.State;
             for (int perspective = 0; perspective < 2; perspective++)
             {
+                //  If the current state is correct for our perspective, no work is needed
                 if (st->Accumulator->Computed[perspective])
                     continue;
 
+                //  If the current state needs a refresh, don't bother with previous states
                 if (st->Accumulator->NeedsRefresh[perspective])
                 {
                     RefreshAccumulatorPerspective(pos, perspective);
                     continue;
                 }
 
+                //  Find the most recent computed or refresh-needed accumulator
                 StateInfo* curr = st - 1;
                 while (!curr->Accumulator->Computed[perspective] && !curr->Accumulator->NeedsRefresh[perspective])
                     curr--;
 
                 if (curr->Accumulator->NeedsRefresh[perspective])
                 {
+                    //  The most recent accumulator would need to be refreshed,
+                    //  so don't bother and refresh the current one instead
                     RefreshAccumulatorPerspective(pos, perspective);
                 }
                 else
                 {
+                    //  Update incrementally till the current accumulator is correct
                     while (curr != st)
                     {
                         StateInfo* prev = curr;
@@ -474,6 +491,7 @@ namespace Lizard.Logic.NN
 
             if (updates.AddCnt == 0 && updates.SubCnt == 0)
             {
+                //  For null moves, we still need to carry forward the correct accumulator state
                 prev->CopyTo(ref *curr, perspective);
                 return;
             }
@@ -517,31 +535,5 @@ namespace Lizard.Logic.NN
             }
         }
 
-        private static Accumulator Debug_MakeBackup(Accumulator* src)
-        {
-            Accumulator acc = new Accumulator();
-            src->CopyTo(&acc);
-            acc.Computed[0] = src->Computed[0];
-            acc.Computed[1] = src->Computed[1];
-            return acc;
-        }
-
-        private static void Debug_ShowAccStack(Position pos)
-        {
-            StateInfo* curr = pos.State;
-            int i = 0;
-
-            Log("\tNeedsRefresh\tComputed");
-            while (curr != (pos.StartingState - 1))
-            {
-                Log($"State - {i}" + (curr == pos.StartingState ? "*" : " ") + ": " +
-                    $"{curr->Accumulator->NeedsRefresh[0].AsInt()}/{curr->Accumulator->NeedsRefresh[1].AsInt()} " +
-                    $"{curr->Accumulator->Computed[0].AsInt()}/{curr->Accumulator->Computed[1].AsInt()} " +
-                    $"{curr->Accumulator->White[0][0]} {curr->Accumulator->White[0][1]} / " +
-                    $"{curr->Accumulator->Black[0][0]} {curr->Accumulator->Black[0][1]}");
-                curr--;
-                i++;
-            }
-        }
     }
 }

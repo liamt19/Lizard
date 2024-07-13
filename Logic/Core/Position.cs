@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Text;
 
+using Lizard.Logic.Data;
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
 
@@ -497,13 +498,12 @@ namespace Lizard.Logic.Core
         {
             //  Copy everything except the pointer to the accumulator, which should never change.
             Unsafe.CopyBlock(State + 1, State, (uint)StateInfo.StateCopySize);
-            State->Accumulator->CopyTo(NextState->Accumulator);
 
-            NextState->Accumulator->Computed[White] = State->Accumulator->Computed[White];
-            NextState->Accumulator->Computed[Black] = State->Accumulator->Computed[Black];
-            NextState->Accumulator->Update[White].Clear();
-            NextState->Accumulator->Update[Black].Clear();
-
+            if (UpdateNN)
+            {
+                NNUE.MakeNullMove(this);
+            }
+            
             State++;
 
             if (State->EPSquare != EPNone)
