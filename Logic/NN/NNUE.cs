@@ -1,4 +1,5 @@
 ﻿
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -11,11 +12,13 @@ namespace Lizard.Logic.NN
         public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
         public static readonly bool UseAvx = Avx2.IsSupported;
 
+        [MethodImpl(Inline)]
         public static void RefreshAccumulator(Position pos)
         {
             Bucketed768.RefreshAccumulator(pos);
         }
 
+        [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
             if (UseAvx)
@@ -28,11 +31,13 @@ namespace Lizard.Logic.NN
             }
         }
 
+        [MethodImpl(Inline)]
         public static void MakeMove(Position pos, Move m)
         {
             Bucketed768.MakeMove(pos, m);
         }
 
+        [MethodImpl(Inline)]
         public static void MakeNullMove(Position pos)
         {
             Bucketed768.MakeNullMove(pos);
@@ -96,6 +101,7 @@ namespace Lizard.Logic.NN
         }
 
 
+        [MethodImpl(Inline)]
         public static int SumVectorNoHadd(Vector256<int> vect)
         {
             Vector128<int> lo = vect.GetLower();
@@ -113,6 +119,7 @@ namespace Lizard.Logic.NN
             return Sse2.ConvertToInt32(sum128);
         }
 
+        [MethodImpl(Inline)]
         public static int SumVectorNoHadd(Vector512<int> vect)
         {
             //  _mm512_reduce_add_epi32 is a sequence instruction and isn't callable

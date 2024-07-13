@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
@@ -13,6 +14,7 @@ namespace Lizard.Logic.Util
         /// This isn't a guarantee, and the time it takes for <see cref="Unsafe.AsPointer"/> to compute the address does hurt, 
         /// but regardless this seems to help.
         /// </summary>
+        [MethodImpl(Inline)]
         public static unsafe void prefetch(void* address)
         {
             if (Sse.IsSupported)
@@ -25,21 +27,16 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the number of bits set in <paramref name="value"/> using <c>_mm_popcnt_u64</c>
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong popcount(ulong value)
         {
-            if (Popcnt.X64.IsSupported)
-            {
-                return Popcnt.X64.PopCount(value);
-            }
-            else
-            {
-                return ulong.PopCount(value);
-            }
+            return ulong.PopCount(value);
         }
 
         /// <summary>
         /// Returns true if <paramref name="value"/> has more than one bit set.
         /// </summary>
+        [MethodImpl(Inline)]
         public static bool MoreThanOne(ulong value)
         {
             return poplsb(value) != 0;
@@ -49,58 +46,39 @@ namespace Lizard.Logic.Util
         /// Returns the number of trailing least significant zero bits in <paramref name="value"/> using <c>Bmi1.X64.TrailingZeroCount</c>. 
         /// So lsb(100_2) returns 2.
         /// </summary>
+        [MethodImpl(Inline)]
         public static int lsb(ulong value)
         {
-            if (Bmi1.X64.IsSupported)
-            {
-                return (int)Bmi1.X64.TrailingZeroCount(value);
-            }
-            else
-            {
-                return (int)ulong.TrailingZeroCount(value);
-            }
+            return (int)ulong.TrailingZeroCount(value);
         }
 
         /// <summary>
         /// Sets the least significant bit to 0 using <c>Bmi1.X64.ResetLowestSetBit</c>. 
         /// So PopLsb(10110_2) returns 10100_2.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong poplsb(ulong value)
         {
-            if (Bmi1.X64.IsSupported)
-            {
-                return Bmi1.X64.ResetLowestSetBit(value);
-            }
-            else
-            {
-                return value & (value - 1);
-            }
+            return value & (value - 1);
         }
 
         /// <summary>
         /// Returns the number of trailing least significant zero bits in <paramref name="value"/> using <c>_mm_tzcnt_64</c>,
         /// and clears the lowest set bit with <c>_blsr_u64</c>.
         /// </summary>
+        [MethodImpl(Inline)]
         public static unsafe int poplsb(ulong* value)
         {
-            if (Bmi1.X64.IsSupported)
-            {
-                int sq = (int)Bmi1.X64.TrailingZeroCount(*value);
-                *value = Bmi1.X64.ResetLowestSetBit(*value);
-                return sq;
-            }
-            else
-            {
-                int sq = (int)ulong.TrailingZeroCount(*value);
-                *value = *value & (*value - 1);
-                return sq;
-            }
+            int sq = (int)ulong.TrailingZeroCount(*value);
+            *value = *value & (*value - 1);
+            return sq;
         }
 
         /// <summary>
         /// Returns the index of the most significant bit (highest, toward the square H8) 
         /// set in the mask <paramref name="value"/> using <c>Lzcnt.X64.LeadingZeroCount</c>
         /// </summary>
+        [MethodImpl(Inline)]
         public static int msb(ulong value)
         {
             if (Lzcnt.X64.IsSupported)
@@ -131,6 +109,7 @@ namespace Lizard.Logic.Util
         /// So <c>pext("ABCD EFGH", 1011 0001)</c> would return <c>"0000 ACDH"</c>,
         /// where ACDH could each be 0 or 1 depending on if they were set in <paramref name="value"/>
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong pext(ulong value, ulong mask)
         {
             if (Bmi2.X64.IsSupported)

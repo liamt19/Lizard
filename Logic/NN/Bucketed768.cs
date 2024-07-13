@@ -350,8 +350,8 @@ namespace Lizard.Logic.NN
 
             dst->Computed[0] = dst->Computed[1] = false;
 
-            int moveTo = m.To;
-            int moveFrom = m.From;
+            int moveTo = m.GetTo();
+            int moveFrom = m.GetFrom();
 
             int us = pos.ToMove;
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
@@ -379,17 +379,17 @@ namespace Lizard.Logic.NN
                 int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
                 int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
 
-                if (theirPiece != None && !m.Castle)
+                if (theirPiece != None && !m.GetCastle())
                 {
                     int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
                     theirUpdate.PushSubSubAdd(from, cap, to);
                 }
-                else if (m.Castle)
+                else if (m.GetCastle())
                 {
                     int rookFromSq = moveTo;
-                    int rookToSq = m.CastlingRookSquare;
+                    int rookToSq = m.CastlingRookSquare();
 
-                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare, theirKing, them);
+                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
 
                     int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
                     int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
@@ -407,7 +407,7 @@ namespace Lizard.Logic.NN
                 int bKing = pos.State->KingSquares[Black];
 
                 (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
-                (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
+                (int wTo, int bTo) = FeatureIndex(us, m.GetPromotion() ? m.GetPromotionTo() : ourPiece, moveTo, wKing, bKing);
 
                 wUpdate.PushSubAdd(wFrom, wTo);
                 bUpdate.PushSubAdd(bFrom, bTo);
@@ -419,7 +419,7 @@ namespace Lizard.Logic.NN
                     wUpdate.PushSub(wCap);
                     bUpdate.PushSub(bCap);
                 }
-                else if (m.EnPassant)
+                else if (m.GetEnPassant())
                 {
                     int idxPawn = moveTo - ShiftUpDir(us);
 
