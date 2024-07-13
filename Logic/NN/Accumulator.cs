@@ -14,6 +14,8 @@ namespace Lizard.Logic.NN
         public readonly Vector256<short>* Black;
 
         public fixed bool NeedsRefresh[2];
+        public fixed bool Computed[2];
+        public NetworkUpdate Update;
 
         public Accumulator()
         {
@@ -21,6 +23,7 @@ namespace Lizard.Logic.NN
             Black = (Vector256<short>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
 
             NeedsRefresh[Color.White] = NeedsRefresh[Color.Black] = true;
+            Computed[Color.White] = Computed[Color.Black] = false;
         }
 
         public Vector256<short>* this[int perspective] => (perspective == Color.White) ? White : Black;
@@ -32,12 +35,7 @@ namespace Lizard.Logic.NN
 
             target->NeedsRefresh[0] = NeedsRefresh[0];
             target->NeedsRefresh[1] = NeedsRefresh[1];
-        }
 
-        public void CopyTo(Accumulator* target, int perspective)
-        {
-            Unsafe.CopyBlock((*target)[perspective], this[perspective], ByteSize);
-            target->NeedsRefresh[perspective] = NeedsRefresh[perspective];
         }
 
         public void CopyTo(ref Accumulator target, int perspective)

@@ -13,34 +13,29 @@ namespace Lizard.Logic.NN
 
         public static void RefreshAccumulator(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.RefreshAccumulator(pos);
-            }
+            Bucketed768.RefreshAccumulator(pos);
         }
 
         public static short GetEvaluation(Position pos)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
+            if (UseAvx)
             {
-                if (UseAvx)
-                {
-                    return (short)Bucketed768.GetEvaluationUnrolled512(pos);
-                }
-                else
-                {
-                    return (short)Bucketed768.GetEvaluation(pos);
-                }
+                return (short)Bucketed768.GetEvaluationUnrolled512(pos);
             }
-
+            else
+            {
+                return (short)Bucketed768.GetEvaluation(pos);
+            }
         }
 
         public static void MakeMove(Position pos, Move m)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.MakeMove(pos, m);
-            }
+            Bucketed768.MakeMove(pos, m);
+        }
+
+        public static void MakeNullMove(Position pos)
+        {
+            Bucketed768.MakeNullMove(pos);
         }
 
 
@@ -52,10 +47,7 @@ namespace Lizard.Logic.NN
         /// </summary>
         public static void LoadNewNetwork(string networkToLoad)
         {
-            if (NetArch == NetworkArchitecture.Bucketed768)
-            {
-                Bucketed768.Initialize(networkToLoad, exitIfFail: false);
-            }
+            Bucketed768.Initialize(networkToLoad, exitIfFail: false);
         }
 
 

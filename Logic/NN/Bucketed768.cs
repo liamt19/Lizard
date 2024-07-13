@@ -144,6 +144,7 @@ namespace Lizard.Logic.NN
             var ourAccumulation = (short*)accumulator[perspective];
             Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
             accumulator.NeedsRefresh[perspective] = false;
+            accumulator.Computed[perspective] = true;
 
             int ourKing = pos.State->KingSquares[perspective];
             ulong occ = bb.Occupancy;
@@ -171,6 +172,28 @@ namespace Lizard.Logic.NN
 
             accumulator.CopyTo(ref entryAcc, perspective);
             bb.CopyTo(ref entryBB);
+        }
+
+        public static void RefreshAccumulatorState(StateInfo* st, ref Accumulator accumulator, ref Bitboard bb, int perspective)
+        {
+            var ourAccumulation = (short*)accumulator[perspective];
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            accumulator.NeedsRefresh[perspective] = false;
+            accumulator.Computed[perspective] = true;
+
+            int ourKing = st->KingSquares[perspective];
+            ulong occ = bb.Occupancy;
+            while (occ != 0)
+            {
+                int pieceIdx = poplsb(&occ);
+
+                int pt = bb.GetPieceAtIndex(pieceIdx);
+                int pc = bb.GetColorAtIndex(pieceIdx);
+
+                int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
+                var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
+                UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+            }
         }
 
 
@@ -217,20 +240,14 @@ namespace Lizard.Logic.NN
 
             entryAcc.CopyTo(ref accumulator, perspective);
             bb.CopyTo(ref entryBB);
+
+            accumulator.Computed[perspective] = true;
         }
 
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            if (accumulator.NeedsRefresh[White])
-            {
-                RefreshAccumulatorPerspective(pos, White);
-            }
-
-            if (accumulator.NeedsRefresh[Black])
-            {
-                RefreshAccumulatorPerspective(pos, Black);
-            }
+            Bucketed768.ProcessUpdates(pos);
 
             Vector256<short> maxVec = Vector256.Create((short)QA);
             Vector256<short> zeroVec = Vector256<short>.Zero;
@@ -331,6 +348,8 @@ namespace Lizard.Logic.NN
             dst->NeedsRefresh[0] = src->NeedsRefresh[0];
             dst->NeedsRefresh[1] = src->NeedsRefresh[1];
 
+            dst->Computed[0] = dst->Computed[1] = false;
+
             int moveTo = m.To;
             int moveFrom = m.From;
 
@@ -340,11 +359,12 @@ namespace Lizard.Logic.NN
             int them = Not(us);
             int theirPiece = bb.GetPieceAtIndex(moveTo);
 
-            var srcWhite = (*src)[White];
-            var srcBlack = (*src)[Black];
+            ref PerspectiveUpdate wUpdate = ref dst->Update[White];
+            ref PerspectiveUpdate bUpdate = ref dst->Update[Black];
 
-            var dstWhite = (*dst)[White];
-            var dstBlack = (*dst)[Black];
+            //  Remove any updates that are present
+            wUpdate.Clear();
+            bUpdate.Clear();
 
             //  Refreshes are only required if our king moves to a different bucket
             if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
@@ -352,8 +372,8 @@ namespace Lizard.Logic.NN
                 //  We will need to fully refresh our perspective, but we can still do theirs.
                 dst->NeedsRefresh[us] = true;
 
-                var theirSrc = (*src)[them];
-                var theirDst = (*dst)[them];
+                ref PerspectiveUpdate theirUpdate = ref dst->Update[them];
+
                 int theirKing = pos.State->KingSquares[them];
 
                 int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
@@ -362,11 +382,7 @@ namespace Lizard.Logic.NN
                 if (theirPiece != None && !m.Castle)
                 {
                     int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
-
-                    SubSubAdd((short*)theirSrc, (short*)theirDst,
-                              (FeatureWeights + from),
-                              (FeatureWeights + cap),
-                              (FeatureWeights + to));
+                    theirUpdate.PushSubSubAdd(from, cap, to);
                 }
                 else if (m.Castle)
                 {
@@ -378,17 +394,11 @@ namespace Lizard.Logic.NN
                     int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
                     int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
 
-                    SubSubAddAdd((short*)theirSrc, (short*)theirDst,
-                                 (FeatureWeights + from),
-                                 (FeatureWeights + rookFrom),
-                                 (FeatureWeights + to),
-                                 (FeatureWeights + rookTo));
+                    theirUpdate.PushSubSubAddAdd(from, rookFrom, to, rookTo);
                 }
                 else
                 {
-                    SubAdd((short*)theirSrc, (short*)theirDst,
-                           (FeatureWeights + from),
-                           (FeatureWeights + to));
+                    theirUpdate.PushSubAdd(from, to);
                 }
             }
             else
@@ -399,19 +409,15 @@ namespace Lizard.Logic.NN
                 (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 (int wTo, int bTo) = FeatureIndex(us, m.Promotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
 
+                wUpdate.PushSubAdd(wFrom, wTo);
+                bUpdate.PushSubAdd(bFrom, bTo);
+
                 if (theirPiece != None)
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    SubSubAdd((short*)srcWhite, (short*)dstWhite,
-                              (FeatureWeights + wFrom),
-                              (FeatureWeights + wCap),
-                              (FeatureWeights + wTo));
-
-                    SubSubAdd((short*)srcBlack, (short*)dstBlack,
-                              (FeatureWeights + bFrom),
-                              (FeatureWeights + bCap),
-                              (FeatureWeights + bTo));
+                    wUpdate.PushSub(wCap);
+                    bUpdate.PushSub(bCap);
                 }
                 else if (m.EnPassant)
                 {
@@ -419,27 +425,103 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    SubSubAdd((short*)srcWhite, (short*)dstWhite,
-                              (FeatureWeights + wFrom),
-                              (FeatureWeights + wCap),
-                              (FeatureWeights + wTo));
+                    wUpdate.PushSub(wCap);
+                    bUpdate.PushSub(bCap);
+                }
+            }
+        }
 
-                    SubSubAdd((short*)srcBlack, (short*)dstBlack,
-                              (FeatureWeights + bFrom),
-                              (FeatureWeights + bCap),
-                              (FeatureWeights + bTo));
+        public static void MakeNullMove(Position pos)
+        {
+            pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
+
+            pos.NextState->Accumulator->Computed[White] = pos.State->Accumulator->Computed[White];
+            pos.NextState->Accumulator->Computed[Black] = pos.State->Accumulator->Computed[Black];
+            pos.NextState->Accumulator->Update[White].Clear();
+            pos.NextState->Accumulator->Update[Black].Clear();
+        }
+
+
+        //  The general concept here is based off of Stormphrax's implementation:
+        //  https://github.com/Ciekce/Stormphrax/commit/9b76f2a35531513239ed7078acc21294a11e75c6
+        public static void ProcessUpdates(Position pos)
+        {
+            StateInfo* st = pos.State;
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                //  If the current state is correct for our perspective, no work is needed
+                if (st->Accumulator->Computed[perspective])
+                    continue;
+
+                //  If the current state needs a refresh, don't bother with previous states
+                if (st->Accumulator->NeedsRefresh[perspective])
+                {
+                    RefreshAccumulatorPerspective(pos, perspective);
+                    continue;
+                }
+
+                //  Find the most recent computed or refresh-needed accumulator
+                StateInfo* curr = st - 1;
+                while (!curr->Accumulator->Computed[perspective] && !curr->Accumulator->NeedsRefresh[perspective])
+                    curr--;
+
+                if (curr->Accumulator->NeedsRefresh[perspective])
+                {
+                    //  The most recent accumulator would need to be refreshed,
+                    //  so don't bother and refresh the current one instead
+                    RefreshAccumulatorPerspective(pos, perspective);
                 }
                 else
                 {
-                    SubAdd((short*)srcWhite, (short*)dstWhite,
-                           (FeatureWeights + wFrom),
-                           (FeatureWeights + wTo));
-
-                    SubAdd((short*)srcBlack, (short*)dstBlack,
-                           (FeatureWeights + bFrom),
-                           (FeatureWeights + bTo));
+                    //  Update incrementally till the current accumulator is correct
+                    while (curr != st)
+                    {
+                        StateInfo* prev = curr;
+                        curr++;
+                        UpdateSingle(prev->Accumulator, curr->Accumulator, perspective);
+                    }
                 }
+
             }
+        }
+
+        public static void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective)
+        {
+            ref var updates = ref curr->Update[perspective];
+
+            if (updates.AddCnt == 0 && updates.SubCnt == 0)
+            {
+                //  For null moves, we still need to carry forward the correct accumulator state
+                prev->CopyTo(ref *curr, perspective);
+                return;
+            }
+
+            var src = (short*)((*prev)[perspective]);
+            var dst = (short*)((*curr)[perspective]);
+
+            if (updates.AddCnt == 1 && updates.SubCnt == 1)
+            {
+                SubAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Adds[0]));
+            }
+            else if (updates.AddCnt == 1 && updates.SubCnt == 2)
+            {
+                SubSubAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Subs[1]),
+                    (FeatureWeights + updates.Adds[0]));
+            }
+            else if (updates.AddCnt == 2 && updates.SubCnt == 2)
+            {
+                SubSubAddAdd(src, dst,
+                    (FeatureWeights + updates.Subs[0]),
+                    (FeatureWeights + updates.Subs[1]),
+                    (FeatureWeights + updates.Adds[0]),
+                    (FeatureWeights + updates.Adds[1]));
+            }
+
+            curr->Computed[perspective] = true;
         }
 
         public static void ResetCaches(SearchThread td)
@@ -452,5 +534,6 @@ namespace Lizard.Logic.NN
                 bc.Boards[Black].Reset();
             }
         }
+
     }
 }

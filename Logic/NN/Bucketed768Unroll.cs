@@ -39,15 +39,7 @@ namespace Lizard.Logic.NN
             var zeroVec = VShort.Zero;
             var sumVec = VInt.Zero;
 
-            if (accumulator.NeedsRefresh[White])
-            {
-                RefreshAccumulatorPerspective(pos, White);
-            }
-
-            if (accumulator.NeedsRefresh[Black])
-            {
-                RefreshAccumulatorPerspective(pos, Black);
-            }
+            Bucketed768.ProcessUpdates(pos);
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
