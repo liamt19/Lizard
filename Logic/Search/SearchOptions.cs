@@ -161,9 +161,9 @@
 
 
         /// <summary>
-        /// For LMR, the reduction of a move is modified by it's history divided by (4096 * this value).
+        /// For LMR, the reduction of a move is modified by it's history divided by (1024 * this value).
         /// </summary>
-        public static int HistoryReductionMultiplier = 3;
+        public static int HistoryReductionMultiplier = 12;
 
 
 

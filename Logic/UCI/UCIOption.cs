@@ -5,9 +5,9 @@ namespace Lizard.Logic.UCI
     public class UCIOption
     {
         /// <summary>
-        /// +/- 60%
+        /// +/- 45%
         /// </summary>
-        private const double AutoMinMaxMultiplier = 0.6;
+        private const double AutoMinMaxMultiplier = 0.45;
 
 
         /// <summary>
@@ -104,8 +104,8 @@ namespace Lizard.Logic.UCI
         /// </summary>
         public string GetSPSAFormat()
         {
-            const int minStepSize = 1;
-            int stepSize = Math.Max(minStepSize, (MaxValue - MinValue) / 10);
+            const double minStepSize = 0.01;
+            double stepSize = Math.Max(minStepSize, (MaxValue - MinValue) / 20.0);
 
             //  name, int, default, min, max, step-size end, learning rate
             return $"{FieldHandle.Name}, int, {DefaultValue}, {MinValue}, {MaxValue}, {stepSize}, 0.002";

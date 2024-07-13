@@ -522,7 +522,7 @@ namespace Lizard.Logic.Search
                                         (*(ss - 2)->ContinuationHistory)[histIdx] + 
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (histScore / (4096 * HistoryReductionMultiplier));
+                    R -= (histScore / (1024 * HistoryReductionMultiplier));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
