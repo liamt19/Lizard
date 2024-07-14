@@ -23,12 +23,12 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-params-680.bin";
 
-        public static readonly short* FeatureWeights;
-        public static readonly short* FeatureBiases;
-        public static readonly short* LayerWeights;
-        public static readonly short* LayerBiases;
+        public static readonly float* FeatureWeights;
+        public static readonly float* FeatureBiases;
+        public static readonly float* LayerWeights;
+        public static readonly float* LayerBiases;
 
         private const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
         private const int FeatureBiasElements = HiddenSize;
@@ -36,7 +36,7 @@ namespace Lizard.Logic.NN
         private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
-        private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
+        private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(float);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
@@ -54,11 +54,11 @@ namespace Lizard.Logic.NN
 
         static Bucketed768()
         {
-            FeatureWeights = (short*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
-            FeatureBiases = (short*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
+            FeatureWeights = (float*)AlignedAllocZeroed(sizeof(float) * FeatureWeightElements);
+            FeatureBiases = (float*)AlignedAllocZeroed(sizeof(float) * FeatureBiasElements);
 
-            LayerWeights = (short*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
-            LayerBiases = (short*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
+            LayerWeights = (float*)AlignedAllocZeroed(sizeof(float) * LayerWeightElements);
+            LayerBiases = (float*)AlignedAllocZeroed(sizeof(float) * (nuint)Math.Max(LayerBiasElements, Vector512<float>.Count));
 
             string networkToLoad = NetworkName;
 
@@ -96,28 +96,28 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < FeatureWeightElements; i++)
             {
-                FeatureWeights[i] = br.ReadInt16();
+                FeatureWeights[i] = br.ReadSingle();
             }
 
             for (int i = 0; i < FeatureBiasElements; i++)
             {
-                FeatureBiases[i] = br.ReadInt16();
+                FeatureBiases[i] = br.ReadSingle();
             }
 
             for (int i = 0; i < LayerWeightElements; i++)
             {
-                LayerWeights[i] = br.ReadInt16();
+                LayerWeights[i] = br.ReadSingle();
             }
 
             for (int i = 0; i < LayerBiasElements; i++)
             {
-                LayerBiases[i] = br.ReadInt16();
+                LayerBiases[i] = br.ReadSingle();
             }
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
             //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+            TransposeLayerWeights(LayerWeights, HiddenSize * 2, OutputBuckets);
 
 #if DEBUG
             NetStats("ft weight", FeatureWeights, FeatureWeightElements);
@@ -141,8 +141,8 @@ namespace Lizard.Logic.NN
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var ourAccumulation = (short*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            var ourAccumulation = (float*)accumulator[perspective];
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(float) * HiddenSize);
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -156,7 +156,7 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
+                var ourWeights = (Vector512<float>*)(FeatureWeights + idx);
                 UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
             }
 
@@ -176,8 +176,8 @@ namespace Lizard.Logic.NN
 
         public static void RefreshAccumulatorState(StateInfo* st, ref Accumulator accumulator, ref Bitboard bb, int perspective)
         {
-            var ourAccumulation = (short*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            var ourAccumulation = (float*)accumulator[perspective];
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(float) * HiddenSize);
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -191,7 +191,7 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
+                var ourWeights = (Vector512<float>*)(FeatureWeights + idx);
                 UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
             }
         }
@@ -209,7 +209,7 @@ namespace Lizard.Logic.NN
             ref Bitboard entryBB = ref rtEntry.Boards[perspective];
             ref Accumulator entryAcc = ref rtEntry.Accumulator;
 
-            var ourAccumulation = (short*)entryAcc[perspective];
+            var ourAccumulation = (float*)entryAcc[perspective];
             accumulator.NeedsRefresh[perspective] = false;
 
             for (int pc = 0; pc < ColorNB; pc++)
@@ -247,48 +247,37 @@ namespace Lizard.Logic.NN
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            Bucketed768.ProcessUpdates(pos);
+            RefreshAccumulator(pos);
 
-            Vector256<short> maxVec = Vector256.Create((short)QA);
-            Vector256<short> zeroVec = Vector256<short>.Zero;
-            Vector256<int> sum = Vector256<int>.Zero;
+            Vector256<float> maxVec = Vector256<float>.One;
+            Vector256<float> zeroVec = Vector256<float>.Zero;
+            Vector256<float> sum = Vector256<float>.Zero;
 
-            int SimdChunks = HiddenSize / Vector256<short>.Count;
+            int SimdChunks = HiddenSize / Vector256<float>.Count;
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
-            var ourData =   (accumulator[pos.ToMove]);
-            var theirData = (accumulator[Not(pos.ToMove)]);
-            var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
-            var theirWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
+            var ourData =   (Vector256<float>*)(accumulator[pos.ToMove]);
+            var theirData = (Vector256<float>*)(accumulator[Not(pos.ToMove)]);
+            var ourWeights =   (Vector256<float>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
+            var theirWeights = (Vector256<float>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
 
             for (int i = 0; i < SimdChunks; i++)
             {
-                Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
-                Vector256<short> mult = clamp * ourWeights[i];
-
-                (var loMult, var hiMult) = Vector256.Widen(mult);
-                (var loClamp, var hiClamp) = Vector256.Widen(clamp);
-
-                sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                Vector256<float> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
+                sum = Vector256.Add(sum, clamp * clamp * ourWeights[i]);
             }
 
             for (int i = 0; i < SimdChunks; i++)
             {
-                Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
-                Vector256<short> mult = clamp * theirWeights[i];
-
-                (var loMult, var hiMult) = Vector256.Widen(mult);
-                (var loClamp, var hiClamp) = Vector256.Widen(clamp);
-
-                sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                Vector256<float> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
+                sum = Vector256.Add(sum, clamp * clamp * theirWeights[i]);
             }
 
-            int output = Vector256.Sum(sum);
-
-            return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
+            float output = Vector256.Sum(sum);
+            return (int)((output + LayerBiases[outputBucket]) * OutputScale);
         }
 
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
@@ -340,6 +329,7 @@ namespace Lizard.Logic.NN
 
         public static void MakeMove(Position pos, Move m)
         {
+            return;
             ref Bitboard bb = ref pos.bb;
 
             Accumulator* src = pos.State->Accumulator;
@@ -441,7 +431,7 @@ namespace Lizard.Logic.NN
             pos.NextState->Accumulator->Update[Black].Clear();
         }
 
-
+        #if NO
         //  The general concept here is based off of Stormphrax's implementation:
         //  https://github.com/Ciekce/Stormphrax/commit/9b76f2a35531513239ed7078acc21294a11e75c6
         public static void ProcessUpdates(Position pos)
@@ -523,13 +513,14 @@ namespace Lizard.Logic.NN
 
             curr->Computed[perspective] = true;
         }
+#endif
 
         public static void ResetCaches(SearchThread td)
         {
             for (int bIdx = 0; bIdx < td.CachedBuckets.Length; bIdx++)
             {
                 ref BucketCache bc = ref td.CachedBuckets[bIdx];
-                bc.Accumulator.ResetWithBiases(FeatureBiases, sizeof(short) * HiddenSize);
+                bc.Accumulator.ResetWithBiases(FeatureBiases, sizeof(float) * HiddenSize);
                 bc.Boards[White].Reset();
                 bc.Boards[Black].Reset();
             }

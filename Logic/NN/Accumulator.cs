@@ -8,7 +8,7 @@ namespace Lizard.Logic.NN
     /// </summary>
     public unsafe struct Accumulator
     {
-        public const int ByteSize = Bucketed768.HiddenSize * sizeof(short);
+        public const int ByteSize = Bucketed768.HiddenSize * sizeof(float);
 
         public readonly Vector256<short>* White;
         public readonly Vector256<short>* Black;
@@ -44,7 +44,7 @@ namespace Lizard.Logic.NN
             target.NeedsRefresh[perspective] = NeedsRefresh[perspective];
         }
 
-        public void ResetWithBiases(short* biases, uint byteCount)
+        public void ResetWithBiases(float* biases, uint byteCount)
         {
             Unsafe.CopyBlock(White, biases, byteCount);
             Unsafe.CopyBlock(Black, biases, byteCount);

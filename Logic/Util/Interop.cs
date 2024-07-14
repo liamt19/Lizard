@@ -148,6 +148,18 @@ namespace Lizard.Logic.Util
             return block;
         }
 
+        /// <summary>
+        /// <inheritdoc cref="AlignedAllocZeroed"/>
+        /// </summary>
+        public static unsafe T* AlignedAllocZeroed<T>(int items, nuint alignment = AllocAlignment)
+        {
+            var memSize = ((nuint)(sizeof(T) * items));
+            void* block = NativeMemory.AlignedAlloc(memSize, alignment);
+            NativeMemory.Clear(block, memSize);
+
+            return (T*)block;
+        }
+
 
         [DllImport("libc", SetLastError = true)]
         private static extern int madvise(IntPtr addr, UIntPtr length, int advice);

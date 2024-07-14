@@ -1,5 +1,6 @@
 ﻿
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -129,20 +130,22 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// Transposes the weights stored in <paramref name="block"/>
         /// </summary>
-        public static void TransposeLayerWeights(short* block, int columnLength, int rowLength)
+        public static void TransposeLayerWeights<T>(T* block, int columnLength, int rowLength)
         {
-            short* temp = stackalloc short[columnLength * rowLength];
-            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * rowLength));
+            T* temp = AlignedAllocZeroed<T>(columnLength * rowLength);
+            Unsafe.CopyBlock(temp, block, (uint)(sizeof(T) * columnLength * rowLength));
 
             for (int bucket = 0; bucket < rowLength; bucket++)
             {
-                short* thisBucket = block + (bucket * columnLength);
+                T* thisBucket = block + (bucket * columnLength);
 
                 for (int i = 0; i < columnLength; i++)
                 {
                     thisBucket[i] = temp[(rowLength * i) + bucket];
                 }
             }
+
+            NativeMemory.AlignedFree(temp);
         }
 
         public static void NetStats(string layerName, void* layer, int n)

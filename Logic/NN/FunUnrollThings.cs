@@ -15,17 +15,17 @@ namespace Lizard.Logic.NN
 #if AVX512
         private const int N = 32;
 #else
-        private const int N = 16;
+        private const int N = 8;
 #endif
 
         private const int HL = Bucketed768.HiddenSize;
         private const int StopBefore = HL / N;
 
-        private const int AVX512_1024HL = 1024 / 32;
-        private const int AVX512_1536HL = 1536 / 32;
+        private const int AVX512_1024HL = 1024 / 16;
+        private const int AVX512_1536HL = 1536 / 16;
 
-        private const int AVX256_1024HL = 1024 / 16;
-        private const int AVX256_1536HL = 1536 / 16;
+        private const int AVX256_1024HL = 1024 / 8;
+        private const int AVX256_1536HL = 1536 / 8;
 
 
         public static void SubAdd(short* src, short* dst, short* sub1, short* add1)
@@ -370,7 +370,7 @@ namespace Lizard.Logic.NN
         }
 
 
-        public static void UnrollAdd(short* src, short* dst, short* add1)
+        public static void UnrollAdd<T>(T* src, T* dst, T* add1)
         {
             VectorT.Store(VectorT.Add(VectorT.Load(src + 0 * N), VectorT.Load(add1 + 0 * N)), dst + 0 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 1 * N), VectorT.Load(add1 + 1 * N)), dst + 1 * N);
@@ -404,10 +404,6 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 29 * N), VectorT.Load(add1 + 29 * N)), dst + 29 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 30 * N), VectorT.Load(add1 + 30 * N)), dst + 30 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 31 * N), VectorT.Load(add1 + 31 * N)), dst + 31 * N);
-
-            if (StopBefore == AVX512_1024HL)
-                return;
-
             VectorT.Store(VectorT.Add(VectorT.Load(src + 32 * N), VectorT.Load(add1 + 32 * N)), dst + 32 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 33 * N), VectorT.Load(add1 + 33 * N)), dst + 33 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 34 * N), VectorT.Load(add1 + 34 * N)), dst + 34 * N);
@@ -424,10 +420,6 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 45 * N), VectorT.Load(add1 + 45 * N)), dst + 45 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 46 * N), VectorT.Load(add1 + 46 * N)), dst + 46 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 47 * N), VectorT.Load(add1 + 47 * N)), dst + 47 * N);
-
-            if (StopBefore == AVX512_1536HL)
-                return;
-
             VectorT.Store(VectorT.Add(VectorT.Load(src + 48 * N), VectorT.Load(add1 + 48 * N)), dst + 48 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 49 * N), VectorT.Load(add1 + 49 * N)), dst + 49 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 50 * N), VectorT.Load(add1 + 50 * N)), dst + 50 * N);
@@ -444,10 +436,6 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 61 * N), VectorT.Load(add1 + 61 * N)), dst + 61 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 62 * N), VectorT.Load(add1 + 62 * N)), dst + 62 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 63 * N), VectorT.Load(add1 + 63 * N)), dst + 63 * N);
-
-            if (StopBefore == AVX256_1024HL)
-                return;
-
             VectorT.Store(VectorT.Add(VectorT.Load(src + 64 * N), VectorT.Load(add1 + 64 * N)), dst + 64 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 65 * N), VectorT.Load(add1 + 65 * N)), dst + 65 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 66 * N), VectorT.Load(add1 + 66 * N)), dst + 66 * N);
@@ -480,9 +468,106 @@ namespace Lizard.Logic.NN
             VectorT.Store(VectorT.Add(VectorT.Load(src + 93 * N), VectorT.Load(add1 + 93 * N)), dst + 93 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 94 * N), VectorT.Load(add1 + 94 * N)), dst + 94 * N);
             VectorT.Store(VectorT.Add(VectorT.Load(src + 95 * N), VectorT.Load(add1 + 95 * N)), dst + 95 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 96 * N), VectorT.Load(add1 + 96 * N)), dst + 96 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 97 * N), VectorT.Load(add1 + 97 * N)), dst + 97 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 98 * N), VectorT.Load(add1 + 98 * N)), dst + 98 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 99 * N), VectorT.Load(add1 + 99 * N)), dst + 99 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 100 * N), VectorT.Load(add1 + 100 * N)), dst + 100 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 101 * N), VectorT.Load(add1 + 101 * N)), dst + 101 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 102 * N), VectorT.Load(add1 + 102 * N)), dst + 102 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 103 * N), VectorT.Load(add1 + 103 * N)), dst + 103 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 104 * N), VectorT.Load(add1 + 104 * N)), dst + 104 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 105 * N), VectorT.Load(add1 + 105 * N)), dst + 105 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 106 * N), VectorT.Load(add1 + 106 * N)), dst + 106 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 107 * N), VectorT.Load(add1 + 107 * N)), dst + 107 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 108 * N), VectorT.Load(add1 + 108 * N)), dst + 108 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 109 * N), VectorT.Load(add1 + 109 * N)), dst + 109 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 110 * N), VectorT.Load(add1 + 110 * N)), dst + 110 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 111 * N), VectorT.Load(add1 + 111 * N)), dst + 111 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 112 * N), VectorT.Load(add1 + 112 * N)), dst + 112 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 113 * N), VectorT.Load(add1 + 113 * N)), dst + 113 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 114 * N), VectorT.Load(add1 + 114 * N)), dst + 114 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 115 * N), VectorT.Load(add1 + 115 * N)), dst + 115 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 116 * N), VectorT.Load(add1 + 116 * N)), dst + 116 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 117 * N), VectorT.Load(add1 + 117 * N)), dst + 117 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 118 * N), VectorT.Load(add1 + 118 * N)), dst + 118 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 119 * N), VectorT.Load(add1 + 119 * N)), dst + 119 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 120 * N), VectorT.Load(add1 + 120 * N)), dst + 120 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 121 * N), VectorT.Load(add1 + 121 * N)), dst + 121 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 122 * N), VectorT.Load(add1 + 122 * N)), dst + 122 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 123 * N), VectorT.Load(add1 + 123 * N)), dst + 123 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 124 * N), VectorT.Load(add1 + 124 * N)), dst + 124 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 125 * N), VectorT.Load(add1 + 125 * N)), dst + 125 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 126 * N), VectorT.Load(add1 + 126 * N)), dst + 126 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 127 * N), VectorT.Load(add1 + 127 * N)), dst + 127 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 128 * N), VectorT.Load(add1 + 128 * N)), dst + 128 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 129 * N), VectorT.Load(add1 + 129 * N)), dst + 129 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 130 * N), VectorT.Load(add1 + 130 * N)), dst + 130 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 131 * N), VectorT.Load(add1 + 131 * N)), dst + 131 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 132 * N), VectorT.Load(add1 + 132 * N)), dst + 132 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 133 * N), VectorT.Load(add1 + 133 * N)), dst + 133 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 134 * N), VectorT.Load(add1 + 134 * N)), dst + 134 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 135 * N), VectorT.Load(add1 + 135 * N)), dst + 135 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 136 * N), VectorT.Load(add1 + 136 * N)), dst + 136 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 137 * N), VectorT.Load(add1 + 137 * N)), dst + 137 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 138 * N), VectorT.Load(add1 + 138 * N)), dst + 138 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 139 * N), VectorT.Load(add1 + 139 * N)), dst + 139 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 140 * N), VectorT.Load(add1 + 140 * N)), dst + 140 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 141 * N), VectorT.Load(add1 + 141 * N)), dst + 141 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 142 * N), VectorT.Load(add1 + 142 * N)), dst + 142 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 143 * N), VectorT.Load(add1 + 143 * N)), dst + 143 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 144 * N), VectorT.Load(add1 + 144 * N)), dst + 144 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 145 * N), VectorT.Load(add1 + 145 * N)), dst + 145 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 146 * N), VectorT.Load(add1 + 146 * N)), dst + 146 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 147 * N), VectorT.Load(add1 + 147 * N)), dst + 147 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 148 * N), VectorT.Load(add1 + 148 * N)), dst + 148 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 149 * N), VectorT.Load(add1 + 149 * N)), dst + 149 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 150 * N), VectorT.Load(add1 + 150 * N)), dst + 150 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 151 * N), VectorT.Load(add1 + 151 * N)), dst + 151 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 152 * N), VectorT.Load(add1 + 152 * N)), dst + 152 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 153 * N), VectorT.Load(add1 + 153 * N)), dst + 153 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 154 * N), VectorT.Load(add1 + 154 * N)), dst + 154 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 155 * N), VectorT.Load(add1 + 155 * N)), dst + 155 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 156 * N), VectorT.Load(add1 + 156 * N)), dst + 156 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 157 * N), VectorT.Load(add1 + 157 * N)), dst + 157 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 158 * N), VectorT.Load(add1 + 158 * N)), dst + 158 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 159 * N), VectorT.Load(add1 + 159 * N)), dst + 159 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 160 * N), VectorT.Load(add1 + 160 * N)), dst + 160 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 161 * N), VectorT.Load(add1 + 161 * N)), dst + 161 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 162 * N), VectorT.Load(add1 + 162 * N)), dst + 162 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 163 * N), VectorT.Load(add1 + 163 * N)), dst + 163 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 164 * N), VectorT.Load(add1 + 164 * N)), dst + 164 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 165 * N), VectorT.Load(add1 + 165 * N)), dst + 165 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 166 * N), VectorT.Load(add1 + 166 * N)), dst + 166 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 167 * N), VectorT.Load(add1 + 167 * N)), dst + 167 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 168 * N), VectorT.Load(add1 + 168 * N)), dst + 168 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 169 * N), VectorT.Load(add1 + 169 * N)), dst + 169 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 170 * N), VectorT.Load(add1 + 170 * N)), dst + 170 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 171 * N), VectorT.Load(add1 + 171 * N)), dst + 171 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 172 * N), VectorT.Load(add1 + 172 * N)), dst + 172 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 173 * N), VectorT.Load(add1 + 173 * N)), dst + 173 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 174 * N), VectorT.Load(add1 + 174 * N)), dst + 174 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 175 * N), VectorT.Load(add1 + 175 * N)), dst + 175 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 176 * N), VectorT.Load(add1 + 176 * N)), dst + 176 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 177 * N), VectorT.Load(add1 + 177 * N)), dst + 177 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 178 * N), VectorT.Load(add1 + 178 * N)), dst + 178 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 179 * N), VectorT.Load(add1 + 179 * N)), dst + 179 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 180 * N), VectorT.Load(add1 + 180 * N)), dst + 180 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 181 * N), VectorT.Load(add1 + 181 * N)), dst + 181 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 182 * N), VectorT.Load(add1 + 182 * N)), dst + 182 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 183 * N), VectorT.Load(add1 + 183 * N)), dst + 183 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 184 * N), VectorT.Load(add1 + 184 * N)), dst + 184 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 185 * N), VectorT.Load(add1 + 185 * N)), dst + 185 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 186 * N), VectorT.Load(add1 + 186 * N)), dst + 186 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 187 * N), VectorT.Load(add1 + 187 * N)), dst + 187 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 188 * N), VectorT.Load(add1 + 188 * N)), dst + 188 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 189 * N), VectorT.Load(add1 + 189 * N)), dst + 189 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 190 * N), VectorT.Load(add1 + 190 * N)), dst + 190 * N);
+            VectorT.Store(VectorT.Add(VectorT.Load(src + 191 * N), VectorT.Load(add1 + 191 * N)), dst + 191 * N);
+
         }
 
-        public static void UnrollSubtract(short* src, short* dst, short* sub1)
+        public static void UnrollSubtract<T>(T* src, T* dst, T* sub1)
         {
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 0 * N), VectorT.Load(sub1 + 0 * N)), dst + 0 * N);
             VectorT.Store(VectorT.Subtract(VectorT.Load(src + 1 * N), VectorT.Load(sub1 + 1 * N)), dst + 1 * N);
