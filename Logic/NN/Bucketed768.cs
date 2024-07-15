@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-params-680.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -96,22 +96,22 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < FeatureWeightElements; i++)
             {
-                FeatureWeights[i] = br.ReadInt16();
+                FeatureWeights[i] = (short)(br.ReadSingle() * (double)QA);
             }
 
             for (int i = 0; i < FeatureBiasElements; i++)
             {
-                FeatureBiases[i] = br.ReadInt16();
+                FeatureBiases[i] = (short)(br.ReadSingle() * (double)QA);
             }
 
             for (int i = 0; i < LayerWeightElements; i++)
             {
-                LayerWeights[i] = br.ReadInt16();
+                LayerWeights[i] = (short)(br.ReadSingle() * (double)QB);
             }
 
             for (int i = 0; i < LayerBiasElements; i++)
             {
-                LayerBiases[i] = br.ReadInt16();
+                LayerBiases[i] = (short)(br.ReadSingle() * (double)QA * (double)QB);
             }
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
