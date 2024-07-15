@@ -15,15 +15,15 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
-        public const int QA = 258;
-        public const int QB = 64;
+        public const int QA = 403;
+        public const int QB = 81;
 
         public const int OutputScale = 400;
 
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "LM58_cos51_clipped-250.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
