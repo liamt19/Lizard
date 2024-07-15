@@ -122,7 +122,7 @@
             }
 
 
-            //  Values from Clarity, then slightly adjusted
+            //  Values from Clarity (who took them from Stormphrax), then slightly adjusted
             SoftTimeLimit = 0.65 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
 
             MaxSearchTime = newSearchTime;
