@@ -317,7 +317,7 @@ namespace Lizard.Logic.Search
 
                     if (score >= probBeta)
                     {
-                        history.CaptureHistory[us, ourPiece, moveTo, bb.GetPieceAtIndex(m.GetTo())] <<= Math.Max(0, StatBonus(depth - 2));
+                        history.CaptureHistory[us, ourPiece, moveTo, bb.GetPieceAtIndex(m.GetTo())] <<= StatBonus(depth);
 
                         return score;
                     }
