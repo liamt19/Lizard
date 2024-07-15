@@ -177,7 +177,7 @@ namespace Lizard.Logic.Data
             }
             else
             {
-                bool cap = bb.GetPieceAtIndex(moveTo) != moveTo;
+                bool cap = bb.GetPieceAtIndex(moveTo) != None;
 
                 if (pt == Piece.Pawn)
                 {
