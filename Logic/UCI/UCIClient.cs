@@ -597,34 +597,34 @@ namespace Lizard.Logic.UCI
             Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
-            Options[nameof(SingularExtensionsMinDepth)].SetMinMax(2, 10);
+            Options[nameof(SingularExtensionsMinDepth)].AutoMinMax();
             Options[nameof(SingularExtensionsNumerator)].AutoMinMax();
             Options[nameof(SingularExtensionsBeta)].AutoMinMax();
-            Options[nameof(SingularExtensionsDepthAugment)].SetMinMax(-3, 1);
+            Options[nameof(SingularExtensionsDepthAugment)].SetMinMax(-3, 2);
 
-            Options[nameof(NMPMinDepth)].SetMinMax(1, 9);
-            Options[nameof(NMPReductionBase)].SetMinMax(1, 9);
-            Options[nameof(NMPReductionDivisor)].SetMinMax(1, 9);
+            Options[nameof(NMPMinDepth)].AutoMinMax();
+            Options[nameof(NMPReductionBase)].AutoMinMax();
+            Options[nameof(NMPReductionDivisor)].AutoMinMax();
             Options[nameof(NMPEvalDivisor)].AutoMinMax();
-            Options[nameof(NMPEvalMin)].SetMinMax(0, 6); 
+            Options[nameof(NMPEvalMin)].SetMinMax(0, 6);
 
-            Options[nameof(RFPMaxDepth)].SetMinMax(4, 12);
+            Options[nameof(RFPMaxDepth)].AutoMinMax();
             Options[nameof(RFPMargin)].AutoMinMax();
 
-            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 8);
+            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 5);
             Options[nameof(ProbCutBeta)].AutoMinMax();
             Options[nameof(ProbCutBetaImproving)].AutoMinMax();
 
             Options[nameof(LMRExtensionThreshold)].AutoMinMax();
             Options[nameof(LMRExchangeBase)].AutoMinMax();
 
-            Options[nameof(HistoryReductionMultiplier)].SetMinMax(1, 9);
+            Options[nameof(HistoryReductionMultiplier)].AutoMinMax();
 
             Options[nameof(FutilityExchangeBase)].AutoMinMax();
 
-            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 10);
-            Options[nameof(SkipQuietsMaxDepth)].SetMinMax(3, 13);
-            Options[nameof(QSSeeThreshold)].SetMinMax(30, 150);
+            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 6);
+            Options[nameof(SkipQuietsMaxDepth)].AutoMinMax();
+            Options[nameof(QSSeeThreshold)].AutoMinMax();
 
             Options[nameof(AspirationWindowMargin)].AutoMinMax();
 

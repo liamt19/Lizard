@@ -5,9 +5,9 @@ namespace Lizard.Logic.UCI
     public class UCIOption
     {
         /// <summary>
-        /// +/- 60%
+        /// +/- 45%
         /// </summary>
-        private const double AutoMinMaxMultiplier = 0.6;
+        private const double AutoMinMaxMultiplier = 0.45;
 
 
         /// <summary>
@@ -71,8 +71,8 @@ namespace Lizard.Logic.UCI
             }
 
             int v = int.Parse(DefaultValue);
-            MinValue = (int)(v * (1 - AutoMinMaxMultiplier));
-            MaxValue = (int)(v * (1 + AutoMinMaxMultiplier));
+            MinValue = (int)double.Round(v * (1 - AutoMinMaxMultiplier));
+            MaxValue = (int)double.Round(v * (1 + AutoMinMaxMultiplier));
         }
 
 
@@ -104,11 +104,14 @@ namespace Lizard.Logic.UCI
         /// </summary>
         public string GetSPSAFormat()
         {
-            const int minStepSize = 1;
-            int stepSize = Math.Max(minStepSize, (MaxValue - MinValue) / 10);
+            const double minStepSize = 0.01;
+            double stepSize = Math.Max(minStepSize, (MaxValue - MinValue) / 20.0);
+
+            const double normalLearningRate = 0.002;
+            double learningRate = double.Round(Math.Max(normalLearningRate, normalLearningRate * (0.50 / stepSize)), 4);
 
             //  name, int, default, min, max, step-size end, learning rate
-            return $"{FieldHandle.Name}, int, {DefaultValue}, {MinValue}, {MaxValue}, {stepSize}, 0.002";
+            return $"{FieldHandle.Name}, int, {DefaultValue}, {MinValue}, {MaxValue}, {stepSize}, {learningRate}";
         }
 
         public override string ToString()
