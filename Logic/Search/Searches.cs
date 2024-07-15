@@ -294,11 +294,13 @@ namespace Lizard.Logic.Search
 
                     prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
 
-                    bool isCap = (bb.GetPieceAtIndex(m.GetTo()) != None && !m.GetCastle());
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.GetFrom()), m.GetTo());
+                    int moveTo = m.GetTo();
+                    int ourPiece = bb.GetPieceAtIndex(m.GetFrom());
+
+                    bool isCap = (bb.GetPieceAtIndex(moveTo) != None && !m.GetCastle());
                     
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
+                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][us, ourPiece, moveTo];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -315,6 +317,8 @@ namespace Lizard.Logic.Search
 
                     if (score >= probBeta)
                     {
+                        history.CaptureHistory[us, ourPiece, moveTo, bb.GetPieceAtIndex(m.GetTo())] <<= Math.Max(0, StatBonus(depth - 2));
+
                         return score;
                     }
                 }
