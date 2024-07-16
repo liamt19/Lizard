@@ -591,7 +591,7 @@ namespace Lizard.Logic.UCI
                 Options.Add(fieldName, opt);
             }
 
-            //SetSPSAOutputParams();
+            SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
             Options[nameof(MultiPV)].SetMinMax(1, 256);
@@ -689,7 +689,7 @@ namespace Lizard.Logic.UCI
         {
             string output =
                 "" +
-                "SingularExtensionsMinDepth, 5\r\nSingularExtensionsNumerator, 10\r\nSingularExtensionsBeta, 25\r\nSingularExtensionsDepthAugment, 0\r\nNMPMinDepth, 6\r\nNMPReductionBase, 4\r\nNMPReductionDivisor, 4\r\nNMPEvalDivisor, 197\r\nNMPEvalMin, 2\r\nReverseFutilityPruningMaxDepth, 6\r\nReverseFutilityPruningPerDepth, 47\r\nProbCutBeta, 245\r\nProbCutBetaImproving, 105\r\nLMRExtensionThreshold, 123\r\nLMRExchangeBase, 212\r\nHistoryReductionMultiplier, 3\r\nFutilityExchangeBase, 186\r\nExtraCutNodeReductionMinDepth, 4\r\nSkipQuietsMaxDepth, 9\r\nQSSeeThreshold, 78\r\nAspirationWindowMargin, 12\r\nHistoryCaptureBonusMargin, 166\r\nOrderingGivesCheckBonus, 9611\r\nOrderingVictimValueMultiplier, 14\r\nStatBonusMult, 178\r\nStatBonusSub, 81\r\nStatBonusMax, 1592\r\nStatMalusMult, 574\r\nStatMalusSub, 109\r\nStatMalusMax, 1569\r\nSEEValue_Pawn, 103\r\nSEEValue_Knight, 863\r\nSEEValue_Bishop, 1009\r\nSEEValue_Rook, 1396\r\nSEEValue_Queen, 2222\r\nValuePawn, 170\r\nValueKnight, 797\r\nValueBishop, 975\r\nValueRook, 1604\r\nValueQueen, 3149" +
+                "SingularExtensionsMinDepth, 5\r\nSingularExtensionsNumerator, 10\r\nSingularExtensionsBeta, 25\r\nSingularExtensionsDepthAugment, 0\r\nNMPMinDepth, 6\r\nNMPReductionBase, 4\r\nNMPReductionDivisor, 4\r\nNMPEvalDivisor, 188\r\nNMPEvalMin, 2\r\nRFPMaxDepth, 6\r\nRFPMargin, 46\r\nProbCutBeta, 249\r\nProbCutBetaImproving, 107\r\nLMRExtensionThreshold, 129\r\nLMRExchangeBase, 204\r\nHistoryReductionMultiplier, 12\r\nFutilityExchangeBase, 183\r\nExtraCutNodeReductionMinDepth, 4\r\nSkipQuietsMaxDepth, 9\r\nQSSeeThreshold, 79\r\nAspirationWindowMargin, 12\r\nHistoryCaptureBonusMargin, 166\r\nOrderingGivesCheckBonus, 9684\r\nOrderingVictimValueMultiplier, 15\r\nStatBonusMult, 181\r\nStatBonusSub, 79\r\nStatBonusMax, 1596\r\nStatMalusMult, 586\r\nStatMalusSub, 111\r\nStatMalusMax, 1607\r\nSEEValue_Pawn, 104\r\nSEEValue_Knight, 871\r\nSEEValue_Bishop, 1015\r\nSEEValue_Rook, 1339\r\nSEEValue_Queen, 2332\r\nValuePawn, 168\r\nValueKnight, 826\r\nValueBishop, 1002\r\nValueRook, 1613\r\nValueQueen, 2992" +
                 "";
 
             var lines = output.Split("\r\n");
