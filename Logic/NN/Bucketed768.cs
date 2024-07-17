@@ -15,15 +15,15 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
-        public const int QA = 258;
-        public const int QB = 64;
+        public static int QA => SearchOptions.Quantization;
+        public static int QB = 81;
 
         public const int OutputScale = 400;
 
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "LM58_cos51_clipped-735.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -93,6 +93,9 @@ namespace Lizard.Logic.NN
                     return;
                 }
             }
+
+            //  Set QB to the largest number such that (QA * QB) < 32767
+            QB = (32767 / QA);
 
             for (int i = 0; i < FeatureWeightElements; i++)
             {
@@ -217,9 +220,9 @@ namespace Lizard.Logic.NN
                 for (int pt = 0; pt < PieceNB; pt++)
                 {
                     ulong prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
-                    ulong curr =      bb.Pieces[pt] &      bb.Colors[pc];
+                    ulong curr = bb.Pieces[pt] & bb.Colors[pc];
 
-                    ulong added   = curr & ~prev;
+                    ulong added = curr & ~prev;
                     ulong removed = prev & ~curr;
 
                     while (added != 0)
@@ -259,9 +262,9 @@ namespace Lizard.Logic.NN
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
-            var ourData =   (accumulator[pos.ToMove]);
+            var ourData = (accumulator[pos.ToMove]);
             var theirData = (accumulator[Not(pos.ToMove)]);
-            var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
+            var ourWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
             var theirWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
 
             for (int i = 0; i < SimdChunks; i++)

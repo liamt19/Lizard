@@ -264,5 +264,7 @@
         public static int ValueBishop = 975;
         public static int ValueRook = 1604;
         public static int ValueQueen = 3149;
+
+        public static int Quantization = 403;
     }
 }
