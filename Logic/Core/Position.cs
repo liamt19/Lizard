@@ -93,7 +93,7 @@ namespace Lizard.Logic.Core
         public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & us) != 0;
 
         [MethodImpl(Inline)]
-        public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn]) & bb.Colors[pc]) != 0);
+        public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc]) != 0);
 
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
