@@ -55,7 +55,7 @@ namespace Lizard.Logic.Transposition
             }
 
             ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
-            Clusters = (TTCluster*)AlignedAllocZeroed(((nuint)sizeof(TTCluster) * (nuint)ClusterCount), (1024 * 1024));
+            Clusters = AlignedAllocZeroed<TTCluster>((int)ClusterCount, (1024 * 1024));
             AdviseHugePage(Clusters, ((nuint)sizeof(TTCluster) * (nuint)ClusterCount));
 
             for (ulong i = 0; i < ClusterCount; i++)

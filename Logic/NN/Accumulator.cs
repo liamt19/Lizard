@@ -10,8 +10,8 @@ namespace Lizard.Logic.NN
     {
         public const int ByteSize = Bucketed768.HiddenSize * sizeof(short);
 
-        public readonly Vector256<short>* White;
-        public readonly Vector256<short>* Black;
+        public readonly short* White;
+        public readonly short* Black;
 
         public fixed bool NeedsRefresh[2];
         public fixed bool Computed[2];
@@ -19,14 +19,14 @@ namespace Lizard.Logic.NN
 
         public Accumulator()
         {
-            White = (Vector256<short>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
-            Black = (Vector256<short>*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+            White = AlignedAllocZeroed<short>(Bucketed768.HiddenSize);
+            Black = AlignedAllocZeroed<short>(Bucketed768.HiddenSize);
 
             NeedsRefresh[Color.White] = NeedsRefresh[Color.Black] = true;
             Computed[Color.White] = Computed[Color.Black] = false;
         }
 
-        public Vector256<short>* this[int perspective] => (perspective == Color.White) ? White : Black;
+        public Vector256<short>* this[int perspective] => (perspective == Color.White) ? (Vector256<short>*)White : (Vector256<short>*)Black;
 
         public void CopyTo(Accumulator* target)
         {

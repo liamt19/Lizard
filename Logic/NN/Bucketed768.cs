@@ -54,11 +54,11 @@ namespace Lizard.Logic.NN
 
         static Bucketed768()
         {
-            FeatureWeights = (short*)AlignedAllocZeroed(sizeof(short) * FeatureWeightElements);
-            FeatureBiases = (short*)AlignedAllocZeroed(sizeof(short) * FeatureBiasElements);
+            FeatureWeights = AlignedAllocZeroed<short>(FeatureWeightElements);
+            FeatureBiases = AlignedAllocZeroed<short>(FeatureBiasElements);
 
-            LayerWeights = (short*)AlignedAllocZeroed(sizeof(short) * LayerWeightElements);
-            LayerBiases = (short*)AlignedAllocZeroed(sizeof(short) * (nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
+            LayerWeights = AlignedAllocZeroed<short>(LayerWeightElements);
+            LayerBiases = AlignedAllocZeroed<short>(Math.Max(LayerBiasElements, Vector512<short>.Count));
 
             string networkToLoad = NetworkName;
 
@@ -173,29 +173,6 @@ namespace Lizard.Logic.NN
             accumulator.CopyTo(ref entryAcc, perspective);
             bb.CopyTo(ref entryBB);
         }
-
-        public static void RefreshAccumulatorState(StateInfo* st, ref Accumulator accumulator, ref Bitboard bb, int perspective)
-        {
-            var ourAccumulation = (short*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
-            accumulator.NeedsRefresh[perspective] = false;
-            accumulator.Computed[perspective] = true;
-
-            int ourKing = st->KingSquares[perspective];
-            ulong occ = bb.Occupancy;
-            while (occ != 0)
-            {
-                int pieceIdx = poplsb(&occ);
-
-                int pt = bb.GetPieceAtIndex(pieceIdx);
-                int pc = bb.GetColorAtIndex(pieceIdx);
-
-                int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
-                UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
-            }
-        }
-
 
         public static void RefreshAccumulatorPerspective(Position pos, int perspective)
         {

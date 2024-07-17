@@ -12,8 +12,8 @@
 
         static Cuckoo()
         {
-            Moves = (Move*)AlignedAllocZeroed((nuint)sizeof(Move) * TableSize, AllocAlignment);
-            Keys = (ulong*)AlignedAllocZeroed((nuint)sizeof(ulong) * TableSize, AllocAlignment);
+            Moves = AlignedAllocZeroed<Move>(TableSize);
+            Keys = AlignedAllocZeroed<ulong>(TableSize);
             new Span<Move>(Moves, TableSize).Fill(Move.Null);
 
             for (int pc = White; pc <= Black; pc++)

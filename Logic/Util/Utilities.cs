@@ -603,7 +603,7 @@ namespace Lizard.Logic.Util
         /// This is a rather inefficient algorithm ( O(n^2)? ) but for small amounts of <paramref name="items"/> or small ranges 
         /// of [<paramref name="offset"/>, <paramref name="end"/>] this works well enough.
         /// </summary>
-        public static void StableSort<T>(ref List<T> items, int offset = 0, int end = -1) where T : IComparable<T>
+        public static void StableSort(List<RootMove> items, int offset = 0, int end = -1)
         {
             if (end == -1)
             {
@@ -630,16 +630,8 @@ namespace Lizard.Logic.Util
         }
 
 
-        public static int AsInt(this bool v)
-        {
-            return v ? 1 : 0;
-        }
-
-
-        public static bool AsBool(this int v)
-        {
-            return (v != 0);
-        }
+        public static int AsInt(this bool v) => v ? 1 : 0;
+        public static bool AsBool(this int v) => v != 0;
     }
 
 

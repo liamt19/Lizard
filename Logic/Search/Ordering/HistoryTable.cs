@@ -35,9 +35,9 @@ namespace Lizard.Logic.Search.History
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
-            Continuations = (ContinuationHistory**)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont0 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
-            ContinuationHistory* cont1 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2), AllocAlignment);
+            Continuations = (ContinuationHistory**)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2));
+            ContinuationHistory* cont0 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2));
+            ContinuationHistory* cont1 = (ContinuationHistory*)AlignedAllocZeroed((nuint)(sizeof(ContinuationHistory*) * 2));
 
             cont0[0] = new ContinuationHistory();
             cont0[1] = new ContinuationHistory();

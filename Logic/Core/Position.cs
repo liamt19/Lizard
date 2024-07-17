@@ -18,11 +18,6 @@ namespace Lizard.Logic.Core
         public int FullMoves = 1;
         public int ToMove;
 
-        /// <summary>
-        /// The sum of the non-pawn material in the position, indexed by piece color.
-        /// </summary>
-        public int[] MaterialCountNonPawn;
-
         public bool InCheck;
         public bool InDoubleCheck;
 
@@ -97,6 +92,8 @@ namespace Lizard.Logic.Core
         [MethodImpl(Inline)]
         public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & us) != 0;
 
+        [MethodImpl(Inline)]
+        public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn]) & bb.Colors[pc]) != 0);
 
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
@@ -111,7 +108,6 @@ namespace Lizard.Logic.Core
         /// </summary>
         public Position(string fen = InitialFEN, bool createAccumulators = true, SearchThread owner = null)
         {
-            MaterialCountNonPawn = new int[2];
             CastlingRookSquares = new int[(int)CastlingStatus.All];
             CastlingRookPaths = new ulong[(int)CastlingStatus.All];
 
@@ -121,7 +117,7 @@ namespace Lizard.Logic.Core
 
             this.bb = new Bitboard();
 
-            _stateBlock = (StateInfo*)AlignedAllocZeroed((nuint)(sizeof(StateInfo) * StateStackSize), AllocAlignment);
+            _stateBlock = AlignedAllocZeroed<StateInfo>(StateStackSize);
 
             _SentinelStart = &_stateBlock[0];
             _SentinelEnd = &_stateBlock[StateStackSize - 1];
@@ -130,9 +126,9 @@ namespace Lizard.Logic.Core
             if (UpdateNN)
             {
                 //  Create the accumulators now if we need to.
-                //  This is actually a rather significant memory investment
-                //  so this constructor should be called as infrequently as possible to keep the memory usage from spiking
-                _accumulatorBlock = (Accumulator*)AlignedAllocZeroed((nuint)(sizeof(Accumulator) * StateStackSize), AllocAlignment);
+                //  We do this in one contiguous block rather than allocating each accumulator individually
+                //  only so that there aren't 2k small blocks that the runtime has to work around.
+                _accumulatorBlock = AlignedAllocZeroed<Accumulator>(StateStackSize);
                 for (int i = 0; i < StateStackSize; i++)
                 {
                     (_stateBlock + i)->Accumulator = _accumulatorBlock + i;
@@ -149,11 +145,6 @@ namespace Lizard.Logic.Core
             }
 
             LoadFromFEN(fen);
-
-            if (UpdateNN)
-            {
-                NNUE.RefreshAccumulator(this);
-            }
         }
 
 
@@ -310,11 +301,6 @@ namespace Lizard.Logic.Core
                     RemoveCastling(GetCastlingForRook(moveTo));
                 }
 
-                if (theirPiece != Pawn)
-                {
-                    MaterialCountNonPawn[theirColor] -= GetPieceValue(theirPiece);
-                }
-
                 //  Reset the halfmove clock
                 State->HalfmoveClock = 0;
             }
@@ -373,8 +359,6 @@ namespace Lizard.Logic.Core
 
                 State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
                 State->Hash.ZobristToggleSquare(ourColor, move.GetPromotionTo(), moveTo);
-
-                MaterialCountNonPawn[ourColor] += GetPieceValue(move.GetPromotionTo());
             }
 
             State->Hash.ZobristChangeToMove();
@@ -423,8 +407,6 @@ namespace Lizard.Logic.Core
                 ourPiece = Piece.Pawn;
 
                 bb.AddPiece(moveTo, ourColor, ourPiece);
-
-                MaterialCountNonPawn[ourColor] -= GetPieceValue(move.GetPromotionTo());
             }
             else if (move.GetCastle())
             {
@@ -452,11 +434,6 @@ namespace Lizard.Logic.Core
                 {
                     //  Otherwise it was a capture, so put the captured piece back
                     bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
-
-                    if (State->CapturedPiece != Pawn)
-                    {
-                        MaterialCountNonPawn[theirColor] += GetPieceValue(State->CapturedPiece);
-                    }
                 }
             }
 
@@ -1065,7 +1042,6 @@ namespace Lizard.Logic.Core
                 State->HalfmoveClock = 0;
                 State->PliesFromNull = 0;
 
-                //  TODO: set GamePly to 0 here?
                 GamePly = 0;
 
                 for (int i = 0; i < splits.Length; i++)
@@ -1183,9 +1159,6 @@ namespace Lizard.Logic.Core
             SetState();
 
             State->CapturedPiece = None;
-
-            MaterialCountNonPawn[Color.White] = bb.MaterialCount(Color.White, true);
-            MaterialCountNonPawn[Color.Black] = bb.MaterialCount(Color.Black, true);
 
             if (UpdateNN)
             {

@@ -16,33 +16,33 @@
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
         /// </summary>
-        public static readonly ulong* NeighborsMask = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* NeighborsMask = AlignedAllocZeroed<ulong>(SquareNB);
 
         /// <summary>
         /// At each index, contains a mask of each of the squares that a knight could move to.
         /// </summary>
-        public static readonly ulong* KnightMasks = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* KnightMasks = AlignedAllocZeroed<ulong>(SquareNB);
 
-        public static readonly ulong* RookRays = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* RookRays = AlignedAllocZeroed<ulong>(SquareNB);
 
-        public static readonly ulong* BishopRays = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* BishopRays = AlignedAllocZeroed<ulong>(SquareNB);
 
         /// <summary>
         /// Bitboards containing all of the squares that a White pawn on an index attacks. A White pawn on A2 attacks B3 etc.
         /// </summary>
-        public static readonly ulong* WhitePawnAttackMasks = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* WhitePawnAttackMasks = AlignedAllocZeroed<ulong>(SquareNB);
 
         /// <summary>
         /// Bitboards containing all of the squares that a Black pawn on an index attacks. A Black pawn on A7 attacks B6 etc.
         /// </summary>
-        public static readonly ulong* BlackPawnAttackMasks = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong* BlackPawnAttackMasks = AlignedAllocZeroed<ulong>(SquareNB);
 
-        public static readonly ulong** PawnAttackMasks = (ulong**)AlignedAllocZeroed(sizeof(ulong) * 2, AllocAlignment);
+        public static readonly ulong** PawnAttackMasks = (ulong**)AlignedAllocZeroed(sizeof(ulong) * 2);
 
         /// <summary>
         /// At each index, contains a ulong equal to (1UL << index).
         /// </summary>
-        public static readonly ulong* SquareBB = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * SquareNB), AllocAlignment);
+        public static readonly ulong* SquareBB = AlignedAllocZeroed<ulong>(SquareNB);
 
         /// <summary>
         /// Bitboards with bits set at every index that exists in a line between two indices.
@@ -52,7 +52,7 @@
         /// <para></para>
         /// So LineBB[A1][H1] gives 254, or 01111111
         /// </summary>
-        public static readonly ulong** LineBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong** LineBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB);
 
 
         /// <summary>
@@ -60,7 +60,7 @@
         /// <para></para>
         /// So BetweenBB[A1][H1] gives 126, or 01111110
         /// </summary>
-        public static readonly ulong** BetweenBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong** BetweenBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB);
 
         /// <summary>
         /// Bitboards with bits set at every index that exists along the entire ray that two squares have in common.
@@ -69,7 +69,7 @@
         /// and likewise for diagonals. Otherwise, those squares' RayBB is 0.
         /// <br></br>
         /// </summary>
-        public static readonly ulong** RayBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong** RayBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB);
 
 
         /// <summary>
@@ -86,7 +86,7 @@
         /// claiming that it was the piece giving check, instead of the rook.
         /// <br></br>
         /// </summary>
-        public static readonly ulong** XrayBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+        public static readonly ulong** XrayBB = (ulong**)AlignedAllocZeroed(sizeof(ulong) * SquareNB);
 
 
         static PrecomputedData()
@@ -149,8 +149,8 @@
         {
             for (int s1 = 0; s1 < 64; s1++)
             {
-                RayBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
-                XrayBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                RayBB[s1] = AlignedAllocZeroed<ulong>(SquareNB);
+                XrayBB[s1] = AlignedAllocZeroed<ulong>(SquareNB);
 
 
                 for (int s2 = 0; s2 < 64; s2++)
@@ -288,8 +288,8 @@
 
             for (int s1 = 0; s1 < 64; s1++)
             {
-                LineBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
-                BetweenBB[s1] = (ulong*)AlignedAllocZeroed(sizeof(ulong) * SquareNB, AllocAlignment);
+                LineBB[s1] = AlignedAllocZeroed<ulong>(SquareNB);
+                BetweenBB[s1] = AlignedAllocZeroed<ulong>(SquareNB);
 
                 int f1 = GetIndexFile(s1);
                 int r1 = GetIndexRank(s1);

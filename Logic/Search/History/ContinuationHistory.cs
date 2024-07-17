@@ -17,22 +17,21 @@ namespace Lizard.Logic.Search.History
         /// <summary>
         /// 12 * 64 == 768 elements
         /// </summary>
-        public const nuint Length = DimX * DimY;
+        public const int Length = DimX * DimY;
 
-        /// <summary>
-        /// 8 * (<inheritdoc cref="Length"/>) == 6144 bytes
-        /// </summary>
-        private const nuint ByteSize = (nuint)(sizeof(ulong) * Length);
 
         public ContinuationHistory()
         {
-            _History = (PieceToHistory*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+            _History = (PieceToHistory*)AlignedAllocZeroed((nuint)(sizeof(ulong) * Length), AllocAlignment);
 
             for (nuint i = 0; i < Length; i++)
             {
                 (_History + i)->Alloc();
             }
         }
+
+        public PieceToHistory* this[int pc, int pt, int sq] => &_History[PieceToHistory.GetIndex(pc, pt, sq)];
+        public PieceToHistory* this[int idx] => &_History[idx];
 
         public void Dispose()
         {
@@ -43,25 +42,6 @@ namespace Lizard.Logic.Search.History
 
             NativeMemory.AlignedFree(_History);
         }
-
-
-        public PieceToHistory* this[int pc, int pt, int sq]
-        {
-            get
-            {
-                int idx = PieceToHistory.GetIndex(pc, pt, sq);
-                return &_History[idx];
-            }
-        }
-
-        public PieceToHistory* this[int idx]
-        {
-            get
-            {
-                return &_History[idx];
-            }
-        }
-
 
         public void Clear()
         {
