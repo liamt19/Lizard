@@ -81,6 +81,13 @@
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
 
+    public interface MoveGenPieceType { }
+    public struct MoveGenKnight : MoveGenPieceType { }
+    public struct MoveGenBishop : MoveGenPieceType { }
+    public struct MoveGenRook : MoveGenPieceType { }
+    public struct MoveGenQueen : MoveGenPieceType { }
+
+
     public enum NetworkArchitecture
     {
         Bucketed768

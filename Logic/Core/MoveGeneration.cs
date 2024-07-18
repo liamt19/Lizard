@@ -196,10 +196,10 @@
                         :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
-                size = GenNormal(list, Knight, targets, size);
-                size = GenNormal(list, Bishop, targets, size);
-                size = GenNormal(list, Rook, targets, size);
-                size = GenNormal(list, Queen, targets, size);
+                size = GenNormal<MoveGenKnight>(list, targets, size);
+                size = GenNormal<MoveGenBishop>(list, targets, size);
+                size = GenNormal<MoveGenRook  >(list, targets, size);
+                size = GenNormal<MoveGenQueen >(list, targets, size);
             }
 
             ulong moves = NeighborsMask[ourKing] & (evasions ? ~us : targets);
@@ -223,17 +223,13 @@
             {
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
-                    if (State->CastleStatus.HasFlag(CastlingStatus.WK)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.WK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WK]] & us) != 0)
+                    if (CanCastle(occ, us, CastlingStatus.WK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
                     }
 
-                    if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.WQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.WQ]] & us) != 0)
+                    if (CanCastle(occ, us, CastlingStatus.WQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
@@ -241,17 +237,13 @@
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
                 {
-                    if (State->CastleStatus.HasFlag(CastlingStatus.BK)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.BK]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BK]] & us) != 0)
+                    if (CanCastle(occ, us, CastlingStatus.BK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
                     }
 
-                    if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
-                        && (occ & CastlingRookPaths[(int)CastlingStatus.BQ]) == 0
-                        && (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)CastlingStatus.BQ]] & us) != 0)
+                    if (CanCastle(occ, us, CastlingStatus.BQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
@@ -310,7 +302,7 @@
 
 
         /// <summary>
-        /// Generates the pseudo-legal moves for all of the pieces of type <paramref name="pt"/>, placing them into the 
+        /// Generates the pseudo-legal moves for all of the pieces of type <typeparamref name="MoveGenPiece"/>, placing them into the 
         /// ScoredMove <paramref name="list"/> starting at the index <paramref name="size"/> and returning the new number
         /// of moves in the list.
         /// <para></para>
@@ -322,13 +314,13 @@
         /// <br></br>
         /// When generating evasions, <paramref name="targets"/> should be set to the <see cref="LineBB"/> between our king and the checker, which is the mask
         /// of squares that would block the check or capture the piece giving check.
-        /// <para></para>
-        /// If <paramref name="checks"/> is true, then only pseudo-legal moves that give check will be generated.
         /// </summary>
-        public int GenNormal(ScoredMove* list, int pt, ulong targets, int size)
+        public int GenNormal<MoveGenPiece>(ScoredMove* list, ulong targets, int size) where MoveGenPiece : MoveGenPieceType
         {
-            // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
-            // This is far more convenient though
+            int pt = typeof(MoveGenPiece) == typeof(MoveGenKnight) ? Knight :
+                     typeof(MoveGenPiece) == typeof(MoveGenBishop) ? Bishop :
+                     typeof(MoveGenPiece) == typeof(MoveGenRook)   ? Rook   :
+                                                                     Queen;
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
@@ -368,32 +360,6 @@
         }
 
 
-        /// <summary>
-        /// <inheritdoc cref="GenPseudoLegal(ScoredMove*)"/>
-        /// </summary>
-        public int GenPseudoLegal(Span<ScoredMove> pseudo)
-        {
-            fixed (ScoredMove* ptr = pseudo)
-            {
-                return GenPseudoLegal(ptr);
-            }
-
-        }
-
-
-        /// <summary>
-        /// <inheritdoc cref="GenAll{GenType}(ScoredMove*, int)"/>
-        /// </summary>
-        public int GenAll<GenType>(Span<ScoredMove> list, int size = 0) where GenType : MoveGenerationType
-        {
-            fixed (ScoredMove* ptr = list)
-            {
-                return GenAll<GenType>(ptr, size);
-            }
-        }
-
-
-
         public int GenPseudoLegalQS(ScoredMove* pseudo, int ttDepth)
         {
             return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo) :
@@ -412,10 +378,10 @@
             bool allowChecks = (ttDepth > Searches.DepthQNoChecks);
 
             size = GenPawnsQS(list, allowChecks, size);
-            size = GenNormalQS(list, Knight, allowChecks, size);
-            size = GenNormalQS(list, Bishop, allowChecks, size);
-            size = GenNormalQS(list, Rook, allowChecks, size);
-            size = GenNormalQS(list, Queen, allowChecks, size);
+            size = GenNormalQS<MoveGenKnight>(list, allowChecks, size);
+            size = GenNormalQS<MoveGenBishop>(list, allowChecks, size);
+            size = GenNormalQS<MoveGenRook  >(list, allowChecks, size);
+            size = GenNormalQS<MoveGenQueen >(list, allowChecks, size);
 
 
             if ((allowChecks && (State->BlockingPieces[Not(ToMove)] & SquareBB[ourKing]) != 0))
@@ -445,17 +411,13 @@
             {
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
-                    if (State->CastleStatus.HasFlag(CastlingStatus.WK)
-                        && !CastlingImpeded(us, CastlingStatus.WK)
-                        && HasCastlingRook(us, CastlingStatus.WK))
+                    if (CanCastle(occ, us, CastlingStatus.WK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
                     }
 
-                    if (State->CastleStatus.HasFlag(CastlingStatus.WQ)
-                        && !CastlingImpeded(us, CastlingStatus.WQ)
-                        && HasCastlingRook(us, CastlingStatus.WQ))
+                    if (CanCastle(occ, us, CastlingStatus.WQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
@@ -463,17 +425,13 @@
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
                 {
-                    if (State->CastleStatus.HasFlag(CastlingStatus.BK)
-                        && !CastlingImpeded(us, CastlingStatus.BK)
-                        && HasCastlingRook(us, CastlingStatus.BK))
+                    if (CanCastle(occ, us, CastlingStatus.BK))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
                     }
 
-                    if (State->CastleStatus.HasFlag(CastlingStatus.BQ)
-                        && !CastlingImpeded(us, CastlingStatus.BQ)
-                        && HasCastlingRook(us, CastlingStatus.BQ))
+                    if (CanCastle(occ, us, CastlingStatus.BQ))
                     {
                         ref Move m = ref list[size++].Move;
                         m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
@@ -484,10 +442,12 @@
             }
         }
 
-        public int GenNormalQS(ScoredMove* list, int pt, bool allowChecks, int size)
+        public int GenNormalQS<MoveGenPiece>(ScoredMove* list, bool allowChecks, int size) where MoveGenPiece : MoveGenPieceType
         {
-            // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
-            // This is far more convenient though
+            int pt = typeof(MoveGenPiece) == typeof(MoveGenKnight) ? Knight :
+                     typeof(MoveGenPiece) == typeof(MoveGenBishop) ? Bishop :
+                     typeof(MoveGenPiece) == typeof(MoveGenRook) ? Rook :
+                                                                     Queen;
 
             ulong us = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];

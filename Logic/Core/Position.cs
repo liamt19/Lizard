@@ -13,22 +13,22 @@ namespace Lizard.Logic.Core
         public Bitboard bb;
 
         /// <summary>
+        /// The number of moves that have been made so far since this Position was created.
+        /// <br></br>
+        /// Only used to easily keep track of how far along the StateStack we currently are.
+        /// </summary>
+        public int GamePly = 0;
+
+        /// <summary>
         /// The second number in the FEN, which starts at 1 and increases every time black moves.
         /// </summary>
         public int FullMoves = 1;
+
         public int ToMove;
 
-        public bool InCheck;
-        public bool InDoubleCheck;
-
-        /// <summary>
-        /// Set to the index of the piece giving check, 
-        /// or the piece with the lowest square index if there are two pieces giving check.
-        /// </summary>
-        public int idxChecker;
-
-
-        public bool Checked => InCheck || InDoubleCheck;
+        public bool InCheck => popcount(State->Checkers) == 1;
+        public bool InDoubleCheck => popcount(State->Checkers) == 2;
+        public bool Checked => popcount(State->Checkers) != 0;
 
         public ulong Hash => State->Hash;
 
@@ -39,16 +39,9 @@ namespace Lizard.Logic.Core
         /// </summary>
         private const int StateStackSize = 2048;
 
-        private readonly StateInfo* _stateBlock;
+        public readonly StateInfo* StartingState;
+        private readonly StateInfo* EndState;
 
-        /// <summary>
-        /// A pointer to the beginning of the StateStack, which is used to make sure we don't try to access the StateStack at negative indices.
-        /// </summary>
-        private readonly StateInfo* _SentinelStart;
-        private readonly StateInfo* _SentinelEnd;
-
-
-        public StateInfo* StartingState => _SentinelStart;
 
         /// <summary>
         /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
@@ -56,17 +49,8 @@ namespace Lizard.Logic.Core
         public StateInfo* State;
         public StateInfo* NextState => (State + 1);
 
-
-
         private readonly Accumulator* _accumulatorBlock;
 
-
-        /// <summary>
-        /// The number of moves that have been made so far since this Position was created.
-        /// <br></br>
-        /// Only used to easily keep track of how far along the StateStack we currently are.
-        /// </summary>
-        public int GamePly = 0;
 
         /// <summary>
         /// The SearchThread that owns this Position instance.
@@ -78,22 +62,32 @@ namespace Lizard.Logic.Core
         /// This must be true if this position object is being used in a search, 
         /// but for purely perft this should be disabled for performance.
         /// </summary>
-        public readonly bool UpdateNN;
+        private readonly bool UpdateNN;
 
 
-        public int[] CastlingRookSquares;
-        public ulong[] CastlingRookPaths;
+        private readonly int[] CastlingRookSquares;
+        private readonly ulong[] CastlingRookPaths;
 
         public bool IsChess960 = false;
 
-        [MethodImpl(Inline)]
-        public bool CastlingImpeded(ulong occ, CastlingStatus cr) => (occ & CastlingRookPaths[(int)cr]) != 0;
 
         [MethodImpl(Inline)]
-        public bool HasCastlingRook(ulong us, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & us) != 0;
+        public bool CanCastle(ulong boardOcc, ulong ourOcc, CastlingStatus cr)
+        {
+            return State->CastleStatus.HasFlag(cr)
+                && !CastlingImpeded(boardOcc, cr)
+                && HasCastlingRook(ourOcc, cr);
+        }
+
+        [MethodImpl(Inline)]
+        private bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) => (boardOcc & CastlingRookPaths[(int)cr]) != 0;
+
+        [MethodImpl(Inline)]
+        private bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & ourOcc) != 0;
 
         [MethodImpl(Inline)]
         public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc]) != 0);
+
 
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
@@ -117,11 +111,10 @@ namespace Lizard.Logic.Core
 
             this.bb = new Bitboard();
 
-            _stateBlock = AlignedAllocZeroed<StateInfo>(StateStackSize);
+            StartingState = AlignedAllocZeroed<StateInfo>(StateStackSize);
 
-            _SentinelStart = &_stateBlock[0];
-            _SentinelEnd = &_stateBlock[StateStackSize - 1];
-            State = &_stateBlock[0];
+            EndState = &StartingState[StateStackSize - 1];
+            State = &StartingState[0];
 
             if (UpdateNN)
             {
@@ -131,8 +124,8 @@ namespace Lizard.Logic.Core
                 _accumulatorBlock = AlignedAllocZeroed<Accumulator>(StateStackSize);
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    (_stateBlock + i)->Accumulator = _accumulatorBlock + i;
-                    *(_stateBlock + i)->Accumulator = new Accumulator();
+                    (StartingState + i)->Accumulator = _accumulatorBlock + i;
+                    *(StartingState + i)->Accumulator = new Accumulator();
                 }
             }
 
@@ -158,14 +151,14 @@ namespace Lizard.Logic.Core
                 //  Free each accumulator, then the block
                 for (int i = 0; i < StateStackSize; i++)
                 {
-                    var acc = *(_SentinelStart + i)->Accumulator;
+                    var acc = *(StartingState + i)->Accumulator;
                     acc.Dispose();
                 }
 
                 NativeMemory.AlignedFree((void*)_accumulatorBlock);
             }
 
-            NativeMemory.AlignedFree((void*)_stateBlock);
+            NativeMemory.AlignedFree((void*)StartingState);
         }
 
         /// <summary>
@@ -365,24 +358,6 @@ namespace Lizard.Logic.Core
             ToMove = Not(ToMove);
 
             State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
-            switch (popcount(State->Checkers))
-            {
-                case 0:
-                    InCheck = false;
-                    InDoubleCheck = false;
-                    idxChecker = SquareNB;
-                    break;
-                case 1:
-                    InCheck = true;
-                    InDoubleCheck = false;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-                case 2:
-                    InCheck = false;
-                    InDoubleCheck = true;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-            }
 
             SetCheckInfo();
         }
@@ -444,26 +419,6 @@ namespace Lizard.Logic.Core
             }
 
             State--;
-
-            switch (popcount(State->Checkers))
-            {
-                case 0:
-                    InCheck = false;
-                    InDoubleCheck = false;
-                    idxChecker = SquareNB;
-                    break;
-                case 1:
-                    InCheck = true;
-                    InDoubleCheck = false;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-                case 2:
-                    InCheck = false;
-                    InDoubleCheck = true;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-            }
-
 
             ToMove = Not(ToMove);
         }
@@ -554,24 +509,6 @@ namespace Lizard.Logic.Core
         public void SetState()
         {
             State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
-            switch (popcount(State->Checkers))
-            {
-                case 0:
-                    InCheck = false;
-                    InDoubleCheck = false;
-                    idxChecker = SquareNB;
-                    break;
-                case 1:
-                    InCheck = true;
-                    InDoubleCheck = false;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-                case 2:
-                    InCheck = false;
-                    InDoubleCheck = true;
-                    idxChecker = lsb(State->Checkers);
-                    break;
-            }
 
             SetCheckInfo();
 
@@ -747,7 +684,7 @@ namespace Lizard.Logic.Core
                     return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[moveFrom]) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
                 }
 
-                int checker = idxChecker;
+                int checker = lsb(State->Checkers);
                 if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0)
                     || (move.GetEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
@@ -885,7 +822,7 @@ namespace Lizard.Logic.Core
                     }
                 }
 
-                if ((temp - 1) == _SentinelStart || (temp - 2) == _SentinelStart)
+                if ((temp - 1) == StartingState || (temp - 2) == StartingState)
                 {
                     break;
                 }
@@ -1253,7 +1190,7 @@ namespace Lizard.Logic.Core
 
         public override string ToString()
         {
-            return PrintBoard(bb);
+            return $"{PrintBoard(bb)}\r\n\r\nHash: {Hash}";
         }
 
     }
