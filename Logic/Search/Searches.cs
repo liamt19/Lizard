@@ -240,7 +240,7 @@ namespace Lizard.Logic.Search
                 && eval >= ss->StaticEval
                 && !doSkip
                 && (ss - 1)->CurrentMove != Move.Null
-                && pos.MaterialCountNonPawn[pos.ToMove] > 0)
+                && pos.HasNonPawnMaterial(pos.ToMove))
             {
                 int reduction = NMPReductionBase + (depth / NMPReductionDivisor) + Math.Min((eval - beta) / NMPEvalDivisor, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
@@ -389,7 +389,7 @@ namespace Lizard.Logic.Search
                 //  We can start skipping quiet moves if we have already seen enough of them at this depth.
                 if (!isRoot
                     && bestScore > ScoreMatedMax
-                    && pos.MaterialCountNonPawn[pos.ToMove] > 0)
+                    && pos.HasNonPawnMaterial(pos.ToMove))
                 {
                     if (skipQuiets == false)
                     {

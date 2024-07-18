@@ -52,8 +52,8 @@ namespace Lizard.Logic.Magic
                 return;
             }
 
-            RookTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
-            BishopTable = (ulong*)AlignedAllocZeroed((nuint)(sizeof(ulong) * 0x19000), AllocAlignment);
+            RookTable = AlignedAllocZeroed<ulong>(0x19000);
+            BishopTable = AlignedAllocZeroed<ulong>(0x19000);
             FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
             FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
 
@@ -198,7 +198,7 @@ namespace Lizard.Logic.Magic
         /// </summary>
         private static FancyMagicSquare* InitializeFancyMagics(int pt, ulong* table)
         {
-            FancyMagicSquare* magicArray = (FancyMagicSquare*)AlignedAllocZeroed((nuint)(sizeof(FancyMagicSquare) * 64), AllocAlignment);
+            FancyMagicSquare* magicArray = AlignedAllocZeroed<FancyMagicSquare>(64);
 
             ulong b;
             int size = 0;

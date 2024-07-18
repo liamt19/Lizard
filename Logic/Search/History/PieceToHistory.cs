@@ -21,12 +21,7 @@ namespace Lizard.Logic.Search.History
         /// <summary>
         /// 12 * 64 == 768 elements
         /// </summary>
-        public const nuint Length = DimX * DimY;
-
-        /// <summary>
-        /// 2 * (<inheritdoc cref="Length"/>) == 1536 bytes
-        /// </summary>
-        public const nuint ByteSize = sizeof(short) * Length;
+        public const int Length = DimX * DimY;
 
         public PieceToHistory() { }
 
@@ -63,7 +58,7 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public void Alloc()
         {
-            _History = (StatEntry*)AlignedAllocZeroed(ByteSize, AllocAlignment);
+            _History = AlignedAllocZeroed<StatEntry>(Length);
         }
 
         /// <summary>
@@ -71,7 +66,7 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public void Clear()
         {
-            NativeMemory.Clear(_History, ByteSize);
+            NativeMemory.Clear(_History, (nuint)(sizeof(StatEntry) * Length));
             Span<StatEntry> span = new Span<StatEntry>(_History, (int)Length);
             span.Fill(FillValue);
         }

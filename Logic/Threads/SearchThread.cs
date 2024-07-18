@@ -334,7 +334,7 @@ namespace Lizard.Logic.Threads
             {
                 (ss + i)->Clear();
                 (ss + i)->Ply = (short)i;
-                (ss + i)->PV = (Move*)AlignedAllocZeroed((nuint)(MaxPly * sizeof(Move)), AllocAlignment);
+                (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
 
@@ -401,7 +401,7 @@ namespace Lizard.Logic.Threads
                     {
                         score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, usedDepth), false);
 
-                        StableSort(ref RootMoves, PVIndex);
+                        StableSort(RootMoves, PVIndex);
 
                         if (SearchPool.StopThreads)
                             break;
@@ -423,7 +423,7 @@ namespace Lizard.Logic.Threads
                         window += window / 2;
                     }
 
-                    StableSort(ref RootMoves, 0, PVIndex + 1);
+                    StableSort(RootMoves, 0, PVIndex + 1);
 
                     if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1))
                     {

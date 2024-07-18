@@ -3,6 +3,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+
 namespace Lizard.Logic.Util
 {
     public static class Interop
@@ -146,6 +148,17 @@ namespace Lizard.Logic.Util
             NativeMemory.Clear(block, byteCount);
 
             return block;
+        }
+
+        /// <summary>
+        /// <inheritdoc cref="AlignedAllocZeroed(nuint, nuint)"/>
+        /// </summary>
+        public static unsafe T* AlignedAllocZeroed<T>(int items, nuint alignment = AllocAlignment)
+        {
+            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(T) * items), alignment);
+            NativeMemory.Clear(block, (nuint)(sizeof(T) * items));
+
+            return (T*)block;
         }
 
 

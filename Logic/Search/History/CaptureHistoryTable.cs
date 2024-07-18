@@ -9,7 +9,7 @@ namespace Lizard.Logic.Search.History
 
         public CaptureHistoryTable()
         {
-            _History = (StatEntry*)AlignedAllocZeroed((nuint)sizeof(StatEntry) * CaptureHistoryElements, AllocAlignment);
+            _History = AlignedAllocZeroed<StatEntry>(CaptureHistoryElements);
         }
 
         public StatEntry this[int idx]

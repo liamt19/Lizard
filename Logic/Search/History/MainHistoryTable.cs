@@ -10,7 +10,7 @@ namespace Lizard.Logic.Search.History
 
         public MainHistoryTable()
         {
-            _History = (StatEntry*)AlignedAllocZeroed((nuint)sizeof(StatEntry) * MainHistoryElements, AllocAlignment);
+            _History = AlignedAllocZeroed<StatEntry>(MainHistoryElements);
         }
 
         public StatEntry this[int idx]

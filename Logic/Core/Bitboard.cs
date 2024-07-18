@@ -152,27 +152,6 @@ namespace Lizard.Logic.Core
             return lsb(Colors[pc] & Pieces[Piece.King]);
         }
 
-        /// <summary>
-        /// Returns the sum of the <see cref="Piece"/> values for the <see cref="Color"/> <paramref name="pc"/>.
-        /// </summary>
-        public int MaterialCount(int pc, bool excludePawns = false)
-        {
-            int mat = 0;
-            ulong temp = Colors[pc];
-            while (temp != 0)
-            {
-                int idx = poplsb(&temp);
-
-                int pt = GetPieceAtIndex(idx);
-                if (!(excludePawns && pt == Pawn))
-                {
-                    mat += GetPieceValue(pt);
-                }
-            }
-
-            return mat;
-        }
-
 
         /// <summary>
         /// Returns a mask of the pieces
@@ -251,19 +230,5 @@ namespace Lizard.Logic.Core
             };
         }
 
-        /// <summary>
-        /// Returns a mask of all of the squares that pieces of type <paramref name="pt"/> and color <paramref name="pc"/> attack.
-        /// </summary>
-        public ulong AttackMask(int pc, int pt)
-        {
-            ulong mask = 0;
-            ulong occ = Occupancy;
-            ulong pieces = Colors[pc] & Pieces[pt];
-            while (pieces != 0)
-            {
-                mask |= AttackMask(poplsb(&pieces), pc, pt, occ);
-            }
-            return mask;
-        }
     }
 }
