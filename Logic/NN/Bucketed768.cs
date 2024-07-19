@@ -10,9 +10,9 @@ namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 5;
+        public const int InputBuckets = 6;
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
+        public const int HiddenSize = 1792;
         public const int OutputBuckets = 8;
 
         public const int QA = 258;
@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "L68_1792_cos51-280.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -40,14 +40,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 1, 1, 6, 6, 5, 5,
-            2, 2, 3, 3, 8, 8, 7, 7,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
+            0, 0, 1, 1,  7,  7,  6,  6,
+            2, 2, 3, 3,  9,  9,  8,  8,
+            5, 4, 5, 4, 10, 11, 10, 11,
+            4, 5, 4, 5, 11, 10, 11, 10,
+            5, 4, 5, 4, 10, 11, 10, 11,
+            4, 5, 4, 5, 11, 10, 11, 10,
+            5, 4, 5, 4, 10, 11, 10, 11,
+            4, 5, 4, 5, 11, 10, 11, 10,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
