@@ -29,13 +29,9 @@ namespace Lizard.Logic.Search.Ordering
                 {
                     sm.Score = int.MaxValue - 100000;
                 }
-                else if (m == ss->Killer0)
+                else if (m == ss->KillerMove)
                 {
                     sm.Score = int.MaxValue - 1000000;
-                }
-                else if (m == ss->Killer1)
-                {
-                    sm.Score = int.MaxValue - 2000000;
                 }
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.GetCastle())
                 {

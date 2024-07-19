@@ -8,7 +8,7 @@ namespace Lizard.Logic.Search
     /// <summary>
     /// Used during a search to keep track of information from earlier plies/depths
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 64)]
+    [StructLayout(LayoutKind.Explicit, Size = 40)]
     public unsafe struct SearchStackEntry
     {
         public static SearchStackEntry NullEntry = new SearchStackEntry();
@@ -22,13 +22,9 @@ namespace Lizard.Logic.Search
         [FieldOffset(24)] public bool InCheck;
         [FieldOffset(25)] public bool TTPV;
         [FieldOffset(26)] public bool TTHit;
-        [FieldOffset(27)] private fixed byte _pad0[5];
+        [FieldOffset(27)] private fixed byte _pad0[1];
+        [FieldOffset(28)] public Move KillerMove;
         [FieldOffset(32)] public Move* PV;
-        [FieldOffset(40)] private fixed byte _pad1[8];
-        [FieldOffset(48)] public Move Killer0;
-        [FieldOffset(52)] private fixed byte _pad2[4];
-        [FieldOffset(56)] public Move Killer1;
-        [FieldOffset(60)] private fixed byte _pad3[4];
 
 
         public SearchStackEntry()
@@ -59,8 +55,7 @@ namespace Lizard.Logic.Search
                 PV = null;
             }
 
-            Killer0 = Move.Null;
-            Killer1 = Move.Null;
+            KillerMove = Move.Null;
         }
 
         public static string GetMovesPlayed(SearchStackEntry* curr)
