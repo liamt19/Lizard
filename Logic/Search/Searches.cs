@@ -126,7 +126,7 @@ namespace Lizard.Logic.Search
                 }
             }
 
-            (ss + 1)->Killer0 = (ss + 1)->Killer1 = Move.Null;
+            (ss + 1)->KillerMove = Move.Null;
 
             ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
             ss->InCheck = pos.Checked;
@@ -514,7 +514,7 @@ namespace Lizard.Logic.Search
                         R--;
 
                     //  Extend killer moves
-                    if (m.Equals(ss->Killer0) || m.Equals(ss->Killer1))
+                    if (m.Equals(ss->KillerMove))
                         R--;
 
                     var histScore = 2 * history.MainHistory[us, m] + 
@@ -987,10 +987,9 @@ namespace Lizard.Logic.Search
 
                 int bestMoveBonus = (bestScore > beta + HistoryCaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
 
-                if (ss->Killer0 != bestMove && !bestMove.GetEnPassant())
+                if (ss->KillerMove != bestMove && !bestMove.GetEnPassant())
                 {
-                    ss->Killer1 = ss->Killer0;
-                    ss->Killer0 = bestMove;
+                    ss->KillerMove = bestMove;
                 }
 
                 history.MainHistory[thisColor, bestMove] <<= bestMoveBonus;
