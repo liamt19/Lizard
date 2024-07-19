@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
@@ -170,6 +171,16 @@ namespace Lizard.Logic.Util
             return Rank1BB << (8 * GetIndexRank(idx));
         }
 
+
+        /// <summary>
+        /// Returns <paramref name="array"/>[<paramref name="idx"/>] without invoking bounds-checks.
+        /// </summary>
+        [MethodImpl(Inline)]
+        public static T At<T>(this T[] array, int idx) => Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), idx);
+
+
+        [MethodImpl(Inline)]
+        public static ref T AtRef<T>(this T[] array, int idx) => ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(array), idx);
 
         /// <summary>
         /// Returns the opposite of <paramref name="color"/>.

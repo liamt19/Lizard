@@ -80,10 +80,10 @@ namespace Lizard.Logic.Core
         }
 
         [MethodImpl(Inline)]
-        private bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) => (boardOcc & CastlingRookPaths[(int)cr]) != 0;
+        private bool CastlingImpeded(ulong boardOcc, CastlingStatus cr) => (boardOcc & CastlingRookPaths.At((int)cr)) != 0;
 
         [MethodImpl(Inline)]
-        private bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares[(int)cr]] & ourOcc) != 0;
+        private bool HasCastlingRook(ulong ourOcc, CastlingStatus cr) => (bb.Pieces[Rook] & SquareBB[CastlingRookSquares.At((int)cr)] & ourOcc) != 0;
 
         [MethodImpl(Inline)]
         public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc]) != 0);

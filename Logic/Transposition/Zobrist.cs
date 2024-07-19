@@ -109,9 +109,9 @@ namespace Lizard.Logic.Transposition
             Assert(color is White or Black, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece color! (should be 0 or 1)");
             Assert(pt is >= Pawn and <= King, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
 
-            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
-            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
-            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), from) ^ Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), to);
+            var a = ColorPieceSquareHashes.At(color);
+            var b = a.At(pt);
+            hash ^= b.At(from) ^ b.At(to);
         }
 
         /// <summary>
@@ -123,9 +123,9 @@ namespace Lizard.Logic.Transposition
             Assert(pt is >= Pawn and <= King, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
             Assert(idx is >= A1 and <= H8, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid square! (should be 0 <= idx <= 63)");
 
-            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
-            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
-            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), idx);
+            var a = ColorPieceSquareHashes.At(color);
+            var b = a.At(pt);
+            hash ^= b.At(idx);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Lizard.Logic.Transposition
             ulong change = (ulong)(prev & toRemove);
             while (change != 0)
             {
-                hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(CastlingRightsHashes), poplsb(&change));
+                hash ^= CastlingRightsHashes.At(poplsb(&change));
             }
         }
 
@@ -145,7 +145,7 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public static void ZobristEnPassant(this ref ulong hash, int file)
         {
-            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(EnPassantFileHashes), file);
+            hash ^= EnPassantFileHashes.At(file);
         }
 
         /// <summary>

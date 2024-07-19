@@ -5,8 +5,8 @@
     /// </summary>
     public unsafe struct FancyMagicSquare
     {
-        public ulong mask;
-        public ulong* attacks;
-        public int shift;
+        public ulong Mask;
+        public ulong* Attacks;
+        public int Shift;
     }
 }

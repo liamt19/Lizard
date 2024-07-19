@@ -393,7 +393,7 @@ namespace Lizard.Logic.Search
                 {
                     if (skipQuiets == false)
                     {
-                        skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
+                        skipQuiets = legalMoves >= GetLMP(improving.AsInt(), depth);
                     }
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
@@ -499,7 +499,7 @@ namespace Lizard.Logic.Search
                     && !(isPV && isCapture))
                 {
 
-                    int R = LogarithmicReductionTable[depth][legalMoves];
+                    int R = GetReduction(depth, legalMoves);
 
                     //  Reduce if our static eval is declining
                     if (!improving)
@@ -1010,7 +1010,6 @@ namespace Lizard.Logic.Search
                 history.CaptureHistory[thisColor, bb.GetPieceAtIndex(m.GetFrom()), m.GetTo(), bb.GetPieceAtIndex(m.GetTo())] <<= -quietMoveBonus;
             }
         }
-
 
         private static readonly int[] ContinuationOffsets = [1, 2, 4, 6];
         /// <summary>

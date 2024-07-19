@@ -166,8 +166,8 @@ namespace Lizard.Logic.NN
                 return;
             }
 
-            ref BucketCache cache = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref cache.Boards[perspective];
+            ref BucketCache cache = ref pos.Owner.CachedBuckets.AtRef(BucketForPerspective(ourKing, perspective));
+            ref Bitboard entryBB = ref cache.Boards.AtRef(perspective);
             ref Accumulator entryAcc = ref cache.Accumulator;
 
             accumulator.CopyTo(ref entryAcc, perspective);
@@ -182,8 +182,8 @@ namespace Lizard.Logic.NN
             int ourKing = pos.State->KingSquares[perspective];
             int thisBucket = KingBuckets[ourKing];
 
-            ref BucketCache rtEntry = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref rtEntry.Boards[perspective];
+            ref BucketCache rtEntry = ref pos.Owner.CachedBuckets.AtRef(BucketForPerspective(ourKing, perspective));
+            ref Bitboard entryBB = ref rtEntry.Boards.AtRef(perspective);
             ref Accumulator entryAcc = ref rtEntry.Accumulator;
 
             var ourAccumulation = (short*)entryAcc[perspective];

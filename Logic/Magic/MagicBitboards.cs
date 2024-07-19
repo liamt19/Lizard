@@ -1,49 +1,37 @@
 ﻿using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
+using Lizard.Logic.Data;
+
 namespace Lizard.Logic.Magic
 {
     public static unsafe class MagicBitboards
     {
-        private static FancyMagicSquare* FancyRookMagics;
-        private static FancyMagicSquare* FancyBishopMagics;
-
-        private static ulong* RookTable;
-        private static ulong* BishopTable;
-
-        /// <summary>
-        /// Contains bitboards whose bits are set where blockers for a rook on a given square could be
-        /// </summary>
-        private static ulong[] RookBlockerMask = new ulong[64];
-
-        /// <summary>
-        /// Contains bitboards whose bits are set where blockers for a bishop on a given square could be
-        /// </summary>
-        private static ulong[] BishopBlockerMask = new ulong[64];
+        private static readonly FancyMagicSquare* FancyRookMagics;
+        private static readonly FancyMagicSquare* FancyBishopMagics;
 
         /// <summary>
         /// For a given index, contains every possible combination of blockers for a rook at that index
         /// </summary>
-        private static ulong[][] RookBlockerBoards = new ulong[64][];
-
-        private static ulong[][] RookAttackBoards = new ulong[64][];
+        private static readonly ulong[][] RookBlockerBoards = new ulong[64][];
+        private static readonly ulong[][] RookAttackBoards  = new ulong[64][];
 
         /// <summary>
         /// For a given index, contains every possible combination of blockers for a bishop at that index
         /// </summary>
-        private static ulong[][] BishopBlockerBoards = new ulong[64][];
-        private static ulong[][] BishopAttackBoards = new ulong[64][];
+        private static readonly ulong[][] BishopBlockerBoards = new ulong[64][];
+        private static readonly ulong[][] BishopAttackBoards  = new ulong[64][];
 
-        private static MagicSquare[] RookMagics;
-        private static MagicSquare[] BishopMagics;
+        private static readonly MagicSquare[] RookMagics;
+        private static readonly MagicSquare[] BishopMagics;
 
 
         public static readonly bool UsePext = true;
         static MagicBitboards()
         {
             GenAllBlockerBoards();
-            RookMagics = InitializeMagics(Piece.Rook);
-            BishopMagics = InitializeMagics(Piece.Bishop);
+            RookMagics = InitializeMagics(Rook);
+            BishopMagics = InitializeMagics(Bishop);
 
             if (!Bmi2.X64.IsSupported)
             {
@@ -52,10 +40,10 @@ namespace Lizard.Logic.Magic
                 return;
             }
 
-            RookTable = AlignedAllocZeroed<ulong>(0x19000);
-            BishopTable = AlignedAllocZeroed<ulong>(0x19000);
-            FancyRookMagics = InitializeFancyMagics(Piece.Rook, RookTable);
-            FancyBishopMagics = InitializeFancyMagics(Piece.Bishop, BishopTable);
+            ulong* FancyRookTable = AlignedAllocZeroed<ulong>(0x19000);
+            ulong* FancyBishopTable = AlignedAllocZeroed<ulong>(0x19000);
+            FancyRookMagics = InitializeFancyMagics(Rook, FancyRookTable);
+            FancyBishopMagics = InitializeFancyMagics(Bishop, FancyBishopTable);
 
             //  Check if using pext is faster than the normal way.
             //  Idea slightly modified from Pedantic:
@@ -109,20 +97,18 @@ namespace Lizard.Logic.Magic
                 RookMagics = null;
                 RookAttackBoards = null;
                 RookBlockerBoards = null;
-                RookBlockerMask = null;
 
                 BishopMagics = null;
                 BishopAttackBoards = null;
                 BishopBlockerBoards = null;
-                BishopBlockerMask = null;
             }
             else
             {
                 //  We will be using the normal magics, so free the memory of the fancy ones
-                NativeMemory.AlignedFree(RookTable);
+                NativeMemory.AlignedFree(FancyRookTable);
                 NativeMemory.AlignedFree(FancyRookMagics);
 
-                NativeMemory.AlignedFree(BishopTable);
+                NativeMemory.AlignedFree(FancyBishopTable);
                 NativeMemory.AlignedFree(FancyBishopMagics);
             }
 
@@ -141,12 +127,12 @@ namespace Lizard.Logic.Magic
             if (UsePext)
             {
                 FancyMagicSquare m = FancyRookMagics[idx];
-                return m.attacks[pext(boardAll, m.mask)];
+                return m.Attacks[pext(boardAll, m.Mask)];
             }
             else
             {
-                MagicSquare m = RookMagics[idx];
-                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+                MagicSquare m = RookMagics.At(idx);
+                return m.Attacks.At((int)(((boardAll & m.Mask) * m.Number) >> m.Shift));
             }
         }
 
@@ -162,12 +148,12 @@ namespace Lizard.Logic.Magic
             if (UsePext)
             {
                 FancyMagicSquare m = FancyBishopMagics[idx];
-                return m.attacks[pext(boardAll, m.mask)];
+                return m.Attacks[pext(boardAll, m.Mask)];
             }
             else
             {
-                MagicSquare m = BishopMagics[idx];
-                return m.attacks[((boardAll & m.mask) * m.number) >> m.shift];
+                MagicSquare m = BishopMagics.At(idx);
+                return m.Attacks.At((int)(((boardAll & m.Mask) * m.Number) >> m.Shift));
             }
         }
 
@@ -175,14 +161,14 @@ namespace Lizard.Logic.Magic
         {
             FancyMagicSquare bm = FancyBishopMagics[idx];
             FancyMagicSquare rm = FancyRookMagics[idx];
-            return (bm.attacks[pext(boardAll, bm.mask)] | rm.attacks[pext(boardAll, rm.mask)]);
+            return (bm.Attacks[pext(boardAll, bm.Mask)] | rm.Attacks[pext(boardAll, rm.Mask)]);
         }
 
         private static ulong TestPextNormal(ulong boardAll, int idx)
         {
             MagicSquare bm = BishopMagics[idx];
             MagicSquare rm = RookMagics[idx];
-            return (bm.attacks[((boardAll & bm.mask) * bm.number) >> bm.shift] | rm.attacks[((boardAll & rm.mask) * rm.number) >> rm.shift]);
+            return (bm.Attacks[((boardAll & bm.Mask) * bm.Number) >> bm.Shift] | rm.Attacks[((boardAll & rm.Mask) * rm.Number) >> rm.Shift]);
         }
 
 
@@ -205,24 +191,24 @@ namespace Lizard.Logic.Magic
             for (int sq = A1; sq <= H8; sq++)
             {
                 ref FancyMagicSquare m = ref magicArray[sq];
-                m.mask = GetBlockerMask(pt, sq);
-                m.shift = (int)(64 - popcount(m.mask));
+                m.Mask = GetBlockerMask(pt, sq);
+                m.Shift = (int)(64 - popcount(m.Mask));
                 if (sq == A1)
                 {
-                    m.attacks = (ulong*)(table + 0);
+                    m.Attacks = (ulong*)(table + 0);
                 }
                 else
                 {
-                    m.attacks = magicArray[sq - 1].attacks + size;
+                    m.Attacks = magicArray[sq - 1].Attacks + size;
                 }
 
                 b = 0;
                 size = 0;
                 do
                 {
-                    m.attacks[pext(b, m.mask)] = SlidingAttacks(pt, sq, b);
+                    m.Attacks[pext(b, m.Mask)] = SlidingAttacks(pt, sq, b);
                     size++;
-                    b = (b - m.mask) & m.mask;
+                    b = (b - m.Mask) & m.Mask;
                 }
                 while (b != 0);
             }
@@ -232,11 +218,10 @@ namespace Lizard.Logic.Magic
 
         private static MagicSquare[] InitializeMagics(int pt)
         {
-            ulong[] blockerMasks = (pt == Piece.Bishop) ? BishopBlockerMask : RookBlockerMask;
-            ulong[][] blockerBoards = (pt == Piece.Bishop) ? BishopBlockerBoards : RookBlockerBoards;
-            ulong[][] attackBoards = (pt == Piece.Bishop) ? BishopAttackBoards : RookAttackBoards;
-            int[] bits = (pt == Piece.Bishop) ? BishopBits : RookBits;
-            ulong[] magics = (pt == Piece.Bishop) ? BishopMagicNumbers : RookMagicNumbers;
+            ulong[][] blockerBoards = (pt == Bishop) ? BishopBlockerBoards : RookBlockerBoards;
+            ulong[][] attackBoards  = (pt == Bishop) ? BishopAttackBoards : RookAttackBoards;
+            var bits   = (pt == Bishop) ? BishopBits : RookBits;
+            var magics = (pt == Bishop) ? BishopMagicNumbers : RookMagicNumbers;
 
             MagicSquare[] magicArray = new MagicSquare[64];
 
@@ -244,20 +229,20 @@ namespace Lizard.Logic.Magic
             {
                 MagicSquare newMagic = new MagicSquare
                 {
-                    number = magics[sq],
-                    shift = 64 - bits[sq],
-                    mask = blockerMasks[sq],
-                    attacks = new ulong[1 << bits[sq]]
+                    Number = magics[sq],
+                    Shift = 64 - bits[sq],
+                    Mask = GetBlockerMask(pt, sq),
+                    Attacks = new ulong[1 << bits[sq]]
                 };
 
                 //  Check every combination of blockers
                 for (int blockerIndex = 0; blockerIndex < blockerBoards[sq].Length; blockerIndex++)
                 {
-                    ulong indexMap = blockerBoards[sq][blockerIndex] * newMagic.number;
-                    ulong attackIndex = indexMap >> newMagic.shift;
+                    ulong indexMap = blockerBoards[sq][blockerIndex] * newMagic.Number;
+                    ulong attackIndex = indexMap >> newMagic.Shift;
 
                     //  This magic doesn't work
-                    if (newMagic.attacks[attackIndex] != 0 && newMagic.attacks[attackIndex] != attackBoards[sq][blockerIndex])
+                    if (newMagic.Attacks[attackIndex] != 0 && newMagic.Attacks[attackIndex] != attackBoards[sq][blockerIndex])
                     {
                         Assert(false,
                             "Magic number for " + pt + " on " + sq + " should have worked, but doesn't!");
@@ -265,7 +250,7 @@ namespace Lizard.Logic.Magic
                     }
 
                     //  Magic works for this blocker index, so add the attack to the square.
-                    newMagic.attacks[attackIndex] = attackBoards[sq][blockerIndex];
+                    newMagic.Attacks[attackIndex] = attackBoards[sq][blockerIndex];
                 }
 
                 magicArray[sq] = newMagic;
@@ -278,31 +263,25 @@ namespace Lizard.Logic.Magic
         {
             for (int square = 0; square < 64; square++)
             {
-                RookBlockerMask[square] = GetBlockerMask(Piece.Rook, square);
-                int rbits = (int)popcount(RookBlockerMask[square]);
-                RookAttackBoards[square] = new ulong[(1 << rbits)];
-                RookBlockerBoards[square] = new ulong[(1 << rbits)];
-                for (int i = 0; i < (1 << rbits); i++)
+                var rookBlockerMask = GetBlockerMask(Rook, square);
+                int arrSize = 1 << (int)popcount(rookBlockerMask);
+                RookAttackBoards[square]  = new ulong[arrSize];
+                RookBlockerBoards[square] = new ulong[arrSize];
+                for (int i = 0; i < arrSize; i++)
                 {
-                    ulong blockBoard = GenBlockerBoard(i, RookBlockerMask[square]);
-                    ulong attackBoard = SlidingAttacks(Piece.Rook, square, blockBoard);
-
-                    RookAttackBoards[square][i] = attackBoard;
-                    RookBlockerBoards[square][i] = blockBoard;
+                    RookBlockerBoards[square][i] = GenBlockerBoard(i, rookBlockerMask);
+                    RookAttackBoards[square][i]  = SlidingAttacks(Rook, square, RookBlockerBoards[square][i]);
                 }
 
-                BishopBlockerMask[square] = GetBlockerMask(Piece.Bishop, square);
-                int bbits = (int)popcount(BishopBlockerMask[square]);
-                BishopAttackBoards[square] = new ulong[(1 << bbits)];
-                BishopBlockerBoards[square] = new ulong[(1 << bbits)];
+                var bishopBlockerMask = GetBlockerMask(Bishop, square);
+                arrSize = 1 << (int)popcount(bishopBlockerMask);
+                BishopAttackBoards[square]  = new ulong[arrSize];
+                BishopBlockerBoards[square] = new ulong[arrSize];
 
-                for (int i = 0; i < (1 << bbits); i++)
+                for (int i = 0; i < arrSize; i++)
                 {
-                    ulong blockBoard = GenBlockerBoard(i, BishopBlockerMask[square]);
-                    ulong attackBoard = SlidingAttacks(Piece.Bishop, square, blockBoard);
-
-                    BishopAttackBoards[square][i] = attackBoard;
-                    BishopBlockerBoards[square][i] = blockBoard;
+                    BishopBlockerBoards[square][i] = GenBlockerBoard(i, bishopBlockerMask);
+                    BishopAttackBoards[square][i]  = SlidingAttacks(Piece.Bishop, square, BishopBlockerBoards[square][i]);
                 }
             }
 
@@ -328,29 +307,6 @@ namespace Lizard.Logic.Magic
                 return blockerboard;
             }
         }
-
-
-        private static int[] RookBits = {
-            12, 11, 11, 11, 11, 11, 11, 12,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            11, 10, 10, 10, 10, 10, 10, 11,
-            12, 11, 11, 11, 11, 11, 11, 12,
-        };
-
-        private static int[] BishopBits = {
-            6, 5, 5, 5, 5, 5, 5, 6,
-            5, 5, 5, 5, 5, 5, 5, 5,
-            5, 5, 7, 7, 7, 7, 5, 5,
-            5, 5, 7, 9, 9, 7, 5, 5,
-            5, 5, 7, 9, 9, 7, 5, 5,
-            5, 5, 7, 7, 7, 7, 5, 5,
-            5, 5, 5, 5, 5, 5, 5, 5,
-            6, 5, 5, 5, 5, 5, 5, 6,
-        };
 
 
         /// <summary>
@@ -471,8 +427,8 @@ namespace Lizard.Logic.Magic
 
 
 
-        private static readonly ulong[] RookMagicNumbers =
-        {
+        private static ReadOnlySpan<ulong> RookMagicNumbers =>
+        [
             0x1080002084104000, 0x004000B002200840, 0x0480200080300018, 0x0500042010010008, 0x0480140080180086, 0x8080020013800400, 0x0100020007000184, 0x01000200E0864100,
             0x08008000C0002082, 0x800200420A608102, 0x0022004091820420, 0x0211000820100302, 0x002080040080C800, 0x2000800200800400, 0x0084000201080410, 0x4046000200840043,
             0x0040008002842040, 0x090282802000C000, 0x8100150041022000, 0x18400A0020420010, 0x00000D0010080100, 0x1244808004000200, 0x0400040006281011, 0x10020A0010408401,
@@ -481,10 +437,10 @@ namespace Lizard.Logic.Magic
             0x0001804000238000, 0x0C90002004484000, 0x000A001042820021, 0x0202100008008080, 0x043268000C008080, 0x000C0010A0140108, 0x01901026182C0001, 0x2430008245020034,
             0x48FFFE99FECFAA00, 0x48FFFE99FECFAA00, 0x497FFFADFF9C2E00, 0x613FFFDDFFCE9200, 0xFFFFFFE9FFE7CE00, 0xFFFFFFF5FFF3E600, 0x0003FF95E5E6A4C0, 0x510FFFF5F63C96A0,
             0xEBFFFFB9FF9FC526, 0x61FFFEDDFEEDAEAE, 0x53BFFFEDFFDEB1A2, 0x127FFFB9FFDFB5F6, 0x411FFFDDFFDBF4D6, 0x020100080A64000F, 0x0003FFEF27EEBE74, 0x7645FFFECBFEA79E,
-        };
+        ];
 
-        private static readonly ulong[] BishopMagicNumbers =
-        {
+        private static ReadOnlySpan<ulong> BishopMagicNumbers =>
+        [
             0xFFEDF9FD7CFCFFFF, 0xFC0962854A77F576, 0x804200860088A020, 0x0004040080280011, 0x0004104500041401, 0x500A021044200010, 0xFC0A66C64A7EF576, 0x7FFDFDFCBD79FFFF,
             0xFC0846A64A34FFF6, 0xFC087A874A3CF7F6, 0x180430A082014008, 0x9008040400800400, 0xA600040308340808, 0x0010020222200A00, 0xFC0864AE59B4FF76, 0x3C0860AF4B35FF76,
             0x73C01AF56CF4CFFB, 0x41A01CFAD64AAFFC, 0x2108021000401022, 0x0008004220244045, 0x6012001012100031, 0x1002000088010800, 0x7C0C028F5B34FF76, 0xFC0A028E5AB4DF76,
@@ -493,13 +449,37 @@ namespace Lizard.Logic.Magic
             0xDCEFD9B54BFCC09F, 0xF95FFA765AFD602B, 0x0113140201080804, 0x6001004202813802, 0x0400601410400405, 0x0001810102000100, 0x43FF9A5CF4CA0C01, 0x4BFFCD8E7C587601,
             0xFC0FF2865334F576, 0xFC0BF6CE5924F576, 0x0102010041100810, 0x0202000020881080, 0x0302004110824100, 0xA084C00803010000, 0xC3FFB7DC36CA8C89, 0xC3FF8A54F4CA2C89,
             0xFFFFFCFCFD79EDFF, 0xFC0863FCCB147576, 0x0100112201048800, 0x0800000080208838, 0x8080200010020202, 0x42002C0484080201, 0xFC087E8E4BB2F736, 0x43FF9E4EF4CA2C89,
-        };
+        ];
+
+        private static ReadOnlySpan<int> RookBits =>
+        [
+            12, 11, 11, 11, 11, 11, 11, 12,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            11, 10, 10, 10, 10, 10, 10, 11,
+            12, 11, 11, 11, 11, 11, 11, 12,
+        ];
+
+        private static ReadOnlySpan<int> BishopBits => 
+        [
+            6, 5, 5, 5, 5, 5, 5, 6,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            5, 5, 7, 7, 7, 7, 5, 5,
+            5, 5, 7, 9, 9, 7, 5, 5,
+            5, 5, 7, 9, 9, 7, 5, 5,
+            5, 5, 7, 7, 7, 7, 5, 5,
+            5, 5, 5, 5, 5, 5, 5, 5,
+            6, 5, 5, 5, 5, 5, 5, 6,
+        ];
 
 
         /// <summary>
         /// Entries from Pedantic: https://github.com/JoAnnP38/Pedantic/blob/master/Pedantic.Chess/BoardPext.cs#L153
         /// </summary>
-        private static readonly (int sq, ulong blockers)[] pextTests =
+        private static (int sq, ulong blockers)[] pextTests =>
         [
             (56, 0x69EB3C000828EF65ul), (29, 0x000002C424040000ul), (58, 0x042001002080A000ul), (49, 0x0002B001A0284100ul),
             ( 8, 0x40E0080C2430F308ul), (56, 0x6DF96604043AF36Bul), (35, 0x000046E84EAC0048ul), (56, 0x6DE0221C033CC795ul),

@@ -5,9 +5,9 @@
     /// </summary>
     public struct MagicSquare
     {
-        public ulong mask;
-        public ulong number;
-        public ulong[] attacks;
-        public int shift;
+        public ulong Mask;
+        public ulong Number;
+        public ulong[] Attacks;
+        public int Shift;
     }
 }

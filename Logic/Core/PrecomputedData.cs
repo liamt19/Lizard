@@ -1,4 +1,6 @@
-﻿namespace Lizard.Logic.Data
+﻿using Lizard.Logic.Util;
+
+namespace Lizard.Logic.Data
 {
 
     /// <summary>
@@ -9,9 +11,9 @@
         /// <summary>
         /// Index using [depth][moveIndex]
         /// </summary>
-        public static readonly int[][] LogarithmicReductionTable = new int[MaxPly][];
+        private static readonly int[][] LogarithmicReductionTable = new int[MaxPly][];
 
-        public static readonly int[][] LMPTable = new int[2][];
+        private static readonly int[][] LMPTable = new int[2][];
 
         /// <summary>
         /// At each index, contains a ulong with bits set at each neighboring square.
@@ -344,6 +346,9 @@
                 LMPTable[improving][depth] = 3 + (depth * depth);
             }
         }
+
+        public static int GetReduction(int depth, int moveIndex) => LogarithmicReductionTable.At(depth).At(moveIndex);
+        public static int GetLMP(int improving, int depth) => LMPTable.At(improving).At(depth);
     }
 
 }
