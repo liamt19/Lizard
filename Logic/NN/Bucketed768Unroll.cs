@@ -43,7 +43,8 @@ namespace Lizard.Logic.NN
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
+            const int divisor = ((32 + OutputBuckets - 1) / OutputBuckets);
+            int outputBucket = (occ - 2) / divisor;
 
             var ourData =   (short*)(accumulator[pos.ToMove]);
             var theirData = (short*)(accumulator[Not(pos.ToMove)]);

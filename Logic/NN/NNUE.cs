@@ -63,7 +63,7 @@ namespace Lizard.Logic.NN
         public static Stream TryOpenFile(string networkToLoad, bool exitIfFail = true)
         {
             Stream netFile;
-
+            Log($"TryOpenFile({networkToLoad})");
             if (File.Exists(networkToLoad))
             {
                 netFile = File.OpenRead(networkToLoad);

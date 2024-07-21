@@ -10,12 +10,12 @@ namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 5;
+        public const int InputBuckets = 13;
         public const int InputSize = 768;
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
 
-        public const int QA = 258;
+        public const int QA = 255;
         public const int QB = 64;
 
         public const int OutputScale = 400;
@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = @"L1536x5x8_cos51_from315_dfrc08b-680.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -40,14 +40,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 1, 1, 6, 6, 5, 5,
-            2, 2, 3, 3, 8, 8, 7, 7,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
+             0,  1,  2,  3, 16, 15, 14, 13,
+             4,  5,  6,  7, 20, 19, 18, 17,
+             8,  8,  9,  9, 22, 22, 21, 21,
+            10, 10, 10, 10, 23, 23, 23, 23,
+            11, 11, 11, 11, 24, 24, 24, 24,
+            11, 11, 11, 11, 24, 24, 24, 24,
+            12, 12, 12, 12, 25, 25, 25, 25,
+            12, 12, 12, 12, 25, 25, 25, 25,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -65,14 +65,17 @@ namespace Lizard.Logic.NN
             try
             {
                 var evalFile = Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile;
-                networkToLoad = evalFile;
+                if (evalFile.Length != 0)
+                {
+                    networkToLoad = evalFile;
+                }
             }
             catch { }
 
             Initialize(networkToLoad);
         }
 
-        public static void Initialize(string networkToLoad, bool exitIfFail = true)
+        public static void Initialize(string networkToLoad, bool exitIfFail = false)
         {
             Stream netFile = NNUE.TryOpenFile(networkToLoad, exitIfFail);
 
@@ -117,7 +120,7 @@ namespace Lizard.Logic.NN
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
             //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+            //TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
 
 #if DEBUG
             NetStats("ft weight", FeatureWeights, FeatureWeightElements);
