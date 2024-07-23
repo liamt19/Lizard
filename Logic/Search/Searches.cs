@@ -254,7 +254,7 @@ namespace Lizard.Logic.Search
                 if (score >= beta)
                 {
                     //  Null moves are not allowed to return mate or TT win scores, so ensure the score is below that.
-                    return score < ScoreTTWin ? score : beta;
+                    return score < ScoreTTWin ? (score + eval) / 2 : beta;
                 }
             }
 
