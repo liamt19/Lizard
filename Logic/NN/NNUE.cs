@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         {
             if (UseAvx)
             {
-                return (short)Bucketed768.GetEvaluationUnrolled512(pos);
+                return (short)Bucketed768.GetEvaluationUnrolled512AGE2(pos);
             }
             else
             {
