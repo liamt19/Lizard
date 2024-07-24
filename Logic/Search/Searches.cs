@@ -315,7 +315,8 @@ namespace Lizard.Logic.Search
 
                     if (score >= probBeta)
                     {
-                        return score;
+                        //  https://github.com/official-stockfish/Stockfish/commit/e18619d07802882136b583a01e56791b61abede6
+                        return Math.Abs(score) < ScoreTTWin ? score - (probBeta - beta) : score;
                     }
                 }
             }
