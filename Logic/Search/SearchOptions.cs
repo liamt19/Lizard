@@ -49,7 +49,7 @@
         /// <summary>
         /// This number is multiplied by the depth to determine the singular beta value.
         /// </summary>
-        public static int SingularExtensionsNumerator = 10;
+        public static int SingularExtensionsNumerator = 11;
 
         /// <summary>
         /// If the score from a singular search is below the singular beta value by this amount,
@@ -60,7 +60,7 @@
         /// <summary>
         /// This amount will be added to the current depth when determining the depth for a singular extension search.
         /// </summary>
-        public static int SingularExtensionsDepthAugment = 0;
+        public static int SingularExtensionsDepthAugment = -1;
 
 
 
@@ -88,7 +88,7 @@
         /// </summary>
         public static int NMPReductionDivisor = 4;
 
-        public static int NMPEvalDivisor = 197;
+        public static int NMPEvalDivisor = 184;
         public static int NMPEvalMin = 2;
 
 
@@ -116,7 +116,7 @@
         /// <summary>
         /// This amount is added to reverse futility pruning's margin per depth.
         /// </summary>
-        public static int RFPMargin = 47;
+        public static int RFPMargin = 46;
 
 
 
@@ -131,12 +131,12 @@
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is NOT improving.
         /// </summary>
-        public static int ProbCutBeta = 245;
+        public static int ProbCutBeta = 246;
 
         /// <summary>
         /// This margin is added to the current beta to determine the modified window if the side to move is improving.
         /// </summary>
-        public static int ProbCutBetaImproving = 105;
+        public static int ProbCutBetaImproving = 103;
 
         /// <summary>
         /// The depth must be greater than or equal to this for ProbCut to be considered.
@@ -149,14 +149,14 @@
         /// If an LMR search returns a score that is above the current best score by this amount, 
         /// the following verification search will be extended by 1.
         /// </summary>
-        public static int LMRExtensionThreshold = 123;
+        public static int LMRExtensionThreshold = 132;
 
         /// <summary>
         /// In Negamax, non-evasion moves that lose (this amount * depth) will be skipped.
         /// <para></para>
         /// This generally prunes moves that hang a piece.
         /// </summary>
-        public static int LMRExchangeBase = 212;
+        public static int LMRExchangeBase = 208;
 
 
 
@@ -173,7 +173,7 @@
         /// This is used to determine the minimum score a move must have to NOT be considered futile,
         /// as low scoring moves are generally a waste of time to search.
         /// </summary>
-        public static int FutilityExchangeBase = 186;
+        public static int FutilityExchangeBase = 184;
 
 
 
@@ -201,68 +201,68 @@
         /// <summary>
         /// The best move will get a slightly larger bonus if it's score is this much above beta.
         /// </summary>
-        public static int HistoryCaptureBonusMargin = 166;
+        public static int HistoryCaptureBonusMargin = 163;
 
 
 
         /// <summary>
         /// Quiet moves that give check will be given this additional bonus.
         /// </summary>
-        public static int OrderingGivesCheckBonus = 9611;
+        public static int OrderingGivesCheckBonus = 9652;
 
         /// <summary>
         /// The multiplier for the value of a piece being captured to add to a capturing move's score.
         /// <para></para>
         /// This establishes a good baseline for a move's value, and is then modified by history.
         /// </summary>
-        public static int OrderingVictimValueMultiplier = 14;
+        public static int OrderingVictimValueMultiplier = 15;
 
 
 
         /// <summary>
         /// The value multiplied by the depth
         /// </summary>
-        public static int StatBonusMult = 178;
+        public static int StatBonusMult = 182;
 
         /// <summary>
         /// The value to subtract from (StatBonusMult * depth)
         /// </summary>
-        public static int StatBonusSub = 81;
+        public static int StatBonusSub = 80;
 
         /// <summary>
         /// The maximum value that a bonus can be.
         /// </summary>
-        public static int StatBonusMax = 1592;
+        public static int StatBonusMax = 1653;
 
 
 
         /// <summary>
         /// The value to multiply by the depth
         /// </summary>
-        public static int StatMalusMult = 574;
+        public static int StatMalusMult = 582;
 
         /// <summary>
         /// The value to subtract from (StatMalusMult * depth)
         /// </summary>
-        public static int StatMalusSub = 109;
+        public static int StatMalusSub = 110;
 
         /// <summary>
         /// The maximum value that a malus can be.
         /// </summary>
-        public static int StatMalusMax = 1569;
+        public static int StatMalusMax = 1625;
 
 
 
-        public static int SEEValue_Pawn = 103;
-        public static int SEEValue_Knight = 863;
-        public static int SEEValue_Bishop = 1009;
-        public static int SEEValue_Rook = 1396;
-        public static int SEEValue_Queen = 2222;
+        public static int SEEValue_Pawn = 101;
+        public static int SEEValue_Knight = 881;
+        public static int SEEValue_Bishop = 1016;
+        public static int SEEValue_Rook = 1351;
+        public static int SEEValue_Queen = 2285;
 
-        public static int ValuePawn = 170;
-        public static int ValueKnight = 797;
-        public static int ValueBishop = 975;
-        public static int ValueRook = 1604;
-        public static int ValueQueen = 3149;
+        public static int ValuePawn = 164;
+        public static int ValueKnight = 799;
+        public static int ValueBishop = 985;
+        public static int ValueRook = 1631;
+        public static int ValueQueen = 3000;
     }
 }

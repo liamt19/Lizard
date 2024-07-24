@@ -591,7 +591,7 @@ namespace Lizard.Logic.UCI
                 Options.Add(fieldName, opt);
             }
 
-            SetSPSAOutputParams();
+            //SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
             Options[nameof(MultiPV)].SetMinMax(1, 256);
