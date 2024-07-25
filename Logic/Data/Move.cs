@@ -29,12 +29,16 @@ namespace Lizard.Logic.Data
 
 
 
-        public const int FlagEnPassant = 0b000001 << 14;
-        public const int FlagCastle = 0b000010 << 14;
-        public const int FlagPromotion = 0b000011 << 14;
+        public const int FlagEnPassant  = 0b0001 << 12;
+        public const int FlagCastle     = 0b0010 << 12;
+        public const int FlagPromotion  = 0b0011 << 12;
 
-        private const int SpecialFlagsMask = 0b000011 << 14;
+        private const int SpecialFlagsMask = 0b0011 << 12;
 
+        public const int FlagPromoKnight = 0b00 << 14 | FlagPromotion;
+        public const int FlagPromoBishop = 0b01 << 14 | FlagPromotion;
+        public const int FlagPromoRook   = 0b10 << 14 | FlagPromotion;
+        public const int FlagPromoQueen  = 0b11 << 14 | FlagPromotion;
 
         /// <summary>
         /// A mask of <see cref="GetTo()"/> and <see cref="GetFrom()"/>
@@ -59,7 +63,7 @@ namespace Lizard.Logic.Data
         /// so a PromotionTo == 0 (Piece.Pawn) is treated as 1 (Piece.Knight).
         /// </summary>
         [MethodImpl(Inline)]
-        public int GetPromotionTo() => ((_data >> 12) & 0x3) + 1;
+        public int GetPromotionTo() => ((_data >> 14) & 0x3) + 1;
 
 
         [MethodImpl(Inline)]
@@ -74,20 +78,10 @@ namespace Lizard.Logic.Data
         public bool GetPromotion() => (_data & SpecialFlagsMask) == FlagPromotion;
 
 
-        public Move(int from, int to) => _data = (ushort)(to | (from << 6));
-
-        [MethodImpl(Inline)] 
-        public void SetNew(int from, int to) => _data = (ushort)(to | (from << 6));
-
-        [MethodImpl(Inline)] 
-        public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
-
-        [MethodImpl(Inline)] 
-        public void SetNewCastle(int from, int to) => _data = (ushort)(to | (from << 6) | FlagCastle);
-
-        [MethodImpl(Inline)] 
-        public void SetNewEnPassant(int from, int to) => _data = (ushort)(to | (from << 6) | FlagEnPassant);
-
+        public Move(int from, int to, int flags = 0)
+        {
+            _data = (ushort)(to | (from << 6) | flags);
+        }
 
         [MethodImpl(Inline)]
         public bool IsNull() => (_data & Mask_ToFrom) == 0;

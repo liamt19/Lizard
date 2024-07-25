@@ -124,32 +124,24 @@ namespace Lizard.Logic.Util
 
 
         /// <summary>
-        /// Returns a bitboard with bits set 1 "above" the bits in <paramref name="b"/>.
-        /// So Forward(Color.White) with a bitboard that has A2 set will return one with A3 set,
-        /// and Forward(Color.Black) returns one with A1 set instead.
-        /// </summary>
-        public static ulong Forward(int color, ulong b)
-        {
-            return Shift(ShiftUpDir(color), b);
-        }
-
-
-        /// <summary>
         /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
         /// </summary>
         public static ulong Shift(int dir, ulong b)
         {
-            return dir == Direction.NORTH ? b << 8
-                 : dir == Direction.SOUTH ? b >> 8
-                 : dir == Direction.NORTH + Direction.NORTH ? b << 16
-                 : dir == Direction.SOUTH + Direction.SOUTH ? b >> 16
-                 : dir == Direction.EAST  ? (b & ~FileHBB) << 1
-                 : dir == Direction.WEST  ? (b & ~FileABB) >> 1
-                 : dir == Direction.NORTH_EAST ? (b & ~FileHBB) << 9
-                 : dir == Direction.NORTH_WEST ? (b & ~FileABB) << 7
-                 : dir == Direction.SOUTH_EAST ? (b & ~FileHBB) >> 7
-                 : dir == Direction.SOUTH_WEST ? (b & ~FileABB) >> 9
-                 : 0;
+            return dir switch
+            {
+                Direction.NORTH => b << 8,
+                Direction.SOUTH => b >> 8,
+                Direction.NORTH + Direction.NORTH => b << 16,
+                Direction.SOUTH + Direction.SOUTH => b >> 16,
+                Direction.EAST => (b & ~FileHBB) << 1,
+                Direction.WEST => (b & ~FileABB) >> 1,
+                Direction.NORTH_EAST => (b & ~FileHBB) << 9,
+                Direction.NORTH_WEST => (b & ~FileABB) << 7,
+                Direction.SOUTH_EAST => (b & ~FileHBB) >> 7,
+                Direction.SOUTH_WEST => (b & ~FileABB) >> 9,
+                _ => 0
+            };
         }
 
 
