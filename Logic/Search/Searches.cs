@@ -477,7 +477,7 @@ namespace Lizard.Logic.Search
 
                 int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
-                ss->DoubleExtensions = (ss - 1)->DoubleExtensions + (extend == 2 ? 1 : 0);
+                ss->DoubleExtensions = (short)((ss - 1)->DoubleExtensions + (extend >= 2).AsInt());
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
