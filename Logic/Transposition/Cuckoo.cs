@@ -83,8 +83,8 @@
                     continue;
 
                 Move m = Moves[slot];
-                int moveFrom = m.GetFrom();
-                int moveTo = m.GetTo();
+                int moveFrom = m.From;
+                int moveTo = m.To;
 
                 if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0)
                 {
