@@ -934,9 +934,7 @@ namespace Lizard.Logic.Search
                 return MakeMateScore(ss->Ply);
             }
 
-            TTNodeType bound = (bestScore >= beta) ? TTNodeType.Alpha :
-                      ((bestScore > startingAlpha) ? TTNodeType.Exact : 
-                                                     TTNodeType.Beta);
+            var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
             tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, ss->TTPV);
 
