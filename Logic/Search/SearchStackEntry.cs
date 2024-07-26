@@ -8,23 +8,23 @@ namespace Lizard.Logic.Search
     /// <summary>
     /// Used during a search to keep track of information from earlier plies/depths
     /// </summary>
-    [StructLayout(LayoutKind.Explicit, Size = 40)]
+    [StructLayout(LayoutKind.Explicit, Size = 32)]
     public unsafe struct SearchStackEntry
     {
         public static SearchStackEntry NullEntry = new SearchStackEntry();
 
-        [FieldOffset( 0)] public Move CurrentMove;
-        [FieldOffset( 4)] public Move Skip;
+        [FieldOffset( 0)] public Move* PV;
         [FieldOffset( 8)] public PieceToHistory* ContinuationHistory;
-        [FieldOffset(16)] public int DoubleExtensions;
-        [FieldOffset(20)] public short Ply;
-        [FieldOffset(22)] public short StaticEval;
-        [FieldOffset(24)] public bool InCheck;
-        [FieldOffset(25)] public bool TTPV;
-        [FieldOffset(26)] public bool TTHit;
-        [FieldOffset(27)] private fixed byte _pad0[1];
-        [FieldOffset(28)] public Move KillerMove;
-        [FieldOffset(32)] public Move* PV;
+        [FieldOffset(16)] public short DoubleExtensions;
+        [FieldOffset(18)] public short Ply;
+        [FieldOffset(20)] public short StaticEval;
+        [FieldOffset(22)] public Move KillerMove;
+        [FieldOffset(24)] public Move CurrentMove;
+        [FieldOffset(26)] public Move Skip;
+        [FieldOffset(28)] public bool InCheck;
+        [FieldOffset(29)] public bool TTPV;
+        [FieldOffset(30)] public bool TTHit;
+        [FieldOffset(31)] private fixed byte _pad0[1];
 
 
         public SearchStackEntry()
