@@ -37,10 +37,10 @@ namespace Lizard.Logic.Search.History
 
         public static int HistoryIndex(int pc, Move m)
         {
-            Assert(((pc * MainHistoryPCStride) + m.GetMoveMask()) is >= 0 and < MainHistoryElements, 
-                $"HistoryIndex({pc}, {m.GetMoveMask()}) should be < {MainHistoryElements}");
+            Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements, 
+                $"HistoryIndex({pc}, {m.MoveMask}) should be < {MainHistoryElements}");
 
-            return (pc * MainHistoryPCStride) + m.GetMoveMask();
+            return (pc * MainHistoryPCStride) + m.MoveMask;
         }
     }
 }

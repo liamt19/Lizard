@@ -510,7 +510,7 @@ namespace Lizard.Logic.Threads
             double multFactor = 1.0;
             if (RootDepth > 7)
             {
-                double proportion = NodeTable[RootMoves[0].Move.GetFrom()][RootMoves[0].Move.GetTo()] / (double)Nodes;
+                double proportion = NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes;
                 multFactor = ((1.5 - proportion) * 1.75) * StabilityCoefficients[Math.Min(stability, StabilityMax)];
             }
 

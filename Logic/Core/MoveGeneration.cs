@@ -30,48 +30,41 @@
 
             int up = ShiftUpDir(ToMove);
 
-            int theirColor = Not(ToMove);
-
-            ulong us = bb.Colors[ToMove];
-            ulong them = bb.Colors[theirColor];
+            ulong us   = bb.Colors[ToMove];
+            ulong them = bb.Colors[Not(ToMove)];
             ulong captureSquares = evasions ? State->Checkers : them;
 
-            ulong occupiedSquares = them | us;
-            ulong emptySquares = ~occupiedSquares;
+            ulong emptySquares = ~bb.Occupancy;
 
-            ulong ourPawns = us & bb.Pieces[Piece.Pawn];
-            ulong promotingPawns = ourPawns & rank7;
+            ulong ourPawns = us & bb.Pieces[Pawn];
+            ulong promotingPawns    = ourPawns & rank7;
             ulong notPromotingPawns = ourPawns & ~rank7;
 
-            int theirKing = State->KingSquares[theirColor];
+            int theirKing = State->KingSquares[Not(ToMove)];
 
             if (!noisyMoves)
             {
                 //  Include pawn pushes
-                ulong moves = Forward(ToMove, notPromotingPawns) & emptySquares;
-                ulong twoMoves = Forward(ToMove, moves & rank3) & emptySquares;
+                ulong moves    = Shift(up, notPromotingPawns) & emptySquares;
+                ulong twoMoves = Shift(up, moves & rank3)     & emptySquares;
 
                 if (evasions)
                 {
                     //  Only include pushes which block the check
-                    moves &= targets;
+                    moves    &= targets;
                     twoMoves &= targets;
                 }
 
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up, to);
+                    list[size++].Move = new Move(to - up, to);
                 }
 
                 while (twoMoves != 0)
                 {
                     int to = poplsb(&twoMoves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - up, to);
+                    list[size++].Move = new Move(to - up - up, to);
                 }
             }
 
@@ -90,19 +83,19 @@
                 while (promotions != 0)
                 {
                     int to = poplsb(&promotions);
-                    size = NewMakePromotionChecks(list, to - up, to, false, size);
+                    size = MakePromotionChecks(list, to - up, to, false, size);
                 }
 
                 while (promotionCapturesL != 0)
                 {
                     int to = poplsb(&promotionCapturesL);
-                    size = NewMakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
+                    size = MakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
                 }
 
                 while (promotionCapturesR != 0)
                 {
                     int to = poplsb(&promotionCapturesR);
-                    size = NewMakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
+                    size = MakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
                 }
             }
 
@@ -113,17 +106,13 @@
             while (capturesL != 0)
             {
                 int to = poplsb(&capturesL);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.WEST, to);
+                list[size++].Move = new Move(to - up - Direction.WEST, to);
             }
 
             while (capturesR != 0)
             {
                 int to = poplsb(&capturesR);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.EAST, to);
+                list[size++].Move = new Move(to - up - Direction.EAST, to);
             }
 
             if (State->EPSquare != EPNone)
@@ -134,32 +123,26 @@
                     return size;
                 }
 
-                ulong mask = notPromotingPawns & PawnAttackMasks[theirColor][State->EPSquare];
+                ulong mask = notPromotingPawns & PawnAttackMasks[Not(ToMove)][State->EPSquare];
                 while (mask != 0)
                 {
                     int from = poplsb(&mask);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNewEnPassant(from, State->EPSquare);
+                    list[size++].Move = new Move(from, State->EPSquare, Move.FlagEnPassant);
                 }
             }
 
             return size;
 
 
-            int NewMakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
+            int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
             {
-                int lowPiece = Knight;
+                list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoQueen);
 
-                if (noisyMoves && !isCapture)
+                if (!noisyMoves || isCapture)
                 {
-                    lowPiece = Queen;
-                }
-
-                for (int promotionPiece = lowPiece; promotionPiece <= Queen; promotionPiece++)
-                {
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(from, promotionSquare, promotionPiece);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoKnight);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoRook);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoBishop);
                 }
 
                 return size;
@@ -178,11 +161,11 @@
             bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
-            ulong us = bb.Colors[ToMove];
+            ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = us | them;
+            ulong occ  = bb.Occupancy;
 
-            int ourKing = State->KingSquares[ToMove];
+            int ourKing   = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
 
             ulong targets = 0;
@@ -206,52 +189,30 @@
             while (moves != 0)
             {
                 int to = poplsb(&moves);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(ourKing, to);
+                list[size++].Move = new Move(ourKing, to);
             }
 
-            if (nonEvasions && ((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
-            {
-                //  Only do castling moves if we are doing non-captures or we aren't in check.
-                size = GenCastlingMoves(list, size);
-            }
-
-            return size;
-
-            int GenCastlingMoves(ScoredMove* list, int size)
+            if (nonEvasions)
             {
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
                     if (CanCastle(occ, us, CastlingStatus.WK))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.WK], Move.FlagCastle);
 
                     if (CanCastle(occ, us, CastlingStatus.WQ))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ], Move.FlagCastle);
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
                 {
                     if (CanCastle(occ, us, CastlingStatus.BK))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.BK], Move.FlagCastle);
 
                     if (CanCastle(occ, us, CastlingStatus.BQ))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ], Move.FlagCastle);
                 }
-
-                return size;
             }
+
+            return size;
         }
 
 
@@ -322,9 +283,9 @@
             // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
 
-            ulong us = bb.Colors[ToMove];
+            ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = us | them;
+            ulong occ  = bb.Occupancy;
 
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
@@ -335,9 +296,7 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to);
+                    list[size++].Move = new Move(idx, to);
                 }
             }
 
@@ -368,11 +327,11 @@
 
         public int GenAllQS(ScoredMove* list, int ttDepth, int size = 0)
         {
-            ulong us = bb.Colors[ToMove];
+            ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = us | them;
+            ulong occ  = bb.Occupancy;
 
-            int ourKing = State->KingSquares[ToMove];
+            int ourKing   = State->KingSquares[ToMove];
             int theirKing = State->KingSquares[Not(ToMove)];
 
             bool allowChecks = (ttDepth > Searches.DepthQNoChecks);
@@ -394,52 +353,28 @@
 
                 while (moves != 0)
                 {
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(ourKing, poplsb(&moves));
+                    list[size++].Move = new Move(ourKing, poplsb(&moves));
                 }
 
-                if (((State->CastleStatus & (ToMove == White ? CastlingStatus.White : CastlingStatus.Black)) != CastlingStatus.None))
-                {
-                    //  Only do castling moves if we are doing non-captures or we aren't in check.
-                    size = GenCastlingMoves(list, size);
-                }
-            }
-
-            return size;
-
-            int GenCastlingMoves(ScoredMove* list, int size)
-            {
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
                     if (CanCastle(occ, us, CastlingStatus.WK))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WK]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.WK], Move.FlagCastle);
 
                     if (CanCastle(occ, us, CastlingStatus.WQ))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.WQ], Move.FlagCastle);
                 }
                 else if (ToMove == Black && (ourKing == E8 || IsChess960))
                 {
                     if (CanCastle(occ, us, CastlingStatus.BK))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BK]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.BK], Move.FlagCastle);
 
                     if (CanCastle(occ, us, CastlingStatus.BQ))
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNewCastle(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ]);
-                    }
+                        list[size++].Move = new Move(ourKing, CastlingRookSquares[(int)CastlingStatus.BQ], Move.FlagCastle);
                 }
-
-                return size;
             }
+
+            return size;
         }
 
         public int GenNormalQS(ScoredMove* list, int pt, bool allowChecks, int size)
@@ -447,9 +382,9 @@
             // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
 
-            ulong us = bb.Colors[ToMove];
+            ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong occ = us | them;
+            ulong occ  = bb.Occupancy;
 
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
@@ -460,9 +395,7 @@
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(idx, to);
+                    list[size++].Move = new Move(idx, to);
                 }
             }
 
@@ -478,35 +411,31 @@
 
             int theirColor = Not(ToMove);
 
-            ulong us = bb.Colors[ToMove];
+            ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[theirColor];
-            ulong emptySquares = ~(them | us);
+            ulong emptySquares = ~bb.Occupancy;
 
-            ulong ourPawns = us & bb.Pieces[Piece.Pawn];
-            ulong promotingPawns = ourPawns & rank7;
+            ulong ourPawns = us & bb.Pieces[Pawn];
+            ulong promotingPawns    = ourPawns &  rank7;
             ulong notPromotingPawns = ourPawns & ~rank7;
 
             int theirKing = State->KingSquares[theirColor];
 
             if (allowChecks)
             {
-                ulong moves = Forward(ToMove, notPromotingPawns) & emptySquares & PawnAttackMasks[theirColor][theirKing];
-                ulong twoMoves = Forward(ToMove, moves & rank3) & emptySquares & PawnAttackMasks[theirColor][theirKing];
+                ulong moves    = Shift(up, notPromotingPawns) & emptySquares & PawnAttackMasks[theirColor][theirKing];
+                ulong twoMoves = Shift(up, moves & rank3)     & emptySquares & PawnAttackMasks[theirColor][theirKing];
 
                 while (moves != 0)
                 {
                     int to = poplsb(&moves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up, to);
+                    list[size++].Move = new Move(to - up, to);
                 }
 
                 while (twoMoves != 0)
                 {
                     int to = poplsb(&twoMoves);
-
-                    ref Move m = ref list[size++].Move;
-                    m.SetNew(to - up - up, to);
+                    list[size++].Move = new Move(to - up - up, to);
                 }
             }
             
@@ -520,19 +449,19 @@
                 while (promotions != 0)
                 {
                     int to = poplsb(&promotions);
-                    size = NewMakePromotionChecks(list, to - up, to, false, size);
+                    size = MakePromotionChecks(list, to - up, to, false, size);
                 }
 
                 while (promotionCapturesL != 0)
                 {
                     int to = poplsb(&promotionCapturesL);
-                    size = NewMakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
+                    size = MakePromotionChecks(list, to - up - Direction.WEST, to, true, size);
                 }
 
                 while (promotionCapturesR != 0)
                 {
                     int to = poplsb(&promotionCapturesR);
-                    size = NewMakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
+                    size = MakePromotionChecks(list, to - up - Direction.EAST, to, true, size);
                 }
             }
 
@@ -542,31 +471,40 @@
             while (capturesL != 0)
             {
                 int to = poplsb(&capturesL);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.WEST, to);
+                list[size++].Move = new Move(to - up - Direction.WEST, to);
             }
 
             while (capturesR != 0)
             {
                 int to = poplsb(&capturesR);
-
-                ref Move m = ref list[size++].Move;
-                m.SetNew(to - up - Direction.EAST, to);
+                list[size++].Move = new Move(to - up - Direction.EAST, to);
             }
 
             return size;
 
 
-            int NewMakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
+            int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
             {
-                for (int promotionPiece = Queen; promotionPiece >= Knight; promotionPiece--)
+                if (isCapture)
                 {
-                    if (isCapture || allowChecks && (SquareBB[promotionSquare] & State->CheckSquares[promotionPiece]) != 0)
-                    {
-                        ref Move m = ref list[size++].Move;
-                        m.SetNew(from, promotionSquare, promotionPiece);
-                    }
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoQueen);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoKnight);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoRook);
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoBishop);
+                }
+                else if (allowChecks)
+                {
+                    if ((SquareBB[promotionSquare] & State->CheckSquares[Queen]) != 0)
+                        list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoQueen);
+
+                    if ((SquareBB[promotionSquare] & State->CheckSquares[Knight]) != 0)
+                        list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoKnight);
+
+                    if ((SquareBB[promotionSquare] & State->CheckSquares[Rook]) != 0)
+                        list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoRook);
+
+                    if ((SquareBB[promotionSquare] & State->CheckSquares[Bishop]) != 0)
+                        list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoBishop);
                 }
 
                 return size;
