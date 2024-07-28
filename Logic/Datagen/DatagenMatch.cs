@@ -121,7 +121,7 @@ namespace Lizard.Logic.Datagen
 
 
                     bool inCheck = pos.InCheck;
-                    bool bmCap = ((bb.GetPieceAtIndex(bestMove.GetTo()) != None && !bestMove.GetCastle()) || bestMove.GetEnPassant());
+                    bool bmCap = ((bb.GetPieceAtIndex(bestMove.To) != None && !bestMove.IsCastle) || bestMove.IsEnPassant);
                     bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore))
                     {

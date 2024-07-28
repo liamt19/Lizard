@@ -242,8 +242,8 @@ namespace Lizard.Logic.Core
                 FullMoves++;
             }
 
-            int moveFrom = move.GetFrom();
-            int moveTo = move.GetTo();
+            int moveFrom = move.From;
+            int moveTo = move.To;
 
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
             int ourColor = ToMove;
@@ -253,12 +253,12 @@ namespace Lizard.Logic.Core
 
             Assert(ourPiece != None,   $"Move {move.ToString()} in FEN '{GetFEN()}' doesn't have a piece on the From square!");
             Assert(theirPiece != King, $"Move {move.ToString()} in FEN '{GetFEN()}' captures a king!");
-            Assert(theirPiece == None || (ourColor != bb.GetColorAtIndex(moveTo) || move.GetCastle()),
+            Assert(theirPiece == None || (ourColor != bb.GetColorAtIndex(moveTo) || move.IsCastle),
                 $"Move {move.ToString()} in FEN '{GetFEN()}' captures our own {PieceToString(theirPiece)} on {IndexToString(moveTo)}");
 
             if (ourPiece == King)
             {
-                if (move.GetCastle())
+                if (move.IsCastle)
                 {
                     //  Castling moves are KxR, so "theirPiece" is actually our own rook.
                     theirPiece = None;
@@ -310,7 +310,7 @@ namespace Lizard.Logic.Core
 
             if (ourPiece == Pawn)
             {
-                if (move.GetEnPassant())
+                if (move.IsEnPassant)
                 {
 
                     int idxPawn = ((bb.Pieces[Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
@@ -336,22 +336,22 @@ namespace Lizard.Logic.Core
                 State->HalfmoveClock = 0;
             }
 
-            if (!move.GetCastle())
+            if (!move.IsCastle)
             {
                 bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
                 State->Hash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
             }
 
-            if (move.GetPromotion())
+            if (move.IsPromotion)
             {
                 //  Get rid of the pawn we just put there
                 bb.RemovePiece(moveTo, ourColor, ourPiece);
 
                 //  And replace it with the promotion piece
-                bb.AddPiece(moveTo, ourColor, move.GetPromotionTo());
+                bb.AddPiece(moveTo, ourColor, move.PromotionTo);
 
                 State->Hash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
-                State->Hash.ZobristToggleSquare(ourColor, move.GetPromotionTo(), moveTo);
+                State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
             }
 
             State->Hash.ZobristChangeToMove();
@@ -364,8 +364,8 @@ namespace Lizard.Logic.Core
 
         public void UnmakeMove(Move move)
         {
-            int moveFrom = move.GetFrom();
-            int moveTo = move.GetTo();
+            int moveFrom = move.From;
+            int moveTo = move.To;
 
             //  Assume that "we" just made the last move, and "they" are undoing it.
             int ourPiece = bb.GetPieceAtIndex(moveTo);
@@ -374,7 +374,7 @@ namespace Lizard.Logic.Core
 
             GamePly--;
 
-            if (move.GetPromotion())
+            if (move.IsPromotion)
             {
                 //  Remove the promotion piece and replace it with a pawn
                 bb.RemovePiece(moveTo, ourColor, ourPiece);
@@ -383,13 +383,13 @@ namespace Lizard.Logic.Core
 
                 bb.AddPiece(moveTo, ourColor, ourPiece);
             }
-            else if (move.GetCastle())
+            else if (move.IsCastle)
             {
                 //  Put both pieces back
                 DoCastling(ourColor, moveFrom, moveTo, undo: true);
             }
 
-            if (!move.GetCastle())
+            if (!move.IsCastle)
             {
                 //  Put our piece back to the square it came from.
                 bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
@@ -398,7 +398,7 @@ namespace Lizard.Logic.Core
             if (State->CapturedPiece != Piece.None)
             {
                 //  CapturedPiece is set for captures and en passant, so check which it was
-                if (move.GetEnPassant())
+                if (move.IsEnPassant)
                 {
                     //  If the move was an en passant, put the captured pawn back
 
@@ -560,8 +560,8 @@ namespace Lizard.Logic.Core
         {
             ulong hash = State->Hash;
 
-            int from = m.GetFrom();
-            int to = m.GetTo();
+            int from = m.From;
+            int to = m.To;
             int us = bb.GetColorAtIndex(from);
             int ourPiece = bb.GetPieceAtIndex(from);
 
@@ -586,8 +586,8 @@ namespace Lizard.Logic.Core
         /// </summary>
         public bool IsPseudoLegal(in Move move)
         {
-            int moveTo = move.GetTo();
-            int moveFrom = move.GetFrom();
+            int moveTo = move.To;
+            int moveFrom = move.From;
 
             int pt = bb.GetPieceAtIndex(moveFrom);
             if (pt == None)
@@ -603,7 +603,7 @@ namespace Lizard.Logic.Core
                 return false;
             }
 
-            if (bb.GetPieceAtIndex(moveTo) != None && pc == bb.GetColorAtIndex(moveTo) && !move.GetCastle())
+            if (bb.GetPieceAtIndex(moveTo) != None && pc == bb.GetColorAtIndex(moveTo) && !move.IsCastle)
             {
                 //  There is a piece on the square we are moving to, and it is ours, so we can't capture it.
                 //  The one exception is castling, which is encoded as king captures rook.
@@ -612,7 +612,7 @@ namespace Lizard.Logic.Core
 
             if (pt == Pawn)
             {
-                if (move.GetEnPassant())
+                if (move.IsEnPassant)
                 {
                     return State->EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
                 }
@@ -636,7 +636,7 @@ namespace Lizard.Logic.Core
 
             //  This move is only pseudo-legal if the piece that is moving is actually able to get there.
             //  Pieces can only move to squares that they attack, with the one exception of queenside castling
-            return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.GetCastle();
+            return (bb.AttackMask(moveFrom, pc, pt, bb.Occupancy) & SquareBB[moveTo]) != 0 || move.IsCastle;
         }
 
 
@@ -650,8 +650,8 @@ namespace Lizard.Logic.Core
         /// </summary>
         public bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
-            int moveFrom = move.GetFrom();
-            int moveTo = move.GetTo();
+            int moveFrom = move.From;
+            int moveTo = move.To;
 
             int pt = bb.GetPieceAtIndex(moveFrom);
 
@@ -683,7 +683,7 @@ namespace Lizard.Logic.Core
 
                 int checker = lsb(State->Checkers);
                 if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0)
-                    || (move.GetEnPassant() && GetIndexFile(moveTo) == GetIndexFile(checker)))
+                    || (move.IsEnPassant && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
                     //  This move is another piece which has moved into the LineBB between our king and the checking piece.
                     //  This will be legal as long as it isn't pinned.
@@ -697,9 +697,9 @@ namespace Lizard.Logic.Core
 
             if (pt == Piece.King)
             {
-                if (move.GetCastle())
+                if (move.IsCastle)
                 {
-                    var thisCr = move.RelevantCastlingRight;
+                    var thisCr = move.RelevantCastlingRight();
                     int rookSq = CastlingRookSquares[(int)thisCr];
 
                     if ((SquareBB[rookSq] & bb.Pieces[Rook] & bb.Colors[ourColor]) == 0)
@@ -738,7 +738,7 @@ namespace Lizard.Logic.Core
                 return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[ourKing]) & bb.Colors[theirColor])
                        | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
             }
-            else if (move.GetEnPassant())
+            else if (move.IsEnPassant)
             {
                 //  En passant will remove both our pawn and the opponents pawn from the rank so this needs a special check
                 //  to make sure it is still legal

@@ -7,21 +7,16 @@ using System.Runtime.CompilerServices;
 
 namespace Lizard.Logic.Data
 {
-
-
-    public unsafe struct Move
+    public unsafe readonly struct Move(int from, int to, int flags = 0)
     {
         public static readonly Move Null = new Move();
 
-        //  6 bits for: From, To, SqChecker
+        //  6 bits for From and To
         //  
+        //  2 bits for the EnPassant/Castle/Promotion flags
         //  2 bits for PromotionTo, which defaults to a knight (1), so the "Promotion" flag MUST be looked at before "PromotionTo" is.
         //  (Otherwise every move would show up as a promotion to a knight, woohoo for horses!).
-        //  
-        //  6 bits for the 6 move flags.
-        //  
-        //  Total of 26, padded to 32.
-        private ushort _data;
+        private readonly ushort _data = (ushort)(to | (from << 6) | flags);
 
 
         [MethodImpl(Inline)] 
@@ -29,12 +24,16 @@ namespace Lizard.Logic.Data
 
 
 
-        public const int FlagEnPassant = 0b000001 << 14;
-        public const int FlagCastle = 0b000010 << 14;
-        public const int FlagPromotion = 0b000011 << 14;
+        public const int FlagEnPassant  = 0b0001 << 12;
+        public const int FlagCastle     = 0b0010 << 12;
+        public const int FlagPromotion  = 0b0011 << 12;
 
-        private const int SpecialFlagsMask = 0b000011 << 14;
+        private const int SpecialFlagsMask = 0b0011 << 12;
 
+        public const int FlagPromoKnight = 0b00 << 14 | FlagPromotion;
+        public const int FlagPromoBishop = 0b01 << 14 | FlagPromotion;
+        public const int FlagPromoRook   = 0b10 << 14 | FlagPromotion;
+        public const int FlagPromoQueen  = 0b11 << 14 | FlagPromotion;
 
         /// <summary>
         /// A mask of <see cref="GetTo()"/> and <see cref="GetFrom()"/>
@@ -43,89 +42,56 @@ namespace Lizard.Logic.Data
 
 
 
-        [MethodImpl(Inline)]
-        public int GetTo() => (_data & 0x3F);
+        public readonly int To   => (_data >> 0) & 0x3F;
+        public readonly int From => (_data >> 6) & 0x3F;
 
-
-        [MethodImpl(Inline)]
-        public int GetFrom() => (_data >> 6) & 0x3F;
-
-
-        [MethodImpl(Inline)] 
-        public int GetMoveMask() => (_data & Mask_ToFrom);
+        public readonly int MoveMask => (_data & Mask_ToFrom);
 
         /// <summary>
         /// Gets the piece type that this pawn is promoting to. This is stored as (piece type - 1) to save space,
         /// so a PromotionTo == 0 (Piece.Pawn) is treated as 1 (Piece.Knight).
         /// </summary>
-        [MethodImpl(Inline)]
-        public int GetPromotionTo() => ((_data >> 12) & 0x3) + 1;
+        public readonly int PromotionTo => ((_data >> 14) & 0x3) + 1;
 
-
-        [MethodImpl(Inline)]
-        public bool GetEnPassant() => (_data & SpecialFlagsMask) == FlagEnPassant;
-
+        public readonly bool IsEnPassant => (_data & SpecialFlagsMask) == FlagEnPassant;
+        public readonly bool IsCastle    => (_data & SpecialFlagsMask) == FlagCastle;
+        public readonly bool IsPromotion => (_data & SpecialFlagsMask) == FlagPromotion;
 
         [MethodImpl(Inline)]
-        public bool GetCastle() => (_data & SpecialFlagsMask) == FlagCastle;
+        public readonly bool IsNull() => (_data & Mask_ToFrom) == 0;
 
 
         [MethodImpl(Inline)]
-        public bool GetPromotion() => (_data & SpecialFlagsMask) == FlagPromotion;
-
-
-        public Move(int from, int to) => _data = (ushort)(to | (from << 6));
-
-        [MethodImpl(Inline)] 
-        public void SetNew(int from, int to) => _data = (ushort)(to | (from << 6));
-
-        [MethodImpl(Inline)] 
-        public void SetNew(int from, int to, int promotionTo) => _data = (ushort)(to | (from << 6) | ((promotionTo - 1) << 12) | FlagPromotion);
-
-        [MethodImpl(Inline)] 
-        public void SetNewCastle(int from, int to) => _data = (ushort)(to | (from << 6) | FlagCastle);
-
-        [MethodImpl(Inline)] 
-        public void SetNewEnPassant(int from, int to) => _data = (ushort)(to | (from << 6) | FlagEnPassant);
-
-
-        [MethodImpl(Inline)]
-        public bool IsNull() => (_data & Mask_ToFrom) == 0;
-
-
-        [MethodImpl(Inline)]
-        public int CastlingKingSquare()
+        public readonly int CastlingKingSquare()
         {
-            if (GetFrom() < A2)
+            if (From < A2)
             {
-                return (GetTo() > GetFrom()) ? G1 : C1;
+                return (To > From) ? G1 : C1;
             }
 
-            return (GetTo() > GetFrom()) ? G8 : C8;
+            return (To > From) ? G8 : C8;
         }
 
         [MethodImpl(Inline)]
-        public int CastlingRookSquare()
+        public readonly int CastlingRookSquare()
         {
-            if (GetFrom() < A2)
+            if (From < A2)
             {
-                return (GetTo() > GetFrom()) ? F1 : D1;
+                return (To > From) ? F1 : D1;
             }
 
-            return (GetTo() > GetFrom()) ? F8 : D8;
+            return (To > From) ? F8 : D8;
         }
 
-        public CastlingStatus RelevantCastlingRight
+        [MethodImpl(Inline)]
+        public readonly CastlingStatus RelevantCastlingRight()
         {
-            get
+            if (From < A2)
             {
-                if (GetFrom() < A2)
-                {
-                    return (GetTo() > GetFrom()) ? CastlingStatus.WK : CastlingStatus.WQ;
-                }
-
-                return (GetTo() > GetFrom()) ? CastlingStatus.BK : CastlingStatus.BQ;
+                return (To > From) ? CastlingStatus.WK : CastlingStatus.WQ;
             }
+
+            return (To > From) ? CastlingStatus.BK : CastlingStatus.BQ;
         }
 
         /// <summary>
@@ -136,17 +102,17 @@ namespace Lizard.Logic.Data
         /// </summary>
         public string SmithNotation(bool is960 = false)
         {
-            IndexToCoord(GetFrom(), out int fx, out int fy);
-            IndexToCoord(GetTo(), out int tx, out int ty);
+            IndexToCoord(From, out int fx, out int fy);
+            IndexToCoord(To, out int tx, out int ty);
 
-            if (GetCastle() && !is960)
+            if (IsCastle && !is960)
             {
                 tx = (tx > fx) ? Files.G : Files.C;
             }
 
-            if (GetPromotion())
+            if (IsPromotion)
             {
-                return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1) + char.ToLower(PieceToFENChar(GetPromotionTo()));
+                return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1) + char.ToLower(PieceToFENChar(PromotionTo));
             }
             else
             {
@@ -159,12 +125,12 @@ namespace Lizard.Logic.Data
             StringBuilder sb = new StringBuilder();
             ref Bitboard bb = ref position.bb;
 
-            int moveTo = GetTo();
-            int moveFrom = GetFrom();
+            int moveTo = To;
+            int moveFrom = From;
 
             int pt = bb.GetPieceAtIndex(moveFrom);
 
-            if (GetCastle())
+            if (IsCastle)
             {
                 if (moveTo > moveFrom)
                 {
@@ -181,7 +147,7 @@ namespace Lizard.Logic.Data
 
                 if (pt == Piece.Pawn)
                 {
-                    if (cap || GetEnPassant())
+                    if (cap || IsEnPassant)
                     {
                         sb.Append(GetFileChar(GetIndexFile(moveFrom)));
                     }
@@ -216,7 +182,7 @@ namespace Lizard.Logic.Data
                     }
                 }
 
-                if (cap || GetEnPassant())
+                if (cap || IsEnPassant)
                 {
                     sb.Append('x');
                 }
@@ -224,9 +190,9 @@ namespace Lizard.Logic.Data
 
                 sb.Append(IndexToString(moveTo));
 
-                if (GetPromotion())
+                if (IsPromotion)
                 {
-                    sb.Append("=" + PieceToFENChar(GetPromotionTo()));
+                    sb.Append("=" + PieceToFENChar(PromotionTo));
                 }
             }
 
