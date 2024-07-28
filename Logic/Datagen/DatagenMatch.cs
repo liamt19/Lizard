@@ -279,7 +279,7 @@ namespace Lizard.Logic.Datagen
                 while (ring != 0)
                 {
                     int idx = poplsb(&ring);
-                    if ((bb.AttackersTo(idx, bb.Occupancy ^ SquareBB[nstmKing]) & bb.Colors[us]) != 0)
+                    if ((bb.AttackersTo(idx, bb.Occupancy ^ SquareBB[nstmKing]) & bb.Colors[us]) == 0)
                     {
                         bb.MoveSimple(nstmKing, idx, them, King);
                         kingPlaced = true;
@@ -295,7 +295,7 @@ namespace Lizard.Logic.Datagen
                     while (sqrs != 0)
                     {
                         int idx = (them == White) ? poplsb(&sqrs) : popmsb(&sqrs);
-                        if ((bb.AttackersTo(idx, bb.Occupancy ^ SquareBB[nstmKing]) & bb.Colors[us]) != 0)
+                        if ((bb.AttackersTo(idx, bb.Occupancy ^ SquareBB[nstmKing]) & bb.Colors[us]) == 0)
                         {
                             bb.MoveSimple(nstmKing, idx, them, King);
                             cr &= ~((them == Black) ? CastlingStatus.Black : CastlingStatus.White);
