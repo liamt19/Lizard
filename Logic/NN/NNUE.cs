@@ -21,14 +21,10 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            if (UseAvx)
-            {
-                return (short)Bucketed768.GetEvaluationUnrolled512(pos);
-            }
-            else
-            {
-                return (short)Bucketed768.GetEvaluation(pos);
-            }
+            int score = UseAvx ? Bucketed768.GetEvaluationUnrolled512(pos) :
+                                 Bucketed768.GetEvaluation(pos);
+
+            return (short)(score + ((pos.ToMove == White) ? 20 : -20));
         }
 
         [MethodImpl(Inline)]
