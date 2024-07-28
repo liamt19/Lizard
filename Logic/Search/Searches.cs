@@ -398,14 +398,10 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= SkipQuietsMaxDepth && !(givesCheck || isCapture))
+                    if (skipQuiets && !(givesCheck || isCapture))
                     {
-                        continue;
-                    }
-
-                    if (skipQuiets && !SEE_GE(pos, m, -104 * depth))
-                    {
-                        continue;
+                        if (depth <= SkipQuietsMaxDepth)
+                            continue;
                     }
 
                     if (givesCheck || isCapture)
@@ -417,6 +413,8 @@ namespace Lizard.Logic.Search
                             continue;
                         }
                     }
+                    else if (!SEE_GE(pos, m, -104 * depth))
+                        continue;
                 }
 
                 //  Try Singular Extensions for:
