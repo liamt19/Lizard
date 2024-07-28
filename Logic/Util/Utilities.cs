@@ -84,8 +84,8 @@ namespace Lizard.Logic.Util
         {
             StringBuilder sb = new StringBuilder();
 
-#if DEV
-            sb.Append("DEV ");
+#if DATAGEN
+            sb.Append("Datagen ");
 #endif
 
 #if DEBUG
@@ -499,7 +499,7 @@ namespace Lizard.Logic.Util
             int multiPV = Math.Min(MultiPV, rootMoves.Count);
 
             double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
-            double nodes = SearchPool.GetNodeCount();
+            double nodes = thisThread.AssocPool.GetNodeCount();
             int nodesPerSec = (int)(nodes / (time / 1000));
 
             int lastValidScore = 0;
@@ -544,7 +544,7 @@ namespace Lizard.Logic.Util
                 sb.Append(" score " + score);
                 sb.Append(" nodes " + nodes);
                 sb.Append(" nps " + nodesPerSec);
-                sb.Append(" hashfull " + TranspositionTable.GetHashFull());
+                sb.Append(" hashfull " + thisThread.TT.GetHashFull());
 
                 sb.Append(" pv");
                 for (int j = 0; j < MaxPly; j++)

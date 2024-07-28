@@ -5,7 +5,7 @@
 
         public static void Go(int depth = 12, bool openBench = false)
         {
-            Position pos = new Position(InitialFEN, owner: SearchPool.MainThread);
+            Position pos = new Position(InitialFEN, owner: GlobalSearchPool.MainThread);
 
             Stopwatch sw = Stopwatch.StartNew();
 
@@ -14,26 +14,26 @@
             info.OnDepthFinish = null;
             info.OnSearchFinish = null;
 
-            SearchPool.MainThread.WaitForThreadFinished();
-            TranspositionTable.Clear();
-            Search.Searches.HandleNewGame();
+            GlobalSearchPool.MainThread.WaitForThreadFinished();
+            GlobalSearchPool.TTable.Clear();
+            GlobalSearchPool.Clear();
 
             foreach (string fen in BenchFENs)
             {
                 pos.LoadFromFEN(fen);
-                SearchPool.StartSearch(pos, ref info);
+                GlobalSearchPool.StartSearch(pos, ref info);
 
-                SearchPool.MainThread.WaitForThreadFinished();
+                GlobalSearchPool.MainThread.WaitForThreadFinished();
 
-                ulong thisNodeCount = SearchPool.GetNodeCount();
+                ulong thisNodeCount = GlobalSearchPool.GetNodeCount();
                 totalNodes += thisNodeCount;
                 if (!openBench)
                 {
                     Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
                 }
 
-                TranspositionTable.Clear();
-                Search.Searches.HandleNewGame();
+                GlobalSearchPool.TTable.Clear();
+                GlobalSearchPool.Clear();
             }
             sw.Stop();
 

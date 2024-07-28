@@ -95,7 +95,7 @@ namespace Lizard.Logic.Core
         /// If <paramref name="createAccumulators"/> is true, then this Position will create and incrementally update 
         /// its accumulators when making and unmaking moves.
         /// <para></para>
-        /// <paramref name="owner"/> should be set to one of the <see cref="SearchThread"/>'s within the <see cref="SearchThreadPool.SearchPool"/>
+        /// <paramref name="owner"/> should be set to one of the <see cref="SearchThread"/>'s within the <see cref="SearchThreadPool.GlobalSearchPool"/>
         /// (the <see cref="SearchThreadPool.MainThread"/> unless there are multiple threads in the pool).
         /// <br></br>
         /// If <paramref name="owner"/> is <see langword="null"/> then <paramref name="createAccumulators"/> should be false.
@@ -134,7 +134,7 @@ namespace Lizard.Logic.Core
             {
                 Debug.WriteLine($"info string Position('{fen}', {createAccumulators}, ...) has NNUE enabled and was given a nullptr for owner! " +
                                 $"Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
-                Owner = SearchPool.MainThread;
+                Owner = GlobalSearchPool.MainThread;
             }
 
             LoadFromFEN(fen);
@@ -454,9 +454,6 @@ namespace Lizard.Logic.Core
             State->PliesFromNull = 0;
 
             SetCheckInfo();
-
-            prefetch(TranspositionTable.GetCluster(State->Hash));
-
         }
 
         /// <summary>
@@ -909,7 +906,7 @@ namespace Lizard.Logic.Core
             opts.MaxDegreeOfParallelism = MoveListSize;
             Parallel.For(0u, size, opts, i =>
             {
-                Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
+                Position threadPosition = new Position(rootFEN, false, owner: GlobalSearchPool.MainThread);
 
                 threadPosition.MakeMove(list[i].Move);
                 ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
@@ -1008,6 +1005,11 @@ namespace Lizard.Logic.Core
                             {
                                 Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
                             }
+                        }
+
+                        if (i == 7 && popcount(bb.Pieces[King]) != 2)
+                        {
+                            Log($"FEN {fen} has {popcount(bb.Pieces[King])} kings!");
                         }
                     }
                     //  who moves next

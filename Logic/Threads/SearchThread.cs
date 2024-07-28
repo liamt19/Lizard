@@ -107,6 +107,9 @@ namespace Lizard.Logic.Threads
 
         public ulong[][] NodeTable;
 
+        public SearchThreadPool AssocPool;
+        public TranspositionTable TT;
+
         /// <summary>
         /// The system Thread that this SearchThread is running on.
         /// </summary>
@@ -295,31 +298,31 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public void MainThreadSearch()
         {
-            TranspositionTable.TTUpdate();  //  Age the TT
+            TT.TTUpdate();  //  Age the TT
 
-            SearchPool.StartThreads();  //  Start other threads (if any)
+            AssocPool.StartThreads();  //  Start other threads (if any)
             this.Search();              //  Make this thread begin searching
 
-            while (!SearchPool.StopThreads && SearchPool.SharedInfo.IsInfinite) { }
+            while (!AssocPool.StopThreads && AssocPool.SharedInfo.IsInfinite) { }
 
             //  When the main thread is done, prevent the other threads from searching any deeper
-            SearchPool.StopThreads = true;
+            AssocPool.StopThreads = true;
 
             //  Wait for the other threads to return
-            SearchPool.WaitForSearchFinished();
+            AssocPool.WaitForSearchFinished();
 
             //  Search is finished, now give the UCI output.
-            SearchPool.SharedInfo.OnSearchFinish?.Invoke(ref SearchPool.SharedInfo);
-            SearchPool.SharedInfo.TimeManager.ResetTimer();
+            AssocPool.SharedInfo.OnSearchFinish?.Invoke(ref AssocPool.SharedInfo);
+            AssocPool.SharedInfo.TimeManager.ResetTimer();
 
-            SearchPool.SharedInfo.SearchActive = false;
+            AssocPool.SharedInfo.SearchActive = false;
 
             //  If the main program thread called BlockCallerUntilFinished,
             //  then the Blocker's ParticipantCount will be 2 instead of 1.
-            if (SearchPool.Blocker.ParticipantCount == 2)
+            if (AssocPool.Blocker.ParticipantCount == 2)
             {
                 //  Signal that we are here, but only wait for 1 ms if the main thread isn't already waiting
-                SearchPool.Blocker.SignalAndWait(1);
+                AssocPool.Blocker.SignalAndWait(1);
             }
         }
 
@@ -345,13 +348,13 @@ namespace Lizard.Logic.Threads
                 Array.Clear(NodeTable[sq]);
             }
 
-            //  Create a copy of the SearchPool's root SearchInformation instance.
-            SearchInformation info = SearchPool.SharedInfo;
+            //  Create a copy of the AssocPool's root SearchInformation instance.
+            SearchInformation info = AssocPool.SharedInfo;
 
             TimeManager tm = info.TimeManager;
 
             //  And set it's Position to this SearchThread's unique copy.
-            //  (The Position that SearchPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
+            //  (The Position that AssocPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
             info.Position = RootPosition;
 
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
@@ -369,7 +372,7 @@ namespace Lizard.Logic.Threads
                 if (IsMain && RootDepth > info.MaxDepth)
                     break;
 
-                if (SearchPool.StopThreads)
+                if (AssocPool.StopThreads)
                     break;
 
                 foreach (RootMove rm in RootMoves)
@@ -381,7 +384,7 @@ namespace Lizard.Logic.Threads
 
                 for (PVIndex = 0; PVIndex < multiPV; PVIndex++)
                 {
-                    if (SearchPool.StopThreads)
+                    if (AssocPool.StopThreads)
                         break;
 
                     int alpha = AlphaStart;
@@ -403,7 +406,7 @@ namespace Lizard.Logic.Threads
 
                         StableSort(RootMoves, PVIndex);
 
-                        if (SearchPool.StopThreads)
+                        if (AssocPool.StopThreads)
                             break;
 
                         if (score <= alpha)
@@ -425,7 +428,7 @@ namespace Lizard.Logic.Threads
 
                     StableSort(RootMoves, 0, PVIndex + 1);
 
-                    if (IsMain && (SearchPool.StopThreads || PVIndex == multiPV - 1))
+                    if (IsMain && (AssocPool.StopThreads || PVIndex == multiPV - 1))
                     {
                         info.OnDepthFinish?.Invoke(ref info);
                     }
@@ -434,7 +437,7 @@ namespace Lizard.Logic.Threads
                 if (!IsMain)
                     continue;
 
-                if (SearchPool.StopThreads)
+                if (AssocPool.StopThreads)
                 {
                     //  If we received a stop command or hit the hard time limit, our RootMoves may not have been filled in properly.
                     //  In that case, we replace the current bestmove with the last depth's bestmove
@@ -477,19 +480,24 @@ namespace Lizard.Logic.Threads
                     break;
                 }
 
-                if (!SearchPool.StopThreads)
+                if (Nodes >= info.SoftNodeLimit)
+                {
+                    break;
+                }
+
+                if (!AssocPool.StopThreads)
                 {
                     CompletedDepth = RootDepth;
                 }
             }
 
-            if (IsMain && RootDepth >= MaxDepth && info.MaxNodes != MaxSearchNodes && !SearchPool.StopThreads)
+            if (IsMain && RootDepth >= MaxDepth && info.MaxNodes != MaxSearchNodes && !AssocPool.StopThreads)
             {
                 //  If this was a "go nodes x" command, it is possible for the main thread to hit the
                 //  maximum depth before hitting the requested node count (causing an infinite wait).
 
                 //  If this is the case, and we haven't been told to stop searching, then we need to stop now.
-                SearchPool.StopThreads = true;
+                AssocPool.StopThreads = true;
             }
 
             for (int i = -10; i < MaxSearchStackPly; i++)
