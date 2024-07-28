@@ -403,7 +403,12 @@ namespace Lizard.Logic.Search
                         continue;
                     }
 
-                    if (givesCheck || isCapture || skipQuiets)
+                    if (skipQuiets && !SEE_GE(pos, m, -104 * depth))
+                    {
+                        continue;
+                    }
+
+                    if (givesCheck || isCapture)
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
                         //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
