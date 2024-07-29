@@ -1,4 +1,5 @@
 ﻿
+//#define DBG
 //#define WRITE_PGN
 
 using System.Runtime.InteropServices;
@@ -47,7 +48,7 @@ namespace Lizard.Logic.Datagen
                 StringBuilder outputBuffer = new StringBuilder();
 #endif
 
-            using StreamWriter outputWriter = new StreamWriter($"datagen{threadID}.txt", true);
+            using StreamWriter outputWriter = new StreamWriter($"datagen{(scramble ? "_scr" : string.Empty)}{threadID}.txt", true);
 
             long totalBadPositions = 0;
             long totalGoodPositions = 0;
@@ -216,18 +217,14 @@ namespace Lizard.Logic.Datagen
             outputWriter.Flush();
         }
 
-        static unsafe TDest reinterpret_cast<TSource, TDest>(TSource source)
-        {
-            var sourceRef = __makeref(source);
-            var dest = default(TDest);
-            var destRef = __makeref(dest);
-            *(IntPtr*)&destRef = *(IntPtr*)&sourceRef;
-            return __refvalue(destRef, TDest);
-        }
-
 
         public static void ScrambleBoard(Position pos, Random rand)
         {
+
+#if DBG
+            Log($"Pre  scrambling: {pos.GetFEN()}");
+#endif
+
             ref Bitboard bb = ref pos.bb;
 
             int us = pos.ToMove;
@@ -246,28 +243,37 @@ namespace Lizard.Logic.Datagen
                 {
                     int pc = bb.GetColorAtIndex(idx);
 
-                    int mob = rand.Next(0, pt + 1);
+                    int mob = rand.Next(1, pt + 1);
                     if (pt == King)
                         mob = 1;
 
-
-                    int sq = RandomManhattanDist(rand, idx, mob);
-                    if (bb.GetPieceAtIndex(sq) == None)
+                    const int MAX_PLACEMENT_TRIES = 4;
+                    for (int attempt = 0; attempt < MAX_PLACEMENT_TRIES; attempt++)
                     {
-                        bb.MoveSimple(idx, sq, pc, pt);
-                        scrambleMask &= ~SquareBB[sq];
-                        //Log($"   Scrambled {ColorToString(pc)} {PieceToString(pt)}\t{IndexToString(idx)} -> {IndexToString(sq)}");
-
-                        if (pt == King)
-                            cr &= ~((pc == White) ? CastlingStatus.White : CastlingStatus.Black);
-                        else if (pt == Rook)
+                        int sq = RandomManhattanDist(rand, idx, mob);
+                        if (bb.GetPieceAtIndex(sq) == None)
                         {
-                            var toRemove = (pc == White) ? CastlingStatus.White : CastlingStatus.Black;
-                            toRemove &= (GetIndexFile(idx) >= Files.E) ? CastlingStatus.Kingside : CastlingStatus.Queenside;
+                            bb.MoveSimple(idx, sq, pc, pt);
+                            scrambleMask &= ~SquareBB[sq];
 
-                            cr &= ~toRemove;
+#if DBG
+                        Log($"   Scrambled {ColorToString(pc)} {PieceToString(pt)}\t{IndexToString(idx)} -> {IndexToString(sq)}");
+#endif
+
+                            if (pt == King)
+                                cr &= ~((pc == White) ? CastlingStatus.White : CastlingStatus.Black);
+                            else if (pt == Rook)
+                            {
+                                var toRemove = (pc == White) ? CastlingStatus.White : CastlingStatus.Black;
+                                toRemove &= (GetIndexFile(idx) >= Files.E) ? CastlingStatus.Kingside : CastlingStatus.Queenside;
+
+                                cr &= ~toRemove;
+                            }
+
+                            break;
                         }
                     }
+                    
                 }
             }
 
@@ -284,7 +290,11 @@ namespace Lizard.Logic.Datagen
                         bb.MoveSimple(nstmKing, idx, them, King);
                         kingPlaced = true;
                         cr &= ~((them == Black) ? CastlingStatus.Black : CastlingStatus.White);
-                        //Log($"*  Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+
+#if DBG
+                        Log($"*  Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+#endif
+
                         break;
                     }
                 }
@@ -299,7 +309,11 @@ namespace Lizard.Logic.Datagen
                         {
                             bb.MoveSimple(nstmKing, idx, them, King);
                             cr &= ~((them == Black) ? CastlingStatus.Black : CastlingStatus.White);
-                            //Log($"** Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+
+#if DBG
+                            Log($"** Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+#endif
+
                             break;
                         }
                     }
@@ -307,8 +321,16 @@ namespace Lizard.Logic.Datagen
             }
 
 
+#if DBG
+            Log($"Post scrambling: {pos.GetFEN()}");
+#endif
+
             //pos.LoadFromFEN(pos.GetFEN());
             DatagenScrambleReset(pos, cr);
+
+#if DBG
+            Log($"Post reset:      {pos.GetFEN()}");
+#endif
 
             static void DatagenScrambleReset(Position pos, CastlingStatus cr = CastlingStatus.None)
             {
@@ -335,7 +357,7 @@ namespace Lizard.Logic.Datagen
             }
 
 
-            static int RandomManhattanDist(Random rand, int startSq, int N)
+            static int RandomManhattanDist(Random rand, int startSq, int N, double YBias = 0.33)
             {
                 IndexToCoord(startSq, out int sx, out int sy);
 
@@ -343,11 +365,13 @@ namespace Lizard.Logic.Datagen
                 int newSq;
                 do
                 {
-                    dx = rand.Next(-N, N + 1);
-                    dy = (N - Math.Abs(dx)) * (rand.Next(2) == 0 ? 1 : -1);
+                    int amt = (int)(N * (1 + YBias));
+                    dy = Math.Clamp(rand.Next(-amt, amt + 1), -N, N);
+                    dx = (N - Math.Abs(dy)) * (rand.Next(2) == 0 ? 1 : -1);
+
                     newSq = CoordToIndex(sx + dx, sy + dy);
                 }
-                while (Math.Abs(dx) + Math.Abs(dy) != N && !(newSq >= A1 && newSq <= H8));
+                while (Math.Abs(dx) + Math.Abs(dy) <= N - 2 && !(newSq >= A1 && newSq <= H8));
 
                 return newSq;
             }
