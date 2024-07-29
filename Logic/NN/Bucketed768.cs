@@ -143,7 +143,7 @@ namespace Lizard.Logic.NN
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var ourAccumulation = (Vector256<short>*)accumulator[perspective];
+            var ourAccumulation = (short*)accumulator[perspective];
             Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
@@ -158,12 +158,7 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-
-                var weights = (Vector256<short>*)(FeatureWeights + idx);
-                for (int i = 0; i < SIMD_Chunks; i++)
-                {
-                    ourAccumulation[i] += weights[i];
-                }
+                UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
             }
 
             if (pos.Owner.CachedBuckets == null)
@@ -192,7 +187,7 @@ namespace Lizard.Logic.NN
             ref Bitboard entryBB = ref rtEntry.Boards[perspective];
             ref Accumulator entryAcc = ref rtEntry.Accumulator;
 
-            var ourAccumulation = (Vector256<short>*)entryAcc[perspective];
+            var ourAccumulation = (short*)entryAcc[perspective];
             accumulator.NeedsRefresh[perspective] = false;
 
             for (int pc = 0; pc < ColorNB; pc++)
@@ -209,24 +204,14 @@ namespace Lizard.Logic.NN
                     {
                         int sq = poplsb(&added);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        var weights = (Vector256<short>*)(FeatureWeights + idx);
-
-                        for (int i = 0; i < SIMD_Chunks; i++)
-                        {
-                            ourAccumulation[i] += weights[i];
-                        }
+                        UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
                     }
 
                     while (removed != 0)
                     {
                         int sq = poplsb(&removed);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        var weights = (Vector256<short>*)(FeatureWeights + idx);
-
-                        for (int i = 0; i < SIMD_Chunks; i++)
-                        {
-                            ourAccumulation[i] -= weights[i];
-                        }
+                        UnrollSubtract(ourAccumulation, ourAccumulation, FeatureWeights + idx);
                     }
                 }
             }
@@ -240,8 +225,8 @@ namespace Lizard.Logic.NN
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            //Bucketed768.ProcessUpdates(pos);
-            Bucketed768.RefreshAccumulator(pos);
+            Bucketed768.ProcessUpdates(pos);
+            //Bucketed768.RefreshAccumulator(pos);
 
             Vector256<short> maxVec = Vector256.Create((short)QA);
             Vector256<short> zeroVec = Vector256<short>.Zero;
@@ -401,15 +386,25 @@ namespace Lizard.Logic.NN
                 (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 (int wTo, int bTo) = FeatureIndex(us, m.IsPromotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
 
-                wUpdate.PushSubAdd(wFrom, wTo);
-                bUpdate.PushSubAdd(bFrom, bTo);
+                if (m.IsCastle)
+                {
+                    int rookFromSq = moveTo;
+                    int rookToSq = m.CastlingRookSquare();
 
-                if (theirPiece != None)
+                    (wTo, bTo) = FeatureIndex(us, ourPiece, m.CastlingKingSquare(), wKing, bKing);
+
+                    (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFromSq, wKing, bKing);
+                    (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookToSq, wKing, bKing);
+
+                    wUpdate.PushSubSubAddAdd(wFrom, wRookFrom, wTo, wRookTo);
+                    bUpdate.PushSubSubAddAdd(bFrom, bRookFrom, bTo, bRookTo);
+                }
+                else if (theirPiece != None)
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
+                    wUpdate.PushSubSubAdd(wFrom, wCap, wTo);
+                    bUpdate.PushSubSubAdd(bFrom, bCap, bTo);
                 }
                 else if (m.IsEnPassant)
                 {
@@ -417,8 +412,13 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
+                    wUpdate.PushSubSubAdd(wFrom, wCap, wTo);
+                    bUpdate.PushSubSubAdd(bFrom, bCap, bTo);
+                }
+                else
+                {
+                    wUpdate.PushSubAdd(wFrom, wTo);
+                    bUpdate.PushSubAdd(bFrom, bTo);
                 }
             }
         }
