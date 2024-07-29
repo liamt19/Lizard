@@ -167,10 +167,15 @@ namespace Lizard
                 {
                     Log(GetCompilerInfo());
                 }
-                else if (input.StartsWithIgnoreCase("datagen"))
+                else if (input.StartsWithIgnoreCase("datagen") || input.StartsWithIgnoreCase("selfplay"))
                 {
                     string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
                     HandleDatagenCommand(splits);
+                }
+                else if (input.StartsWithIgnoreCase("rescore"))
+                {
+                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    HandleRescoreCommand(splits);
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
@@ -556,19 +561,39 @@ namespace Lizard
             if (threads == 1)
             {
                 //  Let this run on the main thread to allow for debugging
-                DatagenMatch.RunGames(gamesToRun: numGames, threadID: 0, scramble: scramble);
+                Selfplay.RunGames(gamesToRun: numGames, threadID: 0, scramble: scramble);
             }
             else
             {
                 Parallel.For(0, threads, new() { MaxDegreeOfParallelism = threads }, (int i) =>
                 {
-                    DatagenMatch.RunGames(gamesToRun: numGames, threadID: i, scramble: scramble);
+                    Selfplay.RunGames(gamesToRun: numGames, threadID: i, scramble: scramble);
                 });
             }
 
-            Console.WriteLine($"Total: {DatagenMatch.CumulativeGames}");
+            Console.WriteLine($"Total: {Selfplay.CumulativeGames}");
             Environment.Exit(0);
         }
+
+
+        private static void HandleRescoreCommand(string[] args)
+        {
+            if (args.Length <= 1) { Log($"An input file wasn't provided!"); return; }
+
+            string dataFile = args[1];
+
+            if (!File.Exists(dataFile)) { Log($"File {dataFile} doesn't exist!"); return; }
+
+            int threads = 1;
+            if (args.Length > 2 && int.TryParse(args[2], out int selThreads)) threads = selThreads;
+
+            Log($"Will rescore {dataFile} using {threads} threads.");
+            Log($"Hit enter to begin...");
+            _ = Console.ReadLine();
+
+            Rescorer.Start(dataFile, threads);
+        }
+
 
         private static void HandleBenchCommand(string input)
         {

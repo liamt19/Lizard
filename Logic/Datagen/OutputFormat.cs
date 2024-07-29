@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using static Lizard.Logic.Datagen.DatagenMatch;
+using static Lizard.Logic.Datagen.Selfplay;
 
 namespace Lizard.Logic.Datagen
 {

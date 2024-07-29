@@ -1,7 +1,7 @@
 ﻿
 namespace Lizard.Logic.Datagen
 {
-    public unsafe struct PlaintextData : TOutputFormat
+    public unsafe struct PlaintextDataFormat : TOutputFormat
     {
         public const int BufferSize = 92;
         public fixed char FEN[BufferSize];

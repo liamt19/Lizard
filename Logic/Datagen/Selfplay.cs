@@ -3,32 +3,16 @@
 //#define WRITE_PGN
 
 using System.Runtime.InteropServices;
-using System.Text;
+
+using static Lizard.Logic.Datagen.DatagenParameters;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.Datagen
 {
-    public static unsafe class DatagenMatch
+    public static unsafe class Selfplay
     {
-        private const int HashSize = 8;
-
-        private const int MinPly = 8;
-        private const int MaxPly = 9;
-
-        public const int SoftNodeLimit = 5000;
-        public const int HardNodeLimit = 20000;
-
-        private const int WritableDataLimit = 512;
-        private const int DepthLimit = 10;
-
-        private const int AdjudicateMoves = 2;
-        private const int AdjudicateScore = 4000;
-        private const int MaxFilteringScore = 5000;
-
-        private const int MaxOpeningScore = 1200;
-
         private static int Seed = Environment.TickCount;
         private static readonly ThreadLocal<Random> Rand = new(() => new Random(Interlocked.Increment(ref Seed)));
 
@@ -74,7 +58,7 @@ namespace Lizard.Logic.Datagen
             };
 
             ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
-            Span<PlaintextData> datapoints = stackalloc PlaintextData[WritableDataLimit];
+            Span<PlaintextDataFormat> datapoints = stackalloc PlaintextDataFormat[WritableDataLimit];
 
             Stopwatch sw = Stopwatch.StartNew();
 
@@ -84,7 +68,7 @@ namespace Lizard.Logic.Datagen
                 pool.Clear();
                 pos.LoadFromFEN(InitialFEN);
 
-                int randMoveCount = Rand.Value.Next(MinPly, MaxPly + 1);
+                int randMoveCount = Rand.Value.Next(MinOpeningPly, MaxOpeningPly + 1);
                 for (int i = 0; i < randMoveCount; i++)
                 {
                     int l = pos.GenLegal(legalMoves);
@@ -208,7 +192,7 @@ namespace Lizard.Logic.Datagen
 
         private static void AddResultsAndWrite<Format>(Span<Format> datapoints, GameResult gr, StreamWriter outputWriter) where Format : TOutputFormat
         {
-            if (typeof(Format) == typeof(PlaintextData))
+            if (typeof(Format) == typeof(PlaintextDataFormat))
             {
                 for (int i = 0; i < datapoints.Length; i++)
                 {
@@ -367,36 +351,11 @@ namespace Lizard.Logic.Datagen
 #endif
 
             //pos.LoadFromFEN(pos.GetFEN());
-            DatagenScrambleReset(pos, cr);
+            ResetPosition(pos, cr);
 
 #if DBG
             Log($"Post reset:      {pos.GetFEN()}");
 #endif
-
-            static void DatagenScrambleReset(Position pos, CastlingStatus cr = CastlingStatus.None)
-            {
-                ref Bitboard bb = ref pos.bb;
-
-                pos.FullMoves = 1;
-                pos.GamePly = 0;
-
-                pos.State = pos.StartingState;
-
-                var st = pos.State;
-                NativeMemory.Clear(st, StateInfo.StateCopySize);
-                st->CastleStatus = cr;
-                st->HalfmoveClock = 0;
-                st->PliesFromNull = 0;
-                st->EPSquare = EPNone;
-                st->CapturedPiece = None;
-                st->KingSquares[White] = bb.KingIndex(White);
-                st->KingSquares[Black] = bb.KingIndex(Black);
-
-                pos.SetState();
-
-                NNUE.RefreshAccumulator(pos);
-            }
-
 
             static int RandomManhattanDistWithBias(Random rand, int startSq, int N, double YBias = 0.0)
             {
@@ -417,6 +376,30 @@ namespace Lizard.Logic.Datagen
                 return newSq;
             }
 
+        }
+
+        public static void ResetPosition(Position pos, CastlingStatus cr = CastlingStatus.None)
+        {
+            ref Bitboard bb = ref pos.bb;
+
+            pos.FullMoves = 1;
+            pos.GamePly = 0;
+
+            pos.State = pos.StartingState;
+
+            var st = pos.State;
+            NativeMemory.Clear(st, StateInfo.StateCopySize);
+            st->CastleStatus = cr;
+            st->HalfmoveClock = 0;
+            st->PliesFromNull = 0;
+            st->EPSquare = EPNone;
+            st->CapturedPiece = None;
+            st->KingSquares[White] = bb.KingIndex(White);
+            st->KingSquares[Black] = bb.KingIndex(Black);
+
+            pos.SetState();
+
+            NNUE.RefreshAccumulator(pos);
         }
     }
 }
