@@ -25,12 +25,19 @@ namespace Lizard.Logic.NN
         private const int HL = Bucketed768.HiddenSize;
         private const int StopBefore = HL / N;
 
+        private const int AVX512_32HL = 32 / 32;
+        private const int AVX512_64HL = 64 / 32;
+        private const int AVX512_128HL = 128 / 32;
         private const int AVX512_1024HL = 1024 / 32;
         private const int AVX512_1280HL = 1280 / 32;
         private const int AVX512_1536HL = 1536 / 32;
         private const int AVX512_1792HL = 1792 / 32;
         private const int AVX512_2048HL = 2048 / 32;
 
+        private const int AVX256_16HL = 16 / 16;
+        private const int AVX256_32HL = 32 / 16;
+        private const int AVX256_64HL = 64 / 16;
+        private const int AVX256_128HL = 128 / 16;
         private const int AVX256_1024HL = 1024 / 16;
         private const int AVX256_1280HL = 1280 / 16;
         private const int AVX256_1536HL = 1536 / 16;
@@ -47,9 +54,21 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0] - sub1[ 0];
+
+            if (StopBefore == AVX512_32HL || StopBefore == AVX256_16HL)
+                return;
+
             dst[ 1] = src[ 1] + add1[ 1] - sub1[ 1];
+
+            if (StopBefore == AVX512_64HL || StopBefore == AVX256_32HL)
+                return;
+
             dst[ 2] = src[ 2] + add1[ 2] - sub1[ 2];
             dst[ 3] = src[ 3] + add1[ 3] - sub1[ 3];
+
+            if (StopBefore == AVX512_128HL || StopBefore == AVX256_64HL)
+                return;
+
             dst[ 4] = src[ 4] + add1[ 4] - sub1[ 4];
             dst[ 5] = src[ 5] + add1[ 5] - sub1[ 5];
             dst[ 6] = src[ 6] + add1[ 6] - sub1[ 6];
@@ -224,9 +243,21 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0] - sub1[ 0] - sub2[ 0];
+
+            if (StopBefore == AVX512_32HL || StopBefore == AVX256_16HL)
+                return;
+
             dst[ 1] = src[ 1] + add1[ 1] - sub1[ 1] - sub2[ 1];
+
+            if (StopBefore == AVX512_64HL || StopBefore == AVX256_32HL)
+                return;
+
             dst[ 2] = src[ 2] + add1[ 2] - sub1[ 2] - sub2[ 2];
             dst[ 3] = src[ 3] + add1[ 3] - sub1[ 3] - sub2[ 3];
+
+            if (StopBefore == AVX512_128HL || StopBefore == AVX256_64HL)
+                return;
+
             dst[ 4] = src[ 4] + add1[ 4] - sub1[ 4] - sub2[ 4];
             dst[ 5] = src[ 5] + add1[ 5] - sub1[ 5] - sub2[ 5];
             dst[ 6] = src[ 6] + add1[ 6] - sub1[ 6] - sub2[ 6];
@@ -402,9 +433,21 @@ namespace Lizard.Logic.NN
             VShort* add2 = (VShort*)_add2;
 
             dst[ 0] = src[ 0] + add1[ 0] + add2[ 0] - sub1[ 0] - sub2[ 0];
+
+            if (StopBefore == AVX512_32HL || StopBefore == AVX256_16HL)
+                return;
+
             dst[ 1] = src[ 1] + add1[ 1] + add2[ 1] - sub1[ 1] - sub2[ 1];
+
+            if (StopBefore == AVX512_64HL || StopBefore == AVX256_32HL)
+                return;
+
             dst[ 2] = src[ 2] + add1[ 2] + add2[ 2] - sub1[ 2] - sub2[ 2];
             dst[ 3] = src[ 3] + add1[ 3] + add2[ 3] - sub1[ 3] - sub2[ 3];
+
+            if (StopBefore == AVX512_128HL || StopBefore == AVX256_64HL)
+                return;
+
             dst[ 4] = src[ 4] + add1[ 4] + add2[ 4] - sub1[ 4] - sub2[ 4];
             dst[ 5] = src[ 5] + add1[ 5] + add2[ 5] - sub1[ 5] - sub2[ 5];
             dst[ 6] = src[ 6] + add1[ 6] + add2[ 6] - sub1[ 6] - sub2[ 6];
@@ -577,9 +620,21 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0];
+
+            if (StopBefore == AVX512_32HL || StopBefore == AVX256_16HL)
+                return;
+
             dst[ 1] = src[ 1] + add1[ 1];
+
+            if (StopBefore == AVX512_64HL || StopBefore == AVX256_32HL)
+                return;
+
             dst[ 2] = src[ 2] + add1[ 2];
             dst[ 3] = src[ 3] + add1[ 3];
+
+            if (StopBefore == AVX512_128HL || StopBefore == AVX256_64HL)
+                return;
+
             dst[ 4] = src[ 4] + add1[ 4];
             dst[ 5] = src[ 5] + add1[ 5];
             dst[ 6] = src[ 6] + add1[ 6];
@@ -752,9 +807,21 @@ namespace Lizard.Logic.NN
             VShort* sub1 = (VShort*)_sub1;
 
             dst[ 0] = src[ 0] - sub1[ 0];
+
+            if (StopBefore == AVX512_32HL || StopBefore == AVX256_16HL)
+                return;
+
             dst[ 1] = src[ 1] - sub1[ 1];
+
+            if (StopBefore == AVX512_64HL || StopBefore == AVX256_32HL)
+                return;
+
             dst[ 2] = src[ 2] - sub1[ 2];
             dst[ 3] = src[ 3] - sub1[ 3];
+
+            if (StopBefore == AVX512_128HL || StopBefore == AVX256_64HL)
+                return;
+
             dst[ 4] = src[ 4] - sub1[ 4];
             dst[ 5] = src[ 5] - sub1[ 5];
             dst[ 6] = src[ 6] - sub1[ 6];

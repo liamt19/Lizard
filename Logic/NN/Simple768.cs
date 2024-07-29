@@ -8,22 +8,22 @@ using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
-    public static unsafe partial class Bucketed768
+    public static unsafe class Simple768
     {
         public const int InputBuckets = 1;
         public const int InputSize = 768;
         public const int HiddenSize = 32;
         public const int OutputBuckets = 8;
 
-        public const int QA = 364;
-        public const int QB = 90;
+        public const int QA = 258;
+        public const int QB = 64;
 
         public const int OutputScale = 400;
 
         /// <summary>
-        /// (768 -> 32)x2 -> 8
+        /// (768x5 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "net-001-240.bin";
+        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -36,31 +36,29 @@ namespace Lizard.Logic.NN
         private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
-        private const int SIMD_Chunks = HiddenSize / 16;
-
         private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 1, 1, 6, 6, 5, 5,
+            2, 2, 3, 3, 8, 8, 7, 7,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
+            4, 4, 4, 4, 9, 9, 9, 9,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
 
-        static Bucketed768()
+        static Simple768()
         {
             FeatureWeights = AlignedAllocZeroed<short>(FeatureWeightElements);
-            FeatureBiases = AlignedAllocZeroed<short>(FeatureBiasElements);
+            FeatureBiases  = AlignedAllocZeroed<short>(FeatureBiasElements);
 
             LayerWeights = AlignedAllocZeroed<short>(LayerWeightElements);
-            LayerBiases = AlignedAllocZeroed<short>(Math.Max(LayerBiasElements, Vector512<short>.Count));
+            LayerBiases  = AlignedAllocZeroed<short>(Math.Max(LayerBiasElements, Vector512<short>.Count));
 
             string networkToLoad = NetworkName;
 
@@ -83,7 +81,7 @@ namespace Lizard.Logic.NN
             long toRead = ExpectedNetworkSize;
             if (stream.Position + toRead > stream.Length)
             {
-                Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
+                Console.WriteLine("Simple768's BinaryReader doesn't have enough data for all weights and biases to be read!");
                 Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {stream.Position} / {stream.Length}");
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
                 if (exitIfFail)
@@ -119,7 +117,7 @@ namespace Lizard.Logic.NN
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
             //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+            //TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
 
 #if DEBUG
             NetStats("ft weight", FeatureWeights, FeatureWeightElements);
@@ -134,21 +132,15 @@ namespace Lizard.Logic.NN
 
         public static void RefreshAccumulator(Position pos)
         {
-            RefreshAccumulatorPerspectiveFull(pos, White);
-            RefreshAccumulatorPerspectiveFull(pos, Black);
-        }
-
-        public static void RefreshAccumulatorPerspectiveFull(Position pos, int perspective)
-        {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            var ourAccumulation = (Vector256<short>*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
-            accumulator.NeedsRefresh[perspective] = false;
-            accumulator.Computed[perspective] = true;
+            var w = (Vector512<short>*)accumulator.White;
+            var b = (Vector512<short>*)accumulator.Black;
 
-            int ourKing = pos.State->KingSquares[perspective];
+            Unsafe.CopyBlock(accumulator.White, FeatureBiases, sizeof(short) * HiddenSize);
+            Unsafe.CopyBlock(accumulator.Black, FeatureBiases, sizeof(short) * HiddenSize);
+
             ulong occ = bb.Occupancy;
             while (occ != 0)
             {
@@ -157,95 +149,51 @@ namespace Lizard.Logic.NN
                 int pt = bb.GetPieceAtIndex(pieceIdx);
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
-                int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
+                (int wIdx, int bIdx) = FeatureIndex(pc, pt, pieceIdx);
 
-                var weights = (Vector256<short>*)(FeatureWeights + idx);
-                for (int i = 0; i < SIMD_Chunks; i++)
-                {
-                    ourAccumulation[i] += weights[i];
-                }
+                var whiteWeights = (Vector512<short>*)(FeatureWeights + wIdx);
+                var blackWeights = (Vector512<short>*)(FeatureWeights + bIdx);
+
+                UnrollAdd(accumulator.White, accumulator.White, FeatureWeights + wIdx);
+                UnrollAdd(accumulator.Black, accumulator.Black, FeatureWeights + bIdx);
             }
-
-            if (pos.Owner.CachedBuckets == null)
-            {
-                //  TODO: Upon SearchThread init, this isn't created yet :(
-                return;
-            }
-
-            ref BucketCache cache = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref cache.Boards[perspective];
-            ref Accumulator entryAcc = ref cache.Accumulator;
-
-            accumulator.CopyTo(ref entryAcc, perspective);
-            bb.CopyTo(ref entryBB);
         }
+
 
         public static void RefreshAccumulatorPerspective(Position pos, int perspective)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
 
-            int ourKing = pos.State->KingSquares[perspective];
-            int thisBucket = KingBuckets[ourKing];
+            var us = (short*)accumulator[perspective];
 
-            ref BucketCache rtEntry = ref pos.Owner.CachedBuckets[BucketForPerspective(ourKing, perspective)];
-            ref Bitboard entryBB = ref rtEntry.Boards[perspective];
-            ref Accumulator entryAcc = ref rtEntry.Accumulator;
+            Unsafe.CopyBlock(us, FeatureBiases, sizeof(short) * HiddenSize);
 
-            var ourAccumulation = (Vector256<short>*)entryAcc[perspective];
-            accumulator.NeedsRefresh[perspective] = false;
-
-            for (int pc = 0; pc < ColorNB; pc++)
+            ulong occ = bb.Occupancy;
+            while (occ != 0)
             {
-                for (int pt = 0; pt < PieceNB; pt++)
-                {
-                    ulong prev = entryBB.Pieces[pt] & entryBB.Colors[pc];
-                    ulong curr =      bb.Pieces[pt] &      bb.Colors[pc];
+                int pieceIdx = poplsb(&occ);
 
-                    ulong added   = curr & ~prev;
-                    ulong removed = prev & ~curr;
+                int pt = bb.GetPieceAtIndex(pieceIdx);
+                int pc = bb.GetColorAtIndex(pieceIdx);
 
-                    while (added != 0)
-                    {
-                        int sq = poplsb(&added);
-                        int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        var weights = (Vector256<short>*)(FeatureWeights + idx);
-
-                        for (int i = 0; i < SIMD_Chunks; i++)
-                        {
-                            ourAccumulation[i] += weights[i];
-                        }
-                    }
-
-                    while (removed != 0)
-                    {
-                        int sq = poplsb(&removed);
-                        int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        var weights = (Vector256<short>*)(FeatureWeights + idx);
-
-                        for (int i = 0; i < SIMD_Chunks; i++)
-                        {
-                            ourAccumulation[i] -= weights[i];
-                        }
-                    }
-                }
+                int idx = FeatureIndexSingle(pc, pt, pieceIdx, perspective);
+                UnrollAdd(us, us, FeatureWeights + idx);
             }
-
-            entryAcc.CopyTo(ref accumulator, perspective);
-            bb.CopyTo(ref entryBB);
-
-            accumulator.Computed[perspective] = true;
         }
+
+
 
         public static int GetEvaluation(Position pos)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-            //Bucketed768.ProcessUpdates(pos);
-            Bucketed768.RefreshAccumulator(pos);
+            Bucketed768.ProcessUpdates(pos);
 
             Vector256<short> maxVec = Vector256.Create((short)QA);
             Vector256<short> zeroVec = Vector256<short>.Zero;
             Vector256<int> sum = Vector256<int>.Zero;
+
+            int SimdChunks = HiddenSize / Vector256<short>.Count;
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
@@ -256,7 +204,7 @@ namespace Lizard.Logic.NN
             var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
             var theirWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
 
-            for (int i = 0; i < SIMD_Chunks; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
                 Vector256<short> mult = clamp * ourWeights[i];
@@ -267,7 +215,7 @@ namespace Lizard.Logic.NN
                 sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
             }
 
-            for (int i = 0; i < SIMD_Chunks; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
                 Vector256<short> mult = clamp * theirWeights[i];
@@ -283,52 +231,28 @@ namespace Lizard.Logic.NN
             return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
         }
 
-        private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
+
+
+        private static int FeatureIndexSingle(int pc, int pt, int sq, int perspective)
         {
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
 
-            if (perspective == Black)
-            {
-                sq ^= 56;
-                kingSq ^= 56;
-            }
-
-            if (kingSq % 8 > 3)
-            {
-                sq ^= 7;
-                kingSq ^= 7;
-            }
-
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * HiddenSize;
+            return ((pc ^ perspective) * ColorStride + pt * PieceStride + (sq ^ perspective * 56)) * HiddenSize;
         }
 
-        private static (int, int) FeatureIndex(int pc, int pt, int sq, int wk, int bk)
+        private static (int, int) FeatureIndex(int pc, int pt, int sq)
         {
             const int ColorStride = 64 * 6;
             const int PieceStride = 64;
 
-            int wSq = sq;
-            int bSq = sq ^ 56;
-
-            if (wk % 8 > 3)
-            {
-                wk ^= 7;
-                wSq ^= 7;
-            }
-
-            bk ^= 56;
-            if (bk % 8 > 3)
-            {
-                bk ^= 7;
-                bSq ^= 7;
-            }
-
-            int whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + (wSq);
-            int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + (bSq);
+            int whiteIndex = pc * ColorStride + pt * PieceStride + sq;
+            int blackIndex = Not(pc) * ColorStride + pt * PieceStride + (sq ^ 56);
 
             return (whiteIndex * HiddenSize, blackIndex * HiddenSize);
         }
+
+
 
         public static void MakeMove(Position pos, Move m)
         {
@@ -358,69 +282,50 @@ namespace Lizard.Logic.NN
             wUpdate.Clear();
             bUpdate.Clear();
 
-            //  Refreshes are only required if our king moves to a different bucket
-            if (ourPiece == King && (KingBuckets[moveFrom ^ (56 * us)] != KingBuckets[moveTo ^ (56 * us)]))
+
+            int wKing = pos.State->KingSquares[White];
+            int bKing = pos.State->KingSquares[Black];
+
+            (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom);
+            (int wTo, int bTo) = FeatureIndex(us, m.IsPromotion ? m.PromotionTo : ourPiece, moveTo);
+
+
+            if (m.IsCastle)
             {
-                //  We will need to fully refresh our perspective, but we can still do theirs.
-                dst->NeedsRefresh[us] = true;
+                int rookFromSq = moveTo;
+                int rookToSq = m.CastlingRookSquare();
 
-                ref PerspectiveUpdate theirUpdate = ref dst->Update[them];
+                (wTo, bTo) = FeatureIndex(us, ourPiece, m.CastlingKingSquare());
 
-                int theirKing = pos.State->KingSquares[them];
+                (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFromSq);
+                (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookToSq);
 
-                int from = FeatureIndexSingle(us, ourPiece, moveFrom, theirKing, them);
-                int to = FeatureIndexSingle(us, ourPiece, moveTo, theirKing, them);
-
-                if (theirPiece != None && !m.IsCastle)
-                {
-                    int cap = FeatureIndexSingle(them, theirPiece, moveTo, theirKing, them);
-                    theirUpdate.PushSubSubAdd(from, cap, to);
-                }
-                else if (m.IsCastle)
-                {
-                    int rookFromSq = moveTo;
-                    int rookToSq = m.CastlingRookSquare();
-
-                    to = FeatureIndexSingle(us, ourPiece, m.CastlingKingSquare(), theirKing, them);
-
-                    int rookFrom = FeatureIndexSingle(us, Rook, rookFromSq, theirKing, them);
-                    int rookTo = FeatureIndexSingle(us, Rook, rookToSq, theirKing, them);
-
-                    theirUpdate.PushSubSubAddAdd(from, rookFrom, to, rookTo);
-                }
-                else
-                {
-                    theirUpdate.PushSubAdd(from, to);
-                }
+                wUpdate.PushSubSubAddAdd(wFrom, wRookFrom, wTo, wRookTo);
+                bUpdate.PushSubSubAddAdd(bFrom, bRookFrom, bTo, bRookTo);
             }
-            else
+            else if (theirPiece != None)
             {
-                int wKing = pos.State->KingSquares[White];
-                int bKing = pos.State->KingSquares[Black];
+                (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo);
 
-                (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
-                (int wTo, int bTo) = FeatureIndex(us, m.IsPromotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
+                wUpdate.PushSub(wCap);
+                bUpdate.PushSub(bCap);
 
                 wUpdate.PushSubAdd(wFrom, wTo);
                 bUpdate.PushSubAdd(bFrom, bTo);
-
-                if (theirPiece != None)
-                {
-                    (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
-
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
-                }
-                else if (m.IsEnPassant)
-                {
-                    int idxPawn = moveTo - ShiftUpDir(us);
-
-                    (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
-
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
-                }
             }
+            else if (m.IsEnPassant)
+            {
+                int idxPawn = moveTo - ShiftUpDir(us);
+
+                (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn);
+
+                wUpdate.PushSub(wCap);
+                bUpdate.PushSub(bCap);
+
+                wUpdate.PushSubAdd(wFrom, wTo);
+                bUpdate.PushSubAdd(bFrom, bTo);
+            }
+
         }
 
         public static void MakeNullMove(Position pos)
