@@ -33,7 +33,7 @@ namespace Lizard.Logic.Datagen
         public static long CumulativeGames = 0;
 
 
-        public static void RunGames(int gamesToRun = 1, int threadID = 0, bool scramble = false)
+        public static void RunGames(int gamesToRun = 1, int threadID = 0, bool scramble = true)
         {
             SearchOptions.Hash = HashSize;
 
@@ -220,6 +220,16 @@ namespace Lizard.Logic.Datagen
 
         public static void ScrambleBoard(Position pos, Random rand)
         {
+            //  Increase the ordinary bounds for movement in the Y direction by this much.
+            //  Basically "move up/down by 33% more than left/right"
+            const double YBias = 0.33333;
+
+            //  Attempt to move a piece to a nearby random + empty square # times
+            const int MaxPlacementTries = 4;
+
+            //  If a king would be scrambled, ignore that # percent of the time
+            const int KeepKsqFrequency = 80;
+
 
 #if DBG
             Log($"Pre  scrambling: {pos.GetFEN()}");
@@ -234,30 +244,37 @@ namespace Lizard.Logic.Datagen
             ulong scrambleMask = (ulong)((rand.NextInt64() & rand.NextInt64()) | rand.NextInt64());
             CastlingStatus cr = pos.State->CastleStatus;
 
+            int bitSide = White;
             while (scrambleMask != 0)
             {
-                int idx = poplsb(&scrambleMask);
+                //  Alternate popping bits from white's side and black's side
+                int idx = (bitSide == White) ? poplsb(&scrambleMask) : popmsb(&scrambleMask);
+                bitSide = Not(bitSide);
 
                 int pt = bb.GetPieceAtIndex(idx);
                 if (pt != None)
                 {
                     int pc = bb.GetColorAtIndex(idx);
 
-                    int mob = rand.Next(1, pt + 1);
-                    if (pt == King)
-                        mob = 1;
+                    int dist = rand.Next(0, Math.Max(2, pt + 1));
 
-                    const int MAX_PLACEMENT_TRIES = 4;
-                    for (int attempt = 0; attempt < MAX_PLACEMENT_TRIES; attempt++)
+                    if (pt == King)
+                        dist = (rand.Next(0, 100) <= KeepKsqFrequency ? 0 : 1);
+
+                    for (int attempt = 0; attempt < MaxPlacementTries; attempt++)
                     {
-                        int sq = RandomManhattanDist(rand, idx, mob);
+                        int sq = RandomManhattanDistWithBias(rand, idx, dist, YBias);
+
+                        if (pt == Pawn && (sq < A2 || sq > H7))
+                            continue;   //  Don't put pawns on the back rank
+
                         if (bb.GetPieceAtIndex(sq) == None)
                         {
                             bb.MoveSimple(idx, sq, pc, pt);
-                            scrambleMask &= ~SquareBB[sq];
+                            scrambleMask &= ~SquareBB[sq];  //  Don't allow a piece to be moved twice
 
 #if DBG
-                        Log($"   Scrambled {ColorToString(pc)} {PieceToString(pt)}\t{IndexToString(idx)} -> {IndexToString(sq)}");
+                            Log($"    Scrambled {ColorToString(pc)} {PieceToString(pt), -6}\t{IndexToString(idx)} -> {IndexToString(sq)}");
 #endif
 
                             if (pt == King)
@@ -280,11 +297,15 @@ namespace Lizard.Logic.Datagen
             int nstmKing = bb.KingIndex(them);
             if ((bb.AttackersTo(nstmKing, bb.Occupancy) & bb.Colors[us]) != 0)
             {
+                //  The nstm's king is attacked, so this position isn't legal.
+                //  We'll try to fix this by moving the king to an empty neighboring square,
+                //  trying the upper or lower squares first depending on the nstm's color
+                //  (in the hopes of putting it closer to it's pieces)
                 bool kingPlaced = false;
                 ulong ring = NeighborsMask[nstmKing] & ~bb.Occupancy;
                 while (ring != 0)
                 {
-                    int idx = poplsb(&ring);
+                    int idx = (them == White) ? poplsb(&ring) : popmsb(&ring);
                     if ((bb.AttackersTo(idx, bb.Occupancy ^ SquareBB[nstmKing]) & bb.Colors[us]) == 0)
                     {
                         bb.MoveSimple(nstmKing, idx, them, King);
@@ -292,13 +313,17 @@ namespace Lizard.Logic.Datagen
                         cr &= ~((them == Black) ? CastlingStatus.Black : CastlingStatus.White);
 
 #if DBG
-                        Log($"*  Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+                        Log($"*   Fixed {ColorToString(them)} {PieceToString(King),-6}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
 #endif
 
                         break;
                     }
                 }
 
+
+                //  In case there isn't a suitable square immediately surrounding the king,
+                //  start trying empty squares one-by-one, starting from that king's friendly corner
+                //  (h8 and moving left/down for black, A1 and moving right/up for white)
                 if (!kingPlaced)
                 {
                     ulong sqrs = ~bb.Occupancy;
@@ -311,7 +336,7 @@ namespace Lizard.Logic.Datagen
                             cr &= ~((them == Black) ? CastlingStatus.Black : CastlingStatus.White);
 
 #if DBG
-                            Log($"** Scrambled {ColorToString(them)} {PieceToString(King)}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
+                            Log($"**  Fixed {ColorToString(them)} {PieceToString(King),-6}\t{IndexToString(nstmKing)} -> {IndexToString(idx)}");
 #endif
 
                             break;
@@ -357,7 +382,7 @@ namespace Lizard.Logic.Datagen
             }
 
 
-            static int RandomManhattanDist(Random rand, int startSq, int N, double YBias = 0.33)
+            static int RandomManhattanDistWithBias(Random rand, int startSq, int N, double YBias = 0.0)
             {
                 IndexToCoord(startSq, out int sx, out int sy);
 

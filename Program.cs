@@ -542,18 +542,27 @@ namespace Lizard
         {
             int numGames = 200;
             int threads = 1;
+            bool scramble = false;
+
             if (args.Length > 1 && int.TryParse(args[1], out int selNumGames)) numGames = selNumGames;
             if (args.Length > 2 && int.TryParse(args[2], out int selThreads)) threads = selThreads;
+            if (args.Length > 3 && (args[3].StartsWithIgnoreCase("s") || args[3].EqualsIgnoreCase("yes"))) scramble = true;
+
+            Log($"Will play {numGames * (long)threads} total games, {numGames}/thread with {threads} thread(s)" +
+                $"{(scramble ? ", scrambling positions" : string.Empty)}.");
+            Log($"Hit enter to begin...");
+            _ = Console.ReadLine();
 
             if (threads == 1)
             {
-                DatagenMatch.RunGames(numGames, threadID: 0);
+                //  Let this run on the main thread to allow for debugging
+                DatagenMatch.RunGames(gamesToRun: numGames, threadID: 0, scramble: scramble);
             }
             else
             {
                 Parallel.For(0, threads, new() { MaxDegreeOfParallelism = threads }, (int i) =>
                 {
-                    DatagenMatch.RunGames(numGames, threadID: i);
+                    DatagenMatch.RunGames(gamesToRun: numGames, threadID: i, scramble: scramble);
                 });
             }
 

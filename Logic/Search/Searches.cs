@@ -88,7 +88,7 @@ namespace Lizard.Logic.Search
                 }
             }
 #else
-            if (isPV && thisThread.Nodes >= DatagenMatch.HardNodeLimit)
+            if (isPV && (thisThread.Nodes >= DatagenMatch.HardNodeLimit && thisThread.RootDepth > 2))
             {
                 thisThread.AssocPool.StopThreads = true;
             }
