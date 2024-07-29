@@ -27,6 +27,8 @@ namespace Lizard.Logic.Datagen
         private const int AdjudicateScore = 4000;
         private const int MaxFilteringScore = 5000;
 
+        private const int MaxOpeningScore = 1200;
+
         private static int Seed = Environment.TickCount;
         private static readonly ThreadLocal<Random> Rand = new(() => new Random(Interlocked.Increment(ref Seed)));
 
@@ -62,6 +64,15 @@ namespace Lizard.Logic.Datagen
                 OnSearchFinish = null,
             };
 
+            SearchInformation prelimInfo = new SearchInformation(pos)
+            {
+                SoftNodeLimit = SoftNodeLimit * 20,
+                MaxNodes = HardNodeLimit * 20,
+                MaxDepth = DepthLimit,
+                OnDepthFinish = null,
+                OnSearchFinish = null,
+            };
+
             ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
             Span<PlaintextData> datapoints = stackalloc PlaintextData[WritableDataLimit];
 
@@ -89,6 +100,11 @@ namespace Lizard.Logic.Datagen
                 }
 
                 if (pos.GenLegal(legalMoves) == 0) { gameNum--; continue; }
+
+                //  Check if the starting position has a reasonable score, and scrap it if it doesn't
+                pool.StartSearch(pos, ref prelimInfo);
+                pool.BlockCallerUntilFinished();
+                if (Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxOpeningScore) { gameNum--; continue; }
 
 #if RAW_STRING
                 outputBuffer.Clear();
