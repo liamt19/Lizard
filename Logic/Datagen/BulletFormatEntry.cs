@@ -1,11 +1,7 @@
-﻿using System;
+﻿
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Lizard.Logic.Datagen
 {
@@ -56,21 +52,30 @@ namespace Lizard.Logic.Datagen
             if (stm == Black)
             {
                 for (int i = 0; i < bbs.Length; i++)
-                {
                     bbs[i] = BinaryPrimitives.ReverseEndianness(bbs[i]);
-                }
 
-                (bbs[0], bbs[1]) = (bbs[1], bbs[0]);
+                (bbs[White], bbs[Black]) = (bbs[Black], bbs[White]);
 
                 score = (short)-score;
                 result = 1 - result;
             }
 
             ulong occ = bbs[0] | bbs[1];
-            byte[] pieces = new byte[16];
+
+            BulletFormatEntry bfe = new BulletFormatEntry
+            {
+                score = score,
+                occ = occ,
+                result =  (byte)(2 * (int)result),
+                ksq     = (byte) BitOperations.TrailingZeroCount(bbs[0] & bbs[7]),
+                opp_ksq = (byte)(BitOperations.TrailingZeroCount(bbs[1] & bbs[7]) ^ 56)
+            };
+
+            Span<byte> pieces = stackalloc byte[16];
 
             int idx = 0;
             ulong occ2 = occ;
+            int piece = 0;
             while (occ2 > 0)
             {
                 int sq = BitOperations.TrailingZeroCount(occ2);
@@ -78,42 +83,21 @@ namespace Lizard.Logic.Datagen
                 occ2 &= occ2 - 1;
 
                 byte colour = (byte)(((bit & bbs[1]) > 0 ? 1 : 0) << 3);
-                var piece = FindIndex(bbs[2..], bb => (bit & bb) > 0);
-                if (piece == -1) throw new Exception("No Piece Found!");
+                for (int i = 2; i < 8; i++)
+                    if ((bit & bbs[i]) > 0)
+                    {
+                        piece = i - 2;
+                        break;
+                    }
 
                 byte pc = (byte)(colour | (byte)piece);
 
-                pieces[idx / 2] |= (byte)(pc << (4 * (idx & 1)));
+                bfe.pcs[idx / 2] |= (byte)(pc << (4 * (idx & 1)));
 
                 idx += 1;
             }
 
-            byte resultByte = (byte)(2 * (int)result);
-            byte ksq = (byte)BitOperations.TrailingZeroCount(bbs[0] & bbs[7]);
-            byte oppKsq = (byte)(BitOperations.TrailingZeroCount(bbs[1] & bbs[7]) ^ 56);
-
-            BulletFormatEntry bfe = new BulletFormatEntry()
-            {
-                occ = occ,
-                score = score,
-                result = resultByte,
-                ksq = ksq,
-                opp_ksq = oppKsq,
-            };
-
-            fixed (byte* pcsPtr = pieces)
-                Unsafe.CopyBlock(bfe.pcs, pcsPtr, sizeof(byte) * 16);
-
             return bfe;
-
-            static int FindIndex(Span<ulong> span, Func<ulong, bool> predicate)
-            {
-                for (int i = 0; i < span.Length; i++)
-                    if (predicate(span[i]))
-                        return i;
-
-                return -1;
-            }
         }
 
 
