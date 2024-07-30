@@ -3,8 +3,8 @@ namespace Lizard.Logic.Datagen
 {
     public enum GameResult
     {
-        WhiteWin = 0,
+        WhiteWin = 2,
         Draw = 1,
-        BlackWin = 2
+        BlackWin = 0
     }
 }

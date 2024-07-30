@@ -30,11 +30,14 @@ namespace Lizard.Logic.Datagen
             Move bestMove = Move.Null;
             int bestMoveScore = 0;
 
-#if RAW_STRING
-                StringBuilder outputBuffer = new StringBuilder();
-#endif
-
+#if PLAINTEXT
             using StreamWriter outputWriter = new StreamWriter($"datagen{(scramble ? "_scr" : string.Empty)}{threadID}.txt", true);
+            Span<PlaintextDataFormat> datapoints = stackalloc PlaintextDataFormat[WritableDataLimit];
+#else
+            using FileStream bfeOutputFileStream = File.Open($"datagen{(scramble ? "_scr" : string.Empty)}{threadID}.bin", FileMode.OpenOrCreate);
+            using BinaryWriter outputWriter = new BinaryWriter(bfeOutputFileStream);
+            Span<BulletDataFormat> datapoints = stackalloc BulletDataFormat[WritableDataLimit];
+#endif
 
             long totalBadPositions = 0;
             long totalGoodPositions = 0;
@@ -58,11 +61,11 @@ namespace Lizard.Logic.Datagen
             };
 
             ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
-            Span<PlaintextDataFormat> datapoints = stackalloc PlaintextDataFormat[WritableDataLimit];
 
             Stopwatch sw = Stopwatch.StartNew();
 
-            for (int gameNum = 0; gameNum < gamesToRun; gameNum++)
+            int gameNum = 0;
+            for (; gameNum < gamesToRun; gameNum++)
             {
                 pool.TTable.Clear();
                 pool.Clear();
@@ -89,10 +92,7 @@ namespace Lizard.Logic.Datagen
                 pool.StartSearch(pos, ref prelimInfo);
                 pool.BlockCallerUntilFinished();
                 if (Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxOpeningScore) { gameNum--; continue; }
-
-#if RAW_STRING
-                outputBuffer.Clear();
-#endif
+                if (scramble && Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxScrambledOpeningScore) { gameNum--; continue; }
 
                 GameResult result = GameResult.Draw;
                 int toWrite = 0;
@@ -126,16 +126,7 @@ namespace Lizard.Logic.Datagen
                     bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore))
                     {
-#if RAW_STRING
-                        outputBuffer.Append(pos.GetFEN());
-                        outputBuffer.Append(" | ");
-                        outputBuffer.Append(bestMoveScore);
-                        outputBuffer.Append(" | ");
-                        outputBuffer.AppendLine(bestMove.ToString(pos));
-#else
                         datapoints[toWrite].Fill(pos, bestMoveScore);
-#endif
-
                         toWrite++;
                     }
                     else
@@ -177,11 +168,7 @@ namespace Lizard.Logic.Datagen
                     $"\t{result,8}" +
                     $"{goodPerSec,10:N1}/sec");
 
-#if RAW_STRING
-                outputWriter.Write(outputBuffer);
-#else
                 AddResultsAndWrite(datapoints[..toWrite], result, outputWriter);
-#endif
             }
 
             
@@ -192,30 +179,29 @@ namespace Lizard.Logic.Datagen
 
         private static void AddResultsAndWrite<Format>(Span<Format> datapoints, GameResult gr, StreamWriter outputWriter) where Format : TOutputFormat
         {
-            if (typeof(Format) == typeof(PlaintextDataFormat))
+            for (int i = 0; i < datapoints.Length; i++)
             {
-                for (int i = 0; i < datapoints.Length; i++)
-                {
-                    datapoints[i].Result = gr;
-                    outputWriter.WriteLine(datapoints[i].GetWritableData());
-                }
-                
-            }
-            else
-            {
-                for (int i = 0; i < datapoints.Length; i++)
-                    datapoints[i].Result = gr;
-
-                using BinaryWriter br = new BinaryWriter(outputWriter.BaseStream);
-                fixed (Format* fmt = datapoints)
-                {
-                    byte* data = (byte*)fmt;
-                    br.Write(new Span<byte>(data, datapoints.Length * sizeof(Format)));
-                }
+                datapoints[i].SetResult(gr);
+                outputWriter.WriteLine(datapoints[i].GetWritableTextData());
             }
 
             outputWriter.Flush();
         }
+
+        private static void AddResultsAndWrite<Format>(Span<Format> datapoints, GameResult gr, BinaryWriter outputWriter) where Format : TOutputFormat
+        {
+            for (int i = 0; i < datapoints.Length; i++)
+                datapoints[i].SetResult(gr);
+
+            fixed (Format* fmt = datapoints)
+            {
+                byte* data = (byte*)fmt;
+                outputWriter.Write(new Span<byte>(data, datapoints.Length * sizeof(Format)));
+            }
+
+            outputWriter.Flush();
+        }
+
 
 
         public static void ScrambleBoard(Position pos, Random rand)
@@ -258,8 +244,8 @@ namespace Lizard.Logic.Datagen
 
                     int dist = rand.Next(0, Math.Max(2, pt + 1));
 
-                    if (pt == King)
-                        dist = (rand.Next(0, 100) <= KeepKsqFrequency ? 0 : 1);
+                    if (pt == King && rand.Next(0, 100) <= KeepKsqFrequency)
+                        continue;
 
                     for (int attempt = 0; attempt < MaxPlacementTries; attempt++)
                     {

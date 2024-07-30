@@ -19,5 +19,6 @@ namespace Lizard.Logic.Datagen
         public const int MaxFilteringScore = 5000;
 
         public const int MaxOpeningScore = 1200;
+        public const int MaxScrambledOpeningScore = 600;
     }
 }

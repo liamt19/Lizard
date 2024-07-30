@@ -1,18 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-using static Lizard.Logic.Datagen.Selfplay;
-
-namespace Lizard.Logic.Datagen
+﻿namespace Lizard.Logic.Datagen
 {
     public interface TOutputFormat
     {
         public int Score { get; set; }
         public GameResult Result { get; set; }
-        public string GetWritableData();
+        public void SetResult(GameResult gr);
+        public void SetSTM(int stm);
+        public string GetWritableTextData();
         public void Fill(Position pos, int score);
 
         public static string ResultToMarlin(GameResult gr)

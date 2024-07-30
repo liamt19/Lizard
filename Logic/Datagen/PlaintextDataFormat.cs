@@ -9,7 +9,16 @@ namespace Lizard.Logic.Datagen
         public int Score { get; set; }
         public GameResult Result { get; set; }
 
-        public string GetWritableData()
+        public void SetResult(GameResult gr) => Result = gr;
+
+        public void SetSTM(int stm)
+        {
+            throw new NotImplementedException();
+        }
+
+
+
+        public string GetWritableTextData()
         {
             fixed (char* fen = FEN)
             {
@@ -17,6 +26,8 @@ namespace Lizard.Logic.Datagen
                 return $"{fenStr} | {Score} | {TOutputFormat.ResultToMarlin(Result)}";
             }
         }
+
+
 
         public void Fill(Position pos, int score)
         {

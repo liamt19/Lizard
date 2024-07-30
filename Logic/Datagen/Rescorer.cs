@@ -6,9 +6,6 @@ using static Lizard.Logic.Datagen.DatagenParameters;
 
 using Lizard.Logic.Datagen;
 using Lizard.Logic.Threads;
-using System.Threading;
-using System.IO;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Lizard.Logic.Util
 {
@@ -153,46 +150,5 @@ namespace Lizard.Logic.Util
             }
         }
 
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct BulletFormatEntry
-    {
-        public const int Size = 32;
-
-        public ulong occ;
-        public fixed byte pcs[16];
-        public short score;
-        public byte result;
-        public byte ksq;
-        public byte opp_ksq;
-        public fixed byte _pad[3];
-
-        public void FillBitboard(ref Bitboard bb)
-        {
-            bb.Reset();
-
-            bb.Occupancy = occ;
-
-            ulong temp = occ;
-            int idx = 0;
-            while (temp != 0)
-            {
-                int sq = poplsb(&temp);
-                int piece = (pcs[idx / 2] >> (4 * (idx & 1))) & 0b1111;
-
-                bb.AddPiece(sq, piece / 8, piece % 8);
-
-                idx++;
-            }
-        }
-
-        public void WriteToBuffer(Span<byte> buff)
-        {
-            fixed (void* buffPtr = &buff[0], thisPtr = &this)
-            {
-                Unsafe.CopyBlock(buffPtr, thisPtr, BulletFormatEntry.Size);
-            }
-        }
     }
 }
