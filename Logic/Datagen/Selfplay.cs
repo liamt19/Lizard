@@ -1,6 +1,7 @@
 ﻿
 //#define DBG
 //#define WRITE_PGN
+#define BIND
 
 using System.Runtime.InteropServices;
 
@@ -8,6 +9,7 @@ using static Lizard.Logic.Datagen.DatagenParameters;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
+using System.Diagnostics;
 
 namespace Lizard.Logic.Datagen
 {
@@ -19,9 +21,22 @@ namespace Lizard.Logic.Datagen
         public static long CumulativeGames = 0;
 
 
+
         public static void RunGames(int gamesToRun = 1, int threadID = 0, bool scramble = true)
         {
             SearchOptions.Hash = HashSize;
+
+#if BIND
+            var thisId = GetCurrentThreadId();
+            foreach (ProcessThread td in Process.GetCurrentProcess().Threads)
+            {
+                if (td.Id == thisId)
+                {
+                    td.IdealProcessor = (1 << threadID);
+                    break;
+                }
+            }
+#endif
 
             SearchThreadPool pool = new SearchThreadPool(1);
             Position pos = new Position(owner: pool.MainThread);
@@ -387,5 +402,10 @@ namespace Lizard.Logic.Datagen
 
             NNUE.RefreshAccumulator(pos);
         }
+
+
+
+        [DllImport("kernel32.dll")]
+        static extern uint GetCurrentThreadId();
     }
 }
