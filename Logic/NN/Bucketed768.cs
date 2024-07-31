@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
 using Lizard.Logic.Threads;
@@ -6,11 +7,14 @@ using Lizard.Logic.Threads;
 using static Lizard.Logic.NN.FunUnrollThings;
 using static Lizard.Logic.NN.NNUE;
 
+#pragma warning disable CS0162 // Unreachable code detected
+
 namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 1;
+        public const bool Factorized = true;
+        public const int InputBuckets = 2;
         public const int InputSize = 768;
         public const int HiddenSize = 64;
         public const int OutputBuckets = 8;
@@ -23,7 +27,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768 -> 32)x2 -> 8
         /// </summary>
-        public const string NetworkName = "net-002-240.bin";
+        public const string NetworkName = "net-003-params-240.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -38,18 +42,21 @@ namespace Lizard.Logic.NN
 
         private const int SIMD_Chunks = HiddenSize / 16;
 
-        private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
+        private const long ExpectedNetworkSize = (FeatureWeightElements + (Factorized ? InputSize * HiddenSize : 0) + 
+                                                    FeatureBiasElements + 
+                                                    LayerWeightElements + 
+                                                      LayerBiasElements) * sizeof(short);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
-            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
+            0, 0, 1, 1, 3, 3, 2, 2,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -96,30 +103,46 @@ namespace Lizard.Logic.NN
                 }
             }
 
-            for (int i = 0; i < FeatureWeightElements; i++)
+            var ftSize = FeatureWeightElements + (Factorized ? InputSize * HiddenSize : 0);
+            float* UQ_FTW = AlignedAllocZeroed<float>(ftSize);
+            float* UQ_FTB = AlignedAllocZeroed<float>(FeatureBiasElements);
+            float* UQ_L1W = AlignedAllocZeroed<float>(LayerWeightElements);
+            float* UQ_L1B = AlignedAllocZeroed<float>(LayerBiasElements);
+
+            for (int i = 0; i < ftSize; i++) UQ_FTW[i] = br.ReadSingle();
+            for (int i = 0; i < FeatureBiasElements;   i++) UQ_FTB[i] = br.ReadSingle();
+            for (int i = 0; i < LayerWeightElements;   i++) UQ_L1W[i] = br.ReadSingle();
+            for (int i = 0; i < LayerBiasElements;     i++) UQ_L1B[i] = br.ReadSingle();
+
+            if (Factorized)
             {
-                FeatureWeights[i] = br.ReadInt16();
+                MergeFactorizerWeights(UQ_FTW, FeatureWeights, QA);
+            }
+            else
+            {
+                for (int i = 0; i < ftSize; i++)
+                    FeatureWeights[i] = Quantize(UQ_FTB[i], QA);
             }
 
             for (int i = 0; i < FeatureBiasElements; i++)
-            {
-                FeatureBiases[i] = br.ReadInt16();
-            }
+                FeatureBiases[i] = Quantize(UQ_FTB[i], QA);
 
             for (int i = 0; i < LayerWeightElements; i++)
-            {
-                LayerWeights[i] = br.ReadInt16();
-            }
+                LayerWeights[i] = Quantize(UQ_L1W[i], QB);
 
             for (int i = 0; i < LayerBiasElements; i++)
-            {
-                LayerBiases[i] = br.ReadInt16();
-            }
+                LayerBiases[i] = Quantize(UQ_L1B[i], QA * QB);
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
             //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
             TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
+
+
+            NativeMemory.AlignedFree(UQ_FTW);
+            NativeMemory.AlignedFree(UQ_FTB);
+            NativeMemory.AlignedFree(UQ_L1W);
+            NativeMemory.AlignedFree(UQ_L1B);
 
 #if DEBUG
             NetStats("ft weight", FeatureWeights, FeatureWeightElements);

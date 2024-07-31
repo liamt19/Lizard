@@ -122,21 +122,54 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// Transposes the weights stored in <paramref name="block"/>
         /// </summary>
-        public static void TransposeLayerWeights(short* block, int columnLength, int rowLength)
+        public static void TransposeLayerWeights(short* block, int columnLength, int bucketCount)
         {
-            short* temp = stackalloc short[columnLength * rowLength];
-            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * rowLength));
+            short* temp = stackalloc short[columnLength * bucketCount];
+            Unsafe.CopyBlock(temp, block, (uint)(sizeof(short) * columnLength * bucketCount));
 
-            for (int bucket = 0; bucket < rowLength; bucket++)
+            for (int bucket = 0; bucket < bucketCount; bucket++)
             {
                 short* thisBucket = block + (bucket * columnLength);
 
                 for (int i = 0; i < columnLength; i++)
                 {
-                    thisBucket[i] = temp[(rowLength * i) + bucket];
+                    thisBucket[i] = temp[(bucketCount * i) + bucket];
                 }
             }
         }
+
+
+        /// <summary>
+        /// Adds the factorizer weights located in bucket 0 of <paramref name="ftWeights"/> to the unquantized
+        /// weights in the other buckets of <paramref name="ftWeights"/>, and places the quantized values
+        /// into <paramref name="quantizedBlock"/>
+        /// </summary>
+        public static void MergeFactorizerWeights(float* ftWeights, short* quantizedBlock, int quant)
+        {
+            const int bucketCount = Bucketed768.InputBuckets;
+            const int bucketLength = Bucketed768.InputSize * Bucketed768.HiddenSize;
+
+            for (int bucket = 0; bucket < bucketCount; bucket++)
+            {
+                float* thisBucket = ftWeights + ((bucket + 1) * bucketLength);
+                short* thisOutput = quantizedBlock + (bucket * bucketLength);
+                for (int i = 0; i < bucketLength; i++)
+                {
+                    float weight = thisBucket[i];
+                    float factor = ftWeights[i];
+
+                    thisOutput[i] = Quantize(weight + factor, quant, 1.0f);
+                }
+            }
+        }
+
+        public static short Quantize(float v, int quant, float clipping = 1.0f)
+        {
+            v = Math.Clamp(v, -clipping, clipping);
+            return (short) Math.Round((double)v * quant);
+        }
+
+
 
         public static void NetStats(string layerName, void* layer, int n)
         {
