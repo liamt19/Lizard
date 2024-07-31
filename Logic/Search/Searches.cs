@@ -605,7 +605,7 @@ namespace Lizard.Logic.Search
 
                     //  If AverageScore hasn't been set yet, give it the current score.
                     //  Otherwise, adjust the average up or down slightly.
-                    rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 2)) / 3);
+                    rm.AverageScore = (rm.AverageScore == -ScoreInfinite) ? score : ((rm.AverageScore + (score * 3)) / 4);
 
                     if (playedMoves == 1 || score > alpha)
                     {
