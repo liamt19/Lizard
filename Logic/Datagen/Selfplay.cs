@@ -1,7 +1,7 @@
 ﻿
 //#define DBG
 //#define WRITE_PGN
-#define BIND
+//#define BIND
 
 using System.Runtime.InteropServices;
 
@@ -45,11 +45,12 @@ namespace Lizard.Logic.Datagen
             Move bestMove = Move.Null;
             int bestMoveScore = 0;
 
+            string fName = $"datagen{(scramble ? "_scr" : string.Empty)}_{SoftNodeLimit / 1000}k_d{DepthLimit}_{threadID}.bin";
 #if PLAINTEXT
-            using StreamWriter outputWriter = new StreamWriter($"datagen{(scramble ? "_scr" : string.Empty)}{threadID}.txt", true);
+            using StreamWriter outputWriter = new StreamWriter(fName, true);
             Span<PlaintextDataFormat> datapoints = stackalloc PlaintextDataFormat[WritableDataLimit];
 #else
-            using FileStream bfeOutputFileStream = File.Open($"datagen{(scramble ? "_scr" : string.Empty)}{threadID}.bin", FileMode.OpenOrCreate);
+            using FileStream bfeOutputFileStream = File.Open(fName, FileMode.OpenOrCreate);
             using BinaryWriter outputWriter = new BinaryWriter(bfeOutputFileStream);
             Span<BulletDataFormat> datapoints = stackalloc BulletDataFormat[WritableDataLimit];
 #endif
@@ -70,12 +71,13 @@ namespace Lizard.Logic.Datagen
             {
                 SoftNodeLimit = SoftNodeLimit * 20,
                 MaxNodes = HardNodeLimit * 20,
-                MaxDepth = DepthLimit,
+                MaxDepth = Math.Clamp(DepthLimit, 8, 12),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
 
             ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
+            Random rand = Rand.Value;
 
             Stopwatch sw = Stopwatch.StartNew();
 
@@ -86,19 +88,19 @@ namespace Lizard.Logic.Datagen
                 pool.Clear();
                 pos.LoadFromFEN(InitialFEN);
 
-                int randMoveCount = Rand.Value.Next(MinOpeningPly, MaxOpeningPly + 1);
+                int randMoveCount = rand.Next(MinOpeningPly, MaxOpeningPly + 1);
                 for (int i = 0; i < randMoveCount; i++)
                 {
                     int l = pos.GenLegal(legalMoves);
                     if (l == 0) { gameNum--; continue; }
-                    Move t = legalMoves[Rand.Value.Next(0, l)].Move;
+                    Move t = legalMoves[rand.Next(0, l)].Move;
 
                     pos.MakeMove(t);
                 }
 
                 if (scramble)
                 {
-                    ScrambleBoard(pos, Rand.Value);
+                    ScrambleBoard(pos, rand);
                 }
 
                 if (pos.GenLegal(legalMoves) == 0) { gameNum--; continue; }
