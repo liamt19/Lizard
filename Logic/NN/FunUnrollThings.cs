@@ -25,18 +25,6 @@ namespace Lizard.Logic.NN
         private const int HL = Bucketed768.HiddenSize;
         private const int StopBefore = HL / N;
 
-        private const int AVX512_1024HL = 1024 / 32;
-        private const int AVX512_1280HL = 1280 / 32;
-        private const int AVX512_1536HL = 1536 / 32;
-        private const int AVX512_1792HL = 1792 / 32;
-        private const int AVX512_2048HL = 2048 / 32;
-
-        private const int AVX256_1024HL = 1024 / 16;
-        private const int AVX256_1280HL = 1280 / 16;
-        private const int AVX256_1536HL = 1536 / 16;
-        private const int AVX256_1792HL = 1792 / 16;
-        private const int AVX256_2048HL = 2048 / 16;
-
 
         [MethodImpl(Inline)]
         public static void SubAdd(short* _src, short* _dst, short* _sub1, short* _add1)
@@ -47,13 +35,25 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0] - sub1[ 0];
+
+            if (StopBefore == 1) return;
+
             dst[ 1] = src[ 1] + add1[ 1] - sub1[ 1];
+
+            if (StopBefore == 2) return;
+
             dst[ 2] = src[ 2] + add1[ 2] - sub1[ 2];
             dst[ 3] = src[ 3] + add1[ 3] - sub1[ 3];
+
+            if (StopBefore == 4) return;
+
             dst[ 4] = src[ 4] + add1[ 4] - sub1[ 4];
             dst[ 5] = src[ 5] + add1[ 5] - sub1[ 5];
             dst[ 6] = src[ 6] + add1[ 6] - sub1[ 6];
             dst[ 7] = src[ 7] + add1[ 7] - sub1[ 7];
+
+            if (StopBefore == 8) return;
+
             dst[ 8] = src[ 8] + add1[ 8] - sub1[ 8];
             dst[ 9] = src[ 9] + add1[ 9] - sub1[ 9];
             dst[10] = src[10] + add1[10] - sub1[10];
@@ -62,6 +62,9 @@ namespace Lizard.Logic.NN
             dst[13] = src[13] + add1[13] - sub1[13];
             dst[14] = src[14] + add1[14] - sub1[14];
             dst[15] = src[15] + add1[15] - sub1[15];
+
+            if (StopBefore == 16) return;
+
             dst[16] = src[16] + add1[16] - sub1[16];
             dst[17] = src[17] + add1[17] - sub1[17];
             dst[18] = src[18] + add1[18] - sub1[18];
@@ -79,8 +82,7 @@ namespace Lizard.Logic.NN
             dst[30] = src[30] + add1[30] - sub1[30];
             dst[31] = src[31] + add1[31] - sub1[31];
 
-            if (StopBefore == AVX512_1024HL)
-                return;
+            if (StopBefore == 32) return;
 
             dst[32] = src[32] + add1[32] - sub1[32];
             dst[33] = src[33] + add1[33] - sub1[33];
@@ -91,8 +93,7 @@ namespace Lizard.Logic.NN
             dst[38] = src[38] + add1[38] - sub1[38];
             dst[39] = src[39] + add1[39] - sub1[39];
 
-            if (StopBefore == AVX512_1280HL)
-                return;
+            if (StopBefore == 40) return;
 
             dst[40] = src[40] + add1[40] - sub1[40];
             dst[41] = src[41] + add1[41] - sub1[41];
@@ -103,8 +104,7 @@ namespace Lizard.Logic.NN
             dst[46] = src[46] + add1[46] - sub1[46];
             dst[47] = src[47] + add1[47] - sub1[47];
 
-            if (StopBefore == AVX512_1536HL)
-                return;
+            if (StopBefore == 48) return;
 
             dst[48] = src[48] + add1[48] - sub1[48];
             dst[49] = src[49] + add1[49] - sub1[49];
@@ -115,8 +115,7 @@ namespace Lizard.Logic.NN
             dst[54] = src[54] + add1[54] - sub1[54];
             dst[55] = src[55] + add1[55] - sub1[55];
 
-            if (StopBefore == AVX512_1792HL)
-                return;
+            if (StopBefore == 56) return;
 
             dst[56] = src[56] + add1[56] - sub1[56];
             dst[57] = src[57] + add1[57] - sub1[57];
@@ -127,12 +126,7 @@ namespace Lizard.Logic.NN
             dst[62] = src[62] + add1[62] - sub1[62];
             dst[63] = src[63] + add1[63] - sub1[63];
 
-            if (StopBefore == AVX512_2048HL)
-                return;
-
-
-            if (StopBefore == AVX256_1024HL)
-                return;
+            if (StopBefore == 64) return;
 
             dst[64] = src[64] + add1[64] - sub1[64];
             dst[65] = src[65] + add1[65] - sub1[65];
@@ -151,8 +145,7 @@ namespace Lizard.Logic.NN
             dst[78] = src[78] + add1[78] - sub1[78];
             dst[79] = src[79] + add1[79] - sub1[79];
 
-            if (StopBefore == AVX256_1280HL)
-                return;
+            if (StopBefore == 80) return;
 
             dst[80] = src[80] + add1[80] - sub1[80];
             dst[81] = src[81] + add1[81] - sub1[81];
@@ -171,8 +164,7 @@ namespace Lizard.Logic.NN
             dst[94] = src[94] + add1[94] - sub1[94];
             dst[95] = src[95] + add1[95] - sub1[95];
 
-            if (StopBefore == AVX256_1536HL)
-                return;
+            if (StopBefore == 96) return;
 
             dst[ 96] = src[ 96] + add1[ 96] - sub1[ 96];
             dst[ 97] = src[ 97] + add1[ 97] - sub1[ 97];
@@ -191,8 +183,7 @@ namespace Lizard.Logic.NN
             dst[110] = src[110] + add1[110] - sub1[110];
             dst[111] = src[111] + add1[111] - sub1[111];
 
-            if (StopBefore == AVX256_1792HL)
-                return;
+            if (StopBefore == 112) return;
 
             dst[112] = src[112] + add1[112] - sub1[112];
             dst[113] = src[113] + add1[113] - sub1[113];
@@ -224,13 +215,25 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0] - sub1[ 0] - sub2[ 0];
+
+            if (StopBefore == 1) return;
+
             dst[ 1] = src[ 1] + add1[ 1] - sub1[ 1] - sub2[ 1];
+
+            if (StopBefore == 2) return;
+
             dst[ 2] = src[ 2] + add1[ 2] - sub1[ 2] - sub2[ 2];
             dst[ 3] = src[ 3] + add1[ 3] - sub1[ 3] - sub2[ 3];
+
+            if (StopBefore == 4) return;
+
             dst[ 4] = src[ 4] + add1[ 4] - sub1[ 4] - sub2[ 4];
             dst[ 5] = src[ 5] + add1[ 5] - sub1[ 5] - sub2[ 5];
             dst[ 6] = src[ 6] + add1[ 6] - sub1[ 6] - sub2[ 6];
             dst[ 7] = src[ 7] + add1[ 7] - sub1[ 7] - sub2[ 7];
+
+            if (StopBefore == 8) return;
+
             dst[ 8] = src[ 8] + add1[ 8] - sub1[ 8] - sub2[ 8];
             dst[ 9] = src[ 9] + add1[ 9] - sub1[ 9] - sub2[ 9];
             dst[10] = src[10] + add1[10] - sub1[10] - sub2[10];
@@ -239,6 +242,9 @@ namespace Lizard.Logic.NN
             dst[13] = src[13] + add1[13] - sub1[13] - sub2[13];
             dst[14] = src[14] + add1[14] - sub1[14] - sub2[14];
             dst[15] = src[15] + add1[15] - sub1[15] - sub2[15];
+
+            if (StopBefore == 16) return;
+
             dst[16] = src[16] + add1[16] - sub1[16] - sub2[16];
             dst[17] = src[17] + add1[17] - sub1[17] - sub2[17];
             dst[18] = src[18] + add1[18] - sub1[18] - sub2[18];
@@ -256,8 +262,7 @@ namespace Lizard.Logic.NN
             dst[30] = src[30] + add1[30] - sub1[30] - sub2[30];
             dst[31] = src[31] + add1[31] - sub1[31] - sub2[31];
 
-            if (StopBefore == AVX512_1024HL)
-                return;
+            if (StopBefore == 32) return;
 
             dst[32] = src[32] + add1[32] - sub1[32] - sub2[32];
             dst[33] = src[33] + add1[33] - sub1[33] - sub2[33];
@@ -268,8 +273,7 @@ namespace Lizard.Logic.NN
             dst[38] = src[38] + add1[38] - sub1[38] - sub2[38];
             dst[39] = src[39] + add1[39] - sub1[39] - sub2[39];
 
-            if (StopBefore == AVX512_1280HL)
-                return;
+            if (StopBefore == 40) return;
 
             dst[40] = src[40] + add1[40] - sub1[40] - sub2[40];
             dst[41] = src[41] + add1[41] - sub1[41] - sub2[41];
@@ -280,8 +284,7 @@ namespace Lizard.Logic.NN
             dst[46] = src[46] + add1[46] - sub1[46] - sub2[46];
             dst[47] = src[47] + add1[47] - sub1[47] - sub2[47];
 
-            if (StopBefore == AVX512_1536HL)
-                return;
+            if (StopBefore == 48) return;
 
             dst[48] = src[48] + add1[48] - sub1[48] - sub2[48];
             dst[49] = src[49] + add1[49] - sub1[49] - sub2[49];
@@ -292,8 +295,7 @@ namespace Lizard.Logic.NN
             dst[54] = src[54] + add1[54] - sub1[54] - sub2[54];
             dst[55] = src[55] + add1[55] - sub1[55] - sub2[55];
 
-            if (StopBefore == AVX512_1792HL)
-                return;
+            if (StopBefore == 56) return;
 
             dst[56] = src[56] + add1[56] - sub1[56] - sub2[56];
             dst[57] = src[57] + add1[57] - sub1[57] - sub2[57];
@@ -304,12 +306,7 @@ namespace Lizard.Logic.NN
             dst[62] = src[62] + add1[62] - sub1[62] - sub2[62];
             dst[63] = src[63] + add1[63] - sub1[63] - sub2[63];
 
-            if (StopBefore == AVX512_2048HL)
-                return;
-
-
-            if (StopBefore == AVX256_1024HL)
-                return;
+            if (StopBefore == 64) return;
 
             dst[64] = src[64] + add1[64] - sub1[64] - sub2[64];
             dst[65] = src[65] + add1[65] - sub1[65] - sub2[65];
@@ -328,8 +325,7 @@ namespace Lizard.Logic.NN
             dst[78] = src[78] + add1[78] - sub1[78] - sub2[78];
             dst[79] = src[79] + add1[79] - sub1[79] - sub2[79];
 
-            if (StopBefore == AVX256_1280HL)
-                return;
+            if (StopBefore == 80) return;
 
             dst[80] = src[80] + add1[80] - sub1[80] - sub2[80];
             dst[81] = src[81] + add1[81] - sub1[81] - sub2[81];
@@ -348,8 +344,7 @@ namespace Lizard.Logic.NN
             dst[94] = src[94] + add1[94] - sub1[94] - sub2[94];
             dst[95] = src[95] + add1[95] - sub1[95] - sub2[95];
 
-            if (StopBefore == AVX256_1536HL)
-                return;
+            if (StopBefore == 96) return;
 
             dst[ 96] = src[ 96] + add1[ 96] - sub1[ 96] - sub2[ 96];
             dst[ 97] = src[ 97] + add1[ 97] - sub1[ 97] - sub2[ 97];
@@ -368,8 +363,7 @@ namespace Lizard.Logic.NN
             dst[110] = src[110] + add1[110] - sub1[110] - sub2[110];
             dst[111] = src[111] + add1[111] - sub1[111] - sub2[111];
 
-            if (StopBefore == AVX256_1792HL)
-                return;
+            if (StopBefore == 112) return;
 
             dst[112] = src[112] + add1[112] - sub1[112] - sub2[112];
             dst[113] = src[113] + add1[113] - sub1[113] - sub2[113];
@@ -402,13 +396,25 @@ namespace Lizard.Logic.NN
             VShort* add2 = (VShort*)_add2;
 
             dst[ 0] = src[ 0] + add1[ 0] + add2[ 0] - sub1[ 0] - sub2[ 0];
+
+            if (StopBefore == 1) return;
+
             dst[ 1] = src[ 1] + add1[ 1] + add2[ 1] - sub1[ 1] - sub2[ 1];
+
+            if (StopBefore == 2) return;
+
             dst[ 2] = src[ 2] + add1[ 2] + add2[ 2] - sub1[ 2] - sub2[ 2];
             dst[ 3] = src[ 3] + add1[ 3] + add2[ 3] - sub1[ 3] - sub2[ 3];
+
+            if (StopBefore == 4) return;
+
             dst[ 4] = src[ 4] + add1[ 4] + add2[ 4] - sub1[ 4] - sub2[ 4];
             dst[ 5] = src[ 5] + add1[ 5] + add2[ 5] - sub1[ 5] - sub2[ 5];
             dst[ 6] = src[ 6] + add1[ 6] + add2[ 6] - sub1[ 6] - sub2[ 6];
             dst[ 7] = src[ 7] + add1[ 7] + add2[ 7] - sub1[ 7] - sub2[ 7];
+
+            if (StopBefore == 8) return;
+
             dst[ 8] = src[ 8] + add1[ 8] + add2[ 8] - sub1[ 8] - sub2[ 8];
             dst[ 9] = src[ 9] + add1[ 9] + add2[ 9] - sub1[ 9] - sub2[ 9];
             dst[10] = src[10] + add1[10] + add2[10] - sub1[10] - sub2[10];
@@ -417,6 +423,9 @@ namespace Lizard.Logic.NN
             dst[13] = src[13] + add1[13] + add2[13] - sub1[13] - sub2[13];
             dst[14] = src[14] + add1[14] + add2[14] - sub1[14] - sub2[14];
             dst[15] = src[15] + add1[15] + add2[15] - sub1[15] - sub2[15];
+
+            if (StopBefore == 16) return;
+
             dst[16] = src[16] + add1[16] + add2[16] - sub1[16] - sub2[16];
             dst[17] = src[17] + add1[17] + add2[17] - sub1[17] - sub2[17];
             dst[18] = src[18] + add1[18] + add2[18] - sub1[18] - sub2[18];
@@ -434,8 +443,7 @@ namespace Lizard.Logic.NN
             dst[30] = src[30] + add1[30] + add2[30] - sub1[30] - sub2[30];
             dst[31] = src[31] + add1[31] + add2[31] - sub1[31] - sub2[31];
 
-            if (StopBefore == AVX512_1024HL)
-                return;
+            if (StopBefore == 32) return;
 
             dst[32] = src[32] + add1[32] + add2[32] - sub1[32] - sub2[32];
             dst[33] = src[33] + add1[33] + add2[33] - sub1[33] - sub2[33];
@@ -446,8 +454,7 @@ namespace Lizard.Logic.NN
             dst[38] = src[38] + add1[38] + add2[38] - sub1[38] - sub2[38];
             dst[39] = src[39] + add1[39] + add2[39] - sub1[39] - sub2[39];
 
-            if (StopBefore == AVX512_1280HL)
-                return;
+            if (StopBefore == 40) return;
 
             dst[40] = src[40] + add1[40] + add2[40] - sub1[40] - sub2[40];
             dst[41] = src[41] + add1[41] + add2[41] - sub1[41] - sub2[41];
@@ -458,8 +465,7 @@ namespace Lizard.Logic.NN
             dst[46] = src[46] + add1[46] + add2[46] - sub1[46] - sub2[46];
             dst[47] = src[47] + add1[47] + add2[47] - sub1[47] - sub2[47];
 
-            if (StopBefore == AVX512_1536HL)
-                return;
+            if (StopBefore == 48) return;
 
             dst[48] = src[48] + add1[48] + add2[48] - sub1[48] - sub2[48];
             dst[49] = src[49] + add1[49] + add2[49] - sub1[49] - sub2[49];
@@ -470,8 +476,7 @@ namespace Lizard.Logic.NN
             dst[54] = src[54] + add1[54] + add2[54] - sub1[54] - sub2[54];
             dst[55] = src[55] + add1[55] + add2[55] - sub1[55] - sub2[55];
 
-            if (StopBefore == AVX512_1792HL)
-                return;
+            if (StopBefore == 56) return;
 
             dst[56] = src[56] + add1[56] + add2[56] - sub1[56] - sub2[56];
             dst[57] = src[57] + add1[57] + add2[57] - sub1[57] - sub2[57];
@@ -482,12 +487,7 @@ namespace Lizard.Logic.NN
             dst[62] = src[62] + add1[62] + add2[62] - sub1[62] - sub2[62];
             dst[63] = src[63] + add1[63] + add2[63] - sub1[63] - sub2[63];
 
-            if (StopBefore == AVX512_2048HL)
-                return;
-
-
-            if (StopBefore == AVX256_1024HL)
-                return;
+            if (StopBefore == 64) return;
 
             dst[64] = src[64] + add1[64] + add2[64] - sub1[64] - sub2[64];
             dst[65] = src[65] + add1[65] + add2[65] - sub1[65] - sub2[65];
@@ -506,8 +506,7 @@ namespace Lizard.Logic.NN
             dst[78] = src[78] + add1[78] + add2[78] - sub1[78] - sub2[78];
             dst[79] = src[79] + add1[79] + add2[79] - sub1[79] - sub2[79];
 
-            if (StopBefore == AVX256_1280HL)
-                return;
+            if (StopBefore == 80) return;
 
             dst[80] = src[80] + add1[80] + add2[80] - sub1[80] - sub2[80];
             dst[81] = src[81] + add1[81] + add2[81] - sub1[81] - sub2[81];
@@ -526,8 +525,7 @@ namespace Lizard.Logic.NN
             dst[94] = src[94] + add1[94] + add2[94] - sub1[94] - sub2[94];
             dst[95] = src[95] + add1[95] + add2[95] - sub1[95] - sub2[95];
 
-            if (StopBefore == AVX256_1536HL)
-                return;
+            if (StopBefore == 96) return;
 
             dst[ 96] = src[ 96] + add1[ 96] + add2[ 96] - sub1[ 96] - sub2[ 96];
             dst[ 97] = src[ 97] + add1[ 97] + add2[ 97] - sub1[ 97] - sub2[ 97];
@@ -546,8 +544,7 @@ namespace Lizard.Logic.NN
             dst[110] = src[110] + add1[110] + add2[110] - sub1[110] - sub2[110];
             dst[111] = src[111] + add1[111] + add2[111] - sub1[111] - sub2[111];
 
-            if (StopBefore == AVX256_1792HL)
-                return;
+            if (StopBefore == 112) return;
 
             dst[112] = src[112] + add1[112] + add2[112] - sub1[112] - sub2[112];
             dst[113] = src[113] + add1[113] + add2[113] - sub1[113] - sub2[113];
@@ -577,13 +574,25 @@ namespace Lizard.Logic.NN
             VShort* add1 = (VShort*)_add1;
 
             dst[ 0] = src[ 0] + add1[ 0];
+
+            if (StopBefore == 1) return;
+
             dst[ 1] = src[ 1] + add1[ 1];
+
+            if (StopBefore == 2) return;
+
             dst[ 2] = src[ 2] + add1[ 2];
             dst[ 3] = src[ 3] + add1[ 3];
+
+            if (StopBefore == 4) return;
+
             dst[ 4] = src[ 4] + add1[ 4];
             dst[ 5] = src[ 5] + add1[ 5];
             dst[ 6] = src[ 6] + add1[ 6];
             dst[ 7] = src[ 7] + add1[ 7];
+
+            if (StopBefore == 8) return;
+
             dst[ 8] = src[ 8] + add1[ 8];
             dst[ 9] = src[ 9] + add1[ 9];
             dst[10] = src[10] + add1[10];
@@ -592,6 +601,9 @@ namespace Lizard.Logic.NN
             dst[13] = src[13] + add1[13];
             dst[14] = src[14] + add1[14];
             dst[15] = src[15] + add1[15];
+
+            if (StopBefore == 16) return;
+
             dst[16] = src[16] + add1[16];
             dst[17] = src[17] + add1[17];
             dst[18] = src[18] + add1[18];
@@ -609,8 +621,7 @@ namespace Lizard.Logic.NN
             dst[30] = src[30] + add1[30];
             dst[31] = src[31] + add1[31];
 
-            if (StopBefore == AVX512_1024HL)
-                return;
+            if (StopBefore == 32) return;
 
             dst[32] = src[32] + add1[32];
             dst[33] = src[33] + add1[33];
@@ -621,8 +632,7 @@ namespace Lizard.Logic.NN
             dst[38] = src[38] + add1[38];
             dst[39] = src[39] + add1[39];
 
-            if (StopBefore == AVX512_1280HL)
-                return;
+            if (StopBefore == 40) return;
 
             dst[40] = src[40] + add1[40];
             dst[41] = src[41] + add1[41];
@@ -633,8 +643,7 @@ namespace Lizard.Logic.NN
             dst[46] = src[46] + add1[46];
             dst[47] = src[47] + add1[47];
 
-            if (StopBefore == AVX512_1536HL)
-                return;
+            if (StopBefore == 48) return;
 
             dst[48] = src[48] + add1[48];
             dst[49] = src[49] + add1[49];
@@ -645,8 +654,7 @@ namespace Lizard.Logic.NN
             dst[54] = src[54] + add1[54];
             dst[55] = src[55] + add1[55];
 
-            if (StopBefore == AVX512_1792HL)
-                return;
+            if (StopBefore == 56) return;
 
             dst[56] = src[56] + add1[56];
             dst[57] = src[57] + add1[57];
@@ -657,12 +665,7 @@ namespace Lizard.Logic.NN
             dst[62] = src[62] + add1[62];
             dst[63] = src[63] + add1[63];
 
-            if (StopBefore == AVX512_2048HL)
-                return;
-
-
-            if (StopBefore == AVX256_1024HL)
-                return;
+            if (StopBefore == 64) return;
 
             dst[64] = src[64] + add1[64];
             dst[65] = src[65] + add1[65];
@@ -681,8 +684,7 @@ namespace Lizard.Logic.NN
             dst[78] = src[78] + add1[78];
             dst[79] = src[79] + add1[79];
 
-            if (StopBefore == AVX256_1280HL)
-                return;
+            if (StopBefore == 80) return;
 
             dst[80] = src[80] + add1[80];
             dst[81] = src[81] + add1[81];
@@ -701,8 +703,7 @@ namespace Lizard.Logic.NN
             dst[94] = src[94] + add1[94];
             dst[95] = src[95] + add1[95];
 
-            if (StopBefore == AVX256_1536HL)
-                return;
+            if (StopBefore == 96) return;
 
             dst[ 96] = src[ 96] + add1[ 96];
             dst[ 97] = src[ 97] + add1[ 97];
@@ -721,8 +722,7 @@ namespace Lizard.Logic.NN
             dst[110] = src[110] + add1[110];
             dst[111] = src[111] + add1[111];
 
-            if (StopBefore == AVX256_1792HL)
-                return;
+            if (StopBefore == 112) return;
 
             dst[112] = src[112] + add1[112];
             dst[113] = src[113] + add1[113];
@@ -752,13 +752,25 @@ namespace Lizard.Logic.NN
             VShort* sub1 = (VShort*)_sub1;
 
             dst[ 0] = src[ 0] - sub1[ 0];
+
+            if (StopBefore == 1) return;
+
             dst[ 1] = src[ 1] - sub1[ 1];
+
+            if (StopBefore == 2) return;
+
             dst[ 2] = src[ 2] - sub1[ 2];
             dst[ 3] = src[ 3] - sub1[ 3];
+
+            if (StopBefore == 4) return;
+
             dst[ 4] = src[ 4] - sub1[ 4];
             dst[ 5] = src[ 5] - sub1[ 5];
             dst[ 6] = src[ 6] - sub1[ 6];
             dst[ 7] = src[ 7] - sub1[ 7];
+            
+            if (StopBefore == 8) return;
+
             dst[ 8] = src[ 8] - sub1[ 8];
             dst[ 9] = src[ 9] - sub1[ 9];
             dst[10] = src[10] - sub1[10];
@@ -767,6 +779,9 @@ namespace Lizard.Logic.NN
             dst[13] = src[13] - sub1[13];
             dst[14] = src[14] - sub1[14];
             dst[15] = src[15] - sub1[15];
+
+            if (StopBefore == 16) return;
+
             dst[16] = src[16] - sub1[16];
             dst[17] = src[17] - sub1[17];
             dst[18] = src[18] - sub1[18];
@@ -784,8 +799,7 @@ namespace Lizard.Logic.NN
             dst[30] = src[30] - sub1[30];
             dst[31] = src[31] - sub1[31];
 
-            if (StopBefore == AVX512_1024HL)
-                return;
+            if (StopBefore == 32) return;
 
             dst[32] = src[32] - sub1[32];
             dst[33] = src[33] - sub1[33];
@@ -796,8 +810,7 @@ namespace Lizard.Logic.NN
             dst[38] = src[38] - sub1[38];
             dst[39] = src[39] - sub1[39];
 
-            if (StopBefore == AVX512_1280HL)
-                return;
+            if (StopBefore == 40) return;
 
             dst[40] = src[40] - sub1[40];
             dst[41] = src[41] - sub1[41];
@@ -808,8 +821,7 @@ namespace Lizard.Logic.NN
             dst[46] = src[46] - sub1[46];
             dst[47] = src[47] - sub1[47];
 
-            if (StopBefore == AVX512_1536HL)
-                return;
+            if (StopBefore == 48) return;
 
             dst[48] = src[48] - sub1[48];
             dst[49] = src[49] - sub1[49];
@@ -820,8 +832,7 @@ namespace Lizard.Logic.NN
             dst[54] = src[54] - sub1[54];
             dst[55] = src[55] - sub1[55];
 
-            if (StopBefore == AVX512_1792HL)
-                return;
+            if (StopBefore == 56) return;
 
             dst[56] = src[56] - sub1[56];
             dst[57] = src[57] - sub1[57];
@@ -832,12 +843,7 @@ namespace Lizard.Logic.NN
             dst[62] = src[62] - sub1[62];
             dst[63] = src[63] - sub1[63];
 
-            if (StopBefore == AVX512_2048HL)
-                return;
-
-
-            if (StopBefore == AVX256_1024HL)
-                return;
+            if (StopBefore == 64) return;
 
             dst[64] = src[64] - sub1[64];
             dst[65] = src[65] - sub1[65];
@@ -856,8 +862,7 @@ namespace Lizard.Logic.NN
             dst[78] = src[78] - sub1[78];
             dst[79] = src[79] - sub1[79];
 
-            if (StopBefore == AVX256_1280HL)
-                return;
+            if (StopBefore == 80) return;
 
             dst[80] = src[80] - sub1[80];
             dst[81] = src[81] - sub1[81];
@@ -876,8 +881,7 @@ namespace Lizard.Logic.NN
             dst[94] = src[94] - sub1[94];
             dst[95] = src[95] - sub1[95];
 
-            if (StopBefore == AVX256_1536HL)
-                return;
+            if (StopBefore == 96) return;
 
             dst[ 96] = src[ 96] - sub1[ 96];
             dst[ 97] = src[ 97] - sub1[ 97];
@@ -896,8 +900,7 @@ namespace Lizard.Logic.NN
             dst[110] = src[110] - sub1[110];
             dst[111] = src[111] - sub1[111];
 
-            if (StopBefore == AVX256_1792HL)
-                return;
+            if (StopBefore == 112) return;
 
             dst[112] = src[112] - sub1[112];
             dst[113] = src[113] - sub1[113];
