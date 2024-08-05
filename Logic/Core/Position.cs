@@ -860,6 +860,51 @@ namespace Lizard.Logic.Core
         }
 
 
+
+        public void SetupForDFRC(int wIdx, int bIdx)
+        {
+            bb.Reset();
+
+            for (int sq = A2; sq <= H2; sq++)
+                bb.AddPiece(sq, White, Pawn);
+
+            for (int sq = A7; sq <= H7; sq++)
+                bb.AddPiece(sq, Black, Pawn);
+
+            IsChess960 = true;
+            int* wBackrank = stackalloc int[8];
+            int* bBackrank = stackalloc int[8];
+
+            FillWithScharnaglNumber(wIdx, wBackrank);
+            FillWithScharnaglNumber(bIdx, bBackrank);
+
+            var w = new Span<int>(wBackrank, 8);
+            var b = new Span<int>(bBackrank, 8);
+
+            for (int sq = 0; sq < 8; sq++)
+            {
+                bb.AddPiece(A1 + sq, White, wBackrank[sq]);
+                bb.AddPiece(A8 + sq, Black, bBackrank[sq]);
+
+                if (wBackrank[sq] == King)
+                    State->KingSquares[White] = A1 + sq;
+
+                if (bBackrank[sq] == King)
+                    State->KingSquares[Black] = A8 + sq;
+            }
+
+            for (int sq = 0; sq < 8; sq++)
+            {
+                //  SetCastlingStatus needs State->KingSquare which might not be set yet if we do this in the above loop
+                if (wBackrank[sq] == Rook)
+                    SetCastlingStatus(White, A1 + sq);
+
+                if (bBackrank[sq] == Rook)
+                    SetCastlingStatus(Black, A8 + sq);
+            }
+        }
+
+
         /// <summary>
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>

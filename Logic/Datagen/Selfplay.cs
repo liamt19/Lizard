@@ -22,7 +22,7 @@ namespace Lizard.Logic.Datagen
 
 
 
-        public static void RunGames(int gamesToRun = 1, int threadID = 0, bool scramble = true)
+        public static void RunGames(int gamesToRun = 1, int threadID = 0, bool dfrc = false)
         {
             SearchOptions.Hash = HashSize;
 
@@ -38,6 +38,11 @@ namespace Lizard.Logic.Datagen
             }
 #endif
 
+            if (dfrc)
+            {
+                UCI_Chess960 = true;
+            }
+
             SearchThreadPool pool = new SearchThreadPool(1);
             Position pos = new Position(owner: pool.MainThread);
             ref Bitboard bb = ref pos.bb;
@@ -45,7 +50,8 @@ namespace Lizard.Logic.Datagen
             Move bestMove = Move.Null;
             int bestMoveScore = 0;
 
-            string fName = $"datagen{(scramble ? "_scr" : string.Empty)}_{SoftNodeLimit / 1000}k_d{DepthLimit}_{threadID}.bin";
+            string fName = $"{(dfrc ? "dfrc_" : string.Empty)}{SoftNodeLimit / 1000}k_d{DepthLimit}_{threadID}.bin";
+
 #if PLAINTEXT
             using StreamWriter outputWriter = new StreamWriter(fName, true);
             Span<PlaintextDataFormat> datapoints = stackalloc PlaintextDataFormat[WritableDataLimit];
@@ -86,7 +92,16 @@ namespace Lizard.Logic.Datagen
             {
                 pool.TTable.Clear();
                 pool.Clear();
+
+                if (dfrc)
+                {
+                    pos.SetupForDFRC(rand.Next(0, 960), rand.Next(0, 960));
+                    ResetPosition(pos);
+                }
+                else
+                {
                 pos.LoadFromFEN(InitialFEN);
+                }
 
                 int randMoveCount = rand.Next(MinOpeningPly, MaxOpeningPly + 1);
                 for (int i = 0; i < randMoveCount; i++)
@@ -98,18 +113,12 @@ namespace Lizard.Logic.Datagen
                     pos.MakeMove(t);
                 }
 
-                if (scramble)
-                {
-                    ScrambleBoard(pos, rand);
-                }
-
                 if (pos.GenLegal(legalMoves) == 0) { gameNum--; continue; }
 
                 //  Check if the starting position has a reasonable score, and scrap it if it doesn't
                 pool.StartSearch(pos, ref prelimInfo);
                 pool.BlockCallerUntilFinished();
                 if (Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxOpeningScore) { gameNum--; continue; }
-                if (scramble && Math.Abs(pool.GetBestThread().RootMoves[0].Score) >= MaxScrambledOpeningScore) { gameNum--; continue; }
 
                 GameResult result = GameResult.Draw;
                 int toWrite = 0;

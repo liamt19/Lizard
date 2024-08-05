@@ -622,6 +622,56 @@ namespace Lizard.Logic.Util
         }
 
 
+
+        public static unsafe void FillWithScharnaglNumber(int n, int* types)
+        {
+            int n2 = n / 4;
+            int b1 = n % 4;
+
+            int n3 = n2 / 4;
+            int b2 = n2 % 4;
+
+            int n4 = n3 / 6;
+            int  q = n3 % 6;
+
+            (int knight1, int knight2) = N5N[n4];
+
+            types[b1 * 2 + 1] = Bishop;
+            types[b2 * 2 + 0] = Bishop;
+
+            PlaceInSpot(Queen, q);
+
+            PlaceInSpot(Knight, knight1);
+            PlaceInSpot(Knight, knight2);
+
+            PlaceInSpot(Rook);
+            PlaceInSpot(King);
+            PlaceInSpot(Rook);
+
+            void PlaceInSpot(int pt, int skip = 0)
+            {
+                int skips = 0;
+                for (int i = 0; i < 8; i++)
+                {
+                    if (types[i] == 0 && skips++ >= skip)
+                    {
+                        types[i] = pt;
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        private static readonly (int a, int b)[] N5N =
+        [
+            (0, 0), (0, 1), (0, 2), (0, 3),
+            (1, 1), (1, 2), (1, 3),
+            (2, 2), (2, 3),
+            (3, 3),
+        ];
+
+
         public static int AsInt(this bool v) => v ? 1 : 0;
         public static bool AsBool(this int v) => v != 0;
     }
