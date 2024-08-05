@@ -152,7 +152,7 @@ namespace Lizard.Logic.Datagen
                     bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore))
                     {
-                        datapoints[toWrite].Fill(pos, bestMoveScore);
+                        datapoints[toWrite].Fill(pos, bestMove, bestMoveScore);
                         toWrite++;
                     }
                     else

@@ -11,6 +11,7 @@ namespace Lizard.Logic.Datagen
         //  WE don't know the result when creating the entries, and STM isn't stored within them anywhere,
         //  So manually place the STM in the last byte of padding of the entries.
         [FieldOffset( 0)] BulletFormatEntry BFE;
+        [FieldOffset(29)] Move BestMove;
         [FieldOffset(31)] byte STM;
 
         public int Score
@@ -54,10 +55,11 @@ namespace Lizard.Logic.Datagen
             return myBuffer;
         }
 
-        public void Fill(Position pos, int score)
+        public void Fill(Position pos, Move bestMove, int score)
         {
             BFE = BulletFormatEntry.FromBitboard(ref pos.bb, pos.ToMove, (short)score, GameResult.Draw);
             STM = (byte)pos.ToMove;
+            BestMove = bestMove;
         }
 
     }

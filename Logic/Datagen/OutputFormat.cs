@@ -7,7 +7,7 @@
         public void SetResult(GameResult gr);
         public void SetSTM(int stm);
         public string GetWritableTextData();
-        public void Fill(Position pos, int score);
+        public void Fill(Position pos, Move bestMove, int score);
 
         public static string ResultToMarlin(GameResult gr)
         {

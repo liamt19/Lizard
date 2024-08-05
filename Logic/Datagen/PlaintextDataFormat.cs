@@ -6,6 +6,7 @@ namespace Lizard.Logic.Datagen
         public const int BufferSize = 92;
         public fixed char FEN[BufferSize];
 
+        public Move BestMove { get; set; }
         public int Score { get; set; }
         public GameResult Result { get; set; }
 
@@ -29,7 +30,7 @@ namespace Lizard.Logic.Datagen
 
 
 
-        public void Fill(Position pos, int score)
+        public void Fill(Position pos, Move bestMove, int score)
         {
             var posSpan = pos.GetFEN().AsSpan();
 
@@ -42,6 +43,7 @@ namespace Lizard.Logic.Datagen
             }
 
             Score = score;
+            BestMove = bestMove;
         }
     }
 }
