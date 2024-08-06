@@ -12,7 +12,7 @@ namespace Lizard.Logic.NN
     {
         public const int InputBuckets = 1;
         public const int InputSize = 768;
-        public const int HiddenSize = 128;
+        public const int HiddenSize = 256;
         public const int OutputBuckets = 8;
 
         public const int QA = 258;
@@ -23,7 +23,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768 -> 128)x2 -> 8
         /// </summary>
-        public const string NetworkName = "net-004-250.bin";
+        public const string NetworkName = "net-005-250.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
