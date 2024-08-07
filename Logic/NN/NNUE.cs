@@ -21,8 +21,7 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            return UseAvx ? (short)Bucketed768.GetEvaluationUnrolled512(pos) : 
-                            (short)Bucketed768.GetEvaluation(pos);
+            return (short)Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]
@@ -139,12 +138,51 @@ namespace Lizard.Logic.NN
             }
         }
 
-        public static void NetStats(string layerName, void* layer, int n)
+        public static void NetStats(string layerName, short* layer, int n)
         {
             long avg = 0;
             int max = int.MinValue;
             int min = int.MaxValue;
             short* ptr = (short*)layer;
+            for (int i = 0; i < n; i++)
+            {
+                if (ptr[i] > max)
+                {
+                    max = ptr[i];
+                }
+                if (ptr[i] < min)
+                {
+                    min = ptr[i];
+                }
+                avg += ptr[i];
+            }
+
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+        }
+
+
+        public static void NetStats(string layerName, float* layer, int n)
+        {
+            var avg = 0.0f;
+            var max = float.MinValue;
+            var min = float.MaxValue;
+            float* ptr = (float*)layer;
+            for (int i = 0; i < n; i++)
+            {
+                max = Math.Max(ptr[i], max);
+                min = Math.Min(ptr[i], max);
+                avg += ptr[i];
+            }
+
+            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+        }
+
+        public static void NetStats(string layerName, sbyte* layer, int n)
+        {
+            long avg = 0;
+            int max = int.MinValue;
+            int min = int.MaxValue;
+            sbyte* ptr = (sbyte*)layer;
             for (int i = 0; i < n; i++)
             {
                 if (ptr[i] > max)
