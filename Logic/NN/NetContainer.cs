@@ -35,7 +35,7 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < OUTPUT_BUCKETS; i++)
             {
-                L1Weights[i] = (W*)AlignedAllocZeroed((nuint)sizeof(W) * (L1_SIZE * L2_SIZE * 2));
+                L1Weights[i] = (W*)AlignedAllocZeroed((nuint)sizeof(W) * (L1_SIZE * L2_SIZE));
                 L1Biases[i]  = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L2_SIZE));
                 L2Weights[i] = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L2_SIZE * L3_SIZE ));
                 L2Biases[i]  = (U*)AlignedAllocZeroed((nuint)sizeof(U) * (L3_SIZE));
@@ -60,7 +60,7 @@ namespace Lizard.Logic.NN
             FTWeights = new float[INPUT_SIZE * L1_SIZE * INPUT_BUCKETS];
             FTBiases  = new float[L1_SIZE];
 
-            L1Weights = new float[2 * L1_SIZE, OUTPUT_BUCKETS, L2_SIZE];
+            L1Weights = new float[L1_SIZE, OUTPUT_BUCKETS, L2_SIZE];
             L1Biases  = new float[OUTPUT_BUCKETS, L2_SIZE];
 
             L2Weights = new float[L2_SIZE, OUTPUT_BUCKETS, L3_SIZE];

@@ -14,7 +14,9 @@ namespace Lizard.Logic.NN
         public static Vector256<short> _mm256_min_epi16(Vector256<short> a, Vector256<short> b) => Avx2.Min(a, b);
         public static Vector256<short> _mm256_max_epi16(Vector256<short> a, Vector256<short> b) => Avx2.Max(a, b);
         public static Vector256<short> _mm256_mullo_epi16(Vector256<short> a, Vector256<short> b) => Avx2.MultiplyLow(a, b);
+        public static Vector256<short> _mm256_mulhi_epi16(Vector256<short> a, Vector256<short> b) => Avx2.MultiplyHigh(a, b); 
         public static Vector256<short> _mm256_srli_epi16(Vector256<short> a, [ConstantExpected] byte count) => Avx2.ShiftRightLogical(a, count);
+        public static Vector256<short> _mm256_slli_epi16(Vector256<short> a, [ConstantExpected] byte count) => Avx2.ShiftLeftLogical(a, count);
         public static Vector256<short> _mm256_unpacklo_epi16(Vector256<short> a, Vector256<short> b) => Avx2.UnpackLow(a, b);
         public static Vector256<short> _mm256_unpackhi_epi16(Vector256<short> a, Vector256<short> b) => Avx2.UnpackHigh(a, b);
         public static Vector256<short> _mm256_cmpgt_epi16(Vector256<short> a, Vector256<short> b) => Avx2.CompareGreaterThan(a, b);
@@ -38,6 +40,7 @@ namespace Lizard.Logic.NN
         public static Vector256<float> _mm256_loadu_ps(float* a) => Avx.LoadVector256(a);
         public static Vector256<short> _mm256_loadu_si256(short* mem_addr) => Avx.LoadVector256(mem_addr);
         public static Vector256<short> _mm256_load_si256(short* mem_addr) => Avx.LoadAlignedVector256(mem_addr);
+        public static Vector256<sbyte> _mm256_load_si256(sbyte* mem_addr) => Avx.LoadAlignedVector256(mem_addr);
         public static Vector256<int> _mm256_load_si256(int* mem_addr) => Avx.LoadAlignedVector256(mem_addr);
         public static void _mm256_storeu_si256(short* mem_addr, Vector256<short> a) => Avx.Store(mem_addr, a);
         public static void _mm256_storeu_si256(int* mem_addr, Vector256<int> a) => Avx.Store(mem_addr, a);
@@ -58,6 +61,7 @@ namespace Lizard.Logic.NN
         public static Vector256<int> _mm256_set1_epi32(int a) => Vector256.Create(a);
         public static Vector256<float> _mm256_set1_ps(float a) => Vector256.Create(a);
         public static Vector256<short> _mm256_set1_epi16(short a) => Vector256.Create(a);
+        public static Vector256<int> _mm256_setzero_epi32() => Vector256<int>.Zero;
         public static Vector256<short> _mm256_setzero_epi16() => Vector256<short>.Zero;
         public static Vector256<float> _mm256_setzero_ps() => Vector256<float>.Zero;
 
