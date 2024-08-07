@@ -186,10 +186,23 @@ namespace Lizard.Logic.Search
             }
             else
             {
-                //  Get the static evaluation and store it in the empty TT slot.
-                eval = ss->StaticEval = NNUE.GetEvaluation(pos);
-                
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, ss->TTPV);
+                ulong currHash = pos.Hash;
+
+                currHash.ZobristCastle(pos.State->CastleStatus, pos.State->CastleStatus);
+                if (pos.State->EPSquare != EPNone)
+                    currHash.ZobristEnPassant(GetIndexFile(pos.State->EPSquare));
+
+                if (TranspositionTable.Probe(currHash, out TTEntry* tteReprobe) && tteReprobe->StatEval != ScoreNone)
+                {
+                    eval = ss->StaticEval = tteReprobe->StatEval;
+                    tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, tte->PV);
+                }
+                else
+                {
+                    //  Get the static evaluation and store it in the empty TT slot.
+                    eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+                    tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, ss->TTPV);
+                }
             }
 
             if (ss->Ply >= 2)
@@ -789,9 +802,29 @@ namespace Lizard.Logic.Search
                 }
                 else
                 {
-                    //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
-                    //  use the previous static eval but negative. Otherwise get the eval as normal.
-                    eval = ss->StaticEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
+                    if ((ss - 1)->CurrentMove.IsNull())
+                    {
+                        //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
+                        //  use the previous static eval but negative. Otherwise get the eval as normal.
+                        eval = ss->StaticEval = (short)(-(ss - 1)->StaticEval);
+                    }
+                    else
+                    {
+                        ulong currHash = pos.Hash;
+
+                        currHash.ZobristCastle(pos.State->CastleStatus, pos.State->CastleStatus);
+                        if (pos.State->EPSquare != EPNone)
+                            currHash.ZobristEnPassant(GetIndexFile(pos.State->EPSquare));
+
+                        if (TranspositionTable.Probe(currHash, out TTEntry* tteReprobe) && tteReprobe->StatEval != ScoreNone)
+                        {
+                            eval = ss->StaticEval = tteReprobe->StatEval;
+                        }
+                        else
+                        {
+                            eval = ss->StaticEval = NNUE.GetEvaluation(pos);
+                        }
+                    }
                 }
 
                 if (eval >= beta)
