@@ -21,14 +21,8 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            if (UseAvx)
-            {
-                return (short)Bucketed768.GetEvaluationUnrolled512(pos);
-            }
-            else
-            {
-                return (short)Bucketed768.GetEvaluation(pos);
-            }
+            return UseAvx ? (short)Bucketed768.GetEvaluationUnrolled512(pos) : 
+                            (short)Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]
@@ -62,7 +56,7 @@ namespace Lizard.Logic.NN
         /// </summary>
         public static Stream TryOpenFile(string networkToLoad, bool exitIfFail = true)
         {
-            Stream netFile;
+            Stream netFile = null;
 
             if (File.Exists(networkToLoad))
             {
@@ -80,21 +74,33 @@ namespace Lizard.Logic.NN
                 string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
 
                 object o = Resources.ResourceManager.GetObject(resourceName);
-                if (o == null)
+                if (o != null)
                 {
-                    Console.WriteLine("The 768 NNRunOption was set to true, but there isn't a valid 768 network to load!");
-                    Console.WriteLine("This program looks for a 768 network named " + "'nn.nnue' or '" + NetworkName + "' within the current directory.");
-                    Console.WriteLine("If neither can be found, then '" + NetworkName + "' needs to be a compiled as a resource as a fallback!");
-                    Console.ReadLine();
-
-                    if (exitIfFail)
+                    byte[] data = (byte[])o;
+                    netFile = new MemoryStream(data);
+                }
+                else
+                {
+                    var cwdFile = Path.Combine(Environment.CurrentDirectory, networkToLoad);
+                    if (File.Exists(networkToLoad))
                     {
-                        Environment.Exit(-1);
+                        netFile = File.OpenRead(networkToLoad);
+                    }
+                    else if (File.Exists(cwdFile))
+                    {
+                        netFile = File.OpenRead(cwdFile);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Couldn't find a network named '{NetworkName}' as a compiled resource or as a file within the current directory!");
+                        Console.ReadLine();
+
+                        if (exitIfFail)
+                        {
+                            Environment.Exit(-1);
+                        }
                     }
                 }
-
-                byte[] data = (byte[])o;
-                netFile = new MemoryStream(data);
             }
 
             return netFile;
