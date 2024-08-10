@@ -89,7 +89,7 @@ namespace Lizard.Logic.Util
             SearchInformation info = new SearchInformation(pos)
             {
                 SoftNodeLimit = SoftNodeLimit,
-                MaxNodes = HardNodeLimit,
+                MaxNodes = SoftNodeLimit * 20,
                 MaxDepth = DepthLimit,
                 OnDepthFinish = null,
                 OnSearchFinish = null,

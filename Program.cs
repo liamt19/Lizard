@@ -545,29 +545,40 @@ namespace Lizard
 
         private static void HandleDatagenCommand(string[] args)
         {
-            int numGames = 200;
+            ulong nodes = DatagenParameters.SoftNodeLimit;
+            int depth = DatagenParameters.DepthLimit;
+            int numGames = 1000000;
             int threads = 1;
             bool dfrc = false;
 
-            if (args.Length > 1 && int.TryParse(args[1], out int selNumGames)) numGames = selNumGames;
-            if (args.Length > 2 && int.TryParse(args[2], out int selThreads)) threads = selThreads;
-            if (args.Length > 3 && args[3].ContainsIgnoreCase("frc")) dfrc = true;
+            args = args.Skip(1).ToArray();
 
-            Log($"Will play {numGames * (long)threads} total games, {numGames}/thread with {threads} thread(s)" +
-                $"{(dfrc ? ", DFRC" : string.Empty)}.");
+            if (ulong.TryParse(args.Where(x => x.EndsWith('n')).FirstOrDefault()?[..^1], out ulong selNodeLimit)) nodes = selNodeLimit;
+            if (int.TryParse(args.Where(x => x.EndsWith('d')).FirstOrDefault()?[..^1], out int selDepthLimit)) depth = selDepthLimit;
+            if (int.TryParse(args.Where(x => x.EndsWith('g')).FirstOrDefault()?[..^1], out int selNumGames)) numGames = selNumGames;
+            if (int.TryParse(args.Where(x => x.EndsWith('t')).FirstOrDefault()?[..^1], out int selThreads)) threads = selThreads;
+
+            dfrc = args.Any(x => (x.EqualsIgnoreCase("frc") || x.EqualsIgnoreCase("dfrc")));
+
+            Log($"Threads:      {threads}");
+            Log($"Games/thread: {numGames:N0}");
+            Log($"Total games:  {numGames * (long)threads:N0}");
+            Log($"Node limit:   {nodes:N0}");
+            Log($"Depth limit:  {depth}");
+            Log($"Variant:      {(dfrc ? "DFRC" : "Standard")}");
             Log($"Hit enter to begin...");
             _ = Console.ReadLine();
 
             if (threads == 1)
             {
                 //  Let this run on the main thread to allow for debugging
-                Selfplay.RunGames(gamesToRun: numGames, threadID: 0, dfrc: dfrc);
+                Selfplay.RunGames(numGames, 0, softNodeLimit: nodes, depthLimit: depth, dfrc: dfrc);
             }
             else
             {
                 Parallel.For(0, threads, new() { MaxDegreeOfParallelism = threads }, (int i) =>
                 {
-                    Selfplay.RunGames(gamesToRun: numGames, threadID: i, dfrc: dfrc);
+                    Selfplay.RunGames(numGames, i, softNodeLimit: nodes, depthLimit: depth, dfrc: dfrc);
                 });
             }
 

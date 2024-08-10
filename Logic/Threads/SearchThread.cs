@@ -31,6 +31,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public ulong Nodes;
 
+        public ulong HardNodeLimit;
+
         /// <summary>
         /// The index of this thread within the SearchPool, which starts at 0 for the MainSearchThread, 
         /// 1 for the first non-main thread, etc.
@@ -352,6 +354,8 @@ namespace Lizard.Logic.Threads
             SearchInformation info = AssocPool.SharedInfo;
 
             TimeManager tm = info.TimeManager;
+
+            HardNodeLimit = info.MaxNodes;
 
             //  And set it's Position to this SearchThread's unique copy.
             //  (The Position that AssocPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)

@@ -1,7 +1,6 @@
 ﻿
 //#define DBG
 //#define WRITE_PGN
-//#define BIND
 
 using System.Runtime.InteropServices;
 
@@ -22,35 +21,22 @@ namespace Lizard.Logic.Datagen
 
 
 
-        public static void RunGames(int gamesToRun = 1, int threadID = 0, bool dfrc = false)
+        public static void RunGames(int gamesToRun, int threadID, ulong softNodeLimit = SoftNodeLimit, int depthLimit = DepthLimit, bool dfrc = false)
         {
             SearchOptions.Hash = HashSize;
-
-#if BIND
-            var thisId = GetCurrentThreadId();
-            foreach (ProcessThread td in Process.GetCurrentProcess().Threads)
-            {
-                if (td.Id == thisId)
-                {
-                    td.IdealProcessor = (1 << threadID);
-                    break;
-                }
-            }
-#endif
-
-            if (dfrc)
-            {
-                UCI_Chess960 = true;
-            }
+            SearchOptions.UCI_Chess960 = dfrc;
 
             SearchThreadPool pool = new SearchThreadPool(1);
             Position pos = new Position(owner: pool.MainThread);
             ref Bitboard bb = ref pos.bb;
 
+            Random rand = Rand.Value;
+            ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
+
             Move bestMove = Move.Null;
             int bestMoveScore = 0;
 
-            string fName = $"{(dfrc ? "dfrc_" : string.Empty)}{SoftNodeLimit / 1000}k_d{DepthLimit}_{threadID}.bin";
+            string fName = $"{(dfrc ? "dfrc_" : string.Empty)}{softNodeLimit / 1000}k_d{depthLimit}_{threadID}.bin";
 
 #if PLAINTEXT
             using StreamWriter outputWriter = new StreamWriter(fName, true);
@@ -66,29 +52,25 @@ namespace Lizard.Logic.Datagen
 
             SearchInformation info = new SearchInformation(pos)
             {
-                SoftNodeLimit = SoftNodeLimit,
-                MaxNodes = HardNodeLimit,
-                MaxDepth = DepthLimit,
+                SoftNodeLimit = softNodeLimit,
+                MaxNodes = softNodeLimit * 20,
+                MaxDepth = depthLimit,
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
 
             SearchInformation prelimInfo = new SearchInformation(pos)
             {
-                SoftNodeLimit = SoftNodeLimit * 20,
-                MaxNodes = HardNodeLimit * 20,
-                MaxDepth = Math.Clamp(DepthLimit, 8, 12),
+                SoftNodeLimit = softNodeLimit * 20,
+                MaxNodes = softNodeLimit * 400,
+                MaxDepth = Math.Clamp(depthLimit, 8, 10),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
 
-            ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
-            Random rand = Rand.Value;
-
             Stopwatch sw = Stopwatch.StartNew();
 
-            int gameNum = 0;
-            for (; gameNum < gamesToRun; gameNum++)
+            for (int gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
                 pool.TTable.Clear();
                 pool.Clear();
@@ -100,7 +82,7 @@ namespace Lizard.Logic.Datagen
                 }
                 else
                 {
-                pos.LoadFromFEN(InitialFEN);
+                    pos.LoadFromFEN(InitialFEN);
                 }
 
                 int randMoveCount = rand.Next(MinOpeningPly, MaxOpeningPly + 1);
@@ -108,9 +90,7 @@ namespace Lizard.Logic.Datagen
                 {
                     int l = pos.GenLegal(legalMoves);
                     if (l == 0) { gameNum--; continue; }
-                    Move t = legalMoves[rand.Next(0, l)].Move;
-
-                    pos.MakeMove(t);
+                    pos.MakeMove(legalMoves[rand.Next(0, l)].Move);
                 }
 
                 if (pos.GenLegal(legalMoves) == 0) { gameNum--; continue; }

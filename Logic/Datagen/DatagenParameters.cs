@@ -8,8 +8,7 @@ namespace Lizard.Logic.Datagen
         public const int MinOpeningPly = 8;
         public const int MaxOpeningPly = 9;
 
-        public const int SoftNodeLimit = 10000;
-        public const int HardNodeLimit = SoftNodeLimit * 20;
+        public const int SoftNodeLimit = 5000;
         public const int DepthLimit = 24;
 
         public const int WritableDataLimit = 512;
