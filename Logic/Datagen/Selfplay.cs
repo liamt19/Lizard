@@ -17,11 +17,9 @@ namespace Lizard.Logic.Datagen
         private static int Seed = Environment.TickCount;
         private static readonly ThreadLocal<Random> Rand = new(() => new Random(Interlocked.Increment(ref Seed)));
 
-        public static long CumulativeGames = 0;
 
 
-
-        public static void RunGames(int gamesToRun, int threadID, ulong softNodeLimit = SoftNodeLimit, int depthLimit = DepthLimit, bool dfrc = false)
+        public static void RunGames(ulong gamesToRun, int threadID, ulong softNodeLimit = SoftNodeLimit, ulong depthLimit = DepthLimit, bool dfrc = false)
         {
             SearchOptions.Hash = HashSize;
             SearchOptions.UCI_Chess960 = dfrc;
@@ -47,14 +45,14 @@ namespace Lizard.Logic.Datagen
             Span<BulletDataFormat> datapoints = stackalloc BulletDataFormat[WritableDataLimit];
 #endif
 
-            long totalBadPositions = 0;
-            long totalGoodPositions = 0;
+            ulong totalBadPositions = 0;
+            ulong totalGoodPositions = 0;
 
             SearchInformation info = new SearchInformation(pos)
             {
                 SoftNodeLimit = softNodeLimit,
                 MaxNodes = softNodeLimit * 20,
-                MaxDepth = depthLimit,
+                MaxDepth = (int)depthLimit,
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
@@ -63,14 +61,14 @@ namespace Lizard.Logic.Datagen
             {
                 SoftNodeLimit = softNodeLimit * 20,
                 MaxNodes = softNodeLimit * 400,
-                MaxDepth = Math.Clamp(depthLimit, 8, 10),
+                MaxDepth = Math.Clamp((int)depthLimit, 8, 10),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
 
             Stopwatch sw = Stopwatch.StartNew();
 
-            for (int gameNum = 0; gameNum < gamesToRun; gameNum++)
+            for (ulong gameNum = 0; gameNum < gamesToRun; gameNum++)
             {
                 pool.TTable.Clear();
                 pool.Clear();
@@ -162,23 +160,16 @@ namespace Lizard.Logic.Datagen
                 }
 
 
-
-                totalBadPositions += filtered;
-                totalGoodPositions += toWrite;
+                totalBadPositions += (uint)filtered;
+                totalGoodPositions += (uint)toWrite;
 
                 var goodPerSec = totalGoodPositions / sw.Elapsed.TotalSeconds;
                 var totalPerSec = (totalGoodPositions + totalBadPositions) / sw.Elapsed.TotalSeconds;
 
-                Log($"{Environment.CurrentManagedThreadId, 2}:{threadID, 2}\t" +
-                    $"{toWrite,4} / {toWrite + filtered,4} good" +
-                    $"\t{result,8}" +
-                    $"{goodPerSec,10:N1}/sec");
-
+                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions, goodPerSec);
                 AddResultsAndWrite(datapoints[..toWrite], result, outputWriter);
             }
 
-            
-            Interlocked.Add(ref CumulativeGames, gamesToRun);
         }
 
 

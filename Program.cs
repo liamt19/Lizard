@@ -546,29 +546,30 @@ namespace Lizard
         private static void HandleDatagenCommand(string[] args)
         {
             ulong nodes = DatagenParameters.SoftNodeLimit;
-            int depth = DatagenParameters.DepthLimit;
-            int numGames = 1000000;
-            int threads = 1;
+            ulong depth = DatagenParameters.DepthLimit;
+            ulong numGames = 1000000;
+            ulong threads = 1;
             bool dfrc = false;
 
             args = args.Skip(1).ToArray();
 
             if (ulong.TryParse(args.Where(x => x.EndsWith('n')).FirstOrDefault()?[..^1], out ulong selNodeLimit)) nodes = selNodeLimit;
-            if (int.TryParse(args.Where(x => x.EndsWith('d')).FirstOrDefault()?[..^1], out int selDepthLimit)) depth = selDepthLimit;
-            if (int.TryParse(args.Where(x => x.EndsWith('g')).FirstOrDefault()?[..^1], out int selNumGames)) numGames = selNumGames;
-            if (int.TryParse(args.Where(x => x.EndsWith('t')).FirstOrDefault()?[..^1], out int selThreads)) threads = selThreads;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('d')).FirstOrDefault()?[..^1], out ulong selDepthLimit)) depth = selDepthLimit;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('g')).FirstOrDefault()?[..^1], out ulong selNumGames)) numGames = selNumGames;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('t')).FirstOrDefault()?[..^1], out ulong selThreads)) threads = selThreads;
 
             dfrc = args.Any(x => (x.EqualsIgnoreCase("frc") || x.EqualsIgnoreCase("dfrc")));
 
             Log($"Threads:      {threads}");
             Log($"Games/thread: {numGames:N0}");
-            Log($"Total games:  {numGames * (long)threads:N0}");
+            Log($"Total games:  {numGames * threads:N0}");
             Log($"Node limit:   {nodes:N0}");
             Log($"Depth limit:  {depth}");
             Log($"Variant:      {(dfrc ? "DFRC" : "Standard")}");
             Log($"Hit enter to begin...");
             _ = Console.ReadLine();
 
+            ProgressBroker.StartMonitoring();
             if (threads == 1)
             {
                 //  Let this run on the main thread to allow for debugging
@@ -576,13 +577,13 @@ namespace Lizard
             }
             else
             {
-                Parallel.For(0, threads, new() { MaxDegreeOfParallelism = threads }, (int i) =>
+                Parallel.For(0, (int)threads, new() { MaxDegreeOfParallelism = (int)threads }, (int i) =>
                 {
                     Selfplay.RunGames(numGames, i, softNodeLimit: nodes, depthLimit: depth, dfrc: dfrc);
                 });
             }
+            ProgressBroker.StopMonitoring();
 
-            Console.WriteLine($"Total: {Selfplay.CumulativeGames}");
             Environment.Exit(0);
         }
 
