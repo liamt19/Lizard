@@ -213,6 +213,7 @@ namespace Lizard.Logic.Data
         /// <summary>
         /// Returns true if the <see cref="Move"/> <paramref name="move"/> has the same From/To squares, the same "Castle" flag, and the same PromotionTo piece.
         /// </summary>
+        [MethodImpl(Inline)]
         public bool Equals(Move move)
         {
             //  Today we learned that the JIT doesn't appear to create separate paths for Equals(object) and Equals(Move/CondensedMove).
@@ -224,6 +225,7 @@ namespace Lizard.Logic.Data
 
 
 
+        [MethodImpl(Inline)]
         public bool Equals(ScoredMove move)
         {
             return move.Move.Equals(this);
