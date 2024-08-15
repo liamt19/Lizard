@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 
 using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
@@ -40,6 +41,7 @@ namespace Lizard.Logic.Search
         ///     The depth to search to, which is then extended by QSearch.
         /// </param>
         /// <returns>The evaluation of the best move.</returns>
+        [SkipLocalsInit]
         public static int Negamax<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
         {
             bool isRoot = typeof(NodeType) == typeof(RootNode);
@@ -259,6 +261,16 @@ namespace Lizard.Logic.Search
             }
 
 
+            if (ttMove.Equals(Move.Null)
+                && (cutNode || isPV)
+                && depth >= ExtraCutNodeReductionMinDepth)
+            {
+                //  We expected this node to be a bad one, so give it an extra depth reduction
+                //  if the depth is at or above a threshold (currently 4).
+                depth--;
+            }
+
+
             //  Try ProbCut for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
@@ -318,16 +330,6 @@ namespace Lizard.Logic.Search
                         return score;
                     }
                 }
-            }
-
-
-            if (ttMove.Equals(Move.Null)
-                && (cutNode || isPV)
-                && depth >= ExtraCutNodeReductionMinDepth)
-            {
-                //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 4).
-                depth--;
             }
 
 
@@ -716,6 +718,7 @@ namespace Lizard.Logic.Search
         /// This is similar to Negamax, but there is far less pruning going on here, and we are only interested in ensuring that
         /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
         /// </summary>
+        [SkipLocalsInit]
         public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);

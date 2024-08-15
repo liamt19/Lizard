@@ -202,6 +202,7 @@ namespace Lizard.Logic.Core
         /// Returns a ulong with bits set at the positions of any piece that can attack the square <paramref name="idx"/>, 
         /// given the board occupancy <paramref name="occupied"/>.
         /// </summary>
+        [MethodImpl(Inline)]
         public ulong AttackersTo(int idx, ulong occupied)
         {
             return (GetBishopMoves(occupied, idx) & (Pieces[Bishop] | Pieces[Queen]))
@@ -216,6 +217,7 @@ namespace Lizard.Logic.Core
         /// Returns a mask of the squares that a piece of type <paramref name="pt"/> and color <paramref name="pc"/> 
         /// on the square <paramref name="idx"/> attacks, given the board occupancy <paramref name="occupied"/>
         /// </summary>
+        [MethodImpl(Inline)]
         public ulong AttackMask(int idx, int pc, int pt, ulong occupied)
         {
             return pt switch

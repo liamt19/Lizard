@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
@@ -120,12 +121,14 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the <see cref="Direction"/> that the <paramref name="color"/> pawns move in, white pawns up, black pawns down.
         /// </summary>
+        [MethodImpl(Inline)]
         public static int ShiftUpDir(int color) => (color == Color.White) ? Direction.NORTH : Direction.SOUTH;
 
 
         /// <summary>
         /// Shifts the bits in <paramref name="b"/> in the direction <paramref name="dir"/>.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong Shift(int dir, ulong b)
         {
             return dir switch
@@ -148,6 +151,7 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns a ulong with bits set along whichever file <paramref name="idx"/> is in.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetFileBB(int idx)
         {
             return FileABB << GetIndexFile(idx);
@@ -157,6 +161,7 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns a ulong with bits set along whichever rank <paramref name="idx"/> is on.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetRankBB(int idx)
         {
             return Rank1BB << (8 * GetIndexRank(idx));
@@ -309,24 +314,28 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the number of the file with the letter <paramref name="fileLetter"/>, so GetFileInt('a') returns 0.
         /// </summary>
+        [MethodImpl(Inline)] 
         public static int GetFileInt(char fileLetter) => fileLetter - 97;
 
 
         /// <summary>
         /// Returns the file (x coordinate) for the index, which is between A=0 and H=7.
         /// </summary>
+        [MethodImpl(Inline)] 
         public static int GetIndexFile(int index) => index & 7;
 
 
         /// <summary>
         /// Returns the rank (y coordinate) for the index, which is between 0 and 7.
         /// </summary>
+        [MethodImpl(Inline)] 
         public static int GetIndexRank(int index) => index >> 3;
 
 
         /// <summary>
         /// Sets <paramref name="x"/> to the file of <paramref name="index"/>, and <paramref name="y"/> to its rank.
         /// </summary>
+        [MethodImpl(Inline)]
         public static void IndexToCoord(in int index, out int x, out int y)
         {
             x = index % 8;
@@ -337,6 +346,7 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the index of the square with the rank <paramref name="x"/> and file <paramref name="y"/>.
         /// </summary>
+        [MethodImpl(Inline)]
         public static int CoordToIndex(int x, int y)
         {
             return (y * 8) + x;
