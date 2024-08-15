@@ -875,6 +875,7 @@ namespace Lizard.Logic.Core
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
         /// <param name="depth">The number of moves that will be made from the starting position. Depth 1 returns the current number of legal moves.</param>
+        [SkipLocalsInit]
         public ulong Perft(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -898,6 +899,7 @@ namespace Lizard.Logic.Core
 
         private Stopwatch PerftTimer = new Stopwatch();
         private const int PerftParallelMinDepth = 6;
+        [SkipLocalsInit]
         public ulong PerftParallel(int depth, bool isRoot = false)
         {
             if (isRoot)
@@ -942,6 +944,7 @@ namespace Lizard.Logic.Core
         /// Same as perft but returns the evaluation at each of the leaves. 
         /// Only for benchmarking/debugging.
         /// </summary>
+        [SkipLocalsInit]
         public long PerftNN(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
