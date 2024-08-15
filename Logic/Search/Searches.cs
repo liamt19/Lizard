@@ -340,6 +340,7 @@ namespace Lizard.Logic.Search
             int captureCount = 0;   //  Number of capture moves that have been played, to a max of 16.
 
             bool didSkip = false;
+            int lmpMoves = LMPTable[improving ? 1 : 0][depth];
 
             Move* captureMoves = stackalloc Move[16];
             Move* quietMoves = stackalloc Move[16];
@@ -387,13 +388,14 @@ namespace Lizard.Logic.Search
                 //  we have a non-mate score for at least one move,
                 //  and we have non-pawn material:
                 //  We can start skipping quiet moves if we have already seen enough of them at this depth.
-                if (!isRoot
+                if (ShallowPruning
+                    && !isRoot
                     && bestScore > ScoreMatedMax
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
                     if (skipQuiets == false)
                     {
-                        skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
+                        skipQuiets = legalMoves >= lmpMoves;
                     }
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
