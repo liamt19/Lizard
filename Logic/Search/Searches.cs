@@ -259,6 +259,16 @@ namespace Lizard.Logic.Search
             }
 
 
+            if (ttMove.Equals(Move.Null)
+                && (cutNode || isPV)
+                && depth >= ExtraCutNodeReductionMinDepth)
+            {
+                //  We expected this node to be a bad one, so give it an extra depth reduction
+                //  if the depth is at or above a threshold (currently 4).
+                depth--;
+            }
+
+
             //  Try ProbCut for:
             //  non-PV nodes
             //  that aren't a response to a previous singular extension search
@@ -318,16 +328,6 @@ namespace Lizard.Logic.Search
                         return score;
                     }
                 }
-            }
-
-
-            if (ttMove.Equals(Move.Null)
-                && (cutNode || isPV)
-                && depth >= ExtraCutNodeReductionMinDepth)
-            {
-                //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 4).
-                depth--;
             }
 
 
