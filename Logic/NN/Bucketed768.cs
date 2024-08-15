@@ -23,10 +23,9 @@ namespace Lizard.Logic.NN
 
         public const int OutputScale = 400;
 
-        public static readonly int SIMD_CHUNKS_512 = L1_SIZE / Vector512<short>.Count;
-        public static readonly int SIMD_CHUNKS_256 = L1_SIZE / Vector256<short>.Count;
-        public const int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
+        public const float QFactor = (1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT);
 
+        public const int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
         public const int FT_CHUNK_SIZE = 32 / sizeof(short);
         public const int L1_CHUNK_SIZE = 32 / sizeof(sbyte);
         public const int L2_CHUNK_SIZE = 32 / sizeof(float);
@@ -35,7 +34,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768 -> 1024)x2 -> (16 -> 32)x8 -> 1? I don't know anymore
         /// </summary>
-        public const string NetworkName = "net-008-morelayers-params-275.bin";
+        public const string NetworkName = "net-008-morelayers-sqr-params-275.bin";
 
         private static readonly UQNetContainer UQNet;
         public static readonly NetContainer<short, sbyte, float> Net;
@@ -290,7 +289,7 @@ namespace Lizard.Logic.NN
 
             Bucketed768.ProcessUpdates(pos);
 
-            byte* FTOutputs = stackalloc byte[2 * L1_SIZE];
+            byte* FTOutputs = stackalloc byte[L1_SIZE];
             float* L1Outputs = stackalloc float[L2_SIZE];
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
@@ -362,15 +361,17 @@ namespace Lizard.Logic.NN
             }
 
             var zero = _mm256_set1_ps(0.0f);
+            var one = Vector256<float>.One;
 
             for (int i = 0; i < L2_SIZE / L2_CHUNK_SIZE; ++i)
             {
                 // Convert into floats, and activate L1
                 var biasVec = _mm256_loadu_ps(&biases[i * L2_CHUNK_SIZE]);
-                var sumDiv = _mm256_set1_ps((1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT));
+                var sumDiv = _mm256_set1_ps(QFactor);
                 var sumPs = _mm256_fmadd_ps(_mm256_cvtepi32_ps(sums[i]), sumDiv, biasVec);
-                var clipped = _mm256_max_ps(sumPs, zero);
-                _mm256_storeu_ps(&output[i * L2_CHUNK_SIZE], clipped);
+                var clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zero), one);
+                var squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * L2_CHUNK_SIZE], squared);
 
             }
         }
@@ -391,12 +392,14 @@ namespace Lizard.Logic.NN
             }
 
             var zero = _mm256_set1_ps(0.0f);
-            var one = _mm256_set1_ps(1.0f);
+            var one = Vector256<float>.One;
 
             // Activate L2
             for (int i = 0; i < L3_SIZE / L3_CHUNK_SIZE; ++i)
             {
-                _mm256_storeu_ps(&output[i * L3_CHUNK_SIZE], _mm256_max_ps(sumVecs[i], zero));
+                var clipped = _mm256_min_ps(_mm256_max_ps(sumVecs[i], zero), one);
+                var squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * L3_CHUNK_SIZE], squared);
             }
         }
 
