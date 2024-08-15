@@ -1,4 +1,6 @@
-﻿using System.Runtime.InteropServices;
+﻿
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 
 namespace Lizard.Logic.Magic
@@ -85,22 +87,30 @@ namespace Lizard.Logic.Magic
                     for (int m = 0; m < 100; m++)
                         foreach ((int sq, ulong blockers) in pextTests)
                             temp ^= TestPextFancy(blockers, sq);
-
-                    sw.Stop();
-                    if (n > 0)
-                        fancyElapsed += sw.ElapsedTicks;
-
+                    if (n > 0) fancyElapsed += sw.ElapsedTicks;
 
                     sw.Restart();
                     for (int m = 0; m < 100; m++)
                         foreach ((int sq, ulong blockers) in pextTests)
                             temp ^= TestPextNormal(blockers, sq);
-                    sw.Stop();
-                    if (n > 0)
-                        normalElapsed += sw.ElapsedTicks;
+                    if (n > 0) normalElapsed += sw.ElapsedTicks;
+
+                    sw.Restart();
+                    for (int m = 0; m < 100; m++)
+                        foreach ((int sq, ulong blockers) in pextTests)
+                            temp ^= TestPextFancy(blockers, sq);
+                    if (n > 0) fancyElapsed += sw.ElapsedTicks;
+
+                    sw.Restart();
+                    for (int m = 0; m < 100; m++)
+                        foreach ((int sq, ulong blockers) in pextTests)
+                            temp ^= TestPextNormal(blockers, sq);
+                    if (n > 0) normalElapsed += sw.ElapsedTicks;
                 }
 
                 UsePext = (fancyElapsed < normalElapsed);
+
+                if (UsePext) Log($"Pext enabled for a {normalElapsed / (double)fancyElapsed:N3}x speedup");
             }
 
             if (UsePext)
@@ -136,6 +146,7 @@ namespace Lizard.Logic.Magic
         /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
         /// Friendly pieces will need to be masked out so we aren't able to capture them.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetRookMoves(ulong boardAll, int idx)
         {
             if (UsePext)
@@ -157,6 +168,7 @@ namespace Lizard.Logic.Magic
         /// and the returned mask treats the mask <paramref name="boardAll"/> as if every piece can be captured.
         /// Friendly pieces will need to be masked out so we aren't able to capture them.
         /// </summary>
+        [MethodImpl(Inline)]
         public static ulong GetBishopMoves(ulong boardAll, int idx)
         {
             if (UsePext)

@@ -473,6 +473,7 @@ namespace Lizard.Logic.Core
         /// Moves the king and rook for castle moves, and updates the position hash accordingly.
         /// Adapted from https://github.com/official-stockfish/Stockfish/blob/632f1c21cd271e7c4c242fdafa328a55ec63b9cb/src/position.cpp#L931
         /// </summary>
+        [MethodImpl(Inline)]
         public void DoCastling(int ourColor, int from, int to, bool undo = false)
         {
             bool kingSide = to > from;
@@ -506,6 +507,7 @@ namespace Lizard.Logic.Core
 
 
 
+        [MethodImpl(Inline)]
         public void SetState()
         {
             State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
@@ -516,6 +518,7 @@ namespace Lizard.Logic.Core
         }
 
 
+        [MethodImpl(Inline)]
         public void SetCheckInfo()
         {
             State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black]);
@@ -587,6 +590,7 @@ namespace Lizard.Logic.Core
         /// Returns true if the move <paramref name="move"/> is pseudo-legal.
         /// Only determines if there is a piece at move.From and the piece at move.To isn't the same color.
         /// </summary>
+        [MethodImpl(Inline)]
         public bool IsPseudoLegal(in Move move)
         {
             int moveTo = move.To;
@@ -646,11 +650,13 @@ namespace Lizard.Logic.Core
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
+        [MethodImpl(Inline)] 
         public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the current position.
         /// </summary>
+        [MethodImpl(Inline)]
         public bool IsLegal(Move move, int ourKing, int theirKing, ulong pinnedPieces)
         {
             int moveFrom = move.From;
@@ -763,7 +769,7 @@ namespace Lizard.Logic.Core
 
 
 
-
+        [MethodImpl(Inline)]
         public bool IsDraw()
         {
             return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
@@ -842,6 +848,7 @@ namespace Lizard.Logic.Core
         /// Returns the <see cref="CastlingStatus"/> for the piece on the <paramref name="sq"/>, 
         /// which is <see cref="CastlingStatus.None"/> if the square isn't one of the values in <see cref="CastlingRookSquares"/>.
         /// </summary>
+        [MethodImpl(Inline)]
         private CastlingStatus GetCastlingForRook(int sq)
         {
             CastlingStatus cr = sq == CastlingRookSquares[(int)CastlingStatus.WQ] ? CastlingStatus.WQ :
@@ -856,6 +863,7 @@ namespace Lizard.Logic.Core
         /// <summary>
         /// Updates the hash to reflect the changes in castling rights, and removes the given rights from the current state.
         /// </summary>
+        [MethodImpl(Inline)]
         private void RemoveCastling(CastlingStatus cr)
         {
             State->Hash.ZobristCastle(State->CastleStatus, cr);
@@ -867,6 +875,7 @@ namespace Lizard.Logic.Core
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
         /// <param name="depth">The number of moves that will be made from the starting position. Depth 1 returns the current number of legal moves.</param>
+        [SkipLocalsInit]
         public ulong Perft(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -890,6 +899,7 @@ namespace Lizard.Logic.Core
 
         private Stopwatch PerftTimer = new Stopwatch();
         private const int PerftParallelMinDepth = 6;
+        [SkipLocalsInit]
         public ulong PerftParallel(int depth, bool isRoot = false)
         {
             if (isRoot)
@@ -934,6 +944,7 @@ namespace Lizard.Logic.Core
         /// Same as perft but returns the evaluation at each of the leaves. 
         /// Only for benchmarking/debugging.
         /// </summary>
+        [SkipLocalsInit]
         public long PerftNN(int depth)
         {
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];

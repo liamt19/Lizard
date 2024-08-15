@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
 namespace Lizard.Logic.NN
@@ -28,6 +29,7 @@ namespace Lizard.Logic.NN
 
         public Vector256<short>* this[int perspective] => (perspective == Color.White) ? (Vector256<short>*)White : (Vector256<short>*)Black;
 
+        [MethodImpl(Inline)]
         public void CopyTo(Accumulator* target)
         {
             Unsafe.CopyBlock(target->White, White, ByteSize);
@@ -38,6 +40,7 @@ namespace Lizard.Logic.NN
 
         }
 
+        [MethodImpl(Inline)]
         public void CopyTo(ref Accumulator target, int perspective)
         {
             Unsafe.CopyBlock(target[perspective], this[perspective], ByteSize);

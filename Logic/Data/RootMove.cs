@@ -1,4 +1,6 @@
-﻿namespace Lizard.Logic.Data
+﻿using System.Runtime.CompilerServices;
+
+namespace Lizard.Logic.Data
 {
     public class RootMove : IComparable<RootMove>
     {
@@ -25,6 +27,7 @@
             PVLength = 1;
         }
 
+        [MethodImpl(Inline)]
         public int CompareTo(RootMove other)
         {
             if (Score != other.Score)

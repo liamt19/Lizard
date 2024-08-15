@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 
 using Lizard.Logic.Threads;
@@ -268,6 +269,7 @@ namespace Lizard.Logic.NN
             return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
         }
 
+        [MethodImpl(Inline)]
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
         {
             const int ColorStride = 64 * 6;
@@ -288,6 +290,7 @@ namespace Lizard.Logic.NN
             return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * HiddenSize;
         }
 
+        [MethodImpl(Inline)]
         private static (int, int) FeatureIndex(int pc, int pt, int sq, int wk, int bk)
         {
             const int ColorStride = 64 * 6;
@@ -408,6 +411,7 @@ namespace Lizard.Logic.NN
             }
         }
 
+        [MethodImpl(Inline)]
         public static void MakeNullMove(Position pos)
         {
             pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
@@ -421,6 +425,7 @@ namespace Lizard.Logic.NN
 
         //  The general concept here is based off of Stormphrax's implementation:
         //  https://github.com/Ciekce/Stormphrax/commit/9b76f2a35531513239ed7078acc21294a11e75c6
+        [MethodImpl(Inline)]
         public static void ProcessUpdates(Position pos)
         {
             StateInfo* st = pos.State;
@@ -462,6 +467,7 @@ namespace Lizard.Logic.NN
             }
         }
 
+        [MethodImpl(Inline)]
         public static void UpdateSingle(Accumulator* prev, Accumulator* curr, int perspective)
         {
             ref var updates = ref curr->Update[perspective];

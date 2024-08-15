@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 using static Lizard.Logic.Transposition.TranspositionTable;
 
@@ -40,7 +41,7 @@ namespace Lizard.Logic.Transposition
         public readonly TTNodeType NodeType => (TTNodeType)(_AgePVType & TT_BOUND_MASK);
         public readonly int Bound => _AgePVType & TT_BOUND_MASK;
 
-
+        [MethodImpl(Inline)]
         public readonly sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
         public readonly bool IsEmpty => _Depth == 0;
 
@@ -73,22 +74,13 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public static short MakeNormalScore(short ttScore, int ply)
         {
-            if (ttScore == ScoreNone)
+            return ttScore switch
             {
-                return ttScore;
-            }
-
-            if (ttScore >= ScoreTTWin)
-            {
-                return (short)(ttScore - ply);
-            }
-
-            if (ttScore <= ScoreTTLoss)
-            {
-                return (short)(ttScore + ply);
-            }
-
-            return ttScore;
+                   ScoreNone   => ttScore,
+                >= ScoreTTWin  => (short)(ttScore - ply),
+                <= ScoreTTLoss => (short)(ttScore + ply),
+                   _           => ttScore
+            };
         }
 
         /// <summary>
@@ -100,22 +92,13 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public static short MakeTTScore(short score, int ply)
         {
-            if (score == ScoreNone)
+            return score switch
             {
-                return score;
-            }
-
-            if (score >= ScoreTTWin)
-            {
-                return (short)(score + ply);
-            }
-
-            if (score <= ScoreTTLoss)
-            {
-                return (short)(score - ply);
-            }
-
-            return score;
+                   ScoreNone   => score,
+                >= ScoreTTWin  => (short)(score + ply),
+                <= ScoreTTLoss => (short)(score - ply),
+                   _           => score
+            };
         }
 
         public override string ToString()

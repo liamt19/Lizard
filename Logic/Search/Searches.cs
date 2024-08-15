@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
@@ -50,6 +51,7 @@ namespace Lizard.Logic.Search
         ///     The depth to search to, which is then extended by QSearch.
         /// </param>
         /// <returns>The evaluation of the best move.</returns>
+        [SkipLocalsInit]
         public static int Negamax<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth, bool cutNode) where NodeType : SearchNodeType
         {
             bool isRoot = typeof(NodeType) == typeof(RootNode);
@@ -714,6 +716,7 @@ namespace Lizard.Logic.Search
         /// This is similar to Negamax, but there is far less pruning going on here, and we are only interested in ensuring that
         /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
         /// </summary>
+        [SkipLocalsInit]
         public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
