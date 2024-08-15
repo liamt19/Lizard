@@ -17,9 +17,9 @@ namespace Lizard.Logic.NN
         public const int L3_SIZE = 32;
         public const int OUTPUT_BUCKETS = 8;
 
-        private const int FT_QUANT = 255;
+        private const int FT_QUANT = 362;
         private const int FT_SHIFT = 10;
-        private const int L1_QUANT = 64;
+        private const int L1_QUANT = 32;
 
         public const int OutputScale = 400;
 
