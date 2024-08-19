@@ -25,7 +25,7 @@
     <LangVersion>Latest</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     
-    <Configurations>Debug;Release;Development</Configurations>
+    <Configurations>Debug;Release;Datagen</Configurations>
     <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
     <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
@@ -143,9 +143,8 @@
     <Optimize>True</Optimize>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Datagen|x64'">
     <PlatformTarget>x64</PlatformTarget>
-    <DefineConstants>$(DefineConstants);DEV</DefineConstants>
     <DebugType>embedded</DebugType>
     <Optimize>True</Optimize>
   </PropertyGroup>

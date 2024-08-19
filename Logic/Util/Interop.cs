@@ -96,9 +96,12 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns <paramref name="value"/> with the most significant bit set to 0.
         /// </summary>
-        public static ulong popmsb(ulong value)
+        [MethodImpl(Inline)]
+        public static unsafe int popmsb(ulong* value)
         {
-            return value ^ (1UL << msb(value));
+            int sq = (int)(63 - ulong.LeadingZeroCount(*value));
+            *value = *value & ~(1UL << sq);
+            return sq;
         }
 
 

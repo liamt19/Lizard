@@ -17,13 +17,15 @@
         /// <summary>
         /// Global ThreadPool.
         /// </summary>
-        public static SearchThreadPool SearchPool;
+        public static SearchThreadPool GlobalSearchPool;
 
         public int ThreadCount = SearchOptions.Threads;
 
         public SearchInformation SharedInfo;
         public SearchThread[] Threads;
         public SearchThread MainThread => Threads[0];
+
+        public TranspositionTable TTable;
 
         /// <summary>
         /// Set to true by the main thread when we are nearing the maximum search time / maximum node count,
@@ -35,13 +37,13 @@
 
         static SearchThreadPool()
         {
-            //  Initialize the global threadpool here
-            SearchPool = new SearchThreadPool(SearchOptions.Threads);
+            GlobalSearchPool = new SearchThreadPool(SearchOptions.Threads);
         }
 
         public SearchThreadPool(int threadCount)
         {
             Blocker = new Barrier(1);
+            TTable = new TranspositionTable(Hash);
             Resize(threadCount);
         }
 
@@ -70,6 +72,8 @@
             for (int i = 0; i < ThreadCount; i++)
             {
                 Threads[i] = new SearchThread(i);
+                Threads[i].AssocPool = this;
+                Threads[i].TT = TTable;
             }
 
             MainThread.WaitForThreadFinished();

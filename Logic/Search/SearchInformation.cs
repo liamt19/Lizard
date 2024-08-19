@@ -38,6 +38,8 @@ namespace Lizard.Logic.Search
         /// </summary>
         public ulong MaxNodes = MaxSearchNodes;
 
+        public ulong SoftNodeLimit = MaxSearchNodes;
+
 
         /// <summary>
         /// Set to true the first time that OnSearchFinish is invoked.
@@ -100,7 +102,7 @@ namespace Lizard.Logic.Search
         /// </summary>
         private void PrintBestMove(ref SearchInformation info)
         {
-            Move bestThreadMove = SearchPool.GetBestThread().RootMoves[0].Move;
+            Move bestThreadMove = info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move;
             Log("bestmove " + bestThreadMove.ToString());
         }
 

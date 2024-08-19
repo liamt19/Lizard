@@ -242,7 +242,7 @@ namespace Lizard.Logic.NN
             }
 
             //  White king on A1, black king on H8
-            Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: SearchPool.MainThread);
+            Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: GlobalSearchPool.MainThread);
             int baseEval = GetEvaluation(pos);
 
             Log("\nNNUE evaluation: " + baseEval + "\n");
