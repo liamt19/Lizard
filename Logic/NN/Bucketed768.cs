@@ -11,7 +11,7 @@ namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 5;
+        public const int InputBuckets = 1;
         public const int InputSize = 768;
         public const int HiddenSize = 1536;
         public const int OutputBuckets = 8;
@@ -22,9 +22,9 @@ namespace Lizard.Logic.NN
         public const int OutputScale = 400;
 
         /// <summary>
-        /// (768x5 -> 1536)x2 -> 8
+        /// (768 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "L1536x5x8_cos51_from315_dfrc08b-680.bin";
+        public const string NetworkName = "net-009-250.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -41,14 +41,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 0, 1, 1, 6, 6, 5, 5,
-            2, 2, 3, 3, 8, 8, 7, 7,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
-            4, 4, 4, 4, 9, 9, 9, 9,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -157,7 +157,6 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                var ourWeights = (Vector512<short>*)(FeatureWeights + idx);
                 UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
             }
 
@@ -389,15 +388,25 @@ namespace Lizard.Logic.NN
                 (int wFrom, int bFrom) = FeatureIndex(us, ourPiece, moveFrom, wKing, bKing);
                 (int wTo, int bTo) = FeatureIndex(us, m.IsPromotion ? m.PromotionTo : ourPiece, moveTo, wKing, bKing);
 
-                wUpdate.PushSubAdd(wFrom, wTo);
-                bUpdate.PushSubAdd(bFrom, bTo);
+                if (m.IsCastle)
+                {
+                    int rookFromSq = moveTo;
+                    int rookToSq = m.CastlingRookSquare();
 
-                if (theirPiece != None)
+                    (wTo, bTo) = FeatureIndex(us, ourPiece, m.CastlingKingSquare(), wKing, bKing);
+
+                    (int wRookFrom, int bRookFrom) = FeatureIndex(us, Rook, rookFromSq, wKing, bKing);
+                    (int wRookTo, int bRookTo) = FeatureIndex(us, Rook, rookToSq, wKing, bKing);
+
+                    wUpdate.PushSubSubAddAdd(wFrom, wRookFrom, wTo, wRookTo);
+                    bUpdate.PushSubSubAddAdd(bFrom, bRookFrom, bTo, bRookTo);
+                }
+                else if (theirPiece != None)
                 {
                     (int wCap, int bCap) = FeatureIndex(them, theirPiece, moveTo, wKing, bKing);
 
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
+                    wUpdate.PushSubSubAdd(wFrom, wCap, wTo);
+                    bUpdate.PushSubSubAdd(bFrom, bCap, bTo);
                 }
                 else if (m.IsEnPassant)
                 {
@@ -405,8 +414,13 @@ namespace Lizard.Logic.NN
 
                     (int wCap, int bCap) = FeatureIndex(them, Pawn, idxPawn, wKing, bKing);
 
-                    wUpdate.PushSub(wCap);
-                    bUpdate.PushSub(bCap);
+                    wUpdate.PushSubSubAdd(wFrom, wCap, wTo);
+                    bUpdate.PushSubSubAdd(bFrom, bCap, bTo);
+                }
+                else
+                {
+                    wUpdate.PushSubAdd(wFrom, wTo);
+                    bUpdate.PushSubAdd(bFrom, bTo);
                 }
             }
         }
