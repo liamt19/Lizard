@@ -32,6 +32,11 @@
         public static bool UCI_Chess960 = false;
 
 
+#if DATAGEN
+        public const bool ShallowPruning = true;
+#else
+        public const bool ShallowPruning = true;
+#endif
 
         /// <summary>
         /// Whether or not to extend searches if there is only one good move in a position.

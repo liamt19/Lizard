@@ -28,7 +28,7 @@ namespace Lizard.Logic.UCI
             ProcessUCIOptions();
 
             setup = new ThreadSetup();
-            pos = new Position(owner: SearchPool.MainThread);
+            pos = new Position(owner: GlobalSearchPool.MainThread);
             info = new SearchInformation(pos, DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
@@ -134,7 +134,7 @@ namespace Lizard.Logic.UCI
             LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
 
             //  In case a "ucinewgame" isn't sent for the first game
-            HandleNewGame();
+            HandleNewGame(pos.Owner.AssocPool);
             InputLoop();
         }
 
@@ -158,7 +158,7 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "ucinewgame")
                 {
-                    HandleNewGame();
+                    HandleNewGame(GlobalSearchPool);
                 }
                 else if (cmd == "position")
                 {
@@ -251,12 +251,12 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "go")
                 {
-                    SearchPool.StopThreads = false;
+                    GlobalSearchPool.StopThreads = false;
                     HandleGo(param);
                 }
                 else if (cmd == "stop")
                 {
-                    SearchPool.StopThreads = true;
+                    GlobalSearchPool.StopThreads = true;
                 }
                 else if (cmd == "leave")
                 {
@@ -419,7 +419,7 @@ namespace Lizard.Logic.UCI
                 info.TimeManager.MakeMoveTime();
             }
 
-            SearchPool.StartSearch(info.Position, ref info, setup);
+            GlobalSearchPool.StartSearch(info.Position, ref info, setup);
         }
 
 
@@ -437,51 +437,36 @@ namespace Lizard.Logic.UCI
         {
             info.SearchActive = false;
 
-            //  TODO: make sure we can't send illegal moves
-            if (!info.SearchFinishedCalled)
-            {
-                info.SearchFinishedCalled = true;
-
-                var bestThread = SearchPool.GetBestThread();
-
-                if (bestThread.RootMoves.Count == 0)
-                {
-                    LogString("[ERROR]: bestThread.RootMoves.Count was 0!\n" + info.ToString());
-                    SendString("bestmove 0000");
-                    return;
-                }
-
-                Move bestThreadMove = bestThread.RootMoves[0].Move;
-
-                Assert(SearchPool.MainThread.RootMoves[0].Move == bestThreadMove,
-                    $"MainThread's best move = {SearchPool.MainThread.RootMoves[0].Move} was different than the BestThread's = {bestThreadMove}!");
-
-                if (bestThreadMove.IsNull())
-                {
-                    ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
-                    int size = info.Position.GenLegal(legal);
-                    bestThreadMove = legal[0].Move;
-
-                    LogString("[ERROR]: info.BestMove in OnSearchDone was null! Replaced it with first legal move " + legal[0].Move);
-                }
-                else if (!info.Position.IsLegal(bestThreadMove))
-                {
-                    LogString("[ERROR]: bestThreadMove (" + bestThreadMove.ToString() + ") in OnSearchDone isn't legal for FEN '" + info.Position.GetFEN() + "'");
-                }
-
-                SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
-            }
-            else
+            if (info.SearchFinishedCalled)
             {
                 LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
+                return;
             }
+
+            info.SearchFinishedCalled = true;
+            var bestThread = info.Position.Owner.AssocPool.GetBestThread();
+            if (bestThread.RootMoves.Count == 0)
+            {
+                SendString("bestmove 0000");
+                return;
+            }
+
+            Move bestThreadMove = bestThread.RootMoves[0].Move;
+            if (bestThreadMove.IsNull())
+            {
+                ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
+                int size = info.Position.GenLegal(legal);
+                bestThreadMove = legal[0].Move;
+            }
+
+            SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
         }
 
-        private static void HandleNewGame()
+        private static void HandleNewGame(SearchThreadPool pool)
         {
-            SearchPool.MainThread.WaitForThreadFinished();
-            TranspositionTable.Clear();
-            Search.Searches.HandleNewGame();
+            pool.MainThread.WaitForThreadFinished();
+            pool.TTable.Clear();
+            pool.Clear();
         }
 
         private void HandleSetOption(string optName, string optValue)
@@ -527,17 +512,18 @@ namespace Lizard.Logic.UCI
                                 {
                                     if (opt.Name == nameof(Threads))
                                     {
-                                        SearchPool.Resize(newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + SearchPool.ThreadCount);
-                                    }
-                                    else if (opt.Name == nameof(Hash))
-                                    {
-                                        TranspositionTable.Initialize(newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + newValue + " mb");
+                                        GlobalSearchPool.Resize(newValue);
+                                        LogString("Changed '" + key + "' from " + prevValue + " to " + GlobalSearchPool.ThreadCount);
                                     }
                                     else
                                     {
                                         opt.FieldHandle.SetValue(null, newValue);
+
+                                        if (opt.Name == nameof(Hash))
+                                        {
+                                            GlobalSearchPool.TTable.Initialize(Hash);
+                                        }
+
                                         LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
                                     }
                                 }

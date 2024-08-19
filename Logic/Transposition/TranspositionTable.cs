@@ -3,9 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace Lizard.Logic.Transposition
 {
-    public static unsafe class TranspositionTable
+    public unsafe class TranspositionTable
     {
-
         public const int TT_BOUND_MASK = 0x3;
         public const int TT_PV_MASK = 0x4;
         public const int TT_AGE_MASK = 0xF8;
@@ -22,20 +21,14 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public const int EntriesPerCluster = 3;
 
-        private static TTCluster* Clusters;
-        public static ulong ClusterCount { get; private set; }
+        private TTCluster* Clusters;
+        public ulong ClusterCount { get; private set; }
 
-        /// <summary>
-        /// The age of the TT, which is increased for every call to <see cref="Threads.SearchThread.MainThreadSearch"/>.
-        /// </summary>
-        public static byte Age = 0;
+        public byte Age = 0;
 
-        static TranspositionTable()
+        public TranspositionTable(int mb)
         {
-            Initialize(SearchOptions.Hash);
-
-            Assert(ClusterCount > MinTTClusters,
-                $"The TT is undersized! Needs space for {MinTTClusters} clusters but only has {ClusterCount}");
+            Initialize(mb);
         }
 
         /// <summary>
@@ -43,11 +36,11 @@ namespace Lizard.Logic.Transposition
         /// <para></para>
         /// 1 mb fits 32,768 clusters, which is 98,304 TTEntry's.
         /// </summary>
-        public static unsafe void Initialize(int mb)
+        public unsafe void Initialize(int mb)
         {
             if (Clusters != null)
             {
-                SearchPool.MainThread.WaitForThreadFinished();
+                //SearchPool.MainThread.WaitForThreadFinished();
 
                 //  We could also use AlignedRealloc here, but since we don't need the current data to be copied over
                 //  doing a free + alloc instead is easier.
@@ -67,9 +60,9 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Reinitializes each <see cref="TTCluster"/> within the table.
         /// </summary>
-        public static void Clear()
+        public void Clear()
         {
-            SearchPool.MainThread.WaitForThreadFinished();
+            //SearchPool.MainThread.WaitForThreadFinished();
 
             for (ulong i = 0; i < ClusterCount; i++)
             {
@@ -85,7 +78,7 @@ namespace Lizard.Logic.Transposition
         /// Returns a pointer to the <see cref="TTCluster"/> that the <paramref name="hash"/> maps to.
         /// </summary>
         [MethodImpl(Inline)]
-        public static TTCluster* GetCluster(ulong hash)
+        public TTCluster* GetCluster(ulong hash)
         {
             return Clusters + ((ulong)(((UInt128)hash * (UInt128)ClusterCount) >> 64));
         }
@@ -100,7 +93,7 @@ namespace Lizard.Logic.Transposition
         /// Otherwise, this method sets <paramref name="tte"/> to the address of the <see cref="TTEntry"/> within the cluster that should
         /// be overwritten with new information, and this method returns false.
         /// </summary>
-        public static bool Probe(ulong hash, out TTEntry* tte)
+        public bool Probe(ulong hash, out TTEntry* tte)
         {
             TTCluster* cluster = GetCluster(hash);
             tte = (TTEntry*)cluster;
@@ -127,8 +120,8 @@ namespace Lizard.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((replace->RawDepth - replace->RelAge(TranspositionTable.Age)) >
-                    (  tte[i].RawDepth -   tte[i].RelAge(TranspositionTable.Age)))
+                if ((replace->RawDepth - replace->RelAge(Age)) >
+                    (  tte[i].RawDepth -   tte[i].RelAge(Age)))
                 {
                     replace = &tte[i];
                 }
@@ -147,7 +140,7 @@ namespace Lizard.Logic.Transposition
         /// This is done on every call to <see cref="Threads.SearchThread.MainThreadSearch"/> to prevent the transposition table
         /// from spilling into another search.
         /// </summary>
-        public static void TTUpdate()
+        public void TTUpdate()
         {
             Age += TT_AGE_INC;
         }
@@ -162,7 +155,7 @@ namespace Lizard.Logic.Transposition
         /// A hashfull of 400 means that there were 1200 TTEntry's with the correct age out of the first 3000, so we can estimate that 
         /// about 40% of the entire TT has valid entries in it.
         /// </summary>
-        public static int GetHashFull()
+        public int GetHashFull()
         {
             int entries = 0;
 
@@ -184,7 +177,7 @@ namespace Lizard.Logic.Transposition
         /// <summary>
         /// Prints statistics about the state of the TT, such as how many nodes of each type are present.
         /// </summary>
-        public static void PrintClusterStatus()
+        public void PrintClusterStatus()
         {
             int recentEntries = 0;
             int Beta = 0;

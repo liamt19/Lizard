@@ -95,7 +95,7 @@ namespace Lizard.Logic.Core
         /// If <paramref name="createAccumulators"/> is true, then this Position will create and incrementally update 
         /// its accumulators when making and unmaking moves.
         /// <para></para>
-        /// <paramref name="owner"/> should be set to one of the <see cref="SearchThread"/>'s within the <see cref="SearchThreadPool.SearchPool"/>
+        /// <paramref name="owner"/> should be set to one of the <see cref="SearchThread"/>'s within the <see cref="SearchThreadPool.GlobalSearchPool"/>
         /// (the <see cref="SearchThreadPool.MainThread"/> unless there are multiple threads in the pool).
         /// <br></br>
         /// If <paramref name="owner"/> is <see langword="null"/> then <paramref name="createAccumulators"/> should be false.
@@ -134,7 +134,7 @@ namespace Lizard.Logic.Core
             {
                 Debug.WriteLine($"info string Position('{fen}', {createAccumulators}, ...) has NNUE enabled and was given a nullptr for owner! " +
                                 $"Assigning this Position instance to the SearchPool's MainThread, UB and other weirdness may occur...");
-                Owner = SearchPool.MainThread;
+                Owner = GlobalSearchPool.MainThread;
             }
 
             LoadFromFEN(fen);
@@ -454,9 +454,6 @@ namespace Lizard.Logic.Core
             State->PliesFromNull = 0;
 
             SetCheckInfo();
-
-            prefetch(TranspositionTable.GetCluster(State->Hash));
-
         }
 
         /// <summary>
@@ -871,6 +868,51 @@ namespace Lizard.Logic.Core
         }
 
 
+
+        public void SetupForDFRC(int wIdx, int bIdx)
+        {
+            bb.Reset();
+
+            for (int sq = A2; sq <= H2; sq++)
+                bb.AddPiece(sq, White, Pawn);
+
+            for (int sq = A7; sq <= H7; sq++)
+                bb.AddPiece(sq, Black, Pawn);
+
+            IsChess960 = true;
+            int* wBackrank = stackalloc int[8];
+            int* bBackrank = stackalloc int[8];
+
+            FillWithScharnaglNumber(wIdx, wBackrank);
+            FillWithScharnaglNumber(bIdx, bBackrank);
+
+            var w = new Span<int>(wBackrank, 8);
+            var b = new Span<int>(bBackrank, 8);
+
+            for (int sq = 0; sq < 8; sq++)
+            {
+                bb.AddPiece(A1 + sq, White, wBackrank[sq]);
+                bb.AddPiece(A8 + sq, Black, bBackrank[sq]);
+
+                if (wBackrank[sq] == King)
+                    State->KingSquares[White] = A1 + sq;
+
+                if (bBackrank[sq] == King)
+                    State->KingSquares[Black] = A8 + sq;
+            }
+
+            for (int sq = 0; sq < 8; sq++)
+            {
+                //  SetCastlingStatus needs State->KingSquare which might not be set yet if we do this in the above loop
+                if (wBackrank[sq] == Rook)
+                    SetCastlingStatus(White, A1 + sq);
+
+                if (bBackrank[sq] == Rook)
+                    SetCastlingStatus(Black, A8 + sq);
+            }
+        }
+
+
         /// <summary>
         /// Returns the number of leaf nodes in the current position up to <paramref name="depth"/>.
         /// </summary>
@@ -919,7 +961,7 @@ namespace Lizard.Logic.Core
             opts.MaxDegreeOfParallelism = MoveListSize;
             Parallel.For(0u, size, opts, i =>
             {
-                Position threadPosition = new Position(rootFEN, false, owner: SearchPool.MainThread);
+                Position threadPosition = new Position(rootFEN, false, owner: GlobalSearchPool.MainThread);
 
                 threadPosition.MakeMove(list[i].Move);
                 ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
@@ -1019,6 +1061,11 @@ namespace Lizard.Logic.Core
                             {
                                 Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
                             }
+                        }
+
+                        if (i == 7 && popcount(bb.Pieces[King]) != 2)
+                        {
+                            Log($"FEN {fen} has {popcount(bb.Pieces[King])} kings!");
                         }
                     }
                     //  who moves next

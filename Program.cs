@@ -1,5 +1,7 @@
-﻿using System.Text;
+﻿using System.Data;
+using System.Text;
 
+using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
 
@@ -13,7 +15,7 @@ namespace Lizard
 
         public static void Main(string[] args)
         {
-            if (args.Length == 1)
+            if (args.Length != 0)
             {
                 if (args[0] == "bench")
                 {
@@ -25,11 +27,16 @@ namespace Lizard
                     Console.WriteLine(GetCompilerInfo());
                     Environment.Exit(0);
                 }
+                else if (args[0] == "datagen")
+                {
+                    HandleDatagenCommand(args);
+                    Environment.Exit(0);
+                }
             }
 
             InitializeAll();
 
-            p = new Position(owner: SearchPool.MainThread);
+            p = new Position(owner: GlobalSearchPool.MainThread);
             info = new SearchInformation(p);
 
             DoInputLoop();
@@ -44,10 +51,10 @@ namespace Lizard
 
 
             Console.CancelKeyPress += delegate (object sender, ConsoleCancelEventArgs e) {
-                if (!SearchPool.StopThreads)
+                if (!GlobalSearchPool.StopThreads)
                 {
                     //  If a search is ongoing, stop it instead of closing the console.
-                    SearchPool.StopThreads = true;
+                    GlobalSearchPool.StopThreads = true;
                     e.Cancel = true;
                 }
 
@@ -102,8 +109,8 @@ namespace Lizard
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
-                    p = new Position(InitialFEN, owner: SearchPool.MainThread);
-                    Searches.HandleNewGame();
+                    p = new Position(InitialFEN, owner: GlobalSearchPool.MainThread);
+                    p.Owner.AssocPool.Clear();
                 }
                 else if (input.Equals("listmoves"))
                 {
@@ -119,7 +126,7 @@ namespace Lizard
                 }
                 else if (input.StartsWithIgnoreCase("stop"))
                 {
-                    SearchPool.StopThreads = true;
+                    GlobalSearchPool.StopThreads = true;
                 }
                 else if (input.EqualsIgnoreCase("eval"))
                 {
@@ -145,7 +152,7 @@ namespace Lizard
                 {
                     if (int.TryParse(param[1], out int threadCount))
                     {
-                        SearchPool.Resize(threadCount);
+                        GlobalSearchPool.Resize(threadCount);
                     }
                 }
                 else if (input.ContainsIgnoreCase("searchinfo"))
@@ -159,6 +166,16 @@ namespace Lizard
                 else if (input.EqualsIgnoreCase("compiler"))
                 {
                     Log(GetCompilerInfo());
+                }
+                else if (input.StartsWithIgnoreCase("datagen") || input.StartsWithIgnoreCase("selfplay"))
+                {
+                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    HandleDatagenCommand(splits);
+                }
+                else if (input.StartsWithIgnoreCase("rescore"))
+                {
+                    string[] splits = input.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    HandleRescoreCommand(splits);
                 }
                 else if (input.StartsWithIgnoreCase("quit") || input.StartsWithIgnoreCase("exit"))
                 {
@@ -266,7 +283,7 @@ namespace Lizard
         {
             Log(info.ToString());
             Log("\r\n");
-            TranspositionTable.PrintClusterStatus();
+            p.Owner.TT.PrintClusterStatus();
         }
 
         /// <summary>
@@ -383,7 +400,7 @@ namespace Lizard
                     {
                         Task.Run(() =>
                         {
-                            Position temp = new Position(p.GetFEN(), false, owner: SearchPool.MainThread);
+                            Position temp = new Position(p.GetFEN(), false, owner: GlobalSearchPool.MainThread);
                             temp.PerftParallel(depth, true);
                         });
                     }
@@ -424,8 +441,8 @@ namespace Lizard
                 return;
             }
 
-            TranspositionTable.Clear();
-            Searches.HandleNewGame();
+            p.Owner.TT.Clear();
+            p.Owner.AssocPool.Clear();
 
             info = new SearchInformation(p, MaxDepth);
             info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
@@ -450,7 +467,7 @@ namespace Lizard
                 }
             }
 
-            SearchPool.StartSearch(p, ref info, setup);
+            GlobalSearchPool.StartSearch(p, ref info, setup);
         }
 
         private static void HandlePositionCommand(string input, ThreadSetup setup)
@@ -525,6 +542,71 @@ namespace Lizard
             Log("Loaded fen '" + p.GetFEN() + "'");
         }
 
+
+        private static void HandleDatagenCommand(string[] args)
+        {
+            ulong nodes = DatagenParameters.SoftNodeLimit;
+            ulong depth = DatagenParameters.DepthLimit;
+            ulong numGames = 1000000;
+            ulong threads = 1;
+            bool dfrc = false;
+
+            args = args.Skip(1).ToArray();
+
+            if (ulong.TryParse(args.Where(x => x.EndsWith('n')).FirstOrDefault()?[..^1], out ulong selNodeLimit)) nodes = selNodeLimit;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('d')).FirstOrDefault()?[..^1], out ulong selDepthLimit)) depth = selDepthLimit;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('g')).FirstOrDefault()?[..^1], out ulong selNumGames)) numGames = selNumGames;
+            if (ulong.TryParse(args.Where(x => x.EndsWith('t')).FirstOrDefault()?[..^1], out ulong selThreads)) threads = selThreads;
+
+            dfrc = args.Any(x => (x.EqualsIgnoreCase("frc") || x.EqualsIgnoreCase("dfrc")));
+
+            Log($"Threads:      {threads}");
+            Log($"Games/thread: {numGames:N0}");
+            Log($"Total games:  {numGames * threads:N0}");
+            Log($"Node limit:   {nodes:N0}");
+            Log($"Depth limit:  {depth}");
+            Log($"Variant:      {(dfrc ? "DFRC" : "Standard")}");
+            Log($"Hit enter to begin...");
+            _ = Console.ReadLine();
+
+            ProgressBroker.StartMonitoring();
+            if (threads == 1)
+            {
+                //  Let this run on the main thread to allow for debugging
+                Selfplay.RunGames(numGames, 0, softNodeLimit: nodes, depthLimit: depth, dfrc: dfrc);
+            }
+            else
+            {
+                Parallel.For(0, (int)threads, new() { MaxDegreeOfParallelism = (int)threads }, (int i) =>
+                {
+                    Selfplay.RunGames(numGames, i, softNodeLimit: nodes, depthLimit: depth, dfrc: dfrc);
+                });
+            }
+            ProgressBroker.StopMonitoring();
+
+            Environment.Exit(0);
+        }
+
+
+        private static void HandleRescoreCommand(string[] args)
+        {
+            if (args.Length <= 1) { Log($"An input file wasn't provided!"); return; }
+
+            string dataFile = args[1];
+
+            if (!File.Exists(dataFile)) { Log($"File {dataFile} doesn't exist!"); return; }
+
+            int threads = 1;
+            if (args.Length > 2 && int.TryParse(args[2], out int selThreads)) threads = selThreads;
+
+            Log($"Will rescore {dataFile} using {threads} threads.");
+            Log($"Hit enter to begin...");
+            _ = Console.ReadLine();
+
+            Rescorer.Start(dataFile, threads);
+        }
+
+
         private static void HandleBenchCommand(string input)
         {
             if (input.ContainsIgnoreCase("perft"))
@@ -575,8 +657,8 @@ namespace Lizard
 #if JB
             JetBrains.Profiler.Api.MeasureProfiler.StartCollectingData();
 #endif
-            SearchPool.StartSearch(p, ref info);
-            SearchPool.BlockCallerUntilFinished();
+            GlobalSearchPool.StartSearch(p, ref info);
+            GlobalSearchPool.BlockCallerUntilFinished();
 
 #if JB
             JetBrains.Profiler.Api.MeasureProfiler.SaveData();

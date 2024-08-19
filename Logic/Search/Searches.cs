@@ -1,6 +1,7 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
 
+using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
 using Lizard.Logic.Threads;
@@ -21,17 +22,6 @@ namespace Lizard.Logic.Search
         /// If the depth is at or below this, then QSearch will ignore non-capture, non-evasion moves that GIVE check.
         /// </summary>
         public const int DepthQNoChecks = -1;
-
-
-
-        /// <summary>
-        /// Clears the MainHistory/CaptureHistory tables, as well as the Continuation History. 
-        /// This is called when we receive a "ucinewgame" command.
-        /// </summary>
-        public static void HandleNewGame()
-        {
-            SearchPool.Clear();
-        }
 
 
         /// <summary>
@@ -72,6 +62,7 @@ namespace Lizard.Logic.Search
             }
 
             SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
@@ -87,17 +78,23 @@ namespace Lizard.Logic.Search
             bool doSkip = ss->Skip != Move.Null;
             bool improving = false;
 
-
+#if !DATAGEN
             if (thisThread.IsMain && ((++thisThread.CheckupCount) >= SearchThread.CheckupMax))
             {
                 thisThread.CheckupCount = 0;
                 //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (SearchPool.SharedInfo.TimeManager.CheckUp() ||
-                    SearchPool.GetNodeCount() >= SearchPool.SharedInfo.MaxNodes)
+                if (thisThread.AssocPool.SharedInfo.TimeManager.CheckUp() ||
+                    thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.MaxNodes)
                 {
-                    SearchPool.StopThreads = true;
+                    thisThread.AssocPool.StopThreads = true;
                 }
             }
+#else
+            if (isPV && (thisThread.Nodes >= thisThread.HardNodeLimit && thisThread.RootDepth > 2))
+            {
+                thisThread.AssocPool.StopThreads = true;
+            }
+#endif
 
             if (isPV)
             {
@@ -111,7 +108,7 @@ namespace Lizard.Logic.Search
                     return ScoreDraw;
                 }
 
-                if (SearchPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
+                if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
                 {
                     //  Return a draw score or static eval
                     return pos.Checked ? ScoreDraw : NNUE.GetEvaluation(pos);
@@ -132,7 +129,7 @@ namespace Lizard.Logic.Search
 
             ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
             if (!doSkip)
             {
                 ss->TTPV = isPV || (ss->TTHit && tte->PV);
@@ -191,7 +188,7 @@ namespace Lizard.Logic.Search
                 //  Get the static evaluation and store it in the empty TT slot.
                 eval = ss->StaticEval = NNUE.GetEvaluation(pos);
                 
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, ss->TTPV);
+                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, TT.Age, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
@@ -250,7 +247,10 @@ namespace Lizard.Logic.Search
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 pos.MakeNullMove();
+                prefetch(TT.GetCluster(pos.State->Hash));
+
                 score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
+
                 pos.UnmakeNullMove();
 
                 if (score >= beta)
@@ -304,7 +304,7 @@ namespace Lizard.Logic.Search
                         continue;
                     }
 
-                    prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+                    prefetch(TT.GetCluster(pos.HashAfter(m)));
 
                     bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
                     int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
@@ -342,6 +342,7 @@ namespace Lizard.Logic.Search
             int captureCount = 0;   //  Number of capture moves that have been played, to a max of 16.
 
             bool didSkip = false;
+            int lmpMoves = LMPTable[improving ? 1 : 0][depth];
 
             Move* captureMoves = stackalloc Move[16];
             Move* quietMoves = stackalloc Move[16];
@@ -389,13 +390,14 @@ namespace Lizard.Logic.Search
                 //  we have a non-mate score for at least one move,
                 //  and we have non-pawn material:
                 //  We can start skipping quiet moves if we have already seen enough of them at this depth.
-                if (!isRoot
+                if (ShallowPruning
+                    && !isRoot
                     && bestScore > ScoreMatedMax
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
                     if (skipQuiets == false)
                     {
-                        skipQuiets = legalMoves >= LMPTable[improving ? 1 : 0][depth];
+                        skipQuiets = legalMoves >= lmpMoves;
                     }
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
@@ -475,7 +477,7 @@ namespace Lizard.Logic.Search
                     }
                 }
 
-                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+                prefetch(TT.GetCluster(pos.HashAfter(m)));
 
                 int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
@@ -584,7 +586,7 @@ namespace Lizard.Logic.Search
                     thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
                 }
 
-                if (SearchPool.StopThreads)
+                if (thisThread.AssocPool.StopThreads)
                 {
                     //  Check if we should stop before modifying the root moves or TT.
                     return ScoreDraw;
@@ -702,7 +704,7 @@ namespace Lizard.Logic.Search
 
                 Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
 
-                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, ss->TTPV);
+                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, TT.Age, ss->TTPV);
             }
 
             return bestScore;
@@ -729,6 +731,7 @@ namespace Lizard.Logic.Search
             }
 
             SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
@@ -743,7 +746,7 @@ namespace Lizard.Logic.Search
             int startingAlpha = alpha;
 
             ss->InCheck = pos.Checked;
-            ss->TTHit = TranspositionTable.Probe(pos.Hash, out TTEntry* tte);
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
             int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
@@ -800,7 +803,7 @@ namespace Lizard.Logic.Search
                 if (eval >= beta)
                 {
                     if (!ss->TTHit)
-                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, false);
+                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, TT.Age, false);
 
                     if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
                     return eval;
@@ -890,7 +893,7 @@ namespace Lizard.Logic.Search
                     }
                 }
 
-                prefetch(TranspositionTable.GetCluster(pos.HashAfter(m)));
+                prefetch(TT.GetCluster(pos.HashAfter(m)));
 
                 if (ss->InCheck && !isCapture)
                 {
@@ -939,7 +942,7 @@ namespace Lizard.Logic.Search
 
             var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, TT.Age, ss->TTPV);
 
             return bestScore;
         }

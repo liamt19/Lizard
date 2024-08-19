@@ -45,7 +45,7 @@ namespace Lizard.Logic.Transposition
         public readonly sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
         public readonly bool IsEmpty => _Depth == 0;
 
-        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, bool isPV = false)
+        public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, byte age, bool isPV = false)
         {
             var k = (ushort)key;
             if (move != Move.Null || k != Key)
@@ -61,7 +61,7 @@ namespace Lizard.Logic.Transposition
                 _Score = score;
                 _StatEval = statEval;
                 _Depth = (byte)(depth - DepthOffset);
-                _AgePVType = (byte)(TranspositionTable.Age | ((isPV ? 1u : 0u) << 2) | (uint)nodeType);
+                _AgePVType = (byte)(age | ((isPV ? 1u : 0u) << 2) | (uint)nodeType);
 
                 Assert(score == ScoreNone || (score <= ScoreMate && score >= -ScoreMate),
                     $"WARN the score {score} is outside of bounds for normal TT entries!");
