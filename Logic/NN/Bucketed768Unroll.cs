@@ -26,11 +26,6 @@ namespace Lizard.Logic.NN
 
         private const int StopBefore = HiddenSize / N;
 
-        private const int AVX512_1024HL = 1024 / 32;
-        private const int AVX512_1536HL = 1536 / 32;
-
-        private const int AVX256_1024HL = 1024 / 16;
-        private const int AVX256_1536HL = 1536 / 16;
 
         public static int GetEvaluationUnrolled512(Position pos)
         {
@@ -69,6 +64,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_6, SIMDClass.MultiplyLow(c_us_6, VectorT.LoadAligned(ourWeights + 6 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_7, SIMDClass.MultiplyLow(c_us_7, VectorT.LoadAligned(ourWeights + 7 * N))));
 
+            if (StopBefore == 8) goto NSTM;
+
             var c_us_8 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 8 * N)));
             var c_us_9 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 9 * N)));
             var c_us_10 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 10 * N)));
@@ -85,6 +82,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_13, SIMDClass.MultiplyLow(c_us_13, VectorT.LoadAligned(ourWeights + 13 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_14, SIMDClass.MultiplyLow(c_us_14, VectorT.LoadAligned(ourWeights + 14 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_15, SIMDClass.MultiplyLow(c_us_15, VectorT.LoadAligned(ourWeights + 15 * N))));
+
+            if (StopBefore == 16) goto NSTM;
 
             var c_us_16 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 16 * N)));
             var c_us_17 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 17 * N)));
@@ -120,8 +119,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_30, SIMDClass.MultiplyLow(c_us_30, VectorT.LoadAligned(ourWeights + 30 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_31, SIMDClass.MultiplyLow(c_us_31, VectorT.LoadAligned(ourWeights + 31 * N))));
 
-            if (StopBefore == AVX512_1024HL)
-                goto NSTM;
+            if (StopBefore == 32) goto NSTM;
 
             var c_us_32 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 32 * N)));
             var c_us_33 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 33 * N)));
@@ -157,8 +155,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_46, SIMDClass.MultiplyLow(c_us_46, VectorT.LoadAligned(ourWeights + 46 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_47, SIMDClass.MultiplyLow(c_us_47, VectorT.LoadAligned(ourWeights + 47 * N))));
 
-            if (StopBefore == AVX512_1536HL)
-                goto NSTM;
+            if (StopBefore == 48) goto NSTM;
 
             var c_us_48 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 48 * N)));
             var c_us_49 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 49 * N)));
@@ -194,8 +191,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_62, SIMDClass.MultiplyLow(c_us_62, VectorT.LoadAligned(ourWeights + 62 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_63, SIMDClass.MultiplyLow(c_us_63, VectorT.LoadAligned(ourWeights + 63 * N))));
 
-            if (StopBefore == AVX256_1024HL)
-                goto NSTM;
+            if (StopBefore == 64) goto NSTM;
 
             var c_us_64 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 64 * N)));
             var c_us_65 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 65 * N)));
@@ -231,6 +227,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_78, SIMDClass.MultiplyLow(c_us_78, VectorT.LoadAligned(ourWeights + 78 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_79, SIMDClass.MultiplyLow(c_us_79, VectorT.LoadAligned(ourWeights + 79 * N))));
 
+            if (StopBefore == 80) goto NSTM;
+
             var c_us_80 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 80 * N)));
             var c_us_81 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 81 * N)));
             var c_us_82 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(ourData + 82 * N)));
@@ -265,6 +263,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_94, SIMDClass.MultiplyLow(c_us_94, VectorT.LoadAligned(ourWeights + 94 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_us_95, SIMDClass.MultiplyLow(c_us_95, VectorT.LoadAligned(ourWeights + 95 * N))));
 
+            if (StopBefore == 96) goto NSTM;
+
             #endregion
 
 
@@ -290,6 +290,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_6, SIMDClass.MultiplyLow(c_them_6, VectorT.LoadAligned(theirWeights + 6 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_7, SIMDClass.MultiplyLow(c_them_7, VectorT.LoadAligned(theirWeights + 7 * N))));
 
+            if (StopBefore == 8) goto END;
+
             var c_them_8 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 8 * N)));
             var c_them_9 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 9 * N)));
             var c_them_10 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 10 * N)));
@@ -306,6 +308,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_13, SIMDClass.MultiplyLow(c_them_13, VectorT.LoadAligned(theirWeights + 13 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_14, SIMDClass.MultiplyLow(c_them_14, VectorT.LoadAligned(theirWeights + 14 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_15, SIMDClass.MultiplyLow(c_them_15, VectorT.LoadAligned(theirWeights + 15 * N))));
+
+            if (StopBefore == 16) goto END;
 
             var c_them_16 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 16 * N)));
             var c_them_17 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 17 * N)));
@@ -341,8 +345,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_30, SIMDClass.MultiplyLow(c_them_30, VectorT.LoadAligned(theirWeights + 30 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_31, SIMDClass.MultiplyLow(c_them_31, VectorT.LoadAligned(theirWeights + 31 * N))));
 
-            if (StopBefore == AVX512_1024HL)
-                goto END;
+            if (StopBefore == 32) goto END;
 
             var c_them_32 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 32 * N)));
             var c_them_33 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 33 * N)));
@@ -378,8 +381,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_46, SIMDClass.MultiplyLow(c_them_46, VectorT.LoadAligned(theirWeights + 46 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_47, SIMDClass.MultiplyLow(c_them_47, VectorT.LoadAligned(theirWeights + 47 * N))));
 
-            if (StopBefore == AVX512_1536HL)
-                goto END;
+            if (StopBefore == 48) goto END;
 
             var c_them_48 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 48 * N)));
             var c_them_49 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 49 * N)));
@@ -415,8 +417,7 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_62, SIMDClass.MultiplyLow(c_them_62, VectorT.LoadAligned(theirWeights + 62 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_63, SIMDClass.MultiplyLow(c_them_63, VectorT.LoadAligned(theirWeights + 63 * N))));
 
-            if (StopBefore == AVX256_1024HL)
-                goto END;
+            if (StopBefore == 64) goto END;
 
             var c_them_64 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 64 * N)));
             var c_them_65 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 65 * N)));
@@ -452,6 +453,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_78, SIMDClass.MultiplyLow(c_them_78, VectorT.LoadAligned(theirWeights + 78 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_79, SIMDClass.MultiplyLow(c_them_79, VectorT.LoadAligned(theirWeights + 79 * N))));
 
+            if (StopBefore == 80) goto END;
+
             var c_them_80 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 80 * N)));
             var c_them_81 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 81 * N)));
             var c_them_82 = VectorT.Min(maxVec, VectorT.Max(zeroVec, VectorT.LoadAligned(theirData + 82 * N)));
@@ -485,6 +488,8 @@ namespace Lizard.Logic.NN
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_93, SIMDClass.MultiplyLow(c_them_93, VectorT.LoadAligned(theirWeights + 93 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_94, SIMDClass.MultiplyLow(c_them_94, VectorT.LoadAligned(theirWeights + 94 * N))));
             sumVec = VectorT.Add(sumVec, SIMDClass.MultiplyAddAdjacent(c_them_95, SIMDClass.MultiplyLow(c_them_95, VectorT.LoadAligned(theirWeights + 95 * N))));
+
+            if (StopBefore == 96) goto END;
 
             #endregion
 

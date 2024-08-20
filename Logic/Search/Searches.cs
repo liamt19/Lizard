@@ -5,7 +5,7 @@ using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
 using Lizard.Logic.Threads;
-
+using static Lizard.Logic.Search.History.CorrectionHistoryTable;
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
 using static Lizard.Logic.Transposition.TTEntry;
 
@@ -71,9 +71,11 @@ namespace Lizard.Logic.Search
             int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
-            short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
+
+            short rawEval = ScoreNone;
+            short eval = ss->StaticEval;
 
             bool doSkip = ss->Skip != Move.Null;
             bool improving = false;
@@ -169,13 +171,15 @@ namespace Lizard.Logic.Search
             {
                 //  Use the static evaluation from the previous call to Negamax,
                 //  which has the same position as this one.
-                eval = ss->StaticEval;
+                rawEval = eval = ss->StaticEval;
             }
             else if (ss->TTHit)
             {
                 //  Use the static evaluation from the TT if it had one, or get a new one.
                 //  We don't overwrite that TT's StatEval score yet though.
-                eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -186,9 +190,11 @@ namespace Lizard.Logic.Search
             else
             {
                 //  Get the static evaluation and store it in the empty TT slot.
-                eval = ss->StaticEval = NNUE.GetEvaluation(pos);
-                
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, eval, TT.Age, ss->TTPV);
+                rawEval = NNUE.GetEvaluation(pos);
+
+                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+
+                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
@@ -704,7 +710,16 @@ namespace Lizard.Logic.Search
 
                 Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
 
-                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, ss->StaticEval, TT.Age, ss->TTPV);
+                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
+
+                if (!ss->InCheck
+                    && (bestMove.IsNull() || !pos.IsCapture(bestMove))
+                    && !(bound == TTNodeType.Alpha && bestScore <= ss->StaticEval)
+                    && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
+                {
+                    var diff = bestScore - ss->StaticEval;
+                    UpdateCorrectionHistory(pos, diff, depth);
+                }
             }
 
             return bestScore;
@@ -741,6 +756,8 @@ namespace Lizard.Logic.Search
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
             short futility = -ScoreInfinite;
+
+            short rawEval = ScoreNone;
             short eval = ss->StaticEval;
 
             int startingAlpha = alpha;
@@ -785,7 +802,9 @@ namespace Lizard.Logic.Search
                 if (ss->TTHit)
                 {
                     //  If the TT hit didn't have a static eval, get one now.
-                    eval = ss->StaticEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                    rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+
+                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
@@ -797,13 +816,15 @@ namespace Lizard.Logic.Search
                 {
                     //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
                     //  use the previous static eval but negative. Otherwise get the eval as normal.
-                    eval = ss->StaticEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
+                    rawEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
+
+                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
                 }
 
                 if (eval >= beta)
                 {
                     if (!ss->TTHit)
-                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, eval, TT.Age, false);
+                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, rawEval, TT.Age, false);
 
                     if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
                     return eval;
@@ -942,7 +963,7 @@ namespace Lizard.Logic.Search
 
             var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, ss->StaticEval, TT.Age, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, rawEval, TT.Age, ss->TTPV);
 
             return bestScore;
         }
@@ -996,22 +1017,48 @@ namespace Lizard.Logic.Search
                     ss->KillerMove = bestMove;
                 }
 
+                //history.PawnHistory[pos, thisColor, thisPiece, moveTo] <<= quietMoveBonus;
                 history.MainHistory[thisColor, bestMove] <<= bestMoveBonus;
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
+                    thisPiece = bb.GetPieceAtIndex(m.From);
+
+                    //history.PawnHistory[pos, thisColor, thisPiece, m.To] <<= -quietMovePenalty;
                     history.MainHistory[thisColor, m] <<= -quietMovePenalty;
-                    UpdateContinuations(ss, thisColor, bb.GetPieceAtIndex(m.From), m.To, -quietMovePenalty);
+                    UpdateContinuations(ss, thisColor, thisPiece, m.To, -quietMovePenalty);
                 }
             }
 
             for (int i = 0; i < captureCount; i++)
             {
                 Move m = captureMoves[i];
-                history.CaptureHistory[thisColor, bb.GetPieceAtIndex(m.From), m.To, bb.GetPieceAtIndex(m.To)] <<= -quietMoveBonus;
+                thisPiece = bb.GetPieceAtIndex(m.From);
+                capturedPiece = bb.GetPieceAtIndex(m.To);
+
+                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= -quietMoveBonus;
             }
+        }
+
+
+        private static short AdjustEval(SearchThread thread, int us, short rawEval)
+        {
+            return (short)(rawEval + thread.History.CorrectionHistory[thread, us] / CorrectionGrain);
+        }
+
+
+        private static void UpdateCorrectionHistory(Position pos, int diff, int depth)
+        {
+            ref var entry = ref pos.Owner.History.CorrectionHistory[pos, pos.ToMove];
+            var scaledWeight = Math.Min((depth * depth) + 1, 128);
+
+            var oldFactor = entry * (CorrectionScale - scaledWeight);
+            var newFactor = diff * CorrectionGrain * scaledWeight;
+            var bonus = (oldFactor + newFactor) / CorrectionScale;
+
+            entry = (CorrectionStatEntry)Math.Clamp(bonus, -CorrectionMax, CorrectionMax);
         }
 
 

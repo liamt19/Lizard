@@ -47,7 +47,7 @@ namespace Lizard.Logic.Transposition
             BlackHash = rand.NextUlong();
         }
 
-        public static ulong GetHash(Position position)
+        public static ulong GetHash(Position position, ulong* pawnHash)
         {
             ref Bitboard bb = ref position.bb;
 
@@ -59,13 +59,25 @@ namespace Lizard.Logic.Transposition
             while (white != 0)
             {
                 int idx = poplsb(&white);
-                hash ^= ColorPieceSquareHashes[Color.White][bb.GetPieceAtIndex(idx)][idx];
+                int pt = bb.GetPieceAtIndex(idx);
+                hash ^= ColorPieceSquareHashes[Color.White][pt][idx];
+
+                if (pt == Pawn)
+                {
+                    *pawnHash ^= ColorPieceSquareHashes[Color.White][pt][idx];
+                }
             }
 
             while (black != 0)
             {
                 int idx = poplsb(&black);
-                hash ^= ColorPieceSquareHashes[Color.Black][bb.GetPieceAtIndex(idx)][idx];
+                int pt = bb.GetPieceAtIndex(idx);
+                hash ^= ColorPieceSquareHashes[Color.Black][pt][idx];
+
+                if (pt == Pawn)
+                {
+                    *pawnHash ^= ColorPieceSquareHashes[Color.Black][pt][idx];
+                }
             }
 
             if ((position.State->CastleStatus & CastlingStatus.WK) != 0)
