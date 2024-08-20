@@ -358,7 +358,7 @@ namespace Lizard.Logic.Util
         /// </summary>
         public static string IndexToString(int idx)
         {
-            return "" + GetFileChar(GetIndexFile(idx)) + (GetIndexRank(idx) + 1);
+            return $"{GetFileChar(GetIndexFile(idx))}{GetIndexRank(idx) + 1}";
         }
 
 
@@ -390,17 +390,19 @@ namespace Lizard.Logic.Util
                     if (pc == White)
                     {
                         char c = PieceToFENChar(pt);
-                        sb.Append(char.ToUpper(c) + " ");
+                        sb.Append(char.ToUpper(c));
                     }
                     else if (pc == Black)
                     {
                         char c = PieceToFENChar(pt);
-                        sb.Append(char.ToLower(c) + " ");
+                        sb.Append(char.ToLower(c));
                     }
                     else
                     {
-                        sb.Append(" " + " ");
+                        sb.Append(' ');
                     }
+
+                    sb.Append(' ');
                 }
                 sb.Remove(sb.Length - 1, 1);
                 sb.AppendLine("|");
@@ -539,14 +541,14 @@ namespace Lizard.Logic.Util
 
                 var score = FormatMoveScore(moveScore);
 
-                sb.Append("info depth " + depth);
-                sb.Append(" seldepth " + rm.Depth);
-                sb.Append(" multipv " + (i + 1));
-                sb.Append(" time " + time);
-                sb.Append(" score " + score);
-                sb.Append(" nodes " + nodes);
-                sb.Append(" nps " + nodesPerSec);
-                sb.Append(" hashfull " + thisThread.TT.GetHashFull());
+                sb.Append($"info depth {depth}");
+                sb.Append($" seldepth {rm.Depth}");
+                sb.Append($" multipv {i + 1}");
+                sb.Append($" time {time}");
+                sb.Append($" score {score}");
+                sb.Append($" nodes {nodes}");
+                sb.Append($" nps {nodesPerSec}");
+                sb.Append($" hashfull {thisThread.TT.GetHashFull()}");
 
                 sb.Append(" pv");
                 for (int j = 0; j < MaxPly; j++)
@@ -555,8 +557,8 @@ namespace Lizard.Logic.Util
                     {
                         break;
                     }
-
-                    sb.Append(" " + rm.PV[j].ToString(info.Position.IsChess960));
+                    sb.Append(' ');
+                    sb.Append(rm.PV[j].ToString(info.Position.IsChess960));
                 }
 
 
@@ -578,21 +580,14 @@ namespace Lizard.Logic.Util
             if (Evaluation.IsScoreMate(score))
             {
                 //  "mateIn" is returned in plies, but we want it in actual moves
-                if (score > 0)
-                {
-                    return "mate " + ((ScoreMate - score + 1) / 2);
-                }
-                else
-                {
-                    return "mate " + ((-ScoreMate - score) / 2);
-                }
 
-                //return "mate " + mateIn;
+                return (score > 0) ? $"mate {( ScoreMate - score + 1) / 2}" :
+                                     $"mate {(-ScoreMate - score    ) / 2}";
             }
             else
             {
                 const double NormalizeEvalFactor = 2.4;
-                return "cp " + (int)(score / NormalizeEvalFactor);
+                return $"cp {(int)(score / NormalizeEvalFactor)}";
             }
         }
 

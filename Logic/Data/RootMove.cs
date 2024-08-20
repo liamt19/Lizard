@@ -42,7 +42,7 @@ namespace Lizard.Logic.Data
 
         public override string ToString()
         {
-            return Move.ToString() + ": " + Score + ", Avg: " + AverageScore;
+            return $"{Move.ToString()}: {Score}, Avg: {AverageScore}";
         }
     }
 }

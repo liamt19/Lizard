@@ -117,7 +117,7 @@
 
             if (newSearchTime > PlayerTime)
             {
-                Log("WARN: MakeMoveTime tried setting time to " + newSearchTime + " > time left " + PlayerTime);
+                Log($"WARN: MakeMoveTime tried setting time to {newSearchTime} > time left {PlayerTime}");
                 newSearchTime = PlayerTime;
             }
 
@@ -126,7 +126,7 @@
             SoftTimeLimit = 0.65 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
 
             MaxSearchTime = newSearchTime;
-            Log("Setting search time to " + SoftTimeLimit + ", hard limit at " + newSearchTime);
+            Log($"Setting search time to {SoftTimeLimit}, hard limit at {newSearchTime}");
         }
     }
 }

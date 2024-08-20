@@ -9,11 +9,10 @@ namespace Lizard.Logic.Search.History
         private const int PawnHistoryElements = PAWN_HISTORY_SIZE * PieceNB * ColorNB * SquareNB;
 
         private const int PAWN_HISTORY_SIZE = 512;
-        private const int CORR_HISTORY_SIZE = 16384;
 
         public PawnHistoryTable()
         {
-            _History = (PawnStatEntry*)AlignedAllocZeroed((nuint)sizeof(PawnStatEntry) * PawnHistoryElements, AllocAlignment);
+            _History = AlignedAllocZeroed<PawnStatEntry>(PawnHistoryElements);
         }
 
         public PawnStatEntry this[int idx]
@@ -42,7 +41,6 @@ namespace Lizard.Logic.Search.History
         {
             const int xMax = PAWN_HISTORY_SIZE;
             const int yMax = (PieceNB * ColorNB);
-            const int zMax = SquareNB;
 
             int x = (int)((pos.PawnHash) & (PAWN_HISTORY_SIZE - 1));
             int y = pt + ((PieceNB) * pc);

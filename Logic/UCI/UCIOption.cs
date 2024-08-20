@@ -116,7 +116,7 @@ namespace Lizard.Logic.UCI
 
         public override string ToString()
         {
-            return "option name " + Name + " type " + Type + " default " + DefaultValue + (FieldHandle.FieldType == typeof(int) ? (" min " + MinValue + " max " + MaxValue) : string.Empty);
+            return $"option name {Name} type {Type} default {DefaultValue}{(FieldHandle.FieldType == typeof(int) ? ($" min {MinValue} max {MaxValue}") : string.Empty)}";
         }
     }
 }

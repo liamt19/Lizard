@@ -715,7 +715,7 @@ namespace Lizard.Logic.Search
                 if (!ss->InCheck
                     && (bestMove.IsNull() || !pos.IsCapture(bestMove))
                     && !(bound == TTNodeType.Alpha && bestScore <= ss->StaticEval)
-                    && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
+                    && !(bound == TTNodeType.Beta  && bestScore >= ss->StaticEval))
                 {
                     var diff = bestScore - ss->StaticEval;
                     UpdateCorrectionHistory(pos, diff, depth);

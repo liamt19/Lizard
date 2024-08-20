@@ -103,7 +103,7 @@ namespace Lizard.Logic.Transposition
 
         public override string ToString()
         {
-            return NodeType.ToString() + ", Depth " + Depth + ", Age: " + Age + ", BestMove " + BestMove.ToString() + ", Score " + Score + ", StatEval: " + StatEval + ", Key " + Key;
+            return $"{NodeType}, Depth {Depth}, Age: {Age}, BestMove {BestMove.ToString()}, Score {Score}, StatEval: {StatEval}, Key {Key}";
         }
     }
 }

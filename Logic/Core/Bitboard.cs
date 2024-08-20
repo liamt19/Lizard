@@ -37,9 +37,7 @@ namespace Lizard.Logic.Core
 
         public string SquareToString(int idx)
         {
-            return ColorToString(GetColorAtIndex(idx)) + " " +
-                   PieceToString(PieceTypes[idx]) + " on " +
-                   IndexToString(idx);
+            return $"{ColorToString(GetColorAtIndex(idx))} {PieceToString(PieceTypes[idx])} on {IndexToString(idx)}";
         }
 
         /// <summary>

@@ -25,7 +25,7 @@
 
         public override string ToString()
         {
-            return Move.ToString() + ", " + Score;
+            return $"{Move.ToString()}, {Score}";
         }
 
         public static bool operator <(ScoredMove a, ScoredMove b) => a.Score < b.Score;

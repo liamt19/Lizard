@@ -61,7 +61,7 @@ namespace Lizard.Logic.NN
             if (File.Exists(networkToLoad))
             {
                 netFile = File.OpenRead(networkToLoad);
-                Log("Using NNUE with 768 network " + networkToLoad);
+                Log($"Using NNUE with 768 network {networkToLoad}");
             }
             else
             {
@@ -69,7 +69,7 @@ namespace Lizard.Logic.NN
 
                 //  Just load the default network
                 networkToLoad = NetworkName;
-                Log("Using NNUE with 768 network " + NetworkName);
+                Log($"Using NNUE with 768 network {networkToLoad}");
 
                 string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
 
@@ -170,7 +170,7 @@ namespace Lizard.Logic.NN
                 avg += ptr[i];
             }
 
-            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+            Log($"{layerName}\tmin: {min}, max: {max}, avg: {(double)avg / n}");
         }
 
 
@@ -191,7 +191,7 @@ namespace Lizard.Logic.NN
 
             int baseEval = GetEvaluation(pos);
 
-            Log("\nNNUE evaluation: " + baseEval + "\n");
+            Log($"\nNNUE evaluation: {baseEval}\n");
 
             ref Accumulator Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
@@ -245,7 +245,7 @@ namespace Lizard.Logic.NN
             Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: GlobalSearchPool.MainThread);
             int baseEval = GetEvaluation(pos);
 
-            Log("\nNNUE evaluation: " + baseEval + "\n");
+            Log($"\nNNUE evaluation: {baseEval}\n");
 
             ref Bitboard bb = ref pos.bb;
 

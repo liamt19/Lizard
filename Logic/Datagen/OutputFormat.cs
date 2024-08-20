@@ -14,8 +14,8 @@
             return gr switch
             {
                 GameResult.WhiteWin => "1.0",
-                GameResult.Draw => "0.5",
                 GameResult.BlackWin => "0.0",
+                _                   => "0.5",
             };
         }
     }

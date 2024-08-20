@@ -29,12 +29,12 @@ namespace Lizard.Logic.Util
                 return;
             }
 
-            Log("An UnhandledException occurred!\r\n" + e.ToString());
+            Log($"An UnhandledException occurred!\r\n{e}");
             using (FileStream fs = new FileStream(@".\crashlog.txt", FileMode.Create, FileAccess.Write, FileShare.Read))
             {
                 using StreamWriter sw = new StreamWriter(fs);
 
-                sw.WriteLine("An UnhandledException occurred!\r\n" + e.ToString());
+                sw.WriteLine($"An UnhandledException occurred!\r\n{e}");
 
                 sw.Flush();
             }
@@ -48,7 +48,7 @@ namespace Lizard.Logic.Util
                 //  newlines in the strings that it reads.
                 foreach (string s in e.ToString().Split(Environment.NewLine))
                 {
-                    UCIClient.SendString("info string " + s);
+                    UCIClient.SendString($"info string {s}");
                     Thread.Sleep(10);
                 }
 

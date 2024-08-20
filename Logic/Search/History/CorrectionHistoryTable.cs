@@ -10,18 +10,13 @@ namespace Lizard.Logic.Search.History
         public const int CorrectionHistoryClamp = CorrectionMax;
         public const int CorrectionHistoryElements = CORR_HISTORY_SIZE * ColorNB;
 
-        private const int PAWN_HISTORY_SIZE = 512;
         private const int CORR_HISTORY_SIZE = 16384;
 
         public CorrectionHistoryTable()
         {
-            _History = (CorrectionStatEntry*)AlignedAllocZeroed((nuint)sizeof(CorrectionStatEntry) * CorrectionHistoryElements, AllocAlignment);
+            _History = AlignedAllocZeroed<CorrectionStatEntry>(CorrectionHistoryElements);
         }
 
-        public ref CorrectionStatEntry this[int idx]
-        {
-            get => ref _History[idx];
-        }
 
         public ref CorrectionStatEntry this[Position pos, int pc]
         {

@@ -187,10 +187,10 @@ namespace Lizard.Logic.Threads
                 NodeTable[sq] = new ulong[SquareNB];
             }
 
-            _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
+            _SysThread.Name = $"SearchThread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
             if (IsMain)
             {
-                _SysThread.Name = "(MAIN)Thread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
+                _SysThread.Name = $"(MAIN)Thread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
             }
 
             IdleLoop();
@@ -221,7 +221,7 @@ namespace Lizard.Logic.Threads
             if (_Mutex == null)
             {
                 //  Asserting that _Mutex has been initialized properly
-                throw new Exception("Thread " + Thread.CurrentThread.Name + " tried accessing the Mutex of " + this.ToString() + ", but Mutex was null!");
+                throw new Exception($"Thread {Thread.CurrentThread.Name} tried accessing the Mutex of {this}, but Mutex was null!");
             }
 
             Monitor.Enter(_Mutex);
@@ -599,7 +599,7 @@ namespace Lizard.Logic.Threads
 
         public override string ToString()
         {
-            return "[" + (_SysThread != null ? _SysThread.Name : "NULL?") + " (caller ID " + Environment.CurrentManagedThreadId + ")]";
+            return $"[{(_SysThread != null ? _SysThread.Name : "NULL?")} (caller ID {Environment.CurrentManagedThreadId})]";
         }
     }
 }

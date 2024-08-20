@@ -158,37 +158,12 @@ namespace Lizard.Logic.Core
                     acc.Dispose();
                 }
 
-                NativeMemory.AlignedFree((void*)_accumulatorBlock);
+                NativeMemory.AlignedFree(_accumulatorBlock);
             }
 
-            NativeMemory.AlignedFree((void*)StartingState);
+            NativeMemory.AlignedFree(StartingState);
         }
 
-        /// <summary>
-        /// Generates the legal moves in the current position and makes the move that corresponds to the <paramref name="moveStr"/> if one exists.
-        /// </summary>
-        /// <param name="moveStr">The Algebraic notation for a move i.e. Nxd4+, or the Smith notation i.e. e2e4</param>
-        /// <returns>True if <paramref name="moveStr"/> was a recognized and legal move.</returns>
-        public bool TryMakeMove(string moveStr)
-        {
-            Span<ScoredMove> list = stackalloc ScoredMove[MoveListSize];
-            int size = GenLegal(list);
-            for (int i = 0; i < size; i++)
-            {
-                Move m = list[i].Move;
-                if (m.ToString(this).ToLower().Equals(moveStr.ToLower()) || m.ToString(IsChess960).ToLower().Equals(moveStr.ToLower()))
-                {
-                    MakeMove(m);
-                    return true;
-                }
-                if (i == size - 1)
-                {
-                    Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
-                }
-            }
-            return false;
-        }
 
         /// <summary>
         /// Generates the legal moves in the current position and makes the move that corresponds to the <paramref name="moveStr"/> if one exists.
@@ -210,8 +185,8 @@ namespace Lizard.Logic.Core
                 }
             }
 
-            Log("No move '" + moveStr + "' found, try one of the following: ");
-            Log(Stringify(list, this) + "\r\n" + Stringify(list));
+            Log($"No move '{moveStr}' found, try one of the following: ");
+            Log($"{Stringify(list, this)}\r\n{Stringify(list)}");
             move = Move.Null;
             return false;
         }
@@ -952,7 +927,7 @@ namespace Lizard.Logic.Core
             return n;
         }
 
-        private Stopwatch PerftTimer = new Stopwatch();
+        private readonly Stopwatch PerftTimer = new Stopwatch();
         private const int PerftParallelMinDepth = 6;
         [SkipLocalsInit]
         public ulong PerftParallel(int depth, bool isRoot = false)
@@ -970,9 +945,7 @@ namespace Lizard.Logic.Core
 
             string rootFEN = GetFEN();
 
-            ParallelOptions opts = new ParallelOptions();
-            opts.MaxDegreeOfParallelism = MoveListSize;
-            Parallel.For(0u, size, opts, i =>
+            Parallel.For(0u, size, new ParallelOptions() { MaxDegreeOfParallelism = MoveListSize}, i =>
             {
                 Position threadPosition = new Position(rootFEN, false, owner: GlobalSearchPool.MainThread);
 
@@ -980,7 +953,7 @@ namespace Lizard.Logic.Core
                 ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
                 if (isRoot)
                 {
-                    Log(list[i].Move.ToString() + ": " + result);
+                    Log($"{list[i].Move.ToString()}: {result}");
                 }
                 n += result;
             });
@@ -988,7 +961,7 @@ namespace Lizard.Logic.Core
             if (isRoot)
             {
                 PerftTimer.Stop();
-                Log("\r\nNodes searched:  " + n + " in " + PerftTimer.Elapsed.TotalSeconds + " s (" + ((int)(n / PerftTimer.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+                Log($"\r\nNodes searched: {n} in {PerftTimer.Elapsed.TotalSeconds} s ({(int)(n / PerftTimer.Elapsed.TotalSeconds):N0} nps)\r\n");
                 PerftTimer.Reset();
             }
 
@@ -1024,7 +997,6 @@ namespace Lizard.Logic.Core
 
 
 
-        private static readonly char[] FENSeparators = ['/', ' '];
 
         /// <summary>
         /// Updates the position's Bitboard, ToMove, castling status, en passant target, and half/full move clock.
@@ -1034,128 +1006,83 @@ namespace Lizard.Logic.Core
         {
             try
             {
-                string[] splits = fen.Split(FENSeparators);
+                string[] parts = fen.Split(' ');
 
                 bb.Reset();
                 FullMoves = 1;
 
                 State = StartingState;
                 NativeMemory.Clear(State, StateInfo.StateCopySize);
-                State->CastleStatus = CastlingStatus.None;
-                State->HalfmoveClock = 0;
-                State->PliesFromNull = 0;
-
                 GamePly = 0;
 
-                for (int i = 0; i < splits.Length; i++)
+                var pieces = parts[0];
+                string[] ranks = pieces.Split('/');
+                for (int y = 0; y <= 7; y++)
                 {
-                    //  it's a row on the board
-                    if (i <= 7)
+                    int pieceX = 0;
+                    for (int x = 0; x < ranks[y].Length; x++)
                     {
-                        int pieceX = 0;
-                        for (int x = 0; x < splits[i].Length; x++)
+                        string thisRank = ranks[y];
+                        if (char.IsLetter(thisRank[x]))
                         {
-                            if (char.IsLetter(splits[i][x]))
-                            {
-                                int idx = CoordToIndex(pieceX, 7 - i);
-                                int pc = char.IsUpper(splits[i][x]) ? White : Black;
-                                int pt = FENToPiece(splits[i][x]);
+                            int idx = CoordToIndex(pieceX, 7 - y);
+                            int pc = char.IsUpper(thisRank[x]) ? White : Black;
+                            int pt = FENToPiece(thisRank[x]);
 
-                                bb.AddPiece(idx, pc, pt);
+                            bb.AddPiece(idx, pc, pt);
 
-                                pieceX++;
-                            }
-                            else if (char.IsDigit(splits[i][x]))
-                            {
-                                int add = int.Parse(splits[i][x].ToString());
-                                pieceX += add;
-                            }
-                            else
-                            {
-                                Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
-                            }
+                            pieceX++;
                         }
-
-                        if (i == 7 && popcount(bb.Pieces[King]) != 2)
+                        else if (char.IsDigit(thisRank[x]))
                         {
-                            Log($"FEN {fen} has {popcount(bb.Pieces[King])} kings!");
+                            pieceX += int.Parse(thisRank[x].ToString());
                         }
-                    }
-                    //  who moves next
-                    else if (i == 8)
-                    {
-                        ToMove = splits[i].Equals("w") ? Color.White : Color.Black;
-                    }
-                    //  castling availability
-                    else if (i == 9)
-                    {
-                        State->CastleStatus = CastlingStatus.None;
-
-                        foreach (char ch in splits[i])
+                        else
                         {
-                            int rsq = SquareNB;
-                            int color = char.IsUpper(ch) ? White : Black;
-                            char upper = char.ToUpper(ch);
-
-                            if (upper == 'K')
-                            {
-                                for (rsq = (H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; --rsq) { }
-                            }
-                            else if (upper == 'Q')
-                            {
-                                for (rsq = (A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; ++rsq) { }
-                            }
-                            else if (upper >= 'A' && upper <= 'H')
-                            {
-                                IsChess960 = true;
-
-                                rsq = CoordToIndex((int)upper - 'A', (0 ^ (color * 7)));
-                            }
-                            else
-                            {
-                                continue;
-                            }
-
-                            SetCastlingStatus(color, rsq);
-                        }
-                    }
-                    //  en passant target or last double pawn move
-                    else if (i == 10)
-                    {
-                        if (!splits[i].Contains('-'))
-                        {
-                            //  White moved a pawn last
-                            if (splits[i][1].Equals('3'))
-                            {
-                                State->EPSquare = StringToIndex(splits[i]);
-                            }
-                            else if (splits[i][1].Equals('6'))
-                            {
-                                State->EPSquare = StringToIndex(splits[i]);
-                            }
-                        }
-                    }
-                    //  halfmove number
-                    else if (i == 11)
-                    {
-                        if (int.TryParse(splits[i], out int halfMoves))
-                        {
-                            State->HalfmoveClock = halfMoves;
-                        }
-                    }
-                    //  fullmove number
-                    else if (i == 12)
-                    {
-                        if (int.TryParse(splits[i], out int fullMoves))
-                        {
-                            FullMoves = fullMoves;
+                            Log($"ERROR x for y = {y} was '{thisRank[x]}' and didn't get parsed");
                         }
                     }
                 }
+
+                Assert(popcount(bb.Pieces[King]) == 2, $"FEN {fen} has {popcount(bb.Pieces[King])} kings!");
+
+                ToMove = parts[1].Equals("w") ? Color.White : Color.Black;
+
+                State->CastleStatus = CastlingStatus.None;
+                foreach (char ch in parts[2])
+                {
+                    int rsq = SquareNB;
+                    int color  = char.IsUpper(ch) ? White : Black;
+                    char upper = char.ToUpper(ch);
+
+                    if (upper == 'K')
+                    {
+                        for (rsq = (H1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; --rsq) { }
+                    }
+                    else if (upper == 'Q')
+                    {
+                        for (rsq = (A1 ^ (56 * color)); bb.GetPieceAtIndex(rsq) != Rook; ++rsq) { }
+                    }
+                    else if (upper >= 'A' && upper <= 'H')
+                    {
+                        IsChess960 = true;
+
+                        rsq = CoordToIndex((int)upper - 'A', (0 ^ (color * 7)));
+                    }
+                    else
+                        continue;
+
+                    SetCastlingStatus(color, rsq);
+                }
+
+                State->EPSquare = (parts[3].Contains('3') || parts[3].Contains('6')) ? StringToIndex(parts[3]) : EPNone;
+
+                if (int.TryParse(parts[4], out int halfMoves)) State->HalfmoveClock = halfMoves;
+                if (int.TryParse(parts[5], out int fullMoves)) FullMoves = fullMoves;
             }
             catch (Exception ex)
             {
-                Log("Failed parsing '" + fen + "': ");
+                Log($"Failed parsing '{fen}': ");
                 Log(ex.ToString());
 
                 return false;
@@ -1207,9 +1134,7 @@ namespace Lizard.Logic.Core
                         continue;
                     }
                     else
-                    {
                         i++;
-                    }
 
                     if (x == 7)
                         fen.Append(i);
@@ -1219,42 +1144,27 @@ namespace Lizard.Logic.Core
                     fen.Append('/');
             }
 
-            fen.Append(ToMove == Color.White ? " w " : " b ");
+            fen.Append($" {char.ToLower(ColorToString(ToMove)[0])} ");
 
             if (State->CastleStatus != CastlingStatus.None)
             {
                 if (State->CastleStatus.HasFlag(CastlingStatus.WK))
-                {
                     fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WK])) : 'K');
-                }
+
                 if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
-                {
                     fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WQ])) : 'Q');
-                }
+
                 if (State->CastleStatus.HasFlag(CastlingStatus.BK))
-                {
                     fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BK])) : 'k');
-                }
+
                 if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
-                {
                     fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BQ])) : 'q');
-                }
             }
             else
-            {
                 fen.Append('-');
-            }
 
-            if (State->EPSquare != EPNone)
-            {
-                fen.Append(" " + IndexToString(State->EPSquare));
-            }
-            else
-            {
-                fen.Append(" -");
-            }
-
-            fen.Append(" " + State->HalfmoveClock + " " + FullMoves);
+            fen.Append($" {(State->EPSquare != EPNone ? IndexToString(State->EPSquare) : '-')}");
+            fen.Append($" {State->HalfmoveClock} {FullMoves}");
 
             return fen.ToString();
         }

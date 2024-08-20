@@ -11,9 +11,9 @@ namespace Lizard.Logic.UCI
     public unsafe class UCIClient
     {
 
-        private Position pos;
+        private readonly Position pos;
         private SearchInformation info;
-        private ThreadSetup setup;
+        private readonly ThreadSetup setup;
 
         private static readonly string LogFileName = $".\\ucilog_{ProcessID}.txt";
 
@@ -46,7 +46,7 @@ namespace Lizard.Logic.UCI
         public static void SendString(string s)
         {
             Console.WriteLine(s);
-            LogString("[OUT]: " + s);
+            LogString($"[OUT]: {s}");
         }
 
         /// <summary>
@@ -81,7 +81,7 @@ namespace Lizard.Logic.UCI
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("ERROR LogString('" + s + "') failed!");
+                    Console.WriteLine($"ERROR LogString('{s}') failed!");
                     Console.WriteLine(e.ToString());
                 }
             }
@@ -118,9 +118,9 @@ namespace Lizard.Logic.UCI
             Active = true;
 
 #if DEV
-            SendString("id name Lizard " + EngineBuildVersion + " DEV");
+            SendString($"id name Lizard {EngineBuildVersion} DEV");
 #else
-            SendString("id name Lizard " + EngineBuildVersion);
+            SendString($"id name Lizard {EngineBuildVersion}");
 #endif
             SendString("id author Liam McGuire");
             SendString("info string Using Bucketed768 evaluation.");
@@ -131,7 +131,7 @@ namespace Lizard.Logic.UCI
             }
             SendString("uciok");
 
-            LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
+            LogString($"[INFO]: Compiler info -> '{GetCompilerInfo()}'");
 
             //  In case a "ucinewgame" isn't sent for the first game
             HandleNewGame(pos.Owner.AssocPool);
@@ -149,7 +149,7 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 0);
+                    LogString("[INFO]: Exiting with code 0");
                     Environment.Exit(0);
                 }
                 else if (cmd == "isready")
@@ -188,17 +188,17 @@ namespace Lizard.Logic.UCI
                                 }
                                 else
                                 {
-                                    LogString("[ERROR]: Failed doing extra moves! '" + param[i] + "' didn't work with FEN " + info.Position.GetFEN());
+                                    LogString($"[ERROR]: Failed doing extra moves! '{param[i]}' didn't work with FEN {info.Position.GetFEN()}");
                                 }
 
                                 setup.SetupMoves.Add(m);
                             }
 
-                            LogString("[INFO]: New FEN is " + info.Position.GetFEN());
+                            LogString($"[INFO]: New FEN is {info.Position.GetFEN()}");
                         }
                         else
                         {
-                            LogString("[INFO]: Set position to " + InitialFEN);
+                            LogString($"[INFO]: Set position to {InitialFEN}");
                         }
                     }
                     else
@@ -220,19 +220,19 @@ namespace Lizard.Logic.UCI
                                     }
                                     else
                                     {
-                                        LogString("[ERROR]: Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
+                                        LogString($"[ERROR]: Failed doing extra moves! '{param[j]}' didn't work with FEN {info.Position.GetFEN()}");
                                     }
 
                                     setup.SetupMoves.Add(m);
                                 }
 
-                                LogString("[INFO]: New FEN is " + info.Position.GetFEN());
+                                LogString($"[INFO]: New FEN is {info.Position.GetFEN()}");
                                 hasExtraMoves = true;
                                 break;
                             }
                             else
                             {
-                                fen += " " + param[i];
+                                fen += $" {param[i]}";
                             }
 
                         }
@@ -241,7 +241,7 @@ namespace Lizard.Logic.UCI
 
                         if (!hasExtraMoves)
                         {
-                            LogString("[INFO]: Set position to " + fen);
+                            LogString($"[INFO]: Set position to {fen}");
                             info.Position.LoadFromFEN(fen);
                         }
 
@@ -278,14 +278,14 @@ namespace Lizard.Logic.UCI
                             {
                                 for (int j = i + 1; j < param.Length; j++)
                                 {
-                                    optValue += param[j] + " ";
+                                    optValue += $"{param[j]} ";
                                 }
                                 optValue = optValue.Trim();
                                 break;
                             }
                             else
                             {
-                                optName += " " + param[i];
+                                optName += $" {param[i]}";
                             }
                         }
 
@@ -294,7 +294,7 @@ namespace Lizard.Logic.UCI
                     }
                     catch (Exception e)
                     {
-                        LogString("[ERROR]: Failed parsing setoption command, got '" + param.ToString() + "'");
+                        LogString($"[ERROR]: Failed parsing setoption command, got '{param}'");
                         LogString(e.ToString());
                     }
 
@@ -356,7 +356,7 @@ namespace Lizard.Logic.UCI
                 if (param[i] == "movetime")
                 {
                     info.SetMoveTime(int.Parse(param[i + 1]));
-                    LogString("[INFO]: MaxSearchTime is set to " + tm.MaxSearchTime);
+                    LogString($"[INFO]: MaxSearchTime is set to {tm.MaxSearchTime}");
 
                     isMoveTimeCommand = true;
                 }
@@ -369,7 +369,7 @@ namespace Lizard.Logic.UCI
                     if (int.TryParse(param[i + 1], out int reqDepth))
                     {
                         info.MaxDepth = reqDepth;
-                        LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
+                        LogString($"[INFO]: MaxDepth is set to {info.MaxDepth}");
                     }
 
                 }
@@ -382,7 +382,7 @@ namespace Lizard.Logic.UCI
                     if (ulong.TryParse(param[i + 1], out ulong reqNodes))
                     {
                         info.MaxNodes = reqNodes;
-                        LogString("[INFO]: MaxNodes is set to " + info.MaxNodes);
+                        LogString($"[INFO]: MaxNodes is set to {info.MaxNodes}");
                     }
                 }
                 else if (param[i] == "infinite")
@@ -497,8 +497,7 @@ namespace Lizard.Logic.UCI
                             }
                             else
                             {
-                                LogString("[ERROR]: setoption commands for booleans need to have a \"value\" of 'True/False' or '1/0', " +
-                                    "and '" + optValue + "' wasn't one of those!");
+                                LogString($"[ERROR]: setoption commands for booleans need to have a \"value\" of 'True/False' or '1/0', and '{optValue}' wasn't one of those!");
                                 return;
                             }
 
@@ -513,7 +512,7 @@ namespace Lizard.Logic.UCI
                                     if (opt.Name == nameof(Threads))
                                     {
                                         GlobalSearchPool.Resize(newValue);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + GlobalSearchPool.ThreadCount);
+                                        LogString($"Changed '{key}' from {prevValue} to {GlobalSearchPool.ThreadCount}");
                                     }
                                     else
                                     {
@@ -524,20 +523,18 @@ namespace Lizard.Logic.UCI
                                             GlobalSearchPool.TTable.Initialize(Hash);
                                         }
 
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
+                                        LogString($"Changed '{key}' from {prevValue} to {opt.FieldHandle.GetValue(null)}");
                                     }
                                 }
                                 else
                                 {
-                                    LogString("[ERROR]: '" + key + "' needs a value between [" + opt.MinValue + ", " + opt.MaxValue + "], " +
-                                        "and '" + optValue + "' isn't in that range!");
+                                    LogString($"[ERROR]: '{key}' needs a value between [{opt.MinValue}, {opt.MaxValue}], and '{optValue}' isn't in that range!");
                                     return;
                                 }
                             }
                             else
                             {
-                                LogString("[ERROR]: setoption commands for integers need to have a numerical value, " +
-                                    "and '" + optValue + "' isn't!");
+                                LogString($"[ERROR]: setoption commands for integers need to have a numerical value, and '{optValue}' isn't!");
                                 return;
                             }
 
@@ -545,7 +542,7 @@ namespace Lizard.Logic.UCI
                     }
                     catch (Exception e)
                     {
-                        LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
+                        LogString($"[ERROR]: Failed handling setoption command for '{optName}' -> {optValue}");
                         LogString(e.ToString());
                     }
 
@@ -553,7 +550,7 @@ namespace Lizard.Logic.UCI
                 }
             }
 
-            LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
+            LogString($"[WARN]: Got setoption for '{optName}' but that isn't an option!");
         }
 
         public static void ProcessUCIOptions()

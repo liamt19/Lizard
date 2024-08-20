@@ -103,13 +103,12 @@ namespace Lizard.Logic.Search
         private void PrintBestMove(ref SearchInformation info)
         {
             Move bestThreadMove = info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move;
-            Log("bestmove " + bestThreadMove.ToString());
+            Log($"bestmove {bestThreadMove.ToString()}");
         }
 
         public override string ToString()
         {
-            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime());
+            return $"MaxDepth: {MaxDepth}, MaxNodes: {MaxNodes}, MaxSearchTime: {MaxSearchTime}, SearchTime: {(TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime())}";
         }
     }
 }

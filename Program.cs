@@ -82,7 +82,7 @@ namespace Lizard
 
         private static void DoInputLoop()
         {
-            Log("Lizard version " + EngineBuildVersion + "\r\n");
+            Log($"Lizard version {EngineBuildVersion}\r\n");
 
             ThreadSetup setup = new ThreadSetup();
             while (true)
@@ -120,7 +120,10 @@ namespace Lizard
                 {
                     string move = input.Substring(5).ToLower();
 
-                    p.TryMakeMove(move);
+                    if (p.TryFindMove(move, out Move toMake))
+                    {
+                        p.MakeMove(toMake);
+                    }
 
                     Log(p.ToString());
                 }
@@ -188,12 +191,12 @@ namespace Lizard
                     {
                         if (p.LoadFromFEN(input.Trim()))
                         {
-                            Log("Loaded fen '" + p.GetFEN() + "'");
+                            Log($"Loaded fen '{p.GetFEN()}'");
                         }
                     }
                     else
                     {
-                        Log("Unknown token '" + input + "'");
+                        Log($"Unknown token '{input}'");
                     }
                 }
             }
@@ -217,10 +220,10 @@ namespace Lizard
                 sw.Stop();
 
                 var time = sw.Elapsed.TotalSeconds;
-                Log("Depth " + d + ": " +
-                    "\tnodes " + result.ToString().PadLeft(12) +
-                    "\ttime " + time.ToString("N6").PadLeft(12) +
-                    "\tnps " + ((int)(result / time)).ToString("N0").PadLeft(14));
+                Log($"Depth {d}: " +
+                    $"\tnodes {result,12}" +
+                    $"\ttime {time,12:N6}" +
+                    $"\tnps {(int)(result / time),14:N0}");
 
             }
         }
@@ -247,12 +250,12 @@ namespace Lizard
                 pos.MakeMove(m);
                 ulong result = depth > 1 ? pos.Perft(depth - 1) : 1;
                 pos.UnmakeMove(m);
-                Log(m.ToString() + ": " + result);
+                Log($"{m.ToString()}: {result}");
                 total += result;
             }
             sw.Stop();
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+            Log($"\r\nNodes searched:  {total} in {sw.Elapsed.TotalSeconds} s ({(int)(total / sw.Elapsed.TotalSeconds):N0} nps)\r\n");
         }
 
         private static void DoPerftNN(int depth)
@@ -270,13 +273,13 @@ namespace Lizard
                 p.MakeMove(m);
                 long result = depth > 1 ? p.PerftNN(depth - 1) : 1;
                 p.UnmakeMove(m);
-                Log(m.ToString() + ": " + result);
+                Log($"{m.ToString()}: {result}");
             }
             sw.Stop();
 
             ulong[] shannon = { 0, 20, 400, 8902, 197281, 4865609, 119060324, 3195901860, 84998978956, 2439530234167 };
             ulong nodeCount = depth < shannon.Length ? shannon[depth] : 0;
-            Log("\r\nRefreshed " + nodeCount + " times in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(nodeCount / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+            Log($"\r\nRefreshed {nodeCount} times in {sw.Elapsed.TotalSeconds} s ({(int)(nodeCount / sw.Elapsed.TotalSeconds):N0} nps)\r\n");
         }
 
         private static void PrintSearchInfo()
@@ -292,8 +295,8 @@ namespace Lizard
         /// </summary>
         private static void HandleEvalAllCommand()
         {
-            Log("Static evaluation (" + ColorToString(p.ToMove) + "'s perspective): " + NNUE.GetEvaluation(p));
-            Log("\r\nMove evaluations (" + ColorToString(p.ToMove) + "'s perspective):");
+            Log($"Static evaluation ({ColorToString(p.ToMove)}'s perspective): {NNUE.GetEvaluation(p)}");
+            Log($"\r\nMove evaluations ({ColorToString(p.ToMove)}'s perspective):");
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = p.GenLegal(list);
@@ -314,7 +317,7 @@ namespace Lizard
             var sorted = scoreList.OrderBy(x => x.eval).ToList();
             for (int i = 0; i < sorted.Count; i++)
             {
-                Log(sorted[i].mv.ToString(p) + ": " + (sorted[i].eval * -1));
+                Log($"{sorted[i].mv.ToString(p)}: {sorted[i].eval * -1}");
             }
         }
 
@@ -323,11 +326,11 @@ namespace Lizard
         {
             ScoredMove* pseudo = stackalloc ScoredMove[MoveListSize];
             int pseudoCnt = p.GenPseudoLegal(pseudo);
-            Log("Pseudo: [" + Stringify(pseudo, p, pseudoCnt) + "]");
+            Log($"Pseudo: [{Stringify(pseudo, p, pseudoCnt)}]");
 
             ScoredMove* legal = stackalloc ScoredMove[MoveListSize];
             int legalCnt = p.GenLegal(legal);
-            Log("Legal: [" + Stringify(legal, p, legalCnt) + "]");
+            Log($"Legal: [{Stringify(legal, p, legalCnt)}]");
         }
 
 
@@ -478,20 +481,20 @@ namespace Lizard
             {
                 try
                 {
-                    fen = input.Substring(input.IndexOf("fen") + 4);
+                    fen = input[(input.IndexOf("fen") + 4)..];
 
                     //  Sanitize the input a bit to prevent crashes.
                     //  I'm only doing this here (rather than in LoadFromFEN) because I need LoadFromFEN to be as fast as possible,
                     //  and the UCI should never give a poorly formatted FEN anyways.
                     if (fen.Where(x => x == '/').Count() != 7)
                     {
-                        Log("Valid FEN strings should contain the character '/' exactly 7 times, and the FEN '" + fen + "' doesn't!");
+                        Log($"Valid FEN strings should contain the character '/' exactly 7 times, and the FEN '{fen}' doesn't!");
                         return;
                     }
 
                     if (fen.Where(x => x == ' ').Count() < 2)
                     {
-                        Log("Valid FEN strings should contain at least 2 spaces, and the FEN '" + fen + "' doesn't!");
+                        Log($"Valid FEN strings should contain at least 2 spaces, and the FEN '{fen}' doesn't!");
                         return;
                     }
                 }
@@ -515,7 +518,7 @@ namespace Lizard
                 List<string> splits;
                 try
                 {
-                    splits = input.Substring(input.IndexOf("moves") + 6).Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+                    splits = input[(input.IndexOf("moves") + 6)..].Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
                 }
                 catch (IndexOutOfRangeException e)
                 {
@@ -533,13 +536,13 @@ namespace Lizard
                     }
                     else
                     {
-                        Log("Failed doing extra moves! '" + splits[i] + "' isn't a legal move in the FEN " + p.GetFEN());
+                        Log($"Failed doing extra moves! '{splits[i]}' isn't a legal move in the FEN {p.GetFEN()}");
                         break;
                     }
                 }
             }
 
-            Log("Loaded fen '" + p.GetFEN() + "'");
+            Log($"Loaded fen '{p.GetFEN()}'");
         }
 
 
@@ -615,7 +618,7 @@ namespace Lizard
 
                 try
                 {
-                    depth = int.Parse(input.Substring(input.IndexOf("perft") + 6));
+                    depth = int.Parse(input[(input.IndexOf("perft") + 6)..]);
                 }
                 catch (Exception e)
                 {

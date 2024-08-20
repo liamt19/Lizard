@@ -110,14 +110,7 @@ namespace Lizard.Logic.Data
                 tx = (tx > fx) ? Files.G : Files.C;
             }
 
-            if (IsPromotion)
-            {
-                return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1) + char.ToLower(PieceToFENChar(PromotionTo));
-            }
-            else
-            {
-                return "" + GetFileChar(fx) + (fy + 1) + GetFileChar(tx) + (ty + 1);
-            }
+            return $"{GetFileChar(fx)}{fy + 1}{GetFileChar(tx)}{ty + 1}{(IsPromotion ? char.ToLower(PieceToFENChar(PromotionTo)) : string.Empty)}";
         }
 
         public string ToString(Position position)
@@ -192,7 +185,7 @@ namespace Lizard.Logic.Data
 
                 if (IsPromotion)
                 {
-                    sb.Append("=" + PieceToFENChar(PromotionTo));
+                    sb.Append($"={PieceToFENChar(PromotionTo)}");
                 }
             }
 
