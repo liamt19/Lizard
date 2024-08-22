@@ -364,6 +364,9 @@ namespace Lizard.Logic.Threads
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
             int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
+            Span<int> searchScores = stackalloc int[MaxPly];
+            int scoreIdx = 0;
+
             RootMove lastBestRootMove = new RootMove(Move.Null);
             int stability = 0;
 
@@ -479,7 +482,9 @@ namespace Lizard.Logic.Threads
                     }
                 }
 
-                if (SoftTimeUp(tm, stability))
+                searchScores[scoreIdx++] = RootMoves[0].Score;
+
+                if (SoftTimeUp(tm, stability, searchScores[..scoreIdx]))
                 {
                     break;
                 }
@@ -513,7 +518,7 @@ namespace Lizard.Logic.Threads
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
         private static int StabilityMax = StabilityCoefficients.Length - 1;
 
-        private bool SoftTimeUp(TimeManager tm, int stability)
+        private bool SoftTimeUp(TimeManager tm, int stability, Span<int> searchScores)
         {
             if (!tm.HasSoftTime)
                 return false;
@@ -522,8 +527,15 @@ namespace Lizard.Logic.Threads
             double multFactor = 1.0;
             if (RootDepth > 7)
             {
-                double proportion = NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes;
-                multFactor = ((1.5 - proportion) * 1.75) * StabilityCoefficients[Math.Min(stability, StabilityMax)];
+                double nodeTM = ((1.5 - NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes) * 1.75);
+                double bmStability = StabilityCoefficients[Math.Min(stability, StabilityMax)];
+                
+                double scoreStability = searchScores[searchScores.Length - 1 - 3] 
+                                      - searchScores[searchScores.Length - 1 - 0];
+                
+                scoreStability = Math.Max(0.85, Math.Min(1.15, 0.034 * scoreStability));
+
+                multFactor = nodeTM * bmStability * scoreStability;
             }
 
             if (tm.GetSearchTime() >= tm.SoftTimeLimit * multFactor)
