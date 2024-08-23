@@ -21,8 +21,7 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            return UseAvx ? (short)Bucketed768.GetEvaluationUnrolled512(pos) : 
-                            (short)Bucketed768.GetEvaluation(pos);
+            return (short)Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]

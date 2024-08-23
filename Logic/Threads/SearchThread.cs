@@ -174,7 +174,7 @@ namespace Lizard.Logic.Threads
 
             History = new HistoryTable();
 
-            const int CacheSize = Bucketed768.InputBuckets * 2;
+            const int CacheSize = Bucketed768.INPUT_BUCKETS * 2;
             CachedBuckets = new BucketCache[CacheSize];
             for (int i = 0; i < CacheSize; i++)
             {
