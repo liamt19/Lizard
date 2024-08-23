@@ -304,7 +304,7 @@ namespace Lizard.Logic.Search
                 for (int i = 0; i < numCaps; i++)
                 {
                     Move m = OrderNextMove(captures, numCaps, i);
-                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, seeThreshold))
+                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, Math.Max(seeThreshold, probBeta - ss->StaticEval)))
                     {
                         //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
                         continue;
