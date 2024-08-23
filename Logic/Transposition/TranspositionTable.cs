@@ -39,22 +39,14 @@ namespace Lizard.Logic.Transposition
         public unsafe void Initialize(int mb)
         {
             if (Clusters != null)
-            {
-                //SearchPool.MainThread.WaitForThreadFinished();
-
-                //  We could also use AlignedRealloc here, but since we don't need the current data to be copied over
-                //  doing a free + alloc instead is easier.
                 NativeMemory.AlignedFree(Clusters);
-            }
 
             ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
-            Clusters = AlignedAllocZeroed<TTCluster>((int)ClusterCount, (1024 * 1024));
-            AdviseHugePage(Clusters, ((nuint)sizeof(TTCluster) * (nuint)ClusterCount));
+            nuint allocSize = ((nuint)sizeof(TTCluster) * (nuint)ClusterCount);
 
-            for (ulong i = 0; i < ClusterCount; i++)
-            {
-                Clusters[i] = new TTCluster();
-            }
+            //  On Linux, also inform the OS that we want it to use large pages
+            Clusters = AlignedAllocZeroed<TTCluster>((nuint)ClusterCount, (1024 * 1024));
+            AdviseHugePage(Clusters, allocSize);
         }
 
         /// <summary>
@@ -62,14 +54,18 @@ namespace Lizard.Logic.Transposition
         /// </summary>
         public void Clear()
         {
-            //SearchPool.MainThread.WaitForThreadFinished();
+            int numThreads = SearchOptions.Threads;
+            ulong clustersPerThread = (ClusterCount / (ulong)numThreads);
 
-            for (ulong i = 0; i < ClusterCount; i++)
+            Parallel.For(0, numThreads, new ParallelOptions { MaxDegreeOfParallelism = numThreads }, (int i) =>
             {
-                TTEntry* cluster = (TTEntry*)&Clusters[i];
+                ulong start = clustersPerThread * (ulong)i;
 
-                Clusters[i].Clear();
-            }
+                //  Only clear however many remaining clusters there are if this is the last thread
+                ulong length = (i == numThreads - 1) ? ClusterCount - start : clustersPerThread;
+
+                NativeMemory.Clear(&Clusters[start], ((nuint)sizeof(TTCluster) * (nuint)length));
+            });
 
             Age = 0;
         }

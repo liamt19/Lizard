@@ -59,7 +59,7 @@ namespace Lizard.Logic.NN
             FeatureBiases = AlignedAllocZeroed<short>(FeatureBiasElements);
 
             LayerWeights = AlignedAllocZeroed<short>(LayerWeightElements);
-            LayerBiases = AlignedAllocZeroed<short>(Math.Max(LayerBiasElements, Vector512<short>.Count));
+            LayerBiases = AlignedAllocZeroed<short>((nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
 
             string networkToLoad = NetworkName;
 

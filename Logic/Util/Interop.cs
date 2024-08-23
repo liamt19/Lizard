@@ -156,10 +156,11 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// <inheritdoc cref="AlignedAllocZeroed(nuint, nuint)"/>
         /// </summary>
-        public static unsafe T* AlignedAllocZeroed<T>(int items, nuint alignment = AllocAlignment)
+        public static unsafe T* AlignedAllocZeroed<T>(nuint items, nuint alignment = AllocAlignment)
         {
-            void* block = NativeMemory.AlignedAlloc((nuint)(sizeof(T) * items), alignment);
-            NativeMemory.Clear(block, (nuint)(sizeof(T) * items));
+            nuint bytes = ((nuint)sizeof(T) * (nuint)items);
+            void* block = NativeMemory.AlignedAlloc(bytes, alignment);
+            NativeMemory.Clear(block, bytes);
 
             return (T*)block;
         }

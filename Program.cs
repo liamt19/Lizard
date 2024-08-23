@@ -151,8 +151,19 @@ namespace Lizard
                 else if (input.StartsWithIgnoreCase("threads"))
                 {
                     if (int.TryParse(param[1], out int threadCount))
-                    {
                         GlobalSearchPool.Resize(threadCount);
+                }
+                else if (input.StartsWithIgnoreCase("multipv"))
+                {
+                    if (int.TryParse(param[1], out int mpv))
+                        MultiPV = mpv;
+                }
+                else if (input.StartsWithIgnoreCase("hash"))
+                {
+                    if (int.TryParse(param[1], out int hash))
+                    {
+                        Hash = hash;
+                        GlobalSearchPool.TTable.Initialize(Hash);
                     }
                 }
                 else if (input.ContainsIgnoreCase("searchinfo"))
