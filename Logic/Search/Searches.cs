@@ -287,7 +287,6 @@ namespace Lizard.Logic.Search
             //  or the TT hit's depth is well below the current depth,
             //  or the TT hit's score is above beta + ProbCutBeta(Improving).
             int probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
-            const int seeThreshold = 1;
             if (UseProbCut
                 && !isPV
                 && !doSkip
@@ -304,7 +303,7 @@ namespace Lizard.Logic.Search
                 for (int i = 0; i < numCaps; i++)
                 {
                     Move m = OrderNextMove(captures, numCaps, i);
-                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, seeThreshold))
+                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, Math.Max(1, probBeta - ss->StaticEval)))
                     {
                         //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
                         continue;
