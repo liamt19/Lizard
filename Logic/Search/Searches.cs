@@ -373,11 +373,23 @@ namespace Lizard.Logic.Search
                     continue;
                 }
 
-                if (isRoot && thisThread.RootMoves.FindIndex(thisThread.PVIndex, r => r.Move == m) == -1)
+                if (isRoot)
                 {
                     //  For multipv to work properly, we need to skip root moves that are ordered before this one
                     //  since they've already been searched and we don't want them as options again.
-                    continue;
+
+                    bool cont = true;
+                    for (int rmIdx = thisThread.PVIndex; rmIdx < thisThread.RootMoves.Count; rmIdx++)
+                    {
+                        if (thisThread.RootMoves[rmIdx].Move == m)
+                        {
+                            cont = false;
+                            break;
+                        }
+                    }
+
+                    if (cont)
+                        continue;
                 }
 
                 Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
