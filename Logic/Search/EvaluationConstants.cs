@@ -13,6 +13,8 @@
         public const int ScoreMateMax = ScoreMate - 256;
         public const int ScoreMatedMax = -ScoreMateMax;
 
+        public const int MaxNormalScore = ScoreTTWin - 1;
+
         public const int ScoreAssuredWin = 20000;
         public const int ScoreWin = 10000;
     }
