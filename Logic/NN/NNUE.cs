@@ -60,54 +60,41 @@ namespace Lizard.Logic.NN
         /// </summary>
         public static Stream TryOpenFile(string networkToLoad, bool exitIfFail = true)
         {
-            Stream netFile = null;
-
             if (File.Exists(networkToLoad))
             {
-                netFile = File.OpenRead(networkToLoad);
-                Log("Using NNUE with 768 network " + networkToLoad);
-            }
-            else
-            {
-                var NetworkName = Bucketed768.NetworkName;
-
-                //  Just load the default network
-                networkToLoad = NetworkName;
-                Log("Using NNUE with 768 network " + NetworkName);
-
-                string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
-
-                object o = Resources.ResourceManager.GetObject(resourceName);
-                if (o != null)
-                {
-                    byte[] data = (byte[])o;
-                    netFile = new MemoryStream(data);
-                }
-                else
-                {
-                    var cwdFile = Path.Combine(Environment.CurrentDirectory, networkToLoad);
-                    if (File.Exists(networkToLoad))
-                    {
-                        netFile = File.OpenRead(networkToLoad);
-                    }
-                    else if (File.Exists(cwdFile))
-                    {
-                        netFile = File.OpenRead(cwdFile);
-                    }
-                    else
-                    {
-                        Console.WriteLine($"Couldn't find a network named '{NetworkName}' as a compiled resource or as a file within the current directory!");
-                        Console.ReadLine();
-
-                        if (exitIfFail)
-                        {
-                            Environment.Exit(-1);
-                        }
-                    }
-                }
+                Log($"Using NNUE with 768 network {networkToLoad}");
+                return File.OpenRead(networkToLoad);
             }
 
-            return netFile;
+            //  Try to load the default network
+            networkToLoad = Bucketed768.NetworkName;
+            string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
+            Log($"Using NNUE with 768 network {networkToLoad}");
+
+            //  First look for it as an embedded resource
+            object o = Resources.ResourceManager.GetObject(resourceName);
+            if (o != null)
+                return new MemoryStream((byte[])o);
+
+
+            //  Then look for it as an absolute path
+            if (File.Exists(networkToLoad))
+                return File.OpenRead(networkToLoad);
+
+
+            //  Lastly try looking for it in the current directory
+            var cwdFile = Path.Combine(Environment.CurrentDirectory, networkToLoad);
+            if (File.Exists(cwdFile))
+                return File.OpenRead(cwdFile);
+
+
+            Console.WriteLine($"Couldn't find a network named '{networkToLoad}' as a compiled resource or as a file within the current directory!");
+            Console.ReadLine();
+            
+            if (exitIfFail)
+                Environment.Exit(-1);
+
+            return null;
         }
 
 
@@ -160,21 +147,16 @@ namespace Lizard.Logic.NN
             long avg = 0;
             int max = int.MinValue;
             int min = int.MaxValue;
+
             short* ptr = (short*)layer;
             for (int i = 0; i < n; i++)
             {
-                if (ptr[i] > max)
-                {
-                    max = ptr[i];
-                }
-                if (ptr[i] < min)
-                {
-                    min = ptr[i];
-                }
+                max = Math.Max(max, ptr[i]);
+                min = Math.Min(min, ptr[i]);
                 avg += ptr[i];
             }
 
-            Log(layerName + "\tmin: " + min + ", max: " + max + ", avg: " + (double)avg / n);
+            Log($"{layerName}\tmin: {min}, max: {max}, avg: {(double)avg / n}");
         }
 
 
@@ -195,7 +177,7 @@ namespace Lizard.Logic.NN
 
             int baseEval = GetEvaluation(pos);
 
-            Log("\nNNUE evaluation: " + baseEval + "\n");
+            Log($"\nNNUE evaluation: {baseEval}\n");
 
             ref Accumulator Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
@@ -249,7 +231,7 @@ namespace Lizard.Logic.NN
             Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: GlobalSearchPool.MainThread);
             int baseEval = GetEvaluation(pos);
 
-            Log("\nNNUE evaluation: " + baseEval + "\n");
+            Log($"\nNNUE evaluation: {baseEval}\n");
 
             ref Bitboard bb = ref pos.bb;
 
