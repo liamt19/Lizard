@@ -95,25 +95,11 @@ namespace Lizard.Logic.NN
                 }
             }
 
-            for (int i = 0; i < FeatureWeightElements; i++)
-            {
-                FeatureWeights[i] = br.ReadInt16();
-            }
+            for (int i = 0; i < FeatureWeightElements; i++) FeatureWeights[i] = br.ReadInt16();
+            for (int i = 0; i < FeatureBiasElements;   i++) FeatureBiases[i]  = br.ReadInt16();
 
-            for (int i = 0; i < FeatureBiasElements; i++)
-            {
-                FeatureBiases[i] = br.ReadInt16();
-            }
-
-            for (int i = 0; i < LayerWeightElements; i++)
-            {
-                LayerWeights[i] = br.ReadInt16();
-            }
-
-            for (int i = 0; i < LayerBiasElements; i++)
-            {
-                LayerBiases[i] = br.ReadInt16();
-            }
+            for (int i = 0; i < LayerWeightElements; i++) LayerWeights[i] = br.ReadInt16();
+            for (int i = 0; i < LayerBiasElements;   i++) LayerBiases[i]  = br.ReadInt16();
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
@@ -125,7 +111,7 @@ namespace Lizard.Logic.NN
             NetStats("ft bias\t", FeatureBiases, FeatureBiasElements);
 
             NetStats("fc weight", LayerWeights, LayerWeightElements);
-            NetStats("fc bias", LayerBiases, LayerBiasElements);
+            NetStats("fc bias\t", LayerBiases, LayerBiasElements);
 
             Log("Init Bucketed768 done");
 #endif
@@ -143,7 +129,7 @@ namespace Lizard.Logic.NN
             ref Bitboard bb = ref pos.bb;
 
             var ourAccumulation = (short*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, sizeof(short) * HiddenSize);
+            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, Accumulator.ByteSize);
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -157,7 +143,7 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+                UnrollAdd(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
             }
 
             if (pos.Owner.CachedBuckets == null)
@@ -203,14 +189,14 @@ namespace Lizard.Logic.NN
                     {
                         int sq = poplsb(&added);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        UnrollAdd(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+                        UnrollAdd(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
                     }
 
                     while (removed != 0)
                     {
                         int sq = poplsb(&removed);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        UnrollSubtract(ourAccumulation, ourAccumulation, FeatureWeights + idx);
+                        UnrollSubtract(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
                     }
                 }
             }
@@ -236,20 +222,20 @@ namespace Lizard.Logic.NN
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
-            var ourData =   (accumulator[pos.ToMove]);
-            var theirData = (accumulator[Not(pos.ToMove)]);
-            var ourWeights =   (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)));
-            var theirWeights = (Vector256<short>*)(LayerWeights + (outputBucket * (HiddenSize * 2)) + HiddenSize);
+            var ourData =   accumulator[pos.ToMove];
+            var theirData = accumulator[Not(pos.ToMove)];
+            var ourWeights =   (Vector256<short>*)(&LayerWeights[outputBucket * (HiddenSize * 2)]);
+            var theirWeights = (Vector256<short>*)(&LayerWeights[outputBucket * (HiddenSize * 2) + HiddenSize]);
 
             for (int i = 0; i < SimdChunks; i++)
             {
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
                 Vector256<short> mult = clamp * ourWeights[i];
 
-                (var loMult, var hiMult) = Vector256.Widen(mult);
-                (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+                (var mLo, var mHi) = Vector256.Widen(mult);
+                (var cLo, var cHi) = Vector256.Widen(clamp);
 
-                sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
             }
 
             for (int i = 0; i < SimdChunks; i++)
@@ -257,10 +243,10 @@ namespace Lizard.Logic.NN
                 Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
                 Vector256<short> mult = clamp * theirWeights[i];
 
-                (var loMult, var hiMult) = Vector256.Widen(mult);
-                (var loClamp, var hiClamp) = Vector256.Widen(clamp);
+                (var mLo, var mHi) = Vector256.Widen(mult);
+                (var cLo, var cHi) = Vector256.Widen(clamp);
 
-                sum = Vector256.Add(sum, Vector256.Add(loMult * loClamp, hiMult * hiClamp));
+                sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
             }
 
             int output = Vector256.Sum(sum);
@@ -311,8 +297,8 @@ namespace Lizard.Logic.NN
                 bSq ^= 7;
             }
 
-            int whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + (wSq);
-            int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + (bSq);
+            int whiteIndex = (768 * KingBuckets[wk]) + (    pc  * ColorStride) + (pt * PieceStride) + wSq;
+            int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
 
             return (whiteIndex * HiddenSize, blackIndex * HiddenSize);
         }
@@ -428,12 +414,15 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static void MakeNullMove(Position pos)
         {
-            pos.State->Accumulator->CopyTo(pos.NextState->Accumulator);
+            var currAcc = pos.State->Accumulator;
+            var nextAcc = pos.NextState->Accumulator;
 
-            pos.NextState->Accumulator->Computed[White] = pos.State->Accumulator->Computed[White];
-            pos.NextState->Accumulator->Computed[Black] = pos.State->Accumulator->Computed[Black];
-            pos.NextState->Accumulator->Update[White].Clear();
-            pos.NextState->Accumulator->Update[Black].Clear();
+            currAcc->CopyTo(nextAcc);
+
+            nextAcc->Computed[White] = currAcc->Computed[White];
+            nextAcc->Computed[Black] = currAcc->Computed[Black];
+            nextAcc->Update[White].Clear();
+            nextAcc->Update[Black].Clear();
         }
 
 
@@ -499,23 +488,23 @@ namespace Lizard.Logic.NN
             if (updates.AddCnt == 1 && updates.SubCnt == 1)
             {
                 SubAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Adds[0]));
+                    &FeatureWeights[updates.Subs[0]],
+                    &FeatureWeights[updates.Adds[0]]);
             }
             else if (updates.AddCnt == 1 && updates.SubCnt == 2)
             {
                 SubSubAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Subs[1]),
-                    (FeatureWeights + updates.Adds[0]));
+                    &FeatureWeights[updates.Subs[0]],
+                    &FeatureWeights[updates.Subs[1]],
+                    &FeatureWeights[updates.Adds[0]]);
             }
             else if (updates.AddCnt == 2 && updates.SubCnt == 2)
             {
                 SubSubAddAdd(src, dst,
-                    (FeatureWeights + updates.Subs[0]),
-                    (FeatureWeights + updates.Subs[1]),
-                    (FeatureWeights + updates.Adds[0]),
-                    (FeatureWeights + updates.Adds[1]));
+                    &FeatureWeights[updates.Subs[0]],
+                    &FeatureWeights[updates.Subs[1]],
+                    &FeatureWeights[updates.Adds[0]],
+                    &FeatureWeights[updates.Adds[1]]);
             }
 
             curr->Computed[perspective] = true;
