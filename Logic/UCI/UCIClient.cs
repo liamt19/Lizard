@@ -604,7 +604,7 @@ namespace Lizard.Logic.UCI
             Options[nameof(LMRExtensionThreshold)].AutoMinMax();
             Options[nameof(LMRExchangeBase)].AutoMinMax();
 
-            Options[nameof(HistoryReductionMultiplier)].AutoMinMax();
+            Options[nameof(LMRHistDivisor)].AutoMinMax();
 
             Options[nameof(FutilityExchangeBase)].AutoMinMax();
 
