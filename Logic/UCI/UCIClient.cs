@@ -510,22 +510,19 @@ namespace Lizard.Logic.UCI
                             {
                                 if (newValue >= opt.MinValue && newValue <= opt.MaxValue)
                                 {
+                                    opt.FieldHandle.SetValue(null, newValue);
+
                                     if (opt.Name == nameof(Threads))
                                     {
-                                        GlobalSearchPool.Resize(newValue);
+                                        GlobalSearchPool.Resize(SearchOptions.Threads);
                                         LogString("Changed '" + key + "' from " + prevValue + " to " + GlobalSearchPool.ThreadCount);
                                     }
-                                    else
+                                    if (opt.Name == nameof(Hash))
                                     {
-                                        opt.FieldHandle.SetValue(null, newValue);
-
-                                        if (opt.Name == nameof(Hash))
-                                        {
-                                            GlobalSearchPool.TTable.Initialize(Hash);
-                                        }
-
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
+                                        GlobalSearchPool.TTable.Initialize(SearchOptions.Hash);
                                     }
+
+                                    LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
                                 }
                                 else
                                 {

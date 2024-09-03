@@ -151,7 +151,10 @@ namespace Lizard
                 else if (input.StartsWithIgnoreCase("threads"))
                 {
                     if (int.TryParse(param[1], out int threadCount))
-                        GlobalSearchPool.Resize(threadCount);
+                    {
+                        Threads = threadCount;
+                        GlobalSearchPool.Resize(Threads);
+                    }
                 }
                 else if (input.StartsWithIgnoreCase("multipv"))
                 {
