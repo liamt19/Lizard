@@ -528,6 +528,8 @@ namespace Lizard.Logic.Search
                     //  Reduce if we think that this move is going to be a bad one
                     R += cutNode.AsInt() * 2;
 
+                    R -= ss->TTPV.AsInt();
+
                     //  Extend for PV searches
                     R -= isPV.AsInt();
 
