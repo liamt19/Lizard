@@ -247,7 +247,7 @@ namespace Lizard.Logic.Search
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.HasNonPawnMaterial(pos.ToMove))
             {
-                int reduction = NMPReductionBase + (depth / NMPReductionDivisor) + Math.Min((eval - beta) / NMPEvalDivisor, NMPEvalMin);
+                int reduction = NMPBaseRed + (depth / NMPDepthDiv) + Math.Min((eval - beta) / NMPEvalDiv, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
 
@@ -269,7 +269,7 @@ namespace Lizard.Logic.Search
 
             if (ttMove.Equals(Move.Null)
                 && (cutNode || isPV)
-                && depth >= ExtraCutNodeReductionMinDepth)
+                && depth >= IIRMinDepth)
             {
                 //  We expected this node to be a bad one, so give it an extra depth reduction
                 //  if the depth is at or above a threshold (currently 4).
@@ -286,11 +286,11 @@ namespace Lizard.Logic.Search
             //  We didn't have a TT hit,
             //  or the TT hit's depth is well below the current depth,
             //  or the TT hit's score is above beta + ProbCutBeta(Improving).
-            int probBeta = beta + (improving ? ProbCutBetaImproving : ProbCutBeta);
+            int probBeta = beta + (improving ? ProbcutBetaImp : ProbcutBeta);
             if (UseProbCut
                 && !isPV
                 && !doSkip
-                && depth >= ProbCutMinDepth
+                && depth >= ProbcutMinDepth
                 && Math.Abs(beta) < ScoreTTWin
                 && (!ss->TTHit || tte->Depth < depth - 3 || tte->Score >= probBeta))
             {
@@ -419,7 +419,7 @@ namespace Lizard.Logic.Search
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= SkipQuietsMaxDepth && !(givesCheck || isCapture))
+                    if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
                     {
                         continue;
                     }
@@ -428,7 +428,7 @@ namespace Lizard.Logic.Search
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
                         //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -LMRExchangeBase * depth))
+                        if (!SEE_GE(pos, m, -ShallowSEEMargin * depth))
                         {
                             continue;
                         }
@@ -449,14 +449,14 @@ namespace Lizard.Logic.Search
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SingularExtensionsMinDepth + (isPV && tte->PV ? 1 : 0))
+                    && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
                     && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin
                     && ((tte->Bound & BoundLower) != 0)
                     && tte->Depth >= depth - 3)
                 {
-                    int singleBeta = ttScore - (SingularExtensionsNumerator * depth / 10);
-                    int singleDepth = (depth + SingularExtensionsDepthAugment) / 2;
+                    int singleBeta = ttScore - (SENumerator * depth / 10);
+                    int singleDepth = (depth + SEDepthAdj) / 2;
 
                     ss->Skip = m;
                     score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
@@ -468,7 +468,7 @@ namespace Lizard.Logic.Search
                         extend = 1;
 
                         if (!isPV
-                            && score < singleBeta - SingularExtensionsBeta
+                            && score < singleBeta - SEBeta
                             && ss->DoubleExtensions <= 8)
                         {
                             //  If this isn't a PV, and this move is was a good deal better than any other one,
@@ -536,22 +536,12 @@ namespace Lizard.Logic.Search
                     //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
 
-
-                    var histScore = 2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
+                    var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
+                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
                                         (*(ss - 2)->ContinuationHistory)[histIdx] +
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    if (isCapture)
-                    {
-                        histScore += 2 * history.CaptureHistory[us, ourPiece, moveTo, theirPiece];
-                        R -= (histScore / (LMRHistDivisor - 2000));
-                    }
-                    else
-                    {
-                        histScore += 2 * history.MainHistory[us, m];
-                        R -= (histScore / LMRHistDivisor);
-                    }
-
+                    R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
@@ -567,7 +557,7 @@ namespace Lizard.Logic.Search
                     {
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtensionThreshold)) ? 1 : 0;
+                        newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
                         newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
                         if (newDepth - 1 > reducedDepth)
@@ -856,7 +846,7 @@ namespace Lizard.Logic.Search
 
                 bestScore = eval;
 
-                futility = (short)(Math.Min(ss->StaticEval, bestScore) + FutilityExchangeBase);
+                futility = (short)(Math.Min(ss->StaticEval, bestScore) + QSFutileMargin);
             }
 
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
@@ -926,7 +916,7 @@ namespace Lizard.Logic.Search
                         break;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeThreshold))
+                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeMargin))
                     {
                         //  This move loses a significant amount of material
                         continue;
@@ -1029,7 +1019,7 @@ namespace Lizard.Logic.Search
             else
             {
 
-                int bestMoveBonus = (bestScore > beta + HistoryCaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
+                int bestMoveBonus = (bestScore > beta + CaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
 
                 if (ss->KillerMove != bestMove && !bestMove.IsEnPassant)
                 {
