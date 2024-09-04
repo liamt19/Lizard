@@ -523,27 +523,25 @@ namespace Lizard.Logic.Search
                     int R = LogarithmicReductionTable[depth][legalMoves];
 
                     //  Reduce if our static eval is declining
-                    if (!improving)
-                        R++;
+                    R += (!improving).AsInt();
 
                     //  Reduce if we think that this move is going to be a bad one
-                    if (cutNode)
-                        R++;
+                    R += cutNode.AsInt() * 2;
+
+                    R -= ss->TTPV.AsInt();
 
                     //  Extend for PV searches
-                    if (isPV)
-                        R--;
+                    R -= isPV.AsInt();
 
                     //  Extend killer moves
-                    if (m.Equals(ss->KillerMove))
-                        R--;
+                    R -= (m == ss->KillerMove).AsInt();
 
                     var histScore = 2 * history.MainHistory[us, m] + 
                                     2 * (*(ss - 1)->ContinuationHistory)[histIdx] + 
                                         (*(ss - 2)->ContinuationHistory)[histIdx] + 
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (histScore / (1024 * HistoryReductionMultiplier));
+                    R -= (histScore / LMRHistDivisor);
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
