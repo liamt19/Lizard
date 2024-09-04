@@ -536,12 +536,22 @@ namespace Lizard.Logic.Search
                     //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
 
-                    var histScore = 2 * history.MainHistory[us, m] + 
-                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] + 
-                                        (*(ss - 2)->ContinuationHistory)[histIdx] + 
+
+                    var histScore = 2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
+                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
 
-                    R -= (histScore / LMRHistDivisor);
+                    if (isCapture)
+                    {
+                        histScore += 2 * history.CaptureHistory[us, ourPiece, moveTo, theirPiece];
+                        R -= (histScore / (LMRHistDivisor - 2000));
+                    }
+                    else
+                    {
+                        histScore += 2 * history.MainHistory[us, m];
+                        R -= (histScore / LMRHistDivisor);
+                    }
+
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
