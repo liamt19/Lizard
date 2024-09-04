@@ -580,41 +580,40 @@ namespace Lizard.Logic.UCI
             Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
-            Options[nameof(SingularExtensionsMinDepth)].AutoMinMax();
-            Options[nameof(SingularExtensionsNumerator)].AutoMinMax();
-            Options[nameof(SingularExtensionsBeta)].AutoMinMax();
-            Options[nameof(SingularExtensionsDepthAugment)].SetMinMax(-3, 2);
+            Options[nameof(SEMinDepth)].AutoMinMax();
+            Options[nameof(SENumerator)].AutoMinMax();
+            Options[nameof(SEBeta)].AutoMinMax();
+            Options[nameof(SEDepthAdj)].SetMinMax(-3, 2);
 
             Options[nameof(NMPMinDepth)].AutoMinMax();
-            Options[nameof(NMPReductionBase)].AutoMinMax();
-            Options[nameof(NMPReductionDivisor)].AutoMinMax();
-            Options[nameof(NMPEvalDivisor)].AutoMinMax();
+            Options[nameof(NMPBaseRed)].AutoMinMax();
+            Options[nameof(NMPDepthDiv)].AutoMinMax();
+            Options[nameof(NMPEvalDiv)].AutoMinMax();
             Options[nameof(NMPEvalMin)].SetMinMax(0, 6);
 
             Options[nameof(RFPMaxDepth)].AutoMinMax();
             Options[nameof(RFPMargin)].AutoMinMax();
 
-            Options[nameof(ProbCutMinDepth)].SetMinMax(1, 5);
-            Options[nameof(ProbCutBeta)].AutoMinMax();
-            Options[nameof(ProbCutBetaImproving)].AutoMinMax();
+            Options[nameof(ProbcutBeta)].AutoMinMax();
+            Options[nameof(ProbcutBetaImp)].AutoMinMax();
+            Options[nameof(ProbcutMinDepth)].SetMinMax(1, 5);
 
-            Options[nameof(LMRExtensionThreshold)].AutoMinMax();
-            Options[nameof(LMRExchangeBase)].AutoMinMax();
+            Options[nameof(ShallowSEEMargin)].AutoMinMax();
+            Options[nameof(ShallowMaxDepth)].AutoMinMax();
 
-            Options[nameof(LMRHistDivisor)].AutoMinMax();
+            Options[nameof(LMRQuietDiv)].AutoMinMax();
+            Options[nameof(LMRCaptureDiv)].AutoMinMax();
+            Options[nameof(LMRExtMargin)].AutoMinMax();
 
-            Options[nameof(FutilityExchangeBase)].AutoMinMax();
+            Options[nameof(QSFutileMargin)].AutoMinMax();
+            Options[nameof(QSSeeMargin)].AutoMinMax();
 
-            Options[nameof(ExtraCutNodeReductionMinDepth)].SetMinMax(2, 6);
-            Options[nameof(SkipQuietsMaxDepth)].AutoMinMax();
-            Options[nameof(QSSeeThreshold)].AutoMinMax();
+            Options[nameof(OrderingCheckBonus)].AutoMinMax();
+            Options[nameof(OrderingVictimMult)].AutoMinMax();
 
-            Options[nameof(AspirationWindowMargin)].AutoMinMax();
-
-            Options[nameof(HistoryCaptureBonusMargin)].AutoMinMax();
-
-            Options[nameof(OrderingGivesCheckBonus)].AutoMinMax();
-            Options[nameof(OrderingVictimValueMultiplier)].AutoMinMax();
+            Options[nameof(IIRMinDepth)].SetMinMax(2, 6);
+            Options[nameof(AspWindow)].AutoMinMax();
+            Options[nameof(CaptureBonusMargin)].AutoMinMax();
 
             Options[nameof(StatBonusMult)].AutoMinMax();
             Options[nameof(StatBonusSub)].AutoMinMax();

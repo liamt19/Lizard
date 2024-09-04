@@ -36,7 +36,7 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
+                    sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
                                (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
@@ -52,7 +52,7 @@ namespace Lizard.Logic.Search.Ordering
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
-                        sm.Score += OrderingGivesCheckBonus;
+                        sm.Score += OrderingCheckBonus;
                     }
                 }
             }
@@ -84,7 +84,7 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimValueMultiplier * GetPieceValue(capturedPiece)) + 
+                    sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
                                (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
@@ -100,7 +100,7 @@ namespace Lizard.Logic.Search.Ordering
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
-                        sm.Score += OrderingGivesCheckBonus;
+                        sm.Score += OrderingCheckBonus;
                     }
                 }
             }

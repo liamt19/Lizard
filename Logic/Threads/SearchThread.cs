@@ -402,7 +402,7 @@ namespace Lizard.Logic.Threads
 
                     if (usedDepth >= 5)
                     {
-                        window = AspirationWindowMargin;
+                        window = AspWindow;
                         alpha = Math.Max(AlphaStart, score - window);
                         beta = Math.Min(BetaStart, score + window);
                     }
