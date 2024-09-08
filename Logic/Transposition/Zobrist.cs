@@ -7,30 +7,24 @@ namespace Lizard.Logic.Transposition
     {
         private const int DefaultSeed = 0xBEEF;
 
-        private static readonly ulong[][][] ColorPieceSquareHashes = new ulong[ColorNB][][];
+        private static readonly ulong[] ColorPieceSquareHashes = new ulong[ColorNB * 6 * 64];
         private static readonly ulong[] CastlingRightsHashes = new ulong[ColorNB * 2];
         private static readonly ulong[] EnPassantFileHashes = new ulong[8];
         private static ulong BlackHash;
         private static readonly Random rand = new Random(DefaultSeed);
 
-        public static ulong HashForPiece(int pc, int pt, int sq) => ColorPieceSquareHashes[pc][pt][sq];
+        public static ulong HashForPiece(int pc, int pt, int sq) => ColorPieceSquareHashes[ColorPieceSquareHashesIndex(pc, pt, sq)];
         public static ulong ColorHash => BlackHash;
 
         [ModuleInitializer]
         public static void Initialize()
         {
-            ColorPieceSquareHashes[Color.White] = new ulong[6][];
-            ColorPieceSquareHashes[Color.Black] = new ulong[6][];
-
             for (int pt = Piece.Pawn; pt <= Piece.King; pt++)
             {
-                ColorPieceSquareHashes[Color.White][pt] = new ulong[64];
-                ColorPieceSquareHashes[Color.Black][pt] = new ulong[64];
-
                 for (int i = 0; i < 64; i++)
                 {
-                    ColorPieceSquareHashes[Color.White][pt][i] = rand.NextUlong();
-                    ColorPieceSquareHashes[Color.Black][pt][i] = rand.NextUlong();
+                    ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, i)] = rand.NextUlong();
+                    ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, i)] = rand.NextUlong();
                 }
             }
 
@@ -60,11 +54,11 @@ namespace Lizard.Logic.Transposition
             {
                 int idx = poplsb(&white);
                 int pt = bb.GetPieceAtIndex(idx);
-                hash ^= ColorPieceSquareHashes[Color.White][pt][idx];
+                hash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
 
                 if (pt == Pawn)
                 {
-                    *pawnHash ^= ColorPieceSquareHashes[Color.White][pt][idx];
+                    *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
                 }
             }
 
@@ -72,11 +66,11 @@ namespace Lizard.Logic.Transposition
             {
                 int idx = poplsb(&black);
                 int pt = bb.GetPieceAtIndex(idx);
-                hash ^= ColorPieceSquareHashes[Color.Black][pt][idx];
+                hash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
 
                 if (pt == Pawn)
                 {
-                    *pawnHash ^= ColorPieceSquareHashes[Color.Black][pt][idx];
+                    *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
                 }
             }
 
@@ -121,9 +115,11 @@ namespace Lizard.Logic.Transposition
             Assert(color is White or Black, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece color! (should be 0 or 1)");
             Assert(pt is >= Pawn and <= King, $"ZobristMove({from}, {to}, {color}, {pt}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
 
-            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
-            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
-            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), from) ^ Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), to);
+            var fromIndex = ColorPieceSquareHashesIndex(color, pt, from);
+            var toIndex = ColorPieceSquareHashesIndex(color, pt, to);
+            ref var start = ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes);
+
+            hash ^= Unsafe.Add(ref start, fromIndex) ^ Unsafe.Add(ref start, toIndex);
         }
 
         /// <summary>
@@ -135,9 +131,9 @@ namespace Lizard.Logic.Transposition
             Assert(pt is >= Pawn and <= King, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid piece type! (should be 0 <= pt <= 5)");
             Assert(idx is >= A1 and <= H8, $"ZobristToggleSquare({color}, {pt}, {idx}) wasn't given a valid square! (should be 0 <= idx <= 63)");
 
-            var a = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), color);
-            var b = Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(a), pt);
-            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(b), idx);
+            var index = ColorPieceSquareHashesIndex(color, pt, idx);
+
+            hash ^= Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(ColorPieceSquareHashes), index);
         }
 
         /// <summary>
@@ -166,6 +162,19 @@ namespace Lizard.Logic.Transposition
         public static void ZobristChangeToMove(this ref ulong hash)
         {
             hash ^= BlackHash;
+        }
+
+        /// <summary>
+        /// <see cref="ColorNB"/> x 6 x 64
+        /// </summary>
+        private static int ColorPieceSquareHashesIndex(int color, int piece, int square)
+        {
+            const int colorOffset = 6 * 64;
+            const int pieceOffset = 64;
+
+            return (color * colorOffset)
+                + (piece * pieceOffset)
+                + square;
         }
     }
 }
