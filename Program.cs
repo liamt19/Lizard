@@ -461,24 +461,10 @@ namespace Lizard
             info = new SearchInformation(p, MaxDepth);
             info.TimeManager.MaxSearchTime = SearchConstants.MaxSearchTime;
 
-            for (int i = 1; i < param.Length; i++)
+            bool makeTime = UCIClient.ParseGo(param, ref info, setup);
+            if (makeTime)
             {
-                if (param[i] == "movetime" && i < param.Length - 1 && int.TryParse(param[i + 1], out int moveTime))
-                {
-                    info.SetMoveTime(moveTime);
-                }
-                else if (param[i] == "time" && i < param.Length - 1 && int.TryParse(param[i + 1], out int time))
-                {
-                    info.TimeManager.MaxSearchTime = time;
-                }
-                else if (param[i] == "depth" && i < param.Length - 1 && int.TryParse(param[i + 1], out int depth))
-                {
-                    info.MaxDepth = depth;
-                }
-                else if (param[i] == "nodes" && i < param.Length - 1 && ulong.TryParse(param[i + 1], out ulong reqNodes))
-                {
-                    info.MaxNodes = reqNodes;
-                }
+                info.TimeManager.MakeMoveTime();
             }
 
             GlobalSearchPool.StartSearch(p, ref info, setup);
