@@ -81,12 +81,20 @@ namespace Lizard.Logic.Search
             bool improving = false;
 
 #if !DATAGEN
-            if (thisThread.IsMain && ((++thisThread.CheckupCount) >= SearchThread.CheckupMax))
+            if (thisThread.IsMain)
             {
-                thisThread.CheckupCount = 0;
-                //  If we are out of time, or have met/exceeded the max number of nodes, stop now.
-                if (thisThread.AssocPool.SharedInfo.TimeManager.CheckUp() ||
-                    thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.MaxNodes)
+                if ((++thisThread.CheckupCount) >= SearchThread.CheckupMax)
+                {
+                    thisThread.CheckupCount = 0;
+                    //  If we are out of time, stop now.
+                    if (thisThread.AssocPool.SharedInfo.TimeManager.CheckUp())
+                    {
+                        thisThread.AssocPool.StopThreads = true;
+                    }
+                }
+
+                if ((SearchOptions.Threads == 1 && thisThread.Nodes >= thisThread.AssocPool.SharedInfo.MaxNodes) ||
+                    (thisThread.CheckupCount == 0 && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.MaxNodes))
                 {
                     thisThread.AssocPool.StopThreads = true;
                 }
