@@ -115,18 +115,12 @@
                 newSearchTime = Math.Max(newSearchTime, PlayerIncrement + (PlayerTime / MovesToGo));
             }
 
-            if (newSearchTime > PlayerTime)
-            {
-                Log("WARN: MakeMoveTime tried setting time to " + newSearchTime + " > time left " + PlayerTime);
-                newSearchTime = PlayerTime;
-            }
-
+            newSearchTime = Math.Min(newSearchTime, PlayerTime);
 
             //  Values from Clarity (who took them from Stormphrax), then slightly adjusted
             SoftTimeLimit = 0.65 * ((PlayerTime / MovesToGo) + (PlayerIncrement * 3 / 4));
 
             MaxSearchTime = newSearchTime;
-            Log("Setting search time to " + SoftTimeLimit + ", hard limit at " + newSearchTime);
         }
     }
 }

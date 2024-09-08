@@ -89,7 +89,7 @@
         /// </summary>
         public void StartSearch(Position rootPosition, ref SearchInformation rootInfo)
         {
-            StartSearch(rootPosition, ref rootInfo, new ThreadSetup(rootPosition.GetFEN(), new List<Move>()));
+            StartSearch(rootPosition, ref rootInfo, new ThreadSetup(rootPosition.GetFEN()));
         }
 
 
@@ -134,10 +134,17 @@
                     td.RootMoves.Add(new RootMove(moves[j].Move));
                 }
 
+                if (setup.UCISearchMoves.Count != 0)
+                {
+                    //  If we got a "searchmoves ..." component, remove any moves not in that list.
+                    //  Note UCISearchMoves will only contain moves that are actually legal in the position.
+                    td.RootMoves = td.RootMoves.Where(x => setup.UCISearchMoves.Contains(x.Move)).ToList();
+                }
+
                 td.RootPosition.LoadFromFEN(rootFEN);
 
                 Assert(td.RootPosition.Owner == td,
-                    $"The RootPosition for the thread {td.ToString()} had an owner of {td.RootPosition.Owner.ToString()}!");
+                    $"The RootPosition for the thread {td} had an owner of {td.RootPosition.Owner}!");
 
                 foreach (var move in setup.SetupMoves)
                 {

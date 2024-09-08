@@ -335,6 +335,21 @@ namespace Lizard.Logic.UCI
                 return;
             }
 
+            bool makeTime = ParseGo(param, ref info, setup);
+
+            //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
+            //  then we make one ourselves
+            if (makeTime)
+            {
+                info.TimeManager.MakeMoveTime();
+            }
+
+            GlobalSearchPool.StartSearch(info.Position, ref info, setup);
+        }
+
+
+        public static bool ParseGo(string[] param, ref SearchInformation info, ThreadSetup setup)
+        {
             TimeManager tm = info.TimeManager;
 
             //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
@@ -345,44 +360,52 @@ namespace Lizard.Logic.UCI
             if (info.SearchFinishedCalled)
             {
                 info.SearchFinishedCalled = false;
-                LogString("[INFO]: Reusing old SearchInfo object, info.SearchFinishedCalled was true");
             }
 
-            bool isMoveTimeCommand = false;
-            bool hasPlayerTime = false;
+            int stm = info.Position.ToMove;
+            
+            setup.UCISearchMoves = new List<Move>();
 
-            for (int i = 0; i < param.Length; i++)
+            for (int i = 0; i < param.Length - 1; i++)
             {
-                if (param[i] == "movetime")
+                if (param[i] == "movetime" && int.TryParse(param[i + 1], out int reqMovetime))
                 {
-                    info.SetMoveTime(int.Parse(param[i + 1]));
-                    LogString("[INFO]: MaxSearchTime is set to " + tm.MaxSearchTime);
-
-                    isMoveTimeCommand = true;
+                    info.SetMoveTime(reqMovetime);
                 }
-                else if (param[i] == "depth")
+                else if (param[i] == "depth" && int.TryParse(param[i + 1], out int reqDepth))
                 {
-                    if (i + 1 >= param.Length)
-                    {
-                        break;
-                    }
-                    if (int.TryParse(param[i + 1], out int reqDepth))
-                    {
-                        info.MaxDepth = reqDepth;
-                        LogString("[INFO]: MaxDepth is set to " + info.MaxDepth);
-                    }
-
+                    info.MaxDepth = reqDepth;
                 }
-                else if (param[i] == "nodes")
+                else if (param[i] == "nodes" && ulong.TryParse(param[i + 1], out ulong reqNodes))
                 {
-                    if (i + 1 >= param.Length)
+                    info.MaxNodes = reqNodes;
+                }
+                else if (param[i] == "movestogo" && int.TryParse(param[i + 1], out int reqMovestogo))
+                {
+                    tm.MovesToGo = reqMovestogo;
+                }
+                else if (((param[i] == "wtime" && stm == White) || (param[i] == "btime" && stm == Black))
+                    && int.TryParse(param[i + 1], out int reqPlayerTime))
+                {
+                    tm.PlayerTime = reqPlayerTime;
+                }
+                else if (((param[i] == "winc" && stm == White) || (param[i] == "binc" && stm == Black))
+                    && int.TryParse(param[i + 1], out int reqPlayerIncrement))
+                {
+                    tm.PlayerIncrement = reqPlayerIncrement;
+                }
+                else if (param[i] == "searchmoves")
+                {
+                    i++;
+
+                    while (i <= param.Length - 1)
                     {
-                        break;
-                    }
-                    if (ulong.TryParse(param[i + 1], out ulong reqNodes))
-                    {
-                        info.MaxNodes = reqNodes;
-                        LogString("[INFO]: MaxNodes is set to " + info.MaxNodes);
+                        if (info.Position.TryFindMove(param[i], out Move m))
+                        {
+                            setup.UCISearchMoves.Add(m);
+                        }
+
+                        i++;
                     }
                 }
                 else if (param[i] == "infinite")
@@ -395,31 +418,9 @@ namespace Lizard.Logic.UCI
                     tm.MaxSearchTime = MaxSearchTime;
                     info.MaxDepth = MaxDepth;
                 }
-                else if ((param[i] == "wtime" && info.Position.ToMove == Color.White) ||
-                         (param[i] == "btime" && info.Position.ToMove == Color.Black))
-                {
-                    tm.PlayerTime = int.Parse(param[i + 1]);
-                    hasPlayerTime = true;
-                }
-                else if ((param[i] == "winc" && info.Position.ToMove == Color.White) ||
-                         (param[i] == "binc" && info.Position.ToMove == Color.Black))
-                {
-                    tm.PlayerIncrement = int.Parse(param[i + 1]);
-                }
-                else if (param[i] == "movestogo")
-                {
-                    tm.MovesToGo = int.Parse(param[i + 1]);
-                }
             }
 
-            //  If we weren't told to search for a specific time (no "movetime" and not "infinite"),
-            //  then we make one ourselves
-            if (!isMoveTimeCommand && hasPlayerTime)
-            {
-                info.TimeManager.MakeMoveTime();
-            }
-
-            GlobalSearchPool.StartSearch(info.Position, ref info, setup);
+            return param.Any(x => x.EndsWith("time") && x.StartsWith(ColorToString(stm).ToLower()[0])) && !param.Any(x => x == "movetime");
         }
 
 
