@@ -464,19 +464,11 @@ namespace Lizard.Logic.Search
 
                     if (score < singleBeta)
                     {
+                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
+                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+
                         //  This move seems to be good, so extend it.
-                        extend = 1;
-
-                        if (!isPV
-                            && score < singleBeta - SEBeta
-                            && ss->DoubleExtensions <= 8)
-                        {
-                            int tripleMargin = singleBeta - (SEBeta * 4) - (isCapture ? 75 : 0);
-
-                            //  If this isn't a PV, and this move is was a good deal better than any other one,
-                            //  then extend by 2 so long as we've double extended less than 8 times.
-                            extend = 2 + (score < tripleMargin).AsInt();
-                        }
+                        extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
                     }
                     else if (singleBeta >= beta)
                     {

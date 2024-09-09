@@ -582,7 +582,9 @@ namespace Lizard.Logic.UCI
 
             Options[nameof(SEMinDepth)].AutoMinMax();
             Options[nameof(SENumerator)].AutoMinMax();
-            Options[nameof(SEBeta)].AutoMinMax();
+            Options[nameof(SEDoubleMargin)].AutoMinMax();
+            Options[nameof(SETripleMargin)].AutoMinMax();
+            Options[nameof(SETripleCapSub)].AutoMinMax();
             Options[nameof(SEDepthAdj)].SetMinMax(-3, 2);
 
             Options[nameof(NMPMinDepth)].AutoMinMax();

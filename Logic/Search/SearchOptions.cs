@@ -45,7 +45,9 @@
 
         public static int SEMinDepth = 5;
         public static int SENumerator = 11;
-        public static int SEBeta = 24;
+        public static int SEDoubleMargin = 24;
+        public static int SETripleMargin = 96;
+        public static int SETripleCapSub = 75;
         public static int SEDepthAdj = -1;
 
         public static int NMPMinDepth = 6;
