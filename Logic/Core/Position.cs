@@ -32,6 +32,7 @@ namespace Lizard.Logic.Core
 
         public ulong Hash => State->Hash;
         public ulong PawnHash => State->PawnHash;
+        public ulong NonPawnHash => State->NonPawnHash;
 
         /// <summary>
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
@@ -296,9 +297,14 @@ namespace Lizard.Logic.Core
                     //  If we are capturing a rook, make sure that if that we remove that castling status from them if necessary.
                     RemoveCastling(GetCastlingForRook(moveTo));
                 }
-                else if (theirPiece == Pawn)
+
+                if (theirPiece == Pawn)
                 {
                     State->PawnHash.ZobristToggleSquare(theirColor, Pawn, moveTo);
+                }
+                else
+                {
+                    State->NonPawnHash.ZobristToggleSquare(theirColor, theirPiece, moveTo);
                 }
 
                 //  Reset the halfmove clock
@@ -319,7 +325,6 @@ namespace Lizard.Logic.Core
             {
                 if (move.IsEnPassant)
                 {
-
                     int idxPawn = ((bb.Pieces[Pawn] & SquareBB[tempEPSquare - 8]) != 0) ? tempEPSquare - 8 : tempEPSquare + 8;
                     bb.RemovePiece(idxPawn, theirColor, Pawn);
                     State->Hash.ZobristToggleSquare(theirColor, Pawn, idxPawn);
@@ -346,6 +351,11 @@ namespace Lizard.Logic.Core
                 State->HalfmoveClock = 0;
             }
 
+            if (ourPiece != Pawn && !move.IsCastle)
+            {
+                State->NonPawnHash.ZobristMove(moveFrom, moveTo, ourColor, ourPiece);
+            }
+
             if (!move.IsCastle)
             {
                 bb.MoveSimple(moveFrom, moveTo, ourColor, ourPiece);
@@ -364,6 +374,7 @@ namespace Lizard.Logic.Core
                 State->Hash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
 
                 State->PawnHash.ZobristToggleSquare(ourColor, ourPiece, moveTo);
+                State->NonPawnHash.ZobristToggleSquare(ourColor, move.PromotionTo, moveTo);
             }
 
             State->Hash.ZobristChangeToMove();
@@ -508,6 +519,9 @@ namespace Lizard.Logic.Core
 
                 State->Hash.ZobristMove(from, to, ourColor, Piece.King);
                 State->Hash.ZobristMove(rfrom, rto, ourColor, Piece.Rook);
+
+                State->NonPawnHash.ZobristMove(from, to, ourColor, Piece.King);
+                State->NonPawnHash.ZobristMove(rfrom, rto, ourColor, Piece.Rook);
             }
         }
 
@@ -523,8 +537,8 @@ namespace Lizard.Logic.Core
 
             SetCheckInfo();
 
-            State->PawnHash = 0;
-            State->Hash = Zobrist.GetHash(this, &State->PawnHash);
+            State->PawnHash = State->NonPawnHash = 0;
+            State->Hash = Zobrist.GetHash(this, &State->PawnHash, &State->NonPawnHash);
         }
 
 
