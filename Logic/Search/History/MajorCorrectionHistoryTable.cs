@@ -46,7 +46,7 @@ namespace Lizard.Logic.Search.History
 
         public static int CorrectionIndex(Position pos, int pc)
         {
-            return (pc * CORR_HISTORY_SIZE) + (int)((pos.NonPawnHash) & (CORR_HISTORY_SIZE - 1));
+            return (pc * CORR_HISTORY_SIZE) + (int)((pos.NonPawnHash(pc)) & (CORR_HISTORY_SIZE - 1));
         }
     }
 }

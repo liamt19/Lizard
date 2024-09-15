@@ -20,17 +20,18 @@ namespace Lizard.Logic.Core
         [FieldOffset( 48)] public fixed ulong BlockingPieces[2];
         [FieldOffset( 64)] public fixed ulong Pinners[2];
         [FieldOffset( 80)] public fixed int KingSquares[2];
-        [FieldOffset( 88)] public ulong Hash = 0;
-        [FieldOffset( 96)] public ulong PawnHash = 0;
-        [FieldOffset(104)] public ulong NonPawnHash = 0;
-        [FieldOffset(112)] public ulong Checkers = 0;
-        [FieldOffset(120)] public int HalfmoveClock = 0;
-        [FieldOffset(124)] public int EPSquare = EPNone;
-        [FieldOffset(128)] public int CapturedPiece = None;
-        [FieldOffset(132)] public int PliesFromNull = 0;
-        [FieldOffset(136)] public CastlingStatus CastleStatus = CastlingStatus.None;
-        [FieldOffset(140)] private fixed byte _pad0[4];
-        [FieldOffset(144)] public Accumulator* Accumulator;
+        [FieldOffset( 88)] public ulong Checkers = 0;
+        [FieldOffset( 96)] public ulong Hash = 0;
+        [FieldOffset(104)] public ulong PawnHash = 0;
+        [FieldOffset(112)] public fixed ulong NonPawnHash[2];
+        [FieldOffset(128)] public int HalfmoveClock = 0;
+        [FieldOffset(132)] public int EPSquare = EPNone;
+        [FieldOffset(136)] public int CapturedPiece = None;
+        [FieldOffset(140)] public int PliesFromNull = 0;
+        [FieldOffset(144)] public CastlingStatus CastleStatus = CastlingStatus.None;
+        [FieldOffset(148)] private fixed byte _pad0[4];
+        [FieldOffset(152)] public Accumulator* Accumulator;
+
 
 
         public StateInfo()
