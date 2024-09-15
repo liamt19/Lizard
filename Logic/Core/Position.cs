@@ -539,6 +539,7 @@ namespace Lizard.Logic.Core
             State->PawnHash = 0;
             State->NonPawnHash[White] = State->NonPawnHash[Black] = 0;
             State->Hash = Zobrist.GetHash(this, &State->PawnHash, &State->NonPawnHash[White]);
+            State->NonPawnHash[Black] = State->NonPawnHash[White];
         }
 
 
