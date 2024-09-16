@@ -592,23 +592,6 @@ namespace Lizard.Logic.Threads
             Dispose(false);
         }
 
-        /// <summary>
-        /// Resets this SearchThread's Accumulator and history heuristics to their defaults.
-        /// </summary>
-        public void Clear()
-        {
-            History.MainHistory.Clear();
-            History.CaptureHistory.Clear();
-            History.CorrectionHistory.Clear();
-            History.MajorCorrectionHistory.Clear();
-
-            for (int i = 0; i < 2; i++)
-            {
-                History.Continuations[i][0].Clear();
-                History.Continuations[i][1].Clear();
-            }
-        }
-
 
         public override string ToString()
         {
