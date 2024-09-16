@@ -1056,20 +1056,23 @@ namespace Lizard.Logic.Search
 
         private static short AdjustEval(SearchThread thread, int us, short rawEval)
         {
-            return (short)(rawEval + thread.History.CorrectionHistory[thread, us] / CorrectionGrain);
+            var pch = thread.History.CorrectionHistory[thread, us] / CorrectionGrain;
+            var mch = thread.History.MajorCorrectionHistory[thread, us] / CorrectionGrain;
+            return (short)(rawEval + (pch + mch) / 2);
         }
 
 
         private static void UpdateCorrectionHistory(Position pos, int diff, int depth)
         {
-            ref var entry = ref pos.Owner.History.CorrectionHistory[pos, pos.ToMove];
             var scaledWeight = Math.Min((depth * depth) + 1, 128);
 
-            var oldFactor = entry * (CorrectionScale - scaledWeight);
-            var newFactor = diff * CorrectionGrain * scaledWeight;
-            var bonus = (oldFactor + newFactor) / CorrectionScale;
+            ref var pawnCh = ref pos.Owner.History.CorrectionHistory[pos, pos.ToMove];
+            var pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+            pawnCh = (StatEntry)Math.Clamp(pawnBonus, -CorrectionMax, CorrectionMax);
 
-            entry = (CorrectionStatEntry)Math.Clamp(bonus, -CorrectionMax, CorrectionMax);
+            ref var majorCh = ref pos.Owner.History.MajorCorrectionHistory[pos, pos.ToMove];
+            var majorBonus = (majorCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+            majorCh = (StatEntry)Math.Clamp(majorBonus, -CorrectionMax, CorrectionMax);
         }
 
 

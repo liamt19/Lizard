@@ -41,7 +41,7 @@ namespace Lizard.Logic.Transposition
             BlackHash = rand.NextUlong();
         }
 
-        public static ulong GetHash(Position position, ulong* pawnHash)
+        public static ulong GetHash(Position position, ulong* pawnHash, ulong* nonPawnHash)
         {
             ref Bitboard bb = ref position.bb;
 
@@ -60,6 +60,10 @@ namespace Lizard.Logic.Transposition
                 {
                     *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
                 }
+                else
+                {
+                    *nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
+                }
             }
 
             while (black != 0)
@@ -71,6 +75,10 @@ namespace Lizard.Logic.Transposition
                 if (pt == Pawn)
                 {
                     *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
+                }
+                else
+                {
+                    *nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
                 }
             }
 

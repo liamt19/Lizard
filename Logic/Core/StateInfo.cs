@@ -14,22 +14,25 @@ namespace Lizard.Logic.Core
     [StructLayout(LayoutKind.Explicit)]
     public unsafe struct StateInfo
     {
-        public static readonly nuint StateCopySize = (nuint)(sizeof(StateInfo) - sizeof(Accumulator*));
+        public static readonly nuint StateCopySize = (nuint)Marshal.OffsetOf<StateInfo>(nameof(_pad0));
 
         [FieldOffset(  0)] public fixed ulong CheckSquares[PieceNB];
         [FieldOffset( 48)] public fixed ulong BlockingPieces[2];
         [FieldOffset( 64)] public fixed ulong Pinners[2];
         [FieldOffset( 80)] public fixed int KingSquares[2];
-        [FieldOffset( 88)] public ulong Hash = 0;
-        [FieldOffset( 96)] public ulong PawnHash = 0;
-        [FieldOffset(104)] public ulong Checkers = 0;
-        [FieldOffset(112)] public int HalfmoveClock = 0;
-        [FieldOffset(116)] public int EPSquare = EPNone;
-        [FieldOffset(120)] public int CapturedPiece = None;
-        [FieldOffset(124)] public int PliesFromNull = 0;
-        [FieldOffset(128)] public CastlingStatus CastleStatus = CastlingStatus.None;
-        [FieldOffset(132)] private fixed byte _pad0[4];
-        [FieldOffset(136)] public Accumulator* Accumulator;
+        [FieldOffset( 88)] public ulong Checkers = 0;
+        [FieldOffset( 96)] public ulong Hash = 0;
+        [FieldOffset(104)] public ulong PawnHash = 0;
+        [FieldOffset(112)] public fixed ulong NonPawnHash[2];
+        [FieldOffset(128)] public int HalfmoveClock = 0;
+        [FieldOffset(132)] public int EPSquare = EPNone;
+        [FieldOffset(136)] public int CapturedPiece = None;
+        [FieldOffset(140)] public int PliesFromNull = 0;
+        [FieldOffset(144)] public CastlingStatus CastleStatus = CastlingStatus.None;
+        [FieldOffset(148)] private fixed byte _pad0[4];
+        [FieldOffset(152)] public Accumulator* Accumulator;
+
+
 
         public StateInfo()
         {
