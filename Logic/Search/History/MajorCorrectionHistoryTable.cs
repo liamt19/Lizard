@@ -4,6 +4,8 @@ using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.Search.History
 {
+    /// Idea from Starzix:
+    /// https://zzzzz151.pythonanywhere.com/test/729/
     public unsafe readonly struct MajorCorrectionHistoryTable
     {
         private readonly StatEntry* _History;
