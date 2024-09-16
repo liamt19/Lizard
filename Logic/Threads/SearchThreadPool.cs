@@ -250,7 +250,7 @@
         {
             for (int i = 0; i < ThreadCount; i++)
             {
-                Threads[i].Clear();
+                Threads[i].History.Clear();
             }
 
             MainThread.CheckupCount = 0;

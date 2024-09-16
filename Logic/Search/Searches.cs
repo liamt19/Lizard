@@ -5,7 +5,6 @@ using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
 using Lizard.Logic.Threads;
-using static Lizard.Logic.Search.History.CorrectionHistoryTable;
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
 using static Lizard.Logic.Transposition.TTEntry;
 
@@ -1056,9 +1055,14 @@ namespace Lizard.Logic.Search
 
         private static short AdjustEval(SearchThread thread, int us, short rawEval)
         {
-            var pch = thread.History.CorrectionHistory[thread, us] / CorrectionGrain;
-            var mch = thread.History.MajorCorrectionHistory[thread, us] / CorrectionGrain;
-            return (short)(rawEval + (pch + mch) / 2);
+            Position pos = thread.RootPosition;
+
+            var pch = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
+            var mch = thread.History.NonPawnCorrection[pos, us] / CorrectionGrain;
+
+            var corr = (pch + mch) / 2;
+
+            return (short)(rawEval + corr);
         }
 
 
@@ -1066,13 +1070,13 @@ namespace Lizard.Logic.Search
         {
             var scaledWeight = Math.Min((depth * depth) + 1, 128);
 
-            ref var pawnCh = ref pos.Owner.History.CorrectionHistory[pos, pos.ToMove];
+            ref var pawnCh = ref pos.Owner.History.PawnCorrection[pos, pos.ToMove];
             var pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
             pawnCh = (StatEntry)Math.Clamp(pawnBonus, -CorrectionMax, CorrectionMax);
 
-            ref var majorCh = ref pos.Owner.History.MajorCorrectionHistory[pos, pos.ToMove];
-            var majorBonus = (majorCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            majorCh = (StatEntry)Math.Clamp(majorBonus, -CorrectionMax, CorrectionMax);
+            ref var nonPawnCh = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove];
+            var nonPawnBonus = (nonPawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+            nonPawnCh = (StatEntry)Math.Clamp(nonPawnBonus, -CorrectionMax, CorrectionMax);
         }
 
 

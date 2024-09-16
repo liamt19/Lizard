@@ -23,13 +23,13 @@ namespace Lizard.Logic.Search.History
         /// Stores history for how far off the static evaluation was from the result of a search for either color,
         /// indexed by a position's pawn PSQT hash.
         /// </summary>
-        public readonly CorrectionHistoryTable CorrectionHistory;
+        public PawnCorrectionTable PawnCorrection;
 
         /// <summary>
         /// Stores history for how far off the static evaluation was from the result of a search for either color,
         /// indexed by a position's non-pawn PSQT hash.
         /// </summary>
-        public readonly MajorCorrectionHistoryTable MajorCorrectionHistory;
+        public NonPawnCorrectionTable NonPawnCorrection;
 
         /// <summary>
         /// Index with [inCheck] [Capture]
@@ -40,12 +40,14 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public readonly ContinuationHistory** Continuations;
 
+
+
         public HistoryTable()
         {
             MainHistory = new MainHistoryTable();
             CaptureHistory = new CaptureHistoryTable();
-            CorrectionHistory = new CorrectionHistoryTable();
-            MajorCorrectionHistory = new MajorCorrectionHistoryTable();
+            PawnCorrection = new PawnCorrectionTable();
+            NonPawnCorrection = new NonPawnCorrectionTable();
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
@@ -58,7 +60,7 @@ namespace Lizard.Logic.Search.History
 
             cont1[0] = new ContinuationHistory();
             cont1[1] = new ContinuationHistory();
-
+            
             Continuations[0] = cont0;
             Continuations[1] = cont1;
         }
@@ -67,8 +69,8 @@ namespace Lizard.Logic.Search.History
         {
             MainHistory.Dispose();
             CaptureHistory.Dispose();
-            CorrectionHistory.Dispose();
-            MajorCorrectionHistory.Dispose();
+            PawnCorrection.Dispose();
+            NonPawnCorrection.Dispose();
 
             for (int i = 0; i < 2; i++)
             {
@@ -77,6 +79,20 @@ namespace Lizard.Logic.Search.History
             }
 
             NativeMemory.AlignedFree(Continuations);
+        }
+
+        public void Clear()
+        {
+            MainHistory.Clear();
+            CaptureHistory.Clear();
+            PawnCorrection.Clear();
+            NonPawnCorrection.Clear();
+
+            for (int i = 0; i < 2; i++)
+            {
+                Continuations[i][0].Clear();
+                Continuations[i][1].Clear();
+            }
         }
     }
 }
