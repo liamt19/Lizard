@@ -20,12 +20,7 @@ namespace Lizard.Logic.Search.History
             _History = (StatEntry*)AlignedAllocZeroed((nuint)(sizeof(StatEntry) * TableElements), AllocAlignment);
         }
 
-        public abstract ref StatEntry this[Position pos, int pc] { get; }
-        public abstract ref StatEntry this[Position pos, int pc, int side] { get; }
-
         public void Dispose() => NativeMemory.AlignedFree(_History);
         public void Clear() => NativeMemory.Clear(_History, (nuint)(sizeof(StatEntry) * TableElements));
-
-        public abstract int CorrectionIndex(Position pos, int pc, int side = 0);
     }
 }
