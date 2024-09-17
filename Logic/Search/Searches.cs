@@ -1058,9 +1058,10 @@ namespace Lizard.Logic.Search
             Position pos = thread.RootPosition;
 
             var pch = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
-            var mch = thread.History.NonPawnCorrection[pos, us] / CorrectionGrain;
+            var mchW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
+            var mchB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
 
-            var corr = (pch + mch) / 2;
+            var corr = (pch * 200 + mchW * 100 + mchB * 100) / 400;
 
             return (short)(rawEval + corr);
         }
@@ -1074,9 +1075,13 @@ namespace Lizard.Logic.Search
             var pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
             pawnCh = (StatEntry)Math.Clamp(pawnBonus, -CorrectionMax, CorrectionMax);
 
-            ref var nonPawnCh = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove];
-            var nonPawnBonus = (nonPawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            nonPawnCh = (StatEntry)Math.Clamp(nonPawnBonus, -CorrectionMax, CorrectionMax);
+            ref var nonPawnChW = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, White];
+            var nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+            nonPawnChW = (StatEntry)Math.Clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
+
+            ref var nonPawnChB = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, Black];
+            var nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
+            nonPawnChB = (StatEntry)Math.Clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
         }
 
 
