@@ -1061,7 +1061,7 @@ namespace Lizard.Logic.Search
             var mchW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
             var mchB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
 
-            var corr = (pch * 200 + mchW * 100 + mchB * 100) / 400;
+            var corr = (pch * 200 + mchW * 100 + mchB * 100) / 300;
 
             return (short)(rawEval + corr);
         }
