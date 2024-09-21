@@ -1010,35 +1010,30 @@ namespace Lizard.Logic.Search
             int thisColor = bb.GetColorAtIndex(moveFrom);
             int capturedPiece = bb.GetPieceAtIndex(moveTo);
 
-            int quietMoveBonus = StatBonus(depth + 1);
-            int quietMovePenalty = StatMalus(depth);
+            int bonus = StatBonus(depth);
+            int malus = StatMalus(depth);
 
             if (capturedPiece != None && !bestMove.IsCastle)
             {
-                history.CaptureHistory[thisColor, thisPiece, moveTo, capturedPiece] <<= quietMoveBonus;
+                history.CaptureHistory[thisColor, thisPiece, moveTo, capturedPiece] <<= bonus;
             }
             else
             {
-
-                int bestMoveBonus = (bestScore > beta + CaptureBonusMargin) ? quietMoveBonus : StatBonus(depth);
-
                 if (ss->KillerMove != bestMove && !bestMove.IsEnPassant)
                 {
                     ss->KillerMove = bestMove;
                 }
 
-                //history.PawnHistory[pos, thisColor, thisPiece, moveTo] <<= quietMoveBonus;
-                history.MainHistory[thisColor, bestMove] <<= bestMoveBonus;
-                UpdateContinuations(ss, thisColor, thisPiece, moveTo, bestMoveBonus);
+                history.MainHistory[thisColor, bestMove] <<= bonus;
+                UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
                     thisPiece = bb.GetPieceAtIndex(m.From);
 
-                    //history.PawnHistory[pos, thisColor, thisPiece, m.To] <<= -quietMovePenalty;
-                    history.MainHistory[thisColor, m] <<= -quietMovePenalty;
-                    UpdateContinuations(ss, thisColor, thisPiece, m.To, -quietMovePenalty);
+                    history.MainHistory[thisColor, m] <<= -malus;
+                    UpdateContinuations(ss, thisColor, thisPiece, m.To, -malus);
                 }
             }
 
@@ -1048,7 +1043,7 @@ namespace Lizard.Logic.Search
                 thisPiece = bb.GetPieceAtIndex(m.From);
                 capturedPiece = bb.GetPieceAtIndex(m.To);
 
-                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= -quietMoveBonus;
+                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= -malus;
             }
         }
 
