@@ -347,6 +347,22 @@ namespace Lizard.Logic.Search
 
             MovesLoop:
 
+            //  "Small probcut idea" from SF: 
+            //  https://github.com/official-stockfish/Stockfish/blob/7ccde25baf03e77926644b282fed68ba0b5ddf95/src/search.cpp#L878
+            probBeta = beta + 435;
+            if (ss->InCheck
+                && !isPV
+                && (ttMove != Move.Null && bb.GetPieceAtIndex(ttMove.To) != None)
+                && ((tte->Bound & BoundLower) != 0)
+                && tte->Depth >= depth - 4
+                && ttScore >= probBeta
+                && Math.Abs(ttScore) < ScoreTTWin
+                && Math.Abs(beta) < ScoreTTWin)
+            {
+                return probBeta;
+            }
+
+
             int legalMoves = 0;     //  Number of legal moves that have been encountered so far in the loop.
             int playedMoves = 0;    //  Number of moves that have been MakeMove'd so far.
 
