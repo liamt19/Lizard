@@ -1019,11 +1019,13 @@ namespace Lizard.Logic.Search
             }
             else
             {
-                if (ss->KillerMove != bestMove && !bestMove.IsEnPassant)
+                if (!bestMove.IsEnPassant)
                 {
                     ss->KillerMove = bestMove;
                 }
 
+                //  Idea from Ethereal:
+                //  Don't reward/punish moves resulting from a trivial, low-depth cutoff
                 if (quietCount == 0 && depth <= 3)
                 {
                     return;
