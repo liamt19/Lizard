@@ -1024,6 +1024,11 @@ namespace Lizard.Logic.Search
                     ss->KillerMove = bestMove;
                 }
 
+                if (quietCount == 0 && depth <= 3)
+                {
+                    return;
+                }
+
                 history.MainHistory[thisColor, bestMove] <<= bonus;
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
 
