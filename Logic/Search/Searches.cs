@@ -354,7 +354,7 @@ namespace Lizard.Logic.Search
                 && !isPV
                 && (ttMove != Move.Null && bb.GetPieceAtIndex(ttMove.To) != None)
                 && ((tte->Bound & BoundLower) != 0)
-                && tte->Depth >= depth - 4
+                && tte->Depth >= depth - 6
                 && ttScore >= probBeta
                 && Math.Abs(ttScore) < ScoreTTWin
                 && Math.Abs(beta) < ScoreTTWin)
