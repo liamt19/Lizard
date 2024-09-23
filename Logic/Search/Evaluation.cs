@@ -5,6 +5,12 @@ namespace Lizard.Logic.Search
     public static unsafe class Evaluation
     {
         [MethodImpl(Inline)]
+        public static int MakeDrawScore(ulong nodes)
+        {
+            return -1 + (int)(nodes & 2);
+        }
+
+        [MethodImpl(Inline)]
         public static int MakeMateScore(int ply)
         {
             return -ScoreMate + ply;
