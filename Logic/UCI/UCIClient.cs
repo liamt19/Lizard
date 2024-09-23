@@ -658,9 +658,18 @@ namespace Lizard.Logic.UCI
 
         public static void PrintSPSAParams()
         {
+            List<string> ignore =
+            [
+                nameof(SearchOptions.Threads),
+                nameof(SearchOptions.MultiPV),
+                nameof(SearchOptions.Hash),
+                nameof(SearchOptions.UCI_Chess960),
+                nameof(SearchOptions.UCI_ShowWDL),
+            ];
+
             foreach (var optName in Options.Keys)
             {
-                if (optName == nameof(SearchOptions.Threads) || optName == nameof(SearchOptions.MultiPV) || optName == nameof(SearchOptions.Hash) || optName == nameof(SearchOptions.UCI_Chess960))
+                if (ignore.Contains(optName))
                 {
                     continue;
                 }

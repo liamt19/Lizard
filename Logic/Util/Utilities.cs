@@ -544,6 +544,18 @@ namespace Lizard.Logic.Util
                 sb.Append(" multipv " + (i + 1));
                 sb.Append(" time " + time);
                 sb.Append(" score " + score);
+                if (UCI_ShowWDL)
+                {
+                    if (moveScore > ScoreWin)
+                        sb.Append(" wdl 1000 0 0");
+                    else if (moveScore < -ScoreWin)
+                        sb.Append(" wdl 0 0 1000");
+                    else
+                    {
+                        (var win, var loss) = WDL.MaterialModel(moveScore, info.Position);
+                        sb.Append($" wdl {win} {1000 - win - loss} {loss}");
+                    }
+                }
                 sb.Append(" nodes " + nodes);
                 sb.Append(" nps " + nodesPerSec);
                 sb.Append(" hashfull " + thisThread.TT.GetHashFull());
@@ -577,23 +589,12 @@ namespace Lizard.Logic.Util
         {
             if (Evaluation.IsScoreMate(score))
             {
-                //  "mateIn" is returned in plies, but we want it in actual moves
-                if (score > 0)
-                {
-                    return "mate " + ((ScoreMate - score + 1) / 2);
-                }
-                else
-                {
-                    return "mate " + ((-ScoreMate - score) / 2);
-                }
+                return (score > 0) ? ("mate " + ( ScoreMate - score + 1) / 2) :
+                                     ("mate " + (-ScoreMate - score    ) / 2);
+            }
 
-                //return "mate " + mateIn;
-            }
-            else
-            {
-                const double NormalizeEvalFactor = 2.4;
-                return "cp " + (int)(score / NormalizeEvalFactor);
-            }
+            const double NormalizeEvalFactor = 252;
+            return "cp " + (int)(((double)score * 100) / NormalizeEvalFactor);
         }
 
 
