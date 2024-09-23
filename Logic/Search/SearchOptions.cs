@@ -21,7 +21,6 @@
         public static int MultiPV = 1;
 
 
-
         /// <summary>
         /// The size in megabytes of the transposition table.
         /// </summary>
@@ -29,6 +28,7 @@
 
 
         public static bool UCI_Chess960 = false;
+        public static bool UCI_ShowWDL = false;
 
 
         public const int CorrectionScale = 1024;
