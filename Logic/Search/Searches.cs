@@ -53,15 +53,16 @@ namespace Lizard.Logic.Search
                 return QSearch<NodeType>(pos, ss, alpha, beta, depth);
             }
 
+            SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
+
             if (!isRoot && alpha < ScoreDraw && Cuckoo.HasCycle(pos, ss->Ply))
             {
-                alpha = ScoreDraw;
+                alpha = MakeDrawScore(thisThread.Nodes);
                 if (alpha >= beta)
                     return alpha;
             }
 
-            SearchThread thisThread = pos.Owner;
-            TranspositionTable TT = thisThread.TT;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
@@ -114,7 +115,7 @@ namespace Lizard.Logic.Search
             {
                 if (pos.IsDraw())
                 {
-                    return ScoreDraw;
+                    return MakeDrawScore(thisThread.Nodes);
                 }
 
                 if (thisThread.AssocPool.StopThreads || ss->Ply >= MaxSearchStackPly - 1)
@@ -764,15 +765,16 @@ namespace Lizard.Logic.Search
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
 
+            SearchThread thisThread = pos.Owner;
+            TranspositionTable TT = thisThread.TT;
+
             if (alpha < ScoreDraw && Cuckoo.HasCycle(pos, ss->Ply))
             {
-                alpha = ScoreDraw;
+                alpha = MakeDrawScore(thisThread.Nodes);
                 if (alpha >= beta)
                     return alpha;
             }
 
-            SearchThread thisThread = pos.Owner;
-            TranspositionTable TT = thisThread.TT;
             ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
 
