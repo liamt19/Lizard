@@ -488,8 +488,12 @@ namespace Lizard.Logic.Search
 
                     if (score < singleBeta)
                     {
-                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+                        int doubleMargin = (SEDoubleMargin + (isPV.AsInt() * 320));
+                        int tripleMargin = (SETripleMargin + (isCapture.AsInt() * SETripleCapSub) + (isPV.AsInt() * 320));
+
+                        bool singleExt = ss->DoubleExtensions <= 8;
+                        bool doubleExt = singleExt && (score < singleBeta - doubleMargin);
+                        bool tripleExt = doubleExt && (score < singleBeta - tripleMargin);
 
                         //  This move seems to be good, so extend it.
                         extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
