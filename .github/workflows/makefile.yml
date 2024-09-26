@@ -35,3 +35,9 @@ jobs:
 
     - name: Run Make
       run: make
+      
+    - name: Check Compiler
+      run: ./Lizard compiler
+      
+    - name: Run Bench
+      run: ./Lizard bench

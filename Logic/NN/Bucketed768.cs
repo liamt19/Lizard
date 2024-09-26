@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
         /// <summary>
         /// (768 -> 1536)x2 -> 8
         /// </summary>
-        public const string NetworkName = "net-009-250.bin";
+        public const string NetworkName = "net-009.bin";
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;

@@ -12,5 +12,7 @@
 /Properties/launchSettings.json
 /*.exe
 /*.pdb
+/*.bin
+/*.nnue
 /data
 /.vs/ProjectEvaluation

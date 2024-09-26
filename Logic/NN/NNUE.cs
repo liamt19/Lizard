@@ -1,4 +1,5 @@
 ﻿
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -62,33 +63,62 @@ namespace Lizard.Logic.NN
         {
             if (File.Exists(networkToLoad))
             {
-                Log($"Using NNUE with 768 network {networkToLoad}");
+                Log($"Loading {networkToLoad} via filepath");
                 return File.OpenRead(networkToLoad);
             }
 
             //  Try to load the default network
             networkToLoad = Bucketed768.NetworkName;
             string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
-            Log($"Using NNUE with 768 network {networkToLoad}");
 
             //  First look for it as an embedded resource
             object o = Resources.ResourceManager.GetObject(resourceName);
             if (o != null)
+            {
+                Log($"Loading {resourceName} via ResourceManager");
                 return new MemoryStream((byte[])o);
+            }
 
+            try
+            {
+                Assembly asm = Assembly.GetExecutingAssembly();
+                var resName = $"{asm.GetName().Name}.{networkToLoad}";
+                Debug.WriteLine($"resources [{string.Join(", ", asm.GetManifestResourceNames())}]");
+                foreach (string res in asm.GetManifestResourceNames())
+                {
+                    if (res.Contains(".net-") && res.EndsWith(".bin"))
+                    {
+                        Stream stream = asm.GetManifestResourceStream(res);
+                        if (stream != null)
+                        {
+                            Log($"Loading {res} via reflection");
+                            return stream;
+                        }
+                    }
+                }
+            }
+            catch { }
+            
 
             //  Then look for it as an absolute path
             if (File.Exists(networkToLoad))
+            {
+                Log($"Loading {networkToLoad} via absolute path");
                 return File.OpenRead(networkToLoad);
+            }
+
 
 
             //  Lastly try looking for it in the current directory
             var cwdFile = Path.Combine(Environment.CurrentDirectory, networkToLoad);
             if (File.Exists(cwdFile))
+            {
+                Log($"Loading {networkToLoad} via relative path");
                 return File.OpenRead(cwdFile);
+            }
 
 
-            Console.WriteLine($"Couldn't find a network named '{networkToLoad}' as a compiled resource or as a file within the current directory!");
+            Console.WriteLine($"Couldn't find a network named '{networkToLoad}' or as a compiled resource or as a file within the current directory!");
             Console.ReadLine();
             
             if (exitIfFail)

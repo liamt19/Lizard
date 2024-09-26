@@ -111,15 +111,23 @@
     <IlcArg Condition="$(IlcInstructionSet) == ''" Include="--instruction-set=native" />
   </ItemGroup>
 
-  <!-- If "-p:EVALFILE=(path to network here...)" is passed during the MSBuild, this will set the EvalFile
-       parameter to the path that was passed and subsequently used to load the network from that file.
-  -->
+
+  <PropertyGroup>
+    <!-- Check if EVALFILE is not defined and set it to the content of network.txt if necessary -->
+    <ReadNetworkFile Condition="'$(EVALFILE)' == ''">
+      $([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt)).bin
+    </ReadNetworkFile>
+    <EVALFILE Condition="'$(EVALFILE)' == ''">$(ReadNetworkFile)</EVALFILE>
+  </PropertyGroup>
+
   <ItemGroup>
+    <EmbeddedResource Include="$(EVALFILE)" />
     <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
       <_Parameter1>$(EVALFILE)</_Parameter1>
     </AssemblyAttribute>
   </ItemGroup>
 
+  
   <!-- Targeting the "aot" recipe in the makefile will set this to true.
   -->
   <ItemGroup>
