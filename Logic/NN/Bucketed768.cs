@@ -21,10 +21,17 @@ namespace Lizard.Logic.NN
 
         public const int OutputScale = 400;
 
-        /// <summary>
-        /// (768 -> 1536)x2 -> 8
-        /// </summary>
-        public const string NetworkName = "net-009-250.bin";
+        public static string NetworkName
+        {
+            get
+            {
+                try
+                {
+                    return Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile.Trim();
+                }
+                catch { return ""; }
+            }
+        }
 
         public static readonly short* FeatureWeights;
         public static readonly short* FeatureBiases;
@@ -61,16 +68,7 @@ namespace Lizard.Logic.NN
             LayerWeights = AlignedAllocZeroed<short>(LayerWeightElements);
             LayerBiases = AlignedAllocZeroed<short>((nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
 
-            string networkToLoad = NetworkName;
-
-            try
-            {
-                var evalFile = Assembly.GetEntryAssembly().GetCustomAttribute<EvalFileAttribute>().EvalFile;
-                networkToLoad = evalFile;
-            }
-            catch { }
-
-            Initialize(networkToLoad);
+            Initialize(NetworkName);
         }
 
         public static void Initialize(string networkToLoad, bool exitIfFail = true)

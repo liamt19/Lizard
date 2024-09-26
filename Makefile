@@ -1,4 +1,12 @@
 
+#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
+#  It uses Github releases so that the size of this main repo doesn't get too large.
+DEFAULT_NET := $(file < network.txt)
+ifndef EVALFILE
+	EVALFILE = $(DEFAULT_NET).bin
+	NO_EVALFILE_SET = true
+endif
+
 ifndef EXE
 	EXE = Lizard
 endif
@@ -38,14 +46,14 @@ INST_SET = native
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
 OUT_DIR = -o ./
 ifneq ($(OS),Windows_NT)
-    UNAME_S := $(shell uname -s)
+	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
-        OUT_DIR =
-    endif
+		OUT_DIR =
+	endif
 	UNAME_P := $(shell uname -p)
 	ifneq ($(filter arm%,$(UNAME_P)),)
-        OUT_DIR =
-    endif
+		OUT_DIR =
+	endif
 endif
 
 #  self-contained              .NET Core won't need to be installed to run the binary
@@ -67,22 +75,33 @@ BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release 
 AOT_OPTS = -p:PublishAOT=true -p:PublishSingleFile=false -p:IS_AOT=true -p:IlcInstructionSet=$(INST_SET)
 
 
+.PHONY: release
+.DEFAULT_GOAL := release
+
+ifdef NO_EVALFILE_SET
+$(EVALFILE):
+	$(info Downloading default network $(DEFAULT_NET).bin)
+	curl -sOL https://github.com/liamt19/lizard-nets/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).bin
+
+download-net: $(EVALFILE)
+endif
+
 #  Try building the non-AOT version first, and then try to build the AOT version if possible.
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
-release:
+release: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS)
 
 
 #  This will/might only succeed if you have the right toolchain
-aot:
+aot: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
 
 
-512:
+512: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
 
 
-aot_512:
+aot_512: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX512"
 
 all:

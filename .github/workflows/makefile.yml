@@ -1,7 +1,6 @@
 name: Makefile CI
 
-on:
-  workflow_dispatch:
+on: [push, pull_request]
 
 env:
     DOTNET_VERSION: 9.0.x
@@ -35,3 +34,9 @@ jobs:
 
     - name: Run Make
       run: make
+      
+    - name: Check Compiler
+      run: ./Lizard compiler
+      
+    - name: Run Bench
+      run: ./Lizard bench
