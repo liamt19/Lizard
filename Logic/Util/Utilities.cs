@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
@@ -47,11 +45,6 @@ namespace Lizard.Logic.Util
         public const ulong Rank6BB = Rank1BB << (8 * 5);
         public const ulong Rank7BB = Rank1BB << (8 * 6);
         public const ulong Rank8BB = Rank1BB << (8 * 7);
-
-        public const ulong WhiteKingsideMask = (1UL << F1) | (1UL << G1);
-        public const ulong WhiteQueensideMask = (1UL << B1) | (1UL << C1) | (1UL << D1);
-        public const ulong BlackKingsideMask = (1UL << F8) | (1UL << G8);
-        public const ulong BlackQueensideMask = (1UL << B8) | (1UL << C8) | (1UL << D8);
 
 
         public const string InitialFEN = @"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

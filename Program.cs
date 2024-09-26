@@ -654,17 +654,10 @@ namespace Lizard
             info.TimeManager.MaxSearchTime = 30000;
             info.MaxDepth = depth;
 
-#if JB
-            JetBrains.Profiler.Api.MeasureProfiler.StartCollectingData();
-#endif
             GlobalSearchPool.StartSearch(p, ref info);
             GlobalSearchPool.BlockCallerUntilFinished();
 
-#if JB
-            JetBrains.Profiler.Api.MeasureProfiler.SaveData();
-#endif
-
-            Environment.Exit(123);
+            Environment.Exit(0);
         }
 
     }

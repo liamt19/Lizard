@@ -1,6 +1,4 @@
-﻿
-using Lizard.Logic.Core;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace Lizard.Logic.Datagen
 {

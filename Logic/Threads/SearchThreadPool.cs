@@ -58,10 +58,7 @@
 
                 for (int i = 0; i < ThreadCount; i++)
                 {
-                    if (Threads[i] != null)
-                    {
-                        Threads[i].Dispose();
-                    }
+                    Threads[i]?.Dispose();
                 }
             }
 

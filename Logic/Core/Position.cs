@@ -1,8 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
-
-using Lizard.Logic.Data;
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
 
@@ -967,7 +965,7 @@ namespace Lizard.Logic.Core
             return n;
         }
 
-        private Stopwatch PerftTimer = new Stopwatch();
+        private readonly Stopwatch PerftTimer = new Stopwatch();
         private const int PerftParallelMinDepth = 6;
         [SkipLocalsInit]
         public ulong PerftParallel(int depth, bool isRoot = false)

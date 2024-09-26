@@ -1,4 +1,6 @@
 ﻿
+#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
+
 //#define DBG
 //#define WRITE_PGN
 
@@ -8,7 +10,6 @@ using static Lizard.Logic.Datagen.DatagenParameters;
 
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
-using System.Diagnostics;
 
 namespace Lizard.Logic.Datagen
 {

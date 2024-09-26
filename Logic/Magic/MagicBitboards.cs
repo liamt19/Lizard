@@ -1,6 +1,4 @@
-﻿
-using Lizard.Logic.Data;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
 

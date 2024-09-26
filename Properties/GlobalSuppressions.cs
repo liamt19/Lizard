@@ -35,4 +35,3 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Maintainability", "CA1508:Avoid dead conditional code", Scope = "namespaceanddescendants", Target = "~N:Lizard")]
 
-#pragma warning disable CS8625

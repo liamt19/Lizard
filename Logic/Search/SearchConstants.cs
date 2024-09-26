@@ -13,16 +13,6 @@
 
         public const ulong MaxSearchNodes = ulong.MaxValue - 1;
 
-        /// <summary>
-        /// If we have fewer than this amount of milliseconds on our clock, we are in "low time".
-        /// Our search times will be reduced if we would enter low time.
-        /// </summary>
-        public const int SearchLowTimeThreshold = 3 * 1000;
-
-
-        public const bool StopLosingOnTimeFromVerizon = false;
-        public const int VerizonDisconnectionBuffer = 10 * 1000;
-
 
         /// <summary>
         /// The default depth to search to.

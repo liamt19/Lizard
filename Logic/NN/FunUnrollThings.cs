@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 using VectorT = System.Runtime.Intrinsics.Vector512;
 using VShort = System.Runtime.Intrinsics.Vector512<short>;
 #else
-using VectorT = System.Runtime.Intrinsics.Vector256;
 using VShort = System.Runtime.Intrinsics.Vector256<short>;
 #endif
 

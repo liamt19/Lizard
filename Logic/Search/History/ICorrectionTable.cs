@@ -1,7 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.Threads;
-
 namespace Lizard.Logic.Search.History
 {
     public unsafe abstract class ICorrectionTable

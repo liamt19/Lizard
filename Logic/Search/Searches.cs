@@ -1,7 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Text;
-
-using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
 using Lizard.Logic.Threads;
@@ -214,16 +212,6 @@ namespace Lizard.Logic.Search
             }
 
 
-
-            //  We accept Reverse Futility Pruning for:
-            //  non-PV nodes
-            //  that aren't a response to a previous singular extension search
-            //  at a depth at or below the max (currently 6)
-            //  which don't have a TT move,
-            //  so long as:
-            //  The static evaluation (eval) is below a TT win or a mate score,
-            //  the eval would cause a beta cutoff,
-            //  and the eval is significantly above beta.
             if (UseRFP
                 && !ss->TTPV
                 && !doSkip
@@ -237,15 +225,6 @@ namespace Lizard.Logic.Search
             }
 
 
-            //  We accept Null Move Pruning for:
-            //  non-PV nodes
-            //  at a depth at or above the min (currently 6)
-            //  which have a static eval or TT score equal to or above beta
-            //  (ditto for ss->StaticEval),
-            //  so long as:
-            //  The previous node didn't start a singular extension search,
-            //  the previous node didn't start a null move search,
-            //  and we have non-pawn material (important for Zugzwang).
             if (UseNMP
                 && !isPV
                 && depth >= NMPMinDepth
@@ -285,15 +264,6 @@ namespace Lizard.Logic.Search
             }
 
 
-            //  Try ProbCut for:
-            //  non-PV nodes
-            //  that aren't a response to a previous singular extension search
-            //  at a depth at or above the min (currently 2!)
-            //  while our beta isn't near a mate score
-            //  so long as:
-            //  We didn't have a TT hit,
-            //  or the TT hit's depth is well below the current depth,
-            //  or the TT hit's score is above beta + ProbCutBeta(Improving).
             int probBeta = beta + (improving ? ProbcutBetaImp : ProbcutBeta);
             if (UseProbCut
                 && !isPV
@@ -427,10 +397,7 @@ namespace Lizard.Logic.Search
                 legalMoves++;
                 int extend = 0;
 
-                //  If this isn't a root node,
-                //  we have a non-mate score for at least one move,
-                //  and we have non-pawn material:
-                //  We can start skipping quiet moves if we have already seen enough of them at this depth.
+
                 if (ShallowPruning
                     && !isRoot
                     && bestScore > ScoreMatedMax
@@ -459,16 +426,7 @@ namespace Lizard.Logic.Search
                     }
                 }
 
-                //  Try Singular Extensions for:
-                //  non-root nodes
-                //  which aren't a response to a previous singular extension search,
-                //  haven't already been extended significantly,
-                //  and have a depth at or above 5 (or 6 for PV searches + PV TT entry hits),
-                //  so long as:
-                //  The current move is the TT hit's move,
-                //  the TT hit's score isn't a definitive win/loss,
-                //  the TT hit is an alpha node,
-                //  and the TT depth is close to or above the current depth.
+
                 if (UseSingularExtensions
                     && !isRoot
                     && !doSkip
@@ -511,6 +469,7 @@ namespace Lizard.Logic.Search
                         extend = -1;
                     }
                 }
+
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
 
@@ -1181,7 +1140,6 @@ namespace Lizard.Logic.Search
             if (swap <= 0)
                 return true;
 
-            //  ulong occ = bb.Occupancy ^ SquareBB[from] ^ SquareBB[to];
             ulong occ = (bb.Occupancy ^ SquareBB[from]) | SquareBB[to];
 
             ulong attackers = bb.AttackersTo(to, occ);

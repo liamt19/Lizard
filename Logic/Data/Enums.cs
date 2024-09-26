@@ -1,20 +1,5 @@
 ﻿namespace Lizard.Logic.Data
 {
-    public static class Diagonal
-    {
-        /// <summary>
-        /// Diagonally up and to the right, from white's perspective. 
-        /// The longest diagonal in this direction contains A1, B2, ... G7, H8.
-        /// </summary>
-        public const int Diagonal_A1H8 = 0;
-
-        /// <summary>
-        /// Diagonally down and to the right, from white's perspective. 
-        /// The longest diagonal in this direction contains A8, B7, ... G2, H1.
-        /// </summary>
-        public const int Diagonal_A8H1 = 1;
-    }
-
     public static class Color
     {
         public const int White = 0;
@@ -80,6 +65,13 @@
     public struct PVNode : SearchNodeType { }
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
+
+
+    public interface MoveGenerationType { }
+    public struct GenNoisy : MoveGenerationType { }
+    public struct GenEvasions : MoveGenerationType { }
+    public struct GenNonEvasions : MoveGenerationType { }
+
 
     public enum NetworkArchitecture
     {
