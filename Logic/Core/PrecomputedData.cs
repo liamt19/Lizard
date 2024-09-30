@@ -325,7 +325,7 @@
                 for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
                 {
                     //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
-                    LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
+                    LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.65);
 
                     if (LogarithmicReductionTable[depth][moveIndex] < 1)
                     {
