@@ -491,14 +491,12 @@ namespace Lizard.Logic.Search
                 }
 
                 int newDepth = depth + extend;
+                int R = LogarithmicReductionTable[depth][legalMoves];
 
                 if (depth >= 2
                     && legalMoves >= 2
                     && !(isPV && isCapture))
                 {
-
-                    int R = LogarithmicReductionTable[depth][legalMoves];
-
                     //  Reduce if our static eval is declining
                     R += (!improving).AsInt();
 
@@ -534,7 +532,7 @@ namespace Lizard.Logic.Search
                     {
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
+                        newDepth += (score > (bestScore + LMRExtMargin) && ss->Ply <= thisThread.RootDepth * 2) ? 1 : 0;
                         newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
                         if (newDepth - 1 > reducedDepth)
@@ -559,7 +557,7 @@ namespace Lizard.Logic.Search
                 }
                 else if (!isPV || legalMoves > 1)
                 {
-                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1 - (R >= newDepth).AsInt(), !cutNode);
                 }
 
                 if (isPV && (playedMoves == 1 || score > alpha))

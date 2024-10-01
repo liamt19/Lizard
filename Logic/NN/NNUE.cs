@@ -22,7 +22,11 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            return (short)Bucketed768.GetEvaluation(pos);
+            int v = Bucketed768.GetEvaluation(pos);
+
+            v = (v * (200 - pos.State->HalfmoveClock)) / 200;
+
+            return (short)v;
         }
 
         [MethodImpl(Inline)]
