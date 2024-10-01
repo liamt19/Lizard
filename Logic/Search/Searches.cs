@@ -427,46 +427,56 @@ namespace Lizard.Logic.Search
                 }
 
 
-                if (UseSingularExtensions
-                    && !isRoot
-                    && !doSkip
-                    && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
-                    && m.Equals(ttMove)
-                    && Math.Abs(ttScore) < ScoreWin
-                    && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
+                if (UseSingularExtensions && !isRoot)
                 {
-                    int singleBeta = ttScore - (SENumerator * depth / 10);
-                    int singleDepth = (depth + SEDepthAdj) / 2;
+                    if (!doSkip
+                        && ss->Ply < thisThread.RootDepth * 2
+                        && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
+                        && m.Equals(ttMove)
+                        && Math.Abs(ttScore) < ScoreWin
+                        && ((tte->Bound & BoundLower) != 0)
+                        && tte->Depth >= depth - 3)
+                    {
+                        int singleBeta = ttScore - (SENumerator * depth / 10);
+                        int singleDepth = (depth + SEDepthAdj) / 2;
 
-                    ss->Skip = m;
-                    score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
-                    ss->Skip = Move.Null;
+                        ss->Skip = m;
+                        score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
+                        ss->Skip = Move.Null;
 
-                    if (score < singleBeta)
-                    {
-                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+                        if (score < singleBeta)
+                        {
+                            bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
+                            bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
 
-                        //  This move seems to be good, so extend it.
-                        extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                            //  This move seems to be good, so extend it.
+                            extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                        }
+                        else if (singleBeta >= beta)
+                        {
+                            return singleBeta;
+                        }
+                        else if (ttScore >= beta)
+                        {
+                            extend = -2 + (isPV ? 1 : 0);
+                        }
+                        else if (cutNode)
+                        {
+                            extend = -2;
+                        }
+                        else if (ttScore <= alpha)
+                        {
+                            extend = -1;
+                        }
                     }
-                    else if (singleBeta >= beta)
+                    else if (depth <= 5 && !isCapture)
                     {
-                        return singleBeta;
-                    }
-                    else if (ttScore >= beta)
-                    {
-                        extend = -2 + (isPV ? 1 : 0);
-                    }
-                    else if (cutNode)
-                    {
-                        extend = -2;
-                    }
-                    else if (ttScore <= alpha)
-                    {
-                        extend = -1;
+                        int c1 = (*(ss - 1)->ContinuationHistory)[us, ourPiece, moveTo];
+                        int c2 = (*(ss - 2)->ContinuationHistory)[us, ourPiece, moveTo];
+
+                        const int Margin = 4500;
+                        if (c1 > Margin && c2 > Margin)
+                            extend = 1;
                     }
                 }
 
