@@ -469,13 +469,13 @@ namespace Lizard.Logic.Search
                             extend = -1;
                         }
                     }
-                    else if (depth <= 5 && !isCapture)
+                    else if (depth <= 5 && ss->Ply > 4 && !isCapture)
                     {
                         int c1 = (*(ss - 1)->ContinuationHistory)[us, ourPiece, moveTo];
-                        int c2 = (*(ss - 2)->ContinuationHistory)[us, ourPiece, moveTo];
+                        int c3 = (*(ss - 3)->ContinuationHistory)[us, ourPiece, moveTo];
 
                         const int Margin = 4500;
-                        if (c1 > Margin && c2 > Margin)
+                        if (c1 > Margin && c3 > Margin)
                             extend = 1;
                     }
                 }
