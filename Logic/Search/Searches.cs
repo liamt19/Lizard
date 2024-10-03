@@ -237,6 +237,7 @@ namespace Lizard.Logic.Search
                 int reduction = NMPBaseRed + (depth / NMPDepthDiv) + Math.Min((eval - beta) / NMPEvalDiv, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
+                ss->FactorizedHistory = history.Continuations[0][0][0];
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 pos.MakeNullMove();
@@ -293,7 +294,8 @@ namespace Lizard.Logic.Search
                     int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
                     
                     ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
+                    ss->ContinuationHistory = history.Continuations[0][1][histIdx];
+                    ss->FactorizedHistory = history.Continuations[0][0][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -1071,6 +1073,8 @@ namespace Lizard.Logic.Search
         /// </summary>
         private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
         {
+            int histIdx = PieceToHistory.GetIndex(pc, pt, sq);
+
             foreach (int i in ContinuationOffsets)
             {
                 if (ss->InCheck && i > 2)
@@ -1080,7 +1084,8 @@ namespace Lizard.Logic.Search
 
                 if ((ss - i)->CurrentMove != Move.Null)
                 {
-                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] <<= bonus;
+                    (*(ss - i)->ContinuationHistory)[histIdx] <<= bonus;
+                    (*(ss - i)->FactorizedHistory)[histIdx] <<= (bonus / 2);
                 }
             }
         }

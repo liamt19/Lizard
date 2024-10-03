@@ -25,6 +25,7 @@ namespace Lizard.Logic.Search
         [FieldOffset(29)] public bool TTPV;
         [FieldOffset(30)] public bool TTHit;
         [FieldOffset(31)] private fixed byte _pad0[1];
+        [FieldOffset(32)] public PieceToHistory* FactorizedHistory;
 
 
         public SearchStackEntry()
@@ -40,6 +41,7 @@ namespace Lizard.Logic.Search
             CurrentMove = Move.Null;
             Skip = Move.Null;
             ContinuationHistory = null;
+            FactorizedHistory = null;
 
             Ply = 0;
             DoubleExtensions = 0;

@@ -341,6 +341,7 @@ namespace Lizard.Logic.Threads
                 (ss + i)->Ply = (short)i;
                 (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
                 (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
+                (ss + i)->FactorizedHistory = History.Continuations[0][0][0, 0, 0];
             }
 
             Bucketed768.ResetCaches(this);
