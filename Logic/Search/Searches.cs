@@ -1085,7 +1085,7 @@ namespace Lizard.Logic.Search
                 if ((ss - i)->CurrentMove != Move.Null)
                 {
                     (*(ss - i)->ContinuationHistory)[histIdx] <<= bonus;
-                    (*(ss - i)->FactorizedHistory)[histIdx] <<= (bonus / 2);
+                    (*(ss - i)->FactorizedHistory)[histIdx] <<= bonus;
                 }
             }
         }
