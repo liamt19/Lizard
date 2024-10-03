@@ -395,35 +395,39 @@ namespace Lizard.Logic.Search
                 bool isCapture = (theirPiece != None && !m.IsCastle);
 
                 legalMoves++;
-                int extend = 0;
 
+                int extend = 0;
+                int R = LogarithmicReductionTable[depth][legalMoves];
+
+                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
+                var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
+                                2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
+                                    (*(ss - 2)->ContinuationHistory)[histIdx] +
+                                    (*(ss - 4)->ContinuationHistory)[histIdx];
+
+                R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
                 if (ShallowPruning
                     && !isRoot
                     && bestScore > ScoreMatedMax
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
-                    if (skipQuiets == false)
-                    {
-                        skipQuiets = legalMoves >= lmpMoves;
-                    }
+                    skipQuiets = legalMoves >= lmpMoves;
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                    bool isQuiet = !(givesCheck || isCapture);
 
-                    if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
-                    {
+                    if (skipQuiets && isQuiet && depth <= ShallowMaxDepth)
                         continue;
-                    }
 
-                    if (givesCheck || isCapture || skipQuiets)
-                    {
-                        //  Once we've found at least 1 move that doesn't lead to mate,
-                        //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -ShallowSEEMargin * depth))
-                        {
-                            continue;
-                        }
-                    }
+
+                    int reducedDepth = Math.Max(depth - 1 - R, 1);
+
+                    if (skipQuiets && isQuiet && !SEE_GE(pos, m, -38 * reducedDepth * reducedDepth))
+                        continue;
+
+                    if (!isQuiet && !SEE_GE(pos, m, -ShallowSEEMargin * depth))
+                        continue;
                 }
 
 
@@ -473,8 +477,6 @@ namespace Lizard.Logic.Search
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
-
                 ss->DoubleExtensions = (short)((ss - 1)->DoubleExtensions + (extend >= 2).AsInt());
                 ss->CurrentMove = m;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
@@ -496,9 +498,6 @@ namespace Lizard.Logic.Search
                     && legalMoves >= 2
                     && !(isPV && isCapture))
                 {
-
-                    int R = LogarithmicReductionTable[depth][legalMoves];
-
                     //  Reduce if our static eval is declining
                     R += (!improving).AsInt();
 
@@ -512,13 +511,6 @@ namespace Lizard.Logic.Search
 
                     //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
-
-                    var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
-                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 4)->ContinuationHistory)[histIdx];
-
-                    R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
