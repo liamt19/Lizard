@@ -515,7 +515,7 @@ namespace Lizard.Logic.Threads
             }
         }
 
-        private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
+        private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.90, 0.85, 0.80, 0.75, 0.70];
         private static int StabilityMax = StabilityCoefficients.Length - 1;
 
         private bool SoftTimeUp(TimeManager tm, int stability, Span<int> searchScores)
