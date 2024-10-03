@@ -290,12 +290,11 @@ namespace Lizard.Logic.Search
 
                     prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
                     int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
                     
                     ss->CurrentMove = m;
                     ss->ContinuationHistory = history.Continuations[0][1][histIdx];
-                    ss->FactorizedHistory = history.Continuations[0][0][histIdx];
+                    ss->FactorizedHistory = history.Continuations[1][1][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
