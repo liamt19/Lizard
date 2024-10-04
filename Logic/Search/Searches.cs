@@ -829,8 +829,6 @@ namespace Lizard.Logic.Search
 
             int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
             int legalMoves = 0;
-            int movesMade = 0;
-            int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegalQS(list, ttDepth);
@@ -856,15 +854,13 @@ namespace Lizard.Logic.Search
                 bool isCapture = (theirPiece != None && !m.IsCastle);
                 bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                movesMade++;
-
                 if (bestScore > ScoreTTLoss)
                 {
                     if (!(givesCheck || m.IsPromotion)
                         && (prevSquare != moveTo)
                         && futility > -ScoreWin)
                     {
-                        if (legalMoves > 3 && !ss->InCheck)
+                        if (legalMoves > 3)
                         {
                             //  If we've already tried 3 moves and we know that we aren't getting mated,
                             //  only try checks, promotions, and recaptures
@@ -888,12 +884,6 @@ namespace Lizard.Logic.Search
                         }
                     }
 
-                    if (checkEvasions >= 2)
-                    {
-                        //  If we are in check, only consider 2 non-capturing moves.
-                        break;
-                    }
-
                     if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeMargin))
                     {
                         //  This move loses a significant amount of material
@@ -902,11 +892,6 @@ namespace Lizard.Logic.Search
                 }
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
-
-                if (ss->InCheck && !isCapture)
-                {
-                    checkEvasions++;
-                }
 
                 int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
