@@ -871,6 +871,9 @@ namespace Lizard.Logic.Search
                             continue;
                         }
 
+                        if (!isCapture)
+                            continue;
+
                         short futilityValue = (short)(futility + GetPieceValue(theirPiece));
 
                         if (futilityValue <= alpha)
