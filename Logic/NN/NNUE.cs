@@ -27,7 +27,7 @@ namespace Lizard.Logic.NN
 
             v = int.Clamp(v, -MaxNormalScore, MaxNormalScore);
 
-            return (short)v;
+            return (short)(v + 20);
         }
 
         [MethodImpl(Inline)]
