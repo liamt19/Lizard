@@ -532,8 +532,8 @@ namespace Lizard.Logic.Threads
                 
                 double scoreStability = searchScores[searchScores.Length - 1 - 3] 
                                       - searchScores[searchScores.Length - 1 - 0];
-                
-                scoreStability = Math.Max(0.85, Math.Min(1.15, 0.034 * scoreStability));
+
+                scoreStability = Math.Max(0.80, Math.Min(1.20, 0.020 * (scoreStability + 20)));
 
                 multFactor = nodeTM * bmStability * scoreStability;
             }
