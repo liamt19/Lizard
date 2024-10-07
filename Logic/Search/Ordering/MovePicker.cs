@@ -1,6 +1,6 @@
 ﻿
 #define REF_STRUCT
-//#undef REF_STRUCT
+#undef REF_STRUCT
 
 using Lizard.Logic.Data;
 using Lizard.Logic.Search.History;
@@ -105,7 +105,7 @@ namespace Lizard.Logic.Search.Ordering
                             }
                             else
                             {
-                                list[numBadNoisy++] = list[idx];
+                                list[numBadNoisy++] = next;
                             }
                         }
                         
@@ -199,7 +199,24 @@ namespace Lizard.Logic.Search.Ordering
                 }
                 case PlayEvasion:
                 {
-                        return SelectNext();
+#if REF_STRUCT
+                        int idx = FindBest();
+                        Move next = list[idx].Move;
+                        if (next != Move.Null && (next == ttMove))
+                        {
+                            return OrderNextMove();
+                        }
+#else
+                        Move next = SelectNext(SelectNonTTs);
+#endif
+
+                        if (next != Move.Null)
+                        {
+                            return next;
+                        }
+
+                        _stage = End;
+                        goto case End;
                 }
                 case End:
                 _:

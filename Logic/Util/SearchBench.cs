@@ -10,7 +10,7 @@
             Stopwatch sw = Stopwatch.StartNew();
 
             ulong totalNodes = 0;
-            SearchInformation info = new SearchInformation(pos, depth);
+            SearchInformation info = new SearchInformation(pos, depth, 10000);
             info.OnDepthFinish = null;
             info.OnSearchFinish = null;
 
