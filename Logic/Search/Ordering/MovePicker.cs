@@ -60,7 +60,7 @@ namespace Lizard.Logic.Search.Ordering
             _skipQuiets = false;
             _stage = ss->InCheck ? EvasionTT : NormalTT;
 
-            if (killerMove == ttMove || killerMove.IsCastle)
+            if (killerMove == ttMove)
                 killerMove = Move.Null;
         }
 

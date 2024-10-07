@@ -643,6 +643,12 @@ namespace Lizard.Logic.Core
                 return false;
             }
 
+            if (move.IsCastle && pt != King)
+            {
+                //  A piece other than our king is trying to castle with a rook.
+                return false;
+            }
+
             if (pt == Pawn)
             {
                 if (move.IsEnPassant)
