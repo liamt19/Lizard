@@ -1,12 +1,12 @@
 ﻿
 #define REF_STRUCT
-#undef REF_STRUCT
+//#undef REF_STRUCT
 
 using Lizard.Logic.Data;
 using Lizard.Logic.Search.History;
 
 using static Lizard.Logic.Search.Ordering.MovePicker.MovePickerStage;
-using static System.Net.Mime.MediaTypeNames;
+
 
 namespace Lizard.Logic.Search.Ordering
 {
