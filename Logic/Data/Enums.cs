@@ -69,6 +69,7 @@
 
     public interface MoveGenerationType { }
     public struct GenNoisy : MoveGenerationType { }
+    public struct GenQuiet : MoveGenerationType { }
     public struct GenEvasions : MoveGenerationType { }
     public struct GenNonEvasions : MoveGenerationType { }
 

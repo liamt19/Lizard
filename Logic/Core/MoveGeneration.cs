@@ -22,6 +22,7 @@
         public int GenPawns<GenType>(ScoredMove* list, ulong targets, int size) where GenType : MoveGenerationType
         {
             bool noisyMoves  = typeof(GenType) == typeof(GenNoisy);
+            bool quietMoves  = typeof(GenType) == typeof(GenQuiet);
             bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
@@ -32,7 +33,9 @@
 
             ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong captureSquares = evasions ? State->Checkers : them;
+            ulong captureSquares = evasions   ? State->Checkers 
+                                 : quietMoves ? 0UL
+                                 :              them;
 
             ulong emptySquares = ~bb.Occupancy;
 
@@ -115,7 +118,7 @@
                 list[size++].Move = new Move(to - up - Direction.EAST, to);
             }
 
-            if (State->EPSquare != EPNone)
+            if (State->EPSquare != EPNone && !quietMoves)
             {
                 if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
                 {
@@ -136,9 +139,12 @@
 
             int MakePromotionChecks(ScoredMove* list, int from, int promotionSquare, bool isCapture, int size)
             {
-                list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoQueen);
+                if (!quietMoves)
+                {
+                    list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoQueen);
+                }
 
-                if (!noisyMoves || isCapture)
+                if ((noisyMoves && isCapture) || (quietMoves && !isCapture) || evasions || nonEvasions)
                 {
                     list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoKnight);
                     list[size++].Move = new Move(from, promotionSquare, Move.FlagPromoRook);
@@ -158,6 +164,7 @@
         public int GenAll<GenType>(ScoredMove* list, int size = 0) where GenType : MoveGenerationType
         {
             bool noisyMoves  = typeof(GenType) == typeof(GenNoisy);
+            bool quietMoves  = typeof(GenType) == typeof(GenQuiet);
             bool evasions    = typeof(GenType) == typeof(GenEvasions);
             bool nonEvasions = typeof(GenType) == typeof(GenNonEvasions);
 
@@ -175,7 +182,7 @@
             {
                 targets = evasions    ? LineBB[ourKing][lsb(State->Checkers)]
                         : nonEvasions ? ~us
-                        : noisyMoves   ? them
+                        : noisyMoves  ?  them
                         :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
@@ -192,7 +199,7 @@
                 list[size++].Move = new Move(ourKing, to);
             }
 
-            if (nonEvasions)
+            if (nonEvasions || quietMoves)
             {
                 if (ToMove == White && (ourKing == E1 || IsChess960))
                 {
