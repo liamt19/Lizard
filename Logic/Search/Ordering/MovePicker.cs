@@ -45,7 +45,7 @@ namespace Lizard.Logic.Search.Ordering
             this.list = list;
             this.ss = ss;
             this.ttMove = ttMove;
-            this.killerMove = (ss->KillerMove == ttMove) ? Move.Null : ss->KillerMove;
+            this.killerMove = ss->KillerMove;
             this.depth = depth;
 
 #if REF_STRUCT
@@ -59,6 +59,9 @@ namespace Lizard.Logic.Search.Ordering
 
             _skipQuiets = false;
             _stage = ss->InCheck ? EvasionTT : NormalTT;
+
+            if (killerMove == ttMove || killerMove.IsCastle)
+                killerMove = Move.Null;
         }
 
         public Move OrderNextMove()
