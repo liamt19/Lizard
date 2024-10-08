@@ -21,7 +21,7 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int HL = Bucketed768.HiddenSize;
+        private const int HL = Bucketed768.L1_SIZE;
         private const int StopBefore = HL / N;
 
 
