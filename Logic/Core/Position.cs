@@ -643,10 +643,16 @@ namespace Lizard.Logic.Core
                 return false;
             }
 
-            if (move.IsCastle && pt != King)
+            if (move.IsCastle)
             {
                 //  A piece other than our king is trying to castle with a rook.
-                return false;
+                if (pt != King)
+                    return false;
+
+                //  There is a piece between our king and rook.
+                //  Note this can't happen unless a tt/killer move is played
+                if (CastlingImpeded(bb.Occupancy, move.RelevantCastlingRight()))
+                    return false;
             }
 
             if (pt == Pawn)
