@@ -539,7 +539,7 @@ namespace Lizard.Logic.Search
 
                         if (newDepth - 1 > reducedDepth)
                         {
-                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                         }
 
                         int bonus = 0;
