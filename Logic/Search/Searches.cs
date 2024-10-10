@@ -523,14 +523,13 @@ namespace Lizard.Logic.Search
                     //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
                     //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
                     //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
-                    R = Math.Clamp(R, 1, newDepth);
-                    int reducedDepth = (newDepth - R);
+                    int reducedDepth = Math.Min(Math.Max(1, newDepth - 1 - R), newDepth - 1);
 
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
                     //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
                     //  before updating this move's continuation history.
-                    if (score > alpha && R > 1)
+                    if (score > alpha && reducedDepth < newDepth - 1)
                     {
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
@@ -539,7 +538,7 @@ namespace Lizard.Logic.Search
 
                         if (newDepth - 1 > reducedDepth)
                         {
-                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
+                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
                         }
 
                         int bonus = 0;
