@@ -33,10 +33,12 @@ INST_SET = native
 
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
 OUT_DIR = -o ./
+FIX_OUTPUT = 
 ifneq ($(OS),Windows_NT)
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
 		OUT_DIR =
+		FIX_OUTPUT = mv ./bin/Release/osx-arm64/publish/Lizard ./Lizard
 	endif
 	UNAME_P := $(shell uname -p)
 	ifneq ($(filter arm%,$(UNAME_P)),)
@@ -44,7 +46,6 @@ ifneq ($(OS),Windows_NT)
 	endif
 endif
 
-OUT_DIR = -o ./
 
 #  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
 #  It uses Github releases so that the size of this main repo doesn't get too large.
@@ -66,10 +67,8 @@ endif
 #  $(OUT_DIR)                  Should be "-o ./", which outputs the binary in the current directory
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
-#  -p:DebugType=embedded       Places the PDB file inside the binary
-#  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
-#                              This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v diag $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+#  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded.
+BUILD_OPTS := --self-contained -v diag $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
@@ -94,6 +93,7 @@ endif
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
 release: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS)
+	$(FIX_OUTPUT)
 
 
 #  This will/might only succeed if you have the right toolchain
@@ -103,7 +103,7 @@ aot: $(EVALFILE)
 
 512: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
-
+	$(FIX_OUTPUT)
 
 aot_512: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX512"
