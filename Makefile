@@ -68,7 +68,7 @@ endif
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
 #  -p:EVALFILE=$(EVALFILE)     Path to a network to be bundled.
-BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
