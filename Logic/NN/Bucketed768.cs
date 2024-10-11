@@ -13,7 +13,7 @@ namespace Lizard.Logic.NN
     {
         public const int InputBuckets = 4;
         public const int InputSize = 768;
-        public const int HiddenSize = 1536;
+        public const int HiddenSize = 2048;
         public const int OutputBuckets = 8;
 
         public const int QA = 258;
