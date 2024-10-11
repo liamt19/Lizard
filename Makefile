@@ -1,12 +1,4 @@
 
-#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
-#  It uses Github releases so that the size of this main repo doesn't get too large.
-DEFAULT_NET := $(file < network.txt)
-ifndef EVALFILE
-	EVALFILE = $(DEFAULT_NET).bin
-	NO_EVALFILE_SET = true
-endif
-
 ifndef EXE
 	EXE = Lizard
 endif
@@ -55,6 +47,21 @@ ifneq ($(OS),Windows_NT)
 		OUT_DIR =
 	endif
 endif
+
+
+#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
+#  It uses Github releases so that the size of this main repo doesn't get too large.
+ifeq ($(UNAME_S),Darwin)
+	DEFAULT_NET := $(shell cat network.txt)
+else
+	DEFAULT_NET := $(file < network.txt)
+endif
+
+ifndef EVALFILE
+	EVALFILE = $(DEFAULT_NET).bin
+	NO_EVALFILE_SET = true
+endif
+
 
 #  self-contained              .NET Core won't need to be installed to run the binary
 #  -v quiet                    Silences CS#### warnings during building (e.g. "CS0162: Unreachable code detected")
