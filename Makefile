@@ -1,19 +1,6 @@
 
-#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
-#  It uses Github releases so that the size of this main repo doesn't get too large.
-DEFAULT_NET := $(file < network.txt)
-ifndef EVALFILE
-	EVALFILE = $(DEFAULT_NET).bin
-	NO_EVALFILE_SET = true
-endif
-
 ifndef EXE
 	EXE = Lizard
-endif
-
-#  I had issues with $(CC) not being defined (or being defined as "cc"?), so for now this will require dotnet to be in your path
-ifndef CC
-	CC = dotnet
 endif
 
 ifndef OUT_PATH
@@ -43,12 +30,15 @@ RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
 
 INST_SET = native
 
+
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
 OUT_DIR = -o ./
+FIX_OUTPUT = 
 ifneq ($(OS),Windows_NT)
 	UNAME_S := $(shell uname -s)
 	ifeq ($(UNAME_S),Darwin)
 		OUT_DIR =
+		FIX_OUTPUT = mv ./bin/Release/osx-arm64/publish/Lizard ./Lizard
 	endif
 	UNAME_P := $(shell uname -p)
 	ifneq ($(filter arm%,$(UNAME_P)),)
@@ -56,16 +46,29 @@ ifneq ($(OS),Windows_NT)
 	endif
 endif
 
+
+#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
+#  It uses Github releases so that the size of this main repo doesn't get too large.
+ifeq ($(UNAME_S),Darwin)
+	DEFAULT_NET := $(shell cat network.txt)
+else
+	DEFAULT_NET := $(file < network.txt)
+endif
+
+ifndef EVALFILE
+	EVALFILE = $(DEFAULT_NET).bin
+	NO_EVALFILE_SET = true
+endif
+
+
 #  self-contained              .NET Core won't need to be installed to run the binary
 #  -v quiet                    Silences CS#### warnings during building (e.g. "CS0162: Unreachable code detected")
 #  -p:WarningLevel=0           Silences CS#### warnings during building
 #  $(OUT_DIR)                  Should be "-o ./", which outputs the binary in the current directory
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
-#  -p:DebugType=embedded       Places the PDB file inside the binary
-#  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
-#                              This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+#  -p:EVALFILE=$(EVALFILE)     Path to a network to be bundled.
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
@@ -90,16 +93,15 @@ endif
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
 release: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS)
-
+	$(FIX_OUTPUT)
 
 #  This will/might only succeed if you have the right toolchain
 aot: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
 
-
 512: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
-
+	$(FIX_OUTPUT)
 
 aot_512: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX512"

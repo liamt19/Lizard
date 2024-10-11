@@ -8,11 +8,10 @@
     <Platforms>x64</Platforms>
     <StartupObject>Lizard.Program</StartupObject>
     <BaseOutputPath>bin</BaseOutputPath>
-    <BaseIntermediateOutputPath>obj</BaseIntermediateOutputPath>
     <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>False</AppendRuntimeIdentifierToOutputPath>
     
-    <DebugType>portable</DebugType>
+    <DebugType>embedded</DebugType>
     <ProduceReferenceAssembly>False</ProduceReferenceAssembly>
     <GenerateDocumentationFile>False</GenerateDocumentationFile>
     <GenerateAssemblyInfo>True</GenerateAssemblyInfo>
