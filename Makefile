@@ -3,11 +3,6 @@ ifndef EXE
 	EXE = Lizard
 endif
 
-#  I had issues with $(CC) not being defined (or being defined as "cc"?), so for now this will require dotnet to be in your path
-ifndef CC
-	CC = dotnet
-endif
-
 ifndef OUT_PATH
 	OUT_PATH = .\\
 endif
@@ -35,6 +30,7 @@ RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
 
 INST_SET = native
 
+
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
 OUT_DIR = -o ./
 ifneq ($(OS),Windows_NT)
@@ -48,6 +44,7 @@ ifneq ($(OS),Windows_NT)
 	endif
 endif
 
+OUT_DIR = -o ./
 
 #  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
 #  It uses Github releases so that the size of this main repo doesn't get too large.
