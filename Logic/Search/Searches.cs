@@ -148,6 +148,7 @@ namespace Lizard.Logic.Search
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
             Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
+            bool ttNoisy = ss->TTHit && pos.IsCapture(ttMove);
 
             //  For TT hits, we can accept and return the TT score if:
             //  We aren't in a PV node,
@@ -504,6 +505,8 @@ namespace Lizard.Logic.Search
 
                     //  Reduce if we think that this move is going to be a bad one
                     R += cutNode.AsInt() * 2;
+
+                    R += (ttNoisy && !isCapture).AsInt();
 
                     R -= ss->TTPV.AsInt();
 
