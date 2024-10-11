@@ -67,8 +67,8 @@ endif
 #  $(OUT_DIR)                  Should be "-o ./", which outputs the binary in the current directory
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
-#  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded.
-BUILD_OPTS := --self-contained -v diag $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
+#  -p:EVALFILE=$(EVALFILE)     Path to a network to be bundled.
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
@@ -95,11 +95,9 @@ release: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS)
 	$(FIX_OUTPUT)
 
-
 #  This will/might only succeed if you have the right toolchain
 aot: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
-
 
 512: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
