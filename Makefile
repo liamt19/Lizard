@@ -72,7 +72,7 @@ endif
 #  -p:DebugType=embedded       Places the PDB file inside the binary
 #  -p:EVALFILE=$(EVALFILE)     Path to a network to be loaded. Note the file is NOT embedded, so it can't be moved or the binary will fail to load it.
 #                              This should probably be an absolute path.
-BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v diag $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:DebugType=embedded -p:EVALFILE=$(EVALFILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
