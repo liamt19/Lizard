@@ -61,7 +61,7 @@
 
         public static int ProbcutBeta = 256;
         public static int ProbcutBetaImp = 101;
-        public static int ProbcutMinDepth = 2;
+        public static int ProbcutMinDepth = 1;
 
         public static int ShallowSEEMargin = 216;
         public static int ShallowMaxDepth = 9;
