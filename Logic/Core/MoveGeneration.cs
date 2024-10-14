@@ -74,7 +74,7 @@
                 ulong promotionCapturesL = Shift(up + Direction.WEST, promotingPawns) & captureSquares;
                 ulong promotionCapturesR = Shift(up + Direction.EAST, promotingPawns) & captureSquares;
 
-                if (evasions)
+                if (evasions || noisyMoves)
                 {
                     //  Only promote on squares that block the check or capture the checker.
                     promotions &= targets;
@@ -115,7 +115,7 @@
                 list[size++].Move = new Move(to - up - Direction.EAST, to);
             }
 
-            if (State->EPSquare != EPNone)
+            if (State->EPSquare != EPNone && !noisyMoves)
             {
                 if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
                 {
@@ -188,8 +188,7 @@
             ulong moves = NeighborsMask[ourKing] & (evasions ? ~us : targets);
             while (moves != 0)
             {
-                int to = poplsb(&moves);
-                list[size++].Move = new Move(ourKing, to);
+                list[size++].Move = new Move(ourKing, poplsb(&moves));
             }
 
             if (nonEvasions)
@@ -251,18 +250,6 @@
 
 
         /// <summary>
-        /// Generates the pseudo-legal evasion or non-evasion moves for the position, depending on if the side to move is in check.
-        /// The moves are placed into the array that <paramref name="pseudo"/> points to, 
-        /// and the number of moves that were created is returned.
-        /// </summary>
-        public int GenPseudoLegal(ScoredMove* pseudo)
-        {
-            return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo) :
-                                            GenAll<GenNonEvasions>(pseudo);
-        }
-
-
-        /// <summary>
         /// Generates the pseudo-legal moves for all of the pieces of type <paramref name="pt"/>, placing them into the 
         /// ScoredMove <paramref name="list"/> starting at the index <paramref name="size"/> and returning the new number
         /// of moves in the list.
@@ -283,10 +270,7 @@
             // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
 
-            ulong us   = bb.Colors[ToMove];
-            ulong them = bb.Colors[Not(ToMove)];
             ulong occ  = bb.Occupancy;
-
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
             {
@@ -304,7 +288,6 @@
         }
 
 
-
         /// <summary>
         /// <inheritdoc cref="GenLegal(ScoredMove*)"/>
         /// </summary>
@@ -317,129 +300,27 @@
                 return GenLegal(ptr);
             }
         }
+    
+
+        /// <summary>
+        /// Generates the pseudo-legal evasion or non-evasion moves for the position, depending on if the side to move is in check.
+        /// The moves are placed into the array that <paramref name="pseudo"/> points to, 
+        /// and the number of moves that were created is returned.
+        /// </summary>
+        public int GenPseudoLegal(ScoredMove* pseudo)
+        {
+            return (State->Checkers != 0) ? GenAll<GenEvasions>   (pseudo)
+                                          : GenAll<GenNonEvasions>(pseudo);
+        }
 
 
+        /// <summary>
+        /// <inheritdoc cref="GenPseudoLegal(ScoredMove*)"/>
+        /// </summary>
         public int GenPseudoLegalQS(ScoredMove* pseudo)
         {
-            return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo) :
-                                            GenAllQS(pseudo);
+            return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo)
+                                          : GenAll<GenNoisy>   (pseudo);
         }
-
-        public int GenAllQS(ScoredMove* list, int size = 0)
-        {
-            ulong us   = bb.Colors[ToMove];
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong occ  = bb.Occupancy;
-
-            int ourKing   = State->KingSquares[ToMove];
-            int theirKing = State->KingSquares[Not(ToMove)];
-
-            size = GenPawnsQS(list, size);
-            size = GenNormalQS(list, Knight, size);
-            size = GenNormalQS(list, Bishop, size);
-            size = GenNormalQS(list, Rook, size);
-            size = GenNormalQS(list, Queen, size);
-
-            ulong moves = NeighborsMask[ourKing] & them;
-            while (moves != 0)
-            {
-                list[size++].Move = new Move(ourKing, poplsb(&moves));
-            }
-
-            return size;
-        }
-
-        public int GenNormalQS(ScoredMove* list, int pt, int size)
-        {
-            // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
-            // This is far more convenient though
-
-            ulong us   = bb.Colors[ToMove];
-            ulong them = bb.Colors[Not(ToMove)];
-            ulong occ  = bb.Occupancy;
-
-            ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
-            while (ourPieces != 0)
-            {
-                int idx = poplsb(&ourPieces);
-                ulong moves = bb.AttackMask(idx, ToMove, pt, occ) & them;
-
-                while (moves != 0)
-                {
-                    int to = poplsb(&moves);
-                    list[size++].Move = new Move(idx, to);
-                }
-            }
-
-            return size;
-        }
-
-        public int GenPawnsQS(ScoredMove* list, int size)
-        {
-            ulong rank7 = (ToMove == White) ? Rank7BB : Rank2BB;
-            ulong rank3 = (ToMove == White) ? Rank3BB : Rank6BB;
-
-            int up = ShiftUpDir(ToMove);
-
-            int theirColor = Not(ToMove);
-
-            ulong us   = bb.Colors[ToMove];
-            ulong them = bb.Colors[theirColor];
-            ulong emptySquares = ~bb.Occupancy;
-
-            ulong ourPawns = us & bb.Pieces[Pawn];
-            ulong promotingPawns    = ourPawns &  rank7;
-            ulong notPromotingPawns = ourPawns & ~rank7;
-
-            int theirKing = State->KingSquares[theirColor];
-
-
-            if (promotingPawns != 0)
-            {
-                ulong promotions = Shift(up, promotingPawns) & emptySquares;
-                ulong promotionCapturesL = Shift(up + Direction.WEST, promotingPawns) & them;
-                ulong promotionCapturesR = Shift(up + Direction.EAST, promotingPawns) & them;
-
-                while (promotionCapturesL != 0)
-                {
-                    int to = poplsb(&promotionCapturesL);
-                    int from = to - up - Direction.WEST;
-
-                    list[size++].Move = new Move(from, to, Move.FlagPromoQueen);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoKnight);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoRook);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoBishop);
-                }
-
-                while (promotionCapturesR != 0)
-                {
-                    int to = poplsb(&promotionCapturesR);
-                    int from = to - up - Direction.EAST;
-
-                    list[size++].Move = new Move(from, to, Move.FlagPromoQueen);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoKnight);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoRook);
-                    list[size++].Move = new Move(from, to, Move.FlagPromoBishop);
-                }
-            }
-
-            ulong capturesL = Shift(up + Direction.WEST, notPromotingPawns) & them;
-            ulong capturesR = Shift(up + Direction.EAST, notPromotingPawns) & them;
-
-            while (capturesL != 0)
-            {
-                int to = poplsb(&capturesL);
-                list[size++].Move = new Move(to - up - Direction.WEST, to);
-            }
-
-            while (capturesR != 0)
-            {
-                int to = poplsb(&capturesR);
-                list[size++].Move = new Move(to - up - Direction.EAST, to);
-            }
-
-            return size;
-        }
-
     }
 }
