@@ -1161,7 +1161,7 @@ namespace Lizard.Logic.Search
                 if ((temp = stmAttackers & bb.Pieces[Pawn]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = GetPieceValue(Pawn) - swap) < res)
+                    if ((swap = SEEValue_Pawn - swap) < res)
                         break;
 
                     attackers |= GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
@@ -1169,13 +1169,13 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Knight]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = GetPieceValue(Knight) - swap) < res)
+                    if ((swap = SEEValue_Knight - swap) < res)
                         break;
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Bishop]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = GetPieceValue(Bishop) - swap) < res)
+                    if ((swap = SEEValue_Bishop - swap) < res)
                         break;
 
                     attackers |= GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
@@ -1183,7 +1183,7 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Rook]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = GetPieceValue(Rook) - swap) < res)
+                    if ((swap = SEEValue_Rook - swap) < res)
                         break;
 
                     attackers |= GetRookMoves(occ, to) & (bb.Pieces[Rook] | bb.Pieces[Queen]);
@@ -1191,7 +1191,7 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Queen]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = GetPieceValue(Queen) - swap) < res)
+                    if ((swap = SEEValue_Queen - swap) < res)
                         break;
 
                     attackers |= (GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen])) | (GetRookMoves(occ, to) & (bb.Pieces[Rook] | bb.Pieces[Queen]));
