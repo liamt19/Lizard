@@ -10,22 +10,11 @@ namespace Lizard.Logic.Search
 {
     public static unsafe class Searches
     {
-        /// <summary>
-        /// If the depth is at or above this, then QSearch will allow non-capture, non-evasion moves that GIVE check.
-        /// </summary>
-        public const int DepthQChecks = 0;
-
-        /// <summary>
-        /// If the depth is at or below this, then QSearch will ignore non-capture, non-evasion moves that GIVE check.
-        /// </summary>
-        public const int DepthQNoChecks = -1;
-
 
         /// <summary>
         /// Finds the best move according to the Evaluation function, looking at least <paramref name="depth"/> moves in the future.
         /// </summary>
         /// <typeparam name="NodeType">One of <see cref="RootNode"/>, <see cref="PVNode"/>, or <see cref="NonPVNode"/></typeparam>
-        /// <param name="info">Reference to the current search's SearchInformation</param>
         /// <param name="alpha">
         ///     The evaluation of the lower bound move. 
         ///     This will eventually be set equal to the evaluation of the best move we can make.
