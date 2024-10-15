@@ -10,22 +10,11 @@ namespace Lizard.Logic.Search
 {
     public static unsafe class Searches
     {
-        /// <summary>
-        /// If the depth is at or above this, then QSearch will allow non-capture, non-evasion moves that GIVE check.
-        /// </summary>
-        public const int DepthQChecks = 0;
-
-        /// <summary>
-        /// If the depth is at or below this, then QSearch will ignore non-capture, non-evasion moves that GIVE check.
-        /// </summary>
-        public const int DepthQNoChecks = -1;
-
 
         /// <summary>
         /// Finds the best move according to the Evaluation function, looking at least <paramref name="depth"/> moves in the future.
         /// </summary>
         /// <typeparam name="NodeType">One of <see cref="RootNode"/>, <see cref="PVNode"/>, or <see cref="NonPVNode"/></typeparam>
-        /// <param name="info">Reference to the current search's SearchInformation</param>
         /// <param name="alpha">
         ///     The evaluation of the lower bound move. 
         ///     This will eventually be set equal to the evaluation of the best move we can make.
@@ -48,7 +37,7 @@ namespace Lizard.Logic.Search
             //  by checking all of the available captures after the last move (in depth 1).
             if (depth <= 0)
             {
-                return QSearch<NodeType>(pos, ss, alpha, beta, depth);
+                return QSearch<NodeType>(pos, ss, alpha, beta);
             }
 
             SearchThread thisThread = pos.Owner;
@@ -298,7 +287,7 @@ namespace Lizard.Logic.Search
 
                     pos.MakeMove(m);
 
-                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, DepthQChecks);
+                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
 
                     if (score >= probBeta)
                     {
@@ -720,7 +709,7 @@ namespace Lizard.Logic.Search
         /// the score for a particular Negamax node is reasonable if we look at the forcing moves that can be made after that node.
         /// </summary>
         [SkipLocalsInit]
-        public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta, int depth) where NodeType : SearchNodeType
+        public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta) where NodeType : SearchNodeType
         {
             bool isPV = typeof(NodeType) != typeof(NonPVNode);
 
@@ -751,7 +740,6 @@ namespace Lizard.Logic.Search
 
             ss->InCheck = pos.Checked;
             ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
-            int ttDepth = ss->InCheck || depth >= DepthQChecks ? DepthQChecks : DepthQNoChecks;
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
             bool ttPV = ss->TTHit && tte->PV;
@@ -833,7 +821,7 @@ namespace Lizard.Logic.Search
             int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
-            int size = pos.GenPseudoLegalQS(list, ttDepth);
+            int size = pos.GenPseudoLegalQS(list);
             AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
@@ -915,7 +903,7 @@ namespace Lizard.Logic.Search
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
-                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha, depth - 1);
+                score = -QSearch<NodeType>(pos, ss + 1, -beta, -alpha);
                 pos.UnmakeMove(m);
 
                 if (score > bestScore)
@@ -950,7 +938,7 @@ namespace Lizard.Logic.Search
 
             var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, ttDepth, bestMove, rawEval, TT.Age, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ss->TTPV);
 
             return bestScore;
         }
