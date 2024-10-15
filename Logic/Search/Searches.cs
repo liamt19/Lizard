@@ -852,7 +852,7 @@ namespace Lizard.Logic.Search
                         && (prevSquare != moveTo)
                         && futility > -ScoreWin)
                     {
-                        if (legalMoves > 3 && !ss->InCheck)
+                        if (legalMoves > 4 && !ss->InCheck)
                         {
                             //  If we've already tried 3 moves and we know that we aren't getting mated,
                             //  only try checks, promotions, and recaptures
