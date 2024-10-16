@@ -287,12 +287,13 @@ namespace Lizard.Logic.Search
 
                     pos.MakeMove(m);
 
-                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
+                    score = -QSearch<ProbcutNode>(pos, ss + 1, -probBeta, -probBeta + 1);
 
                     if (score >= probBeta)
                     {
                         //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                        score = (depth > 3) ? -Negamax<NonPVNode>  (pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode)
+                                            : -QSearch<ProbcutNode>(pos, ss + 1, -probBeta, -probBeta + 1);
                     }
 
                     pos.UnmakeMove(m);
@@ -711,7 +712,8 @@ namespace Lizard.Logic.Search
         [SkipLocalsInit]
         public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta) where NodeType : SearchNodeType
         {
-            bool isPV = typeof(NodeType) != typeof(NonPVNode);
+            bool isPV = typeof(NodeType) == typeof(PVNode);
+            bool fromPC = typeof(NodeType) == typeof(ProbcutNode);
 
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
@@ -849,7 +851,7 @@ namespace Lizard.Logic.Search
                 if (bestScore > ScoreTTLoss)
                 {
                     if (!(givesCheck || m.IsPromotion)
-                        && (prevSquare != moveTo)
+                        && (prevSquare != moveTo && !fromPC)
                         && futility > -ScoreWin)
                     {
                         if (legalMoves > 3 && !ss->InCheck)

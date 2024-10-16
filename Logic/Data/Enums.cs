@@ -65,6 +65,7 @@
     public struct PVNode : SearchNodeType { }
     public struct NonPVNode : SearchNodeType { }
     public struct RootNode : SearchNodeType { }
+    public struct ProbcutNode : SearchNodeType { }
 
 
     public interface MoveGenerationType { }
