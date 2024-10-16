@@ -287,12 +287,13 @@ namespace Lizard.Logic.Search
 
                     pos.MakeMove(m);
 
-                    score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
+                    score = -QSearch<ProbcutNode>(pos, ss + 1, -probBeta, -probBeta + 1);
 
                     if (score >= probBeta)
                     {
                         //  Verify at a low depth
-                        score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
+                        score = (depth <= 3) ? -Negamax<NonPVNode>  (pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode)
+                                             : -QSearch<ProbcutNode>(pos, ss + 1, -probBeta, -probBeta + 1);
                     }
 
                     pos.UnmakeMove(m);
@@ -711,7 +712,8 @@ namespace Lizard.Logic.Search
         [SkipLocalsInit]
         public static int QSearch<NodeType>(Position pos, SearchStackEntry* ss, int alpha, int beta) where NodeType : SearchNodeType
         {
-            bool isPV = typeof(NodeType) != typeof(NonPVNode);
+            bool isPV = typeof(NodeType) == typeof(PVNode);
+            bool fromPC = typeof(NodeType) == typeof(ProbcutNode);
 
             SearchThread thisThread = pos.Owner;
             TranspositionTable TT = thisThread.TT;
@@ -749,7 +751,6 @@ namespace Lizard.Logic.Search
                 ss->PV[0] = Move.Null;
                 thisThread.SelDepth = Math.Max(thisThread.SelDepth, ss->Ply + 1);
             }
-
 
             if (pos.IsDraw())
             {
@@ -852,7 +853,7 @@ namespace Lizard.Logic.Search
                         && (prevSquare != moveTo)
                         && futility > -ScoreWin)
                     {
-                        if (legalMoves > 3 && !ss->InCheck)
+                        if (legalMoves > 3 - fromPC.AsInt() && !ss->InCheck)
                         {
                             //  If we've already tried 3 moves and we know that we aren't getting mated,
                             //  only try checks, promotions, and recaptures
