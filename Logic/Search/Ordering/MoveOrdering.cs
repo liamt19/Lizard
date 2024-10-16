@@ -97,11 +97,6 @@ namespace Lizard.Logic.Search.Ordering
                     sm.Score +=     (*(ss - 2)->ContinuationHistory)[contIdx];
                     sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
                     sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
-
-                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
-                    {
-                        sm.Score += OrderingCheckBonus;
-                    }
                 }
             }
         }
