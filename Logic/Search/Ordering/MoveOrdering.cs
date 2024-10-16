@@ -84,7 +84,7 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
+                    sm.Score = (6 * GetPieceValue(capturedPiece)) + 
                                (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
                 }
                 else
