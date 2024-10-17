@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int StopBefore = HiddenSize / N;
+        private const int StopBefore = HiddenSize / 2 / N;
 
 
         public static int GetEvaluationUnrolled512(Position pos)
@@ -47,7 +47,7 @@ namespace Lizard.Logic.NN
 
             #region R_STM
 
-            var da = accumulator[pos.ToMove];
+            var da = (VShort*) accumulator[pos.ToMove];
             var db = da + Stride;
             var weights = (VShort*)(&LayerWeights[(outputBucket * HiddenSize)]);
 
@@ -280,7 +280,7 @@ namespace Lizard.Logic.NN
 
             #region R_NSTM
 
-            da = accumulator[Not(pos.ToMove)];
+            da = (VShort*) accumulator[Not(pos.ToMove)];
             db = da + Stride;
             weights = (VShort*)(&LayerWeights[(outputBucket * HiddenSize) + HiddenSize / 2]);
             c0a = VectorT.Min(maxVec, VectorT.Max(zeroVec, da[0]));

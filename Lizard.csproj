@@ -24,7 +24,7 @@
     <LangVersion>Latest</LangVersion>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     
-    <Configurations>Debug;Release;Datagen</Configurations>
+    <Configurations>Debug;Release;Datagen;Avx512</Configurations>
     <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
     <RunAnalyzersDuringBuild>False</RunAnalyzersDuringBuild>
     <AnalysisLevel>latest-all</AnalysisLevel>
@@ -144,6 +144,13 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <PlatformTarget>x64</PlatformTarget>
+    <DefineConstants>$(DefineConstants)</DefineConstants>
+    <DebugType>embedded</DebugType>
+    <Optimize>True</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Avx512|x64'">
     <PlatformTarget>x64</PlatformTarget>
     <DefineConstants>$(DefineConstants)</DefineConstants>
     <DebugType>embedded</DebugType>
