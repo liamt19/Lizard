@@ -614,6 +614,10 @@ namespace Lizard.Logic.UCI
             Options[nameof(OrderingCheckBonus)].AutoMinMax();
             Options[nameof(OrderingVictimMult)].AutoMinMax();
 
+            Options[nameof(PawnBlend)].SetMinMax(140, 260);
+            Options[nameof(NonPawnBlend)].SetMinMax(30, 210);
+            Options[nameof(ContBlend)].SetMinMax(60, 240);
+
             Options[nameof(IIRMinDepth)].SetMinMax(2, 6);
             Options[nameof(AspWindow)].AutoMinMax();
             Options[nameof(CaptureBonusMargin)].AutoMinMax();
@@ -663,6 +667,7 @@ namespace Lizard.Logic.UCI
                 nameof(SearchOptions.Threads),
                 nameof(SearchOptions.MultiPV),
                 nameof(SearchOptions.Hash),
+                nameof(SearchOptions.UCI_SoftNodeLimit),
                 nameof(SearchOptions.UCI_Chess960),
                 nameof(SearchOptions.UCI_ShowWDL),
             ];

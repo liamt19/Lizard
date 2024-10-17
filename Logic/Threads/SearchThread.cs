@@ -31,7 +31,7 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public ulong Nodes;
 
-        public ulong HardNodeLimit;
+        public ulong HardNodeLimit = MaxSearchNodes;
 
         /// <summary>
         /// The index of this thread within the SearchPool, which starts at 0 for the MainSearchThread, 
@@ -353,13 +353,16 @@ namespace Lizard.Logic.Threads
             //  Create a copy of the AssocPool's root SearchInformation instance.
             SearchInformation info = AssocPool.SharedInfo;
 
-            TimeManager tm = info.TimeManager;
-
-            HardNodeLimit = info.MaxNodes;
-
             //  And set it's Position to this SearchThread's unique copy.
             //  (The Position that AssocPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
             info.Position = RootPosition;
+
+            TimeManager tm = info.TimeManager;
+
+            if (UCI_SoftNodeLimit)
+                info.SoftNodeLimit = info.MaxNodes;
+            else
+                HardNodeLimit = info.MaxNodes;
 
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
             int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
@@ -489,14 +492,15 @@ namespace Lizard.Logic.Threads
                     break;
                 }
 
-                if (Nodes >= info.SoftNodeLimit)
-                {
-                    break;
-                }
-
                 if (!AssocPool.StopThreads)
                 {
                     CompletedDepth = RootDepth;
+                }
+
+                if (Nodes >= info.SoftNodeLimit)
+                {
+                    AssocPool.StopThreads = true;
+                    break;
                 }
             }
 

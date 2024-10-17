@@ -29,10 +29,12 @@
 
         public static bool UCI_Chess960 = false;
         public static bool UCI_ShowWDL = false;
+        public static bool UCI_SoftNodeLimit = true;
 
 
         public const int CorrectionScale = 1024;
         public const int CorrectionGrain = 256;
+        public const int BlendDivisor = 300;
         public const short CorrectionMax = CorrectionGrain * 64;
 
 
@@ -75,6 +77,10 @@
 
         public static int OrderingCheckBonus = 9546;
         public static int OrderingVictimMult = 14;
+
+        public static int PawnBlend = 200;
+        public static int NonPawnBlend = 100;
+        public static int ContBlend = 150;
 
         public static int IIRMinDepth = 4;
         public static int AspWindow = 12;

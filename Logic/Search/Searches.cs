@@ -1,4 +1,7 @@
-﻿using System.Runtime.CompilerServices;
+﻿
+#define DATAGEN
+
+using System.Runtime.CompilerServices;
 using System.Text;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
@@ -87,7 +90,7 @@ namespace Lizard.Logic.Search
                 }
             }
 #else
-            if (isPV && (thisThread.Nodes >= thisThread.HardNodeLimit && thisThread.RootDepth > 2))
+            if (thisThread.Nodes >= thisThread.HardNodeLimit && thisThread.RootDepth > 2)
             {
                 thisThread.AssocPool.StopThreads = true;
             }
@@ -1040,7 +1043,7 @@ namespace Lizard.Logic.Search
                                                           (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
             }
 
-            var corr = (pawn * 200 + nonPawn * 100 + cont * 150) / (300 * CorrectionGrain);
+            var corr = (pawn * PawnBlend + nonPawn * NonPawnBlend + cont * ContBlend) / (BlendDivisor * CorrectionGrain);
 
             return (short)(rawEval + corr);
         }
