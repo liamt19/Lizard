@@ -384,7 +384,6 @@ namespace Lizard.Logic.NN
         }
 
 
-        [MethodImpl(Inline)]
         public static void SubSubAddAdd(short* _src, short* _dst, short* _sub1, short* _sub2, short* _add1, short* _add2)
         {
             VShort* src  = (VShort*)_src;
