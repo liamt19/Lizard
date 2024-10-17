@@ -19,7 +19,7 @@ namespace Lizard
             {
                 if (args[0] == "bench")
                 {
-                    SearchBench.Go(12, openBench: true);
+                    SearchBench.Go(openBench: true);
                     Environment.Exit(0);
                 }
                 else if (args[0] == "compiler")
@@ -628,7 +628,7 @@ namespace Lizard
             }
             else
             {
-                int depth = 12;
+                int depth = 8;
 
                 try
                 {

@@ -3,7 +3,7 @@
     public static class SearchBench
     {
 
-        public static void Go(int depth = 12, bool openBench = false)
+        public static void Go(int depth = 8, bool openBench = false)
         {
             Position pos = new Position(InitialFEN, owner: GlobalSearchPool.MainThread);
 
