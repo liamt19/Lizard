@@ -614,9 +614,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(OrderingCheckBonus)].AutoMinMax();
             Options[nameof(OrderingVictimMult)].AutoMinMax();
 
-            Options[nameof(PawnBlend)].SetMinMax(140, 260);
-            Options[nameof(NonPawnBlend)].SetMinMax(30, 210);
-            Options[nameof(ContBlend)].SetMinMax(60, 240);
+            Options[nameof(PawnBlend)].SetMinMax(40, 350);
+            Options[nameof(NonPawnBlend)].SetMinMax(40, 350);
+            Options[nameof(ContBlend)].SetMinMax(40, 350);
 
             Options[nameof(IIRMinDepth)].SetMinMax(2, 6);
             Options[nameof(AspWindow)].AutoMinMax();
