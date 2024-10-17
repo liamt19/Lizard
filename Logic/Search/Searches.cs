@@ -1030,18 +1030,17 @@ namespace Lizard.Logic.Search
             Position pos = thread.RootPosition;
             ref HistoryTable history = ref pos.Owner.History;
 
-            var pawn = history.PawnCorrection[pos, us] / CorrectionGrain;
-            var nonPawn = history.NonPawnCorrection[pos, us, White] / CorrectionGrain 
-                        + history.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
+            var pawn = history.PawnCorrection[pos, us];
+            var nonPawn = history.NonPawnCorrection[pos, us, White] + history.NonPawnCorrection[pos, us, Black];
 
             int cont = 0;
             if (ss->Ply >= 2)
             {
                 cont = history.ContinuationCorrection[us, (ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
-                                                          (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To] / CorrectionGrain;
+                                                          (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
             }
 
-            var corr = (pawn * 200 + nonPawn * 100 + cont * 150) / 300;
+            var corr = (pawn * 200 + nonPawn * 100 + cont * 150) / (300 * CorrectionGrain);
 
             return (short)(rawEval + corr);
         }
