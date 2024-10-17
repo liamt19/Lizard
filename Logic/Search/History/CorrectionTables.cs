@@ -24,4 +24,20 @@ namespace Lizard.Logic.Search.History
             return (pc * TableSize) + (int)((pos.NonPawnHash(side)) & ((ulong)TableSize - 1));
         }
     }
+
+    /// Idea by MinusKelvin:
+    /// https://github.com/MinusKelvin
+    public unsafe class ContinuationCorrectionTable : ICorrectionTable
+    {
+        private const int ContCorrSize = (PieceNB + 1) * SquareNB * (PieceNB + 1) * SquareNB;
+
+        public ContinuationCorrectionTable() : base(ContCorrSize, 2) { }
+
+        public ref StatEntry this[int side, int pt1, int to1, int pt2, int to2] => ref _History[CorrectionIndex(side, pt1, to1, to2, to2)];
+
+        public int CorrectionIndex(int side, int pt1, int to1, int pt2, int to2)
+        {
+            return (side * TableSize) + (pt1 * SquareNB * (PieceNB + 1) * SquareNB) + (to1 * SquareNB * (PieceNB + 1)) + (pt2 * SquareNB) + to2;
+        }
+    }
 }

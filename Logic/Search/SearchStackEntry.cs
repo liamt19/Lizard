@@ -21,10 +21,10 @@ namespace Lizard.Logic.Search
         [FieldOffset(22)] public Move KillerMove;
         [FieldOffset(24)] public Move CurrentMove;
         [FieldOffset(26)] public Move Skip;
-        [FieldOffset(28)] public bool InCheck;
-        [FieldOffset(29)] public bool TTPV;
-        [FieldOffset(30)] public bool TTHit;
-        [FieldOffset(31)] private fixed byte _pad0[1];
+        [FieldOffset(28)] public byte MovedPiece;
+        [FieldOffset(29)] public bool InCheck;
+        [FieldOffset(30)] public bool TTPV;
+        [FieldOffset(31)] public bool TTHit;
 
 
         public SearchStackEntry()
@@ -38,6 +38,7 @@ namespace Lizard.Logic.Search
         public void Clear()
         {
             CurrentMove = Move.Null;
+            MovedPiece = Piece.None;
             Skip = Move.Null;
             ContinuationHistory = null;
 

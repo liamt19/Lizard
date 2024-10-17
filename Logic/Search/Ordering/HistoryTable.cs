@@ -31,6 +31,8 @@ namespace Lizard.Logic.Search.History
         /// </summary>
         public NonPawnCorrectionTable NonPawnCorrection;
 
+        public ContinuationCorrectionTable ContinuationCorrection;
+
         /// <summary>
         /// Index with [inCheck] [Capture]
         /// <para></para>
@@ -48,6 +50,7 @@ namespace Lizard.Logic.Search.History
             CaptureHistory = new CaptureHistoryTable();
             PawnCorrection = new PawnCorrectionTable();
             NonPawnCorrection = new NonPawnCorrectionTable();
+            ContinuationCorrection = new ContinuationCorrectionTable();
 
             //  5D arrays aren't real, they can't hurt you.
             //  5D arrays:
@@ -71,6 +74,7 @@ namespace Lizard.Logic.Search.History
             CaptureHistory.Dispose();
             PawnCorrection.Dispose();
             NonPawnCorrection.Dispose();
+            ContinuationCorrection.Dispose();
 
             for (int i = 0; i < 2; i++)
             {
@@ -87,6 +91,7 @@ namespace Lizard.Logic.Search.History
             CaptureHistory.Clear();
             PawnCorrection.Clear();
             NonPawnCorrection.Clear();
+            ContinuationCorrection.Clear();
 
             for (int i = 0; i < 2; i++)
             {

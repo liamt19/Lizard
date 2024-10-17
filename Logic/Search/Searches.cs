@@ -174,7 +174,7 @@ namespace Lizard.Logic.Search
                 //  We don't overwrite that TT's StatEval score yet though.
                 rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(thisThread, ss, us, rawEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -187,7 +187,7 @@ namespace Lizard.Logic.Search
                 //  Get the static evaluation and store it in the empty TT slot.
                 rawEval = NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(thisThread, ss, us, rawEval);
 
                 tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
             }
@@ -225,6 +225,7 @@ namespace Lizard.Logic.Search
             {
                 int reduction = NMPBaseRed + (depth / NMPDepthDiv) + Math.Min((eval - beta) / NMPEvalDiv, NMPEvalMin);
                 ss->CurrentMove = Move.Null;
+                ss->MovedPiece = None;
                 ss->ContinuationHistory = history.Continuations[0][0][0];
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
@@ -279,9 +280,11 @@ namespace Lizard.Logic.Search
                     prefetch(TT.GetCluster(pos.HashAfter(m)));
 
                     bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
+                    int ourPiece = bb.GetPieceAtIndex(m.From);
+                    int histIdx = PieceToHistory.GetIndex(us, ourPiece, m.To);
                     
                     ss->CurrentMove = m;
+                    ss->MovedPiece = (byte)ourPiece;
                     ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
                     thisThread.Nodes++;
 
@@ -466,6 +469,7 @@ namespace Lizard.Logic.Search
 
                 ss->DoubleExtensions = (short)((ss - 1)->DoubleExtensions + (extend >= 2).AsInt());
                 ss->CurrentMove = m;
+                ss->MovedPiece = (byte)ourPiece;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
@@ -693,7 +697,7 @@ namespace Lizard.Logic.Search
                     && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
                 {
                     var diff = bestScore - ss->StaticEval;
-                    UpdateCorrectionHistory(pos, diff, depth);
+                    UpdateCorrectionHistory(pos, ss, diff, depth);
                 }
             }
 
@@ -779,7 +783,7 @@ namespace Lizard.Logic.Search
                     //  If the TT hit didn't have a static eval, get one now.
                     rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                    eval = ss->StaticEval = AdjustEval(thisThread, ss, us, rawEval);
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
@@ -793,7 +797,7 @@ namespace Lizard.Logic.Search
                     //  use the previous static eval but negative. Otherwise get the eval as normal.
                     rawEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
 
-                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                    eval = ss->StaticEval = AdjustEval(thisThread, ss, us, rawEval);
                 }
 
                 if (eval >= beta)
@@ -899,6 +903,7 @@ namespace Lizard.Logic.Search
                 int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
                 ss->CurrentMove = m;
+                ss->MovedPiece = (byte)ourPiece;
                 ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
@@ -1020,35 +1025,49 @@ namespace Lizard.Logic.Search
         }
 
 
-        private static short AdjustEval(SearchThread thread, int us, short rawEval)
+        private static short AdjustEval(SearchThread thread, SearchStackEntry* ss, int us, short rawEval)
         {
             Position pos = thread.RootPosition;
+            ref HistoryTable history = ref pos.Owner.History;
 
-            var pch = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
-            var mchW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
-            var mchB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
+            var pawn = history.PawnCorrection[pos, us] / CorrectionGrain;
+            var nonPawn = history.NonPawnCorrection[pos, us, White] / CorrectionGrain 
+                        + history.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
 
-            var corr = (pch * 200 + mchW * 100 + mchB * 100) / 300;
+            int cont = 0;
+            if (ss->Ply >= 2)
+            {
+                cont = history.ContinuationCorrection[us, (ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
+                                                          (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To] / CorrectionGrain;
+            }
+
+            var corr = (pawn * 200 + nonPawn * 100 + cont * 150) / 300;
 
             return (short)(rawEval + corr);
         }
 
 
-        private static void UpdateCorrectionHistory(Position pos, int diff, int depth)
+        private static void UpdateCorrectionHistory(Position pos, SearchStackEntry* ss, int diff, int depth)
         {
+            ref HistoryTable history = ref pos.Owner.History;
             var scaledWeight = Math.Min((depth * depth) + 1, 128);
+            diff *= CorrectionGrain;
 
-            ref var pawnCh = ref pos.Owner.History.PawnCorrection[pos, pos.ToMove];
-            var pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            pawnCh = (StatEntry)Math.Clamp(pawnBonus, -CorrectionMax, CorrectionMax);
+            ref var pawnCh = ref history.PawnCorrection[pos, pos.ToMove];
+            pawnCh = (StatEntry)Math.Clamp((pawnCh * (CorrectionScale - scaledWeight) + (diff * scaledWeight)) / CorrectionScale, -CorrectionMax, CorrectionMax);
 
-            ref var nonPawnChW = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, White];
-            var nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            nonPawnChW = (StatEntry)Math.Clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
+            ref var nonPawnChW = ref history.NonPawnCorrection[pos, pos.ToMove, White];
+            nonPawnChW = (StatEntry)Math.Clamp((nonPawnChW * (CorrectionScale - scaledWeight) + (diff * scaledWeight)) / CorrectionScale, -CorrectionMax, CorrectionMax);
 
-            ref var nonPawnChB = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, Black];
-            var nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            nonPawnChB = (StatEntry)Math.Clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
+            ref var nonPawnChB = ref history.NonPawnCorrection[pos, pos.ToMove, Black];
+            nonPawnChB = (StatEntry)Math.Clamp((nonPawnChB * (CorrectionScale - scaledWeight) + (diff * scaledWeight)) / CorrectionScale, -CorrectionMax, CorrectionMax);
+
+            if (ss->Ply >= 2)
+            {
+                ref var contCh = ref history.ContinuationCorrection[pos.ToMove, (ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
+                                                                                (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
+                contCh = (StatEntry)Math.Clamp((contCh * (CorrectionScale - scaledWeight) + (diff * scaledWeight)) / CorrectionScale, -CorrectionMax, CorrectionMax);
+            }
         }
 
 
