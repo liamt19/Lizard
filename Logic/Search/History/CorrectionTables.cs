@@ -31,13 +31,13 @@ namespace Lizard.Logic.Search.History
     {
         private const int ContCorrSize = (PieceNB + 1) * SquareNB * (PieceNB + 1) * SquareNB;
 
-        public ContinuationCorrectionTable() : base(ContCorrSize, 2) { }
+        public ContinuationCorrectionTable() : base(ContCorrSize, 1) { }
 
-        public ref StatEntry this[int side, int pt1, int to1, int pt2, int to2] => ref _History[CorrectionIndex(side, pt1, to1, to2, to2)];
+        public ref StatEntry this[int pt1, int to1, int pt2, int to2] => ref _History[CorrectionIndex(pt1, to1, to2, to2)];
 
-        public int CorrectionIndex(int side, int pt1, int to1, int pt2, int to2)
+        public int CorrectionIndex(int pt1, int to1, int pt2, int to2)
         {
-            return (side * TableSize) + (pt1 * SquareNB * (PieceNB + 1) * SquareNB) + (to1 * SquareNB * (PieceNB + 1)) + (pt2 * SquareNB) + to2;
+            return (pt1 * SquareNB * (PieceNB + 1) * SquareNB) + (to1 * SquareNB * (PieceNB + 1)) + (pt2 * SquareNB) + to2;
         }
     }
 }

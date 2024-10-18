@@ -1036,8 +1036,8 @@ namespace Lizard.Logic.Search
             int cont = 0;
             if (ss->Ply >= 2)
             {
-                cont = history.ContinuationCorrection[us, (ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
-                                                          (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
+                cont = history.ContinuationCorrection[(ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
+                                                      (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
             }
 
             var corr = (pawn * 200 + nonPawn * 100 + cont * 150) / (300 * CorrectionGrain);
@@ -1063,8 +1063,8 @@ namespace Lizard.Logic.Search
 
             if (ss->Ply >= 2)
             {
-                ref var contCh = ref history.ContinuationCorrection[pos.ToMove, (ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
-                                                                                (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
+                ref var contCh = ref history.ContinuationCorrection[(ss - 1)->MovedPiece, (ss - 1)->CurrentMove.To,
+                                                                    (ss - 2)->MovedPiece, (ss - 2)->CurrentMove.To];
                 contCh = (StatEntry)Math.Clamp((contCh * (CorrectionScale - scaledWeight) + (diff * scaledWeight)) / CorrectionScale, -CorrectionMax, CorrectionMax);
             }
         }
