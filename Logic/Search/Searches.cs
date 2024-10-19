@@ -249,7 +249,7 @@ namespace Lizard.Logic.Search
             {
                 //  We expected this node to be a bad one, so give it an extra depth reduction
                 //  if the depth is at or above a threshold (currently 4).
-                depth--;
+                depth -= 1 + isPV.AsInt();
             }
 
 
