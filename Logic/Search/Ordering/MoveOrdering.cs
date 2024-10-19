@@ -24,24 +24,24 @@ namespace Lizard.Logic.Search.Ordering
                 Move m = sm.Move;
                 int moveTo = m.To;
                 int moveFrom = m.From;
+                int pt = bb.GetPieceAtIndex(moveFrom);
 
                 if (m.Equals(ttMove))
                 {
-                    sm.Score = int.MaxValue - 100000;
+                    sm.Score = int.MaxValue - 1_000_000;
                 }
                 else if (m == ss->KillerMove)
                 {
-                    sm.Score = int.MaxValue - 1000000;
+                    sm.Score = int.MaxValue - 10_000_000;
                 }
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
+                               (history.CaptureHistory[pc, pt, moveTo, capturedPiece]);
                 }
                 else
                 {
-                    int pt = bb.GetPieceAtIndex(moveFrom);
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score  = 2 * history.MainHistory[pc, m];
@@ -54,6 +54,11 @@ namespace Lizard.Logic.Search.Ordering
                     {
                         sm.Score += OrderingCheckBonus;
                     }
+                }
+
+                if (pt == Knight)
+                {
+                    sm.Score += 200;
                 }
             }
         }
@@ -76,20 +81,20 @@ namespace Lizard.Logic.Search.Ordering
                 Move m = sm.Move;
                 int moveTo = m.To;
                 int moveFrom = m.From;
+                int pt = bb.GetPieceAtIndex(moveFrom);
 
                 if (m.Equals(ttMove))
                 {
-                    sm.Score = int.MaxValue - 100000;
+                    sm.Score = int.MaxValue - 1_000_000;
                 }
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
+                               (history.CaptureHistory[pc, pt, moveTo, capturedPiece]);
                 }
                 else
                 {
-                    int pt = bb.GetPieceAtIndex(moveFrom);
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
                     sm.Score  = 2 * history.MainHistory[pc, m];
@@ -102,6 +107,11 @@ namespace Lizard.Logic.Search.Ordering
                     {
                         sm.Score += OrderingCheckBonus;
                     }
+                }
+
+                if (pt == Knight)
+                {
+                    sm.Score += 200;
                 }
             }
         }
