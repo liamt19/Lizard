@@ -205,7 +205,7 @@ namespace Lizard.Logic.Search
                 && !ss->TTPV
                 && !doSkip
                 && depth <= RFPMaxDepth
-                && ttMove.Equals(Move.Null)
+                && (ttMove == Move.Null || depth > tte->Depth * 2)
                 && (eval < ScoreAssuredWin)
                 && (eval >= beta)
                 && (eval - GetRFPMargin(depth, improving)) >= beta)
