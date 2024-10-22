@@ -9,7 +9,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "11.0.7";
+        public const string EngineBuildVersion = "11.0.8";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;

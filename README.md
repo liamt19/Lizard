@@ -9,10 +9,6 @@ Lizard - A C# chess engine
 Creating this in my spare time, mainly using it to learn more about optimization and computer games. 
 I'm uploading it here so I can keep backups of it and not lose it when my laptop finally dies.
 
-**To the dozen or so people that saw this repo before version 10.0:** This was formerly named "LTChess". 
-This was an unfortunate choice of naming as that name was already taken by [Laurie Tunnicliffe](https://www.chessprogramming.org/Laurie_Tunnicliffe), 
-who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). Sorry Laurie!
-
 ## Ratings
 <div align="center">
 
@@ -24,7 +20,7 @@ who has a website for the true "LTChess" [here](https://ltchess.weebly.com/). So
 | 10.3 | Mar. 8 2024 | 3513 | -    | 3600 | Significant speedups, FRC support |
 | 10.4 | Jun. 2 2024 | 3548 | 3635    | 3612 | Larger network, better time management |
 | 10.5 | Jul. 13 2024 | 3556 | 3665 | 3685 | Significant speedups, DFRC data |
-| 11.0 | Sep. 26 2024 | TBD | TBD | TBD | More heuristics, Selfplay data |
+| 11.0 | Sep. 26 2024 | 3555 | TBD | 3809 | More heuristics, Selfplay data |
 
 </div>
 
