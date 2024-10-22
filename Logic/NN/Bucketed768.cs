@@ -11,9 +11,9 @@ namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 8;
+        public const int InputBuckets = 1;
         public const int InputSize = 768;
-        public const int HiddenSize = 2048;
+        public const int HiddenSize = 64;
         public const int OutputBuckets = 8;
 
         public const int QA = 258;
@@ -41,21 +41,21 @@ namespace Lizard.Logic.NN
         private const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
         private const int FeatureBiasElements = HiddenSize;
 
-        private const int LayerWeightElements = HiddenSize * OutputBuckets;
+        private const int LayerWeightElements = HiddenSize * 2 * OutputBuckets;
         private const int LayerBiasElements = OutputBuckets;
 
         private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 1, 2, 3, 11, 10,  9,  8,
-            4, 4, 5, 5, 13, 13, 12, 12,
-            6, 6, 6, 6, 14, 14, 14, 14,
-            6, 6, 6, 6, 14, 14, 14, 14,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
+            0, 0, 0, 0, 1, 1, 1, 1,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
@@ -102,7 +102,7 @@ namespace Lizard.Logic.NN
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
             //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize, OutputBuckets);
+            TransposeLayerWeights((short*)LayerWeights, HiddenSize * 2, OutputBuckets);
 
 #if DEBUG
             NetStats("ft weight", FeatureWeights, FeatureWeightElements);
@@ -214,36 +214,35 @@ namespace Lizard.Logic.NN
             Vector256<short> zeroVec = Vector256<short>.Zero;
             Vector256<int> sum = Vector256<int>.Zero;
 
+            int SimdChunks = HiddenSize / Vector256<short>.Count;
+
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
             int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
 
-            int Stride = (HiddenSize / Vector256<short>.Count) / 2;
+            var ourData =   accumulator[pos.ToMove];
+            var theirData = accumulator[Not(pos.ToMove)];
+            var ourWeights =   (Vector256<short>*)(&LayerWeights[outputBucket * (HiddenSize * 2)]);
+            var theirWeights = (Vector256<short>*)(&LayerWeights[outputBucket * (HiddenSize * 2) + HiddenSize]);
 
-            var data0 = accumulator[pos.ToMove];
-            var data1 = data0 + Stride;
-            var weights = (Vector256<short>*)(&LayerWeights[(outputBucket * HiddenSize)]);
-            for (int i = 0; i < Stride; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
-                Vector256<short> c_0 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data0[i]));
-                Vector256<short> c_1 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data1[i]));
+                Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, ourData[i]));
+                Vector256<short> mult = clamp * ourWeights[i];
 
-                (var mLo, var mHi) = Vector256.Widen(c_0 * weights[i]);
-                (var cLo, var cHi) = Vector256.Widen(c_1);
+                (var mLo, var mHi) = Vector256.Widen(mult);
+                (var cLo, var cHi) = Vector256.Widen(clamp);
 
                 sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
             }
 
-            data0 = accumulator[Not(pos.ToMove)];
-            data1 = data0 + Stride;
-            weights = (Vector256<short>*)(&LayerWeights[(outputBucket * HiddenSize) + HiddenSize / 2]);
-            for (int i = 0; i < Stride; i++)
+            for (int i = 0; i < SimdChunks; i++)
             {
-                Vector256<short> c_0 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data0[i]));
-                Vector256<short> c_1 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data1[i]));
+                Vector256<short> clamp = Vector256.Min(maxVec, Vector256.Max(zeroVec, theirData[i]));
+                Vector256<short> mult = clamp * theirWeights[i];
 
-                (var mLo, var mHi) = Vector256.Widen(c_0 * weights[i]);
-                (var cLo, var cHi) = Vector256.Widen(c_1);
+                (var mLo, var mHi) = Vector256.Widen(mult);
+                (var cLo, var cHi) = Vector256.Widen(clamp);
 
                 sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
             }
