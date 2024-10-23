@@ -29,9 +29,12 @@ namespace Lizard.Logic.Datagen
             Position pos = new Position(owner: pool.MainThread);
             ref Bitboard bb = ref pos.bb;
 
+            var thisThread = pool.MainThread;
+
             Random rand = Rand.Value;
             ScoredMove* legalMoves = stackalloc ScoredMove[MoveListSize];
 
+            RootMove bestRootMove = null;
             Move bestMove = Move.Null;
             int bestMoveScore = 0;
 
@@ -48,6 +51,7 @@ namespace Lizard.Logic.Datagen
 
             ulong totalBadPositions = 0;
             ulong totalGoodPositions = 0;
+            ulong totalDepths = 0;
 
             SearchInformation info = new SearchInformation(pos)
             {
@@ -102,37 +106,50 @@ namespace Lizard.Logic.Datagen
                 GameResult result = GameResult.Draw;
                 int toWrite = 0;
                 int filtered = 0;
-                int adjudicationCounter = 0;
+                int winAdjCounter = 0;
+                int drawAdjCounter = 0;
 
                 while (true)
                 {
                     pool.StartSearch(pos, ref info);
                     pool.BlockCallerUntilFinished();
 
-                    bestMove = pool.GetBestThread().RootMoves[0].Move;
-                    bestMoveScore = pool.GetBestThread().RootMoves[0].Score;
-                    bestMoveScore *= (pos.ToMove == Black ? -1 : 1);
+                    bestRootMove = thisThread.RootMoves[0];
+                    bestMove = bestRootMove.Move;
+                    bestMoveScore = bestRootMove.Score * (pos.ToMove == Black ? -1 : 1);
 
 
-                    if (Math.Abs(bestMoveScore) >= AdjudicateScore)
+                    if (Math.Abs(bestMoveScore) >= WinAdjudicateScore)
                     {
-                        if (++adjudicationCounter > AdjudicateMoves)
+                        if (++winAdjCounter >= WinAdjudicateMoves)
                         {
                             result = (bestMoveScore > 0) ? GameResult.WhiteWin : GameResult.BlackWin;
                             break;
                         }
                     }
                     else
-                        adjudicationCounter = 0;
+                        winAdjCounter = 0;
+
+                    if (Math.Abs(bestMoveScore) <= DrawAdjudicateScore)
+                    {
+                        if (++drawAdjCounter >= DrawAdjudicateMoves)
+                        {
+                            result = GameResult.Draw;
+                            break;
+                        }
+                    }
+                    else
+                        drawAdjCounter = 0;
 
 
                     bool inCheck = pos.InCheck;
-                    bool bmCap = ((bb.GetPieceAtIndex(bestMove.To) != None && !bestMove.IsCastle) || bestMove.IsEnPassant);
+                    bool bmCap = pos.IsCapture(bestMove);
                     bool badScore = Math.Abs(bestMoveScore) > MaxFilteringScore;
                     if (!(inCheck || bmCap || badScore))
                     {
                         datapoints[toWrite].Fill(pos, bestMove, bestMoveScore);
                         toWrite++;
+                        totalDepths += (ulong)thisThread.RootDepth;
                     }
                     else
                     {
@@ -166,8 +183,9 @@ namespace Lizard.Logic.Datagen
 
                 var goodPerSec = totalGoodPositions / sw.Elapsed.TotalSeconds;
                 var totalPerSec = (totalGoodPositions + totalBadPositions) / sw.Elapsed.TotalSeconds;
+                var avgDepth = ((double)totalDepths / totalGoodPositions);
 
-                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions, goodPerSec);
+                ProgressBroker.ReportProgress(threadID, gameNum, totalGoodPositions, goodPerSec, avgDepth);
                 AddResultsAndWrite(datapoints[..toWrite], result, outputWriter);
             }
 

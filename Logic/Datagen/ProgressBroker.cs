@@ -7,6 +7,7 @@ namespace Lizard.Logic.Datagen
         private static readonly ConcurrentDictionary<int, ulong> ThreadGameTotals = new ConcurrentDictionary<int, ulong>();
         private static readonly ConcurrentDictionary<int, ulong> ThreadPositionTotals = new ConcurrentDictionary<int, ulong>();
         private static readonly ConcurrentDictionary<int, double> ThreadNPS = new ConcurrentDictionary<int, double>();
+        private static readonly ConcurrentDictionary<int, double> ThreadDepths = new ConcurrentDictionary<int, double>();
         private static readonly CancellationTokenSource TokenSource = new CancellationTokenSource();
 
         public static void StartMonitoring()
@@ -22,7 +23,7 @@ namespace Lizard.Logic.Datagen
         private static void MonitorProgress(CancellationToken token)
         {
             Console.WriteLine("\n");
-            Console.WriteLine("                   games       positions      pos/sec");
+            Console.WriteLine("                   games       positions      pos/sec    avg. depth");
             (int _, int top) = Console.GetCursorPosition();
 
             while (!token.IsCancellationRequested)
@@ -37,6 +38,7 @@ namespace Lizard.Logic.Datagen
                 ulong totalGames = 0;
                 double totalNPS = 0;
                 ulong totalPositions = 0;
+                double totalDepths = 0;
 
                 foreach (var kvp in ThreadGameTotals)
                 {
@@ -44,26 +46,29 @@ namespace Lizard.Logic.Datagen
                     var games = kvp.Value;
                     var positions = ThreadPositionTotals[id];
                     var nps = ThreadNPS[id];
+                    var depth = ThreadDepths[id];
 
-                    Console.WriteLine($"Thread {id,3}: {games,12} {positions,15:N0} {nps,12:N2}");
+                    Console.WriteLine($"Thread {id,3}: {games,12} {positions,15:N0} {nps,12:N2} {depth,13:N2}");
 
                     totalGames += games;
                     totalPositions += positions;
                     totalNPS += nps;
+                    totalDepths += depth;
                 }
 
-                Console.WriteLine($"           ------------------------------------------");
-                Console.WriteLine($"            {totalGames,12} {totalPositions,15:N0} {totalNPS,12:N2}");
+                Console.WriteLine($"           --------------------------------------------------------");
+                Console.WriteLine($"            {totalGames,12} {totalPositions,15:N0} {totalNPS,12:N2} {totalDepths / ThreadGameTotals.Count,13:N2}");
 
                 Thread.Sleep(250);
             }
         }
 
-        public static void ReportProgress(int threadId, ulong gameNum, ulong totalPositions, double nps)
+        public static void ReportProgress(int threadId, ulong gameNum, ulong totalPositions, double nps, double depth)
         {
             ThreadGameTotals[threadId] = gameNum;
             ThreadPositionTotals[threadId] = totalPositions;
             ThreadNPS[threadId] = nps;
+            ThreadDepths[threadId] = depth;
         }
     }
 }

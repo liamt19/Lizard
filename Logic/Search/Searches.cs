@@ -563,8 +563,10 @@ namespace Lizard.Logic.Search
 
                 if (isRoot)
                 {
+#if !DATAGEN
                     //  Update the NodeTM table with the number of nodes that were searched in this subtree.
                     thisThread.NodeTable[moveFrom][moveTo] += thisThread.Nodes - prevNodes;
+#endif
                 }
 
                 if (thisThread.AssocPool.StopThreads)
