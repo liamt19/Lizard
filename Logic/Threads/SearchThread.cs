@@ -362,7 +362,7 @@ namespace Lizard.Logic.Threads
             info.Position = RootPosition;
 
             //  MultiPV searches will only consider the lesser between the number of legal moves and the requested MultiPV number.
-            int multiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
+            int realMultiPV = Math.Min(SearchOptions.MultiPV, RootMoves.Count);
 
             Span<int> searchScores = stackalloc int[MaxPly];
             int scoreIdx = 0;
@@ -388,8 +388,15 @@ namespace Lizard.Logic.Threads
                 }
 
                 int usedDepth = RootDepth;
+                int usedMultiPV = (usedDepth <= 6)  ? 3
+                                : (usedDepth <= 12) ? 2
+                                :                     1;
 
-                for (PVIndex = 0; PVIndex < multiPV; PVIndex++)
+                //  Use at most RootMoves.Count, and at least the requested amount or 2/3.
+                usedMultiPV = Math.Min(usedMultiPV, RootMoves.Count);
+                usedMultiPV = Math.Max(usedMultiPV, realMultiPV);
+
+                for (PVIndex = 0; PVIndex < usedMultiPV; PVIndex++)
                 {
                     if (AssocPool.StopThreads)
                         break;
@@ -435,7 +442,7 @@ namespace Lizard.Logic.Threads
 
                     StableSort(RootMoves, 0, PVIndex + 1);
 
-                    if (IsMain && (AssocPool.StopThreads || PVIndex == multiPV - 1))
+                    if (IsMain && (AssocPool.StopThreads || PVIndex == realMultiPV - 1))
                     {
                         info.OnDepthFinish?.Invoke(ref info);
                     }
