@@ -195,6 +195,10 @@ namespace Lizard
                 {
                     break;
                 }
+                else if (input.StartsWithIgnoreCase("activations"))
+                {
+                    Bucketed768.PrintActivationStats();
+                }
                 else
                 {
                     //  You can just copy paste in a FEN string rather than typing "position fen" before it.
