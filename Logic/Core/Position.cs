@@ -88,7 +88,10 @@ namespace Lizard.Logic.Core
         public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc]) != 0);
 
         [MethodImpl(Inline)]
-        public bool IsCapture(Move m) => ((bb.GetPieceAtIndex(m.To) != None && !m.IsCastle) || m.IsEnPassant);
+        public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
+
+        [MethodImpl(Inline)]
+        public bool IsNoisy(Move m) => (IsCapture(m) || m.IsEnPassant);
 
 
         /// <summary>
@@ -638,6 +641,18 @@ namespace Lizard.Logic.Core
                 //  There is a piece on the square we are moving to, and it is ours, so we can't capture it.
                 //  The one exception is castling, which is encoded as king captures rook.
                 return false;
+            }
+
+            if (move.IsCastle)
+            {
+                //  A piece other than our king is trying to castle with a rook.
+                if (pt != King)
+                    return false;
+
+                //  There is a piece between our king and rook.
+                //  Note this can't happen unless a tt/killer move is played
+                if (CastlingImpeded(bb.Occupancy, move.RelevantCastlingRight()))
+                    return false;
             }
 
             if (pt == Pawn)

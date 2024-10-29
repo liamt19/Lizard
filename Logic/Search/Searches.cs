@@ -1,7 +1,12 @@
-﻿using System.Runtime.CompilerServices;
+﻿
+#define MP
+//#undef MP
+
+using System.Runtime.CompilerServices;
 using System.Text;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
+using Lizard.Logic.Search.Ordering;
 using Lizard.Logic.Threads;
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
 using static Lizard.Logic.Transposition.TTEntry;
@@ -269,23 +274,23 @@ namespace Lizard.Logic.Search
 
                 for (int i = 0; i < numCaps; i++)
                 {
-                    Move m = OrderNextMove(captures, numCaps, i);
-                    if (!pos.IsLegal(m) || !SEE_GE(pos, m, Math.Max(1, probBeta - ss->StaticEval)))
+                    Move pm = OrderNextMove(captures, numCaps, i);
+                    if (!pos.IsLegal(pm) || !SEE_GE(pos, pm, Math.Max(1, probBeta - ss->StaticEval)))
                     {
                         //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
                         continue;
                     }
 
-                    prefetch(TT.GetCluster(pos.HashAfter(m)));
+                    prefetch(TT.GetCluster(pos.HashAfter(pm)));
 
-                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
+                    bool isCap = (bb.GetPieceAtIndex(pm.To) != None && !pm.IsCastle);
+                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(pm.From), pm.To);
                     
-                    ss->CurrentMove = m;
+                    ss->CurrentMove = pm;
                     ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
                     thisThread.Nodes++;
 
-                    pos.MakeMove(m);
+                    pos.MakeMove(pm);
 
                     score = -QSearch<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1);
 
@@ -295,7 +300,7 @@ namespace Lizard.Logic.Search
                         score = -Negamax<NonPVNode>(pos, ss + 1, -probBeta, -probBeta + 1, depth - 3, !cutNode);
                     }
 
-                    pos.UnmakeMove(m);
+                    pos.UnmakeMove(pm);
 
                     if (score >= probBeta)
                     {
@@ -338,12 +343,19 @@ namespace Lizard.Logic.Search
             bool skipQuiets = false;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+
+#if MP
+            MovePicker mp = new MovePicker(pos, list, ss, ttMove, depth);
+            Move m;
+            while ((m = mp.OrderNextMove()) != Move.Null)
+            {
+#else
             int size = pos.GenPseudoLegal(list);
             AssignScores(pos, ss, history, list, size, ttMove);
-
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
+#endif
 
                 if (m == ss->Skip)
                 {
@@ -688,7 +700,7 @@ namespace Lizard.Logic.Search
                 tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
 
                 if (!ss->InCheck
-                    && (bestMove.IsNull() || !pos.IsCapture(bestMove))
+                    && (bestMove.IsNull() || !pos.IsNoisy(bestMove))
                     && !(bound == TTNodeType.Alpha && bestScore <= ss->StaticEval)
                     && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
                 {
@@ -821,12 +833,20 @@ namespace Lizard.Logic.Search
             int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+
+#if MP && !MP
+            MovePicker mp = new MovePicker(pos, list, ss, ttMove, depth);
+            Move m;
+            while ((m = mp.OrderNextMove()) != Move.Null)
+            {
+#else
             int size = pos.GenPseudoLegalQS(list);
             AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
                 Move m = OrderNextMove(list, size, i);
+#endif
 
                 if (!pos.IsLegal(m))
                 {
@@ -1223,14 +1243,29 @@ namespace Lizard.Logic.Search
             while (ss->Ply >= 0)
             {
                 sb.Insert(0, ss->CurrentMove.ToString() + ", ");
-
                 ss--;
             }
 
             if (sb.Length >= 3)
-            {
                 sb.Remove(sb.Length - 2, 2);
+
+            return sb.ToString();
+        }
+
+        private static string Debug_GetHashes(SearchStackEntry* ss, Position pos)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            int i = 0;
+            while (ss->Ply >= 0)
+            {
+                sb.Insert(0, (pos.State - i)->Hash + ", ");
+                ss--;
+                i++;
             }
+
+            if (sb.Length >= 3)
+                sb.Remove(sb.Length - 2, 2);
 
             return sb.ToString();
         }
