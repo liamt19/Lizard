@@ -260,8 +260,8 @@ namespace Lizard.Logic.Search.Ordering
                                   : m.IsPromotion ? Queen
                                   :                 bb.GetPieceAtIndex(moveTo);
 
-                sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) +
-                           (history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece]);
+                sm.Score = history.CaptureHistory[pc, bb.GetPieceAtIndex(moveFrom), moveTo, capturedPiece] / 12;
+                sm.Score += GetSEEValue(capturedPiece);
             }
         }
 
