@@ -1,6 +1,6 @@
 ﻿
 #define REF_STRUCT
-#undef REF_STRUCT
+//#undef REF_STRUCT
 
 using Lizard.Logic.Data;
 using Lizard.Logic.Search.History;
