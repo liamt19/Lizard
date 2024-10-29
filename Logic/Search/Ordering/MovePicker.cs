@@ -348,8 +348,8 @@ namespace Lizard.Logic.Search.Ordering
 
         private int FindBest()
         {
-            int max = int.MinValue;
             int maxIndex = listIndex;
+            int max = list[maxIndex].Score;
 
             for (int i = listIndex + 1; i < listSize; i++)
             {
