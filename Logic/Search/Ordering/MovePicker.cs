@@ -31,7 +31,6 @@ namespace Lizard.Logic.Search.Ordering
         private readonly Move killerMove;
         private readonly int depth;
 
-        private bool _skipQuiets;
         private int _stage;
         public int Stage => _stage;
 
@@ -57,14 +56,13 @@ namespace Lizard.Logic.Search.Ordering
             listSize = 0;
             numBadNoisy = 0;
 
-            _skipQuiets = false;
             _stage = ss->InCheck ? EvasionTT : NormalTT;
 
             if (killerMove == ttMove)
                 killerMove = Move.Null;
         }
 
-        public Move OrderNextMove()
+        public Move OrderNextMove(bool skipQuiets = false)
         {
             TOP:
             switch (_stage)
@@ -119,7 +117,7 @@ namespace Lizard.Logic.Search.Ordering
                 {
                         _stage++;
 
-                        if (!_skipQuiets 
+                        if (!skipQuiets 
                             && killerMove != Move.Null 
                             && pos.IsPseudoLegal(killerMove))
                         {
@@ -130,7 +128,7 @@ namespace Lizard.Logic.Search.Ordering
                 }
                 case MakeQuiet: 
                 {
-                        if (!_skipQuiets)
+                        if (!skipQuiets)
                         {
                             listSize = pos.GenAll<GenQuiet>(list, listSize);
                             ScoreQuietMoves();
@@ -141,7 +139,7 @@ namespace Lizard.Logic.Search.Ordering
                 }
                 case PlayQuiet: 
                 {
-                        if (!_skipQuiets) 
+                        if (!skipQuiets) 
                         {
 #if REF_STRUCT
                             int idx = FindBest();

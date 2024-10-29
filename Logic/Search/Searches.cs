@@ -347,7 +347,7 @@ namespace Lizard.Logic.Search
 #if MP
             MovePicker mp = new MovePicker(pos, list, ss, ttMove, depth);
             Move m;
-            while ((m = mp.OrderNextMove()) != Move.Null)
+            while ((m = mp.OrderNextMove(skipQuiets)) != Move.Null)
             {
 #else
             int size = pos.GenPseudoLegal(list);
@@ -404,19 +404,11 @@ namespace Lizard.Logic.Search
                     && bestScore > ScoreMatedMax
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
-                    if (skipQuiets == false)
-                    {
-                        skipQuiets = legalMoves >= lmpMoves;
-                    }
+                    skipQuiets = legalMoves >= lmpMoves;
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                    if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
-                    {
-                        continue;
-                    }
-
-                    if (givesCheck || isCapture || skipQuiets)
+                    if (givesCheck || isCapture)
                     {
                         //  Once we've found at least 1 move that doesn't lead to mate,
                         //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
