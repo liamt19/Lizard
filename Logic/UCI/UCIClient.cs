@@ -303,6 +303,10 @@ namespace Lizard.Logic.UCI
                 {
                     PrintSPSAParams();
                 }
+                else if (cmd == "eval")
+                {
+                    SendString($"{NNUE.GetEvaluation(pos)}");
+                }
             }
         }
 
