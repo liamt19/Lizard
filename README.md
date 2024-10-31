@@ -32,9 +32,15 @@ Version 10.5 used a (768x5 -> 1536)x2 -> 8 network, and used ~8 billion position
 
 All networks are trained using [Bullet](https://github.com/jw1912/bullet)
 
-In addition, this engine can use [Stockfish neural networks](https://tests.stockfishchess.org/nns) created for their [SFNNv6/7/8 architectures](https://github.com/official-stockfish/Stockfish/commit/c1fff71650e2f8bf5a2d63bdc043161cdfe8e460), a diagram of which is available [here](https://raw.githubusercontent.com/official-stockfish/nnue-pytorch/master/docs/img/SFNNv6_architecture_detailed.svg).
-For the sake of simplicity, this functionality is only possible on the [the HalfKA-HalfKP branch](../../tree/HalfKA-HalfKP).
+## Building
+Using `make` is the easiest way, as this calls `dotnet publish` with the proper parameters.
+If your processor supports Avx512, you can also use `make 512` to compile a binary that fully uses those instructions during NNUE inference.
 
+> [!NOTE]
+> Requires at least .NET 8.0 or higher to build.
+
+> [!IMPORTANT]
+> NNUE networks are served in [a separate repository](https://github.com/liamt19/lizard-nets/) to keep the size of this main repository small. The makefile will automatically take care of this by retrieving the network specified in the [network.txt file in the repo root](/network.txt), but note that compiling directly via `dotnet publish`/`build` will fail unless you download the [latest network file](https://github.com/liamt19/lizard-nets/releases/latest) and manually place it in the directory (or have previously used the makefile).
 
 ## Some spotty history:
 #### Version 9.3:
