@@ -11,7 +11,7 @@ namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 8;
+        public const int InputBuckets = 16;
         public const int InputSize = 768;
         public const int HiddenSize = 2048;
         public const int OutputBuckets = 8;
@@ -48,14 +48,14 @@ namespace Lizard.Logic.NN
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
-            0, 1, 2, 3, 11, 10,  9,  8,
-            4, 4, 5, 5, 13, 13, 12, 12,
-            6, 6, 6, 6, 14, 14, 14, 14,
-            6, 6, 6, 6, 14, 14, 14, 14,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
-            7, 7, 7, 7, 15, 15, 15, 15,
+             0,  1,  2,  3, 19, 18, 17, 16,
+             4,  5,  6,  7, 23, 22, 21, 20,
+             8,  9, 10, 11, 27, 26, 25, 24,
+             8,  9, 10, 11, 27, 26, 25, 24,
+            12, 12, 13, 13, 29, 29, 28, 28,
+            12, 12, 13, 13, 29, 29, 28, 28,
+            14, 14, 15, 15, 31, 31, 30, 30,
+            14, 14, 15, 15, 31, 31, 30, 30,
         ];
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);

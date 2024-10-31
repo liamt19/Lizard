@@ -86,7 +86,11 @@ namespace Lizard.Logic.NN
                 Debug.WriteLine($"resources [{string.Join(", ", asm.GetManifestResourceNames())}]");
                 foreach (string res in asm.GetManifestResourceNames())
                 {
-                    if (res.Contains(".net-") && res.EndsWith(".bin"))
+                    //  Specifically exclude the .resx file
+                    if (res.ToLower().Contains("properties"))
+                        continue;
+
+                    if (res.EndsWith(".bin") || res.EndsWith(".nnue"))
                     {
                         Stream stream = asm.GetManifestResourceStream(res);
                         if (stream != null)
