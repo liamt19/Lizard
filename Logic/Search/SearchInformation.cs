@@ -59,7 +59,7 @@ namespace Lizard.Logic.Search
             this.TimeManager = new TimeManager();
             this.TimeManager.MaxSearchTime = searchTime;
 
-            this.OnDepthFinish = (ref SearchInformation info) => Log(FormatSearchInformationMultiPV(ref info));
+            this.OnDepthFinish = Utilities.PrintSearchInfo;
             this.OnSearchFinish = (ref SearchInformation info) => Log($"bestmove {info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move.ToString()}");
         }
 

@@ -293,7 +293,7 @@ namespace Lizard.Logic.UCI
         /// </summary>
         private void OnDepthDone(ref SearchInformation info)
         {
-            Console.WriteLine(FormatSearchInformationMultiPV(ref info));
+            PrintSearchInfo(ref info);
         }
 
 
@@ -483,6 +483,7 @@ namespace Lizard.Logic.UCI
                 nameof(SearchOptions.Hash),
                 nameof(SearchOptions.UCI_Chess960),
                 nameof(SearchOptions.UCI_ShowWDL),
+                nameof(SearchOptions.UCI_PrettyPrint),
             ];
 
             foreach (var optName in Options.Keys)
