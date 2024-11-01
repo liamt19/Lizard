@@ -9,7 +9,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "11.0.9";
+        public const string EngineBuildVersion = "11.0.11";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
@@ -480,20 +480,22 @@ namespace Lizard.Logic.Util
         }
 
 
-        public static string FormatSearchInformationMultiPV(ref SearchInformation info)
+        public static void PrintSearchInfo(ref SearchInformation info)
         {
+            bool pretty = !UCIClient.Active && Interop.HasAnsi && UCI_PrettyPrint;
+
+            int cursorPosition = 0;
+
             SearchThread thisThread = info.Position.Owner;
 
             List<RootMove> rootMoves = thisThread.RootMoves;
             int multiPV = Math.Min(MultiPV, rootMoves.Count);
 
             double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
-            double nodes = thisThread.AssocPool.GetNodeCount();
-            int nodesPerSec = (int)(nodes / (time / 1000));
+            ulong nodes = thisThread.AssocPool.GetNodeCount();
+            int nodesPerSec = (int)((double)nodes / (time / 1000));
 
             int lastValidScore = 0;
-
-            StringBuilder sb = new StringBuilder();
 
             for (int i = 0; i < multiPV; i++)
             {
@@ -526,62 +528,152 @@ namespace Lizard.Logic.Util
 
                 var score = FormatMoveScore(moveScore);
 
-                sb.Append("info depth " + depth);
-                sb.Append(" seldepth " + rm.Depth);
-                sb.Append(" multipv " + (i + 1));
-                sb.Append(" time " + time);
-                sb.Append(" score " + score);
-                if (UCI_ShowWDL)
+                int win = 0, loss = 0;
+                if (moveScore > ScoreWin)
+                    win = 1000;
+                else if (moveScore < -ScoreWin)
+                    loss = 1000;
+                else
                 {
-                    if (moveScore > ScoreWin)
-                        sb.Append(" wdl 1000 0 0");
-                    else if (moveScore < -ScoreWin)
-                        sb.Append(" wdl 0 0 1000");
-                    else
-                    {
-                        (var win, var loss) = WDL.MaterialModel(moveScore, info.Position);
-                        sb.Append($" wdl {win} {1000 - win - loss} {loss}");
-                    }
+                    (win, loss) = WDL.MaterialModel(moveScore, info.Position);
                 }
-                sb.Append(" nodes " + nodes);
-                sb.Append(" nps " + nodesPerSec);
-                sb.Append(" hashfull " + thisThread.TT.GetHashFull());
 
-                sb.Append(" pv");
+                int draw = 1000 - win - loss;
+                var hashfull = thisThread.TT.GetHashFull();
+
+                if (pretty)
+                {
+                    bool fill = multiPV > 1 && i != 0;
+
+                    string pDepths = $"{depth,3}/{rm.Depth,-3}";
+                    var pTime = ToAnsi(FormatTime(time));
+                    var pNodes = ToAnsi($"{nodes / 1000,9}kn");
+                    var pScore = ToAnsi($"{FormatMoveScore(moveScore, pretty),7}", ColorForScore(moveScore));
+                    var wdl = UCI_ShowWDL ? ToAnsi($"( {win / 10,3}% {draw / 10,3}% {loss / 10,3}% ) ") : string.Empty;
+                    var pNps = ToAnsi($"{(nodes / (time / 1000)) / 1000000,6:0.00}mn/s");
+
+
+                    //  We need to know the cursor position to determine when to truncate the PV to keep everything on one line.
+                    //  Console.CursorLeft seems to have issues on Linux when multiple threads try to access stdin simultaneously,
+                    //  so instead we'll estimate where the cursor is based on how much we've printed thus far.
+                    //  ToAnsi adds 12/13 characters to the length, so subtract those invisible characters from the total.
+
+                    string s = $"{pDepths} {pTime} {pNodes} {pScore} {wdl}{pNps}";
+                    cursorPosition = s.Length - (12 * (4 + UCI_ShowWDL.AsInt()));
+
+                    if (fill)
+                    {
+                        pDepths = $"    {rm.Depth,-3}";
+                        pTime   = " ".PadRight(9);
+                        pNodes  = " ".PadRight(11);
+                        pNps    = " ".PadRight(10);
+
+                        s = $"{pDepths} {pTime} {pNodes} {pScore} {wdl}{pNps}";
+                        cursorPosition = s.Length + 4 - (12 * (1 + UCI_ShowWDL.AsInt()));
+                    }
+
+                    Console.Write(s);
+                }
+                else
+                {
+                    string wdl = UCI_ShowWDL ? $" wdl {win} {draw} {loss}" : string.Empty;
+
+                    Console.Write($"info depth {depth} seldepth {rm.Depth} multipv {i + 1} time {time} score {score}" +
+                                  $"{wdl} nodes {nodes} nps {nodesPerSec} hashfull {hashfull} pv");
+                }
+
+
+                int maxWidth = Console.BufferWidth - 8;
+
                 for (int j = 0; j < MaxPly; j++)
                 {
-                    if (rm.PV[j] == Move.Null)
+                    if (rm.PV[j] == Move.Null) break;
+
+                    string s = $" {rm.PV[j].ToString(info.Position.IsChess960)}";
+
+                    if (pretty && cursorPosition >= maxWidth)
                     {
+                        Console.Write(" ...");
                         break;
                     }
 
-                    sb.Append(" " + rm.PV[j].ToString(info.Position.IsChess960));
+                    cursorPosition += s.Length;
+
+                    Console.Write(s);
                 }
 
-
-                if (i != multiPV - 1)
-                {
-                    sb.Append('\n');
-                }
+                Console.WriteLine();
             }
-
-            return sb.ToString();
         }
 
 
-        /// <summary>
-        /// Returns an appropriately formatted string representing the Score, which is either "cp #" or "mate #".
-        /// </summary>
-        public static string FormatMoveScore(int score)
+        private static string ToAnsi(string s, int code = 8) => $"\u001b[38;5;{code}m{s}\u001b[0m";
+        private static int ColorForScore(int score)
         {
+            return score switch
+            {
+                >= -30 and <= 30                                => 7,   //  White
+                < -30 and > -600                                => 9,   //  Bright red
+                > 30 and < 600                                  => 46,  //  Bright green
+                <= -600 and >= -ScoreAssuredWin                 => 88,  //  Dark red
+                >= 600 and <= ScoreAssuredWin                   => 28,  //  Dark green
+                _                                               => 13   //  Purple
+            };
+        }
+
+        public static string FormatTime(double time)
+        {
+            const double OneSecond = 1000;
+            const double OneMinute = 60 * OneSecond;
+            const double OneHour = 60 * OneMinute;
+
+            var ts = TimeSpan.FromMilliseconds(time);
+
+            if (time < OneSecond)
+                return $"{time,7}ms";
+            if (time < OneMinute)
+                return $"{ts,9:s\\.ff\\s}";
+            if (time < OneHour)
+                return $"{ts,9:mm\\mss\\s}";
+
+            return $"{ts,9:h\\hmm\\mss\\s}";
+        }
+
+
+        private const int NormalizeEvalFactor = 252;
+        private static string FormatMoveScore(int score, bool pretty = false)
+        {
+            string s;
+
             if (Evaluation.IsScoreMate(score))
             {
-                return (score > 0) ? ("mate " + ( ScoreMate - score + 1) / 2) :
-                                     ("mate " + (-ScoreMate - score    ) / 2);
+                s = pretty ? "#" : "mate ";
+                s += (score > 0) ? (( ScoreMate - score + 1) / 2)
+                                 : ((-ScoreMate - score    ) / 2);
+            }
+            else
+            {
+                var ev = ((double)score * 100 / NormalizeEvalFactor);
+
+                if (!pretty)
+                {
+                    return $"cp {(int)ev}";
+                }
+
+
+                ev = Math.Round(ev / 100, 2);
+                s = $"{ev:0.00}";
+                if (Math.Abs(ev) < 0.01)
+                {
+                    s = "0.00";
+                }
+                else if (ev >= 0.01)
+                {
+                    s = $"+{ev:0.00}";
+                }                
             }
 
-            const double NormalizeEvalFactor = 252;
-            return "cp " + (int)(((double)score * 100) / NormalizeEvalFactor);
+            return s;
         }
 
 

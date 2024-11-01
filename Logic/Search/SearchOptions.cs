@@ -29,6 +29,7 @@
 
         public static bool UCI_Chess960 = false;
         public static bool UCI_ShowWDL = false;
+        public static bool UCI_PrettyPrint = true;
 
 
         public const int CorrectionScale = 1024;

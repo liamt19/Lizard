@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using Lizard.Properties;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics.X86;
@@ -188,6 +189,27 @@ namespace Lizard.Logic.Util
             {
                 Console.WriteLine($"info string madvise threw {exc.GetType()}");
             }
+        }
+
+
+        public static bool HasAnsi = true;
+
+        public static void CheckAnsi()
+        {
+            if (Console.IsOutputRedirected)
+            {
+                HasAnsi = false;
+                return;
+            }
+
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                HasAnsi = true;
+                return;
+            }
+
+            //  Windows 11
+            HasAnsi = Environment.OSVersion.Version.Build >= 22000;
         }
     }
 }

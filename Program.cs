@@ -68,6 +68,7 @@ namespace Lizard
             //  Thanks to https://github.com/eduherminio for spotting this
             Console.SetIn(new StreamReader(Console.OpenStandardInput(), Encoding.UTF8, false, 2048 * 4));
 
+            Interop.CheckAnsi();
 
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
@@ -147,6 +148,14 @@ namespace Lizard
                 else if (input.StartsWithIgnoreCase("trace"))
                 {
                     HandleTraceCommand(input);
+                }
+                else if (input.EqualsIgnoreCase("pretty"))
+                {
+                    UCI_PrettyPrint = !UCI_PrettyPrint;
+                }
+                else if (input.EqualsIgnoreCase("wdl"))
+                {
+                    UCI_ShowWDL = !UCI_ShowWDL;
                 }
                 else if (input.StartsWithIgnoreCase("threads"))
                 {
