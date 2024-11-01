@@ -63,12 +63,6 @@ namespace Lizard.Logic.Util
             {
                 Console.WriteLine(s);
             }
-            else if (!NO_LOG_FILE)
-            {
-#pragma warning disable CS0162 // Unreachable code detected
-                UCIClient.LogString("[LOG]: " + s);
-#pragma warning restore CS0162 // Unreachable code detected
-            }
 
             Debug.WriteLine(s);
         }
@@ -622,6 +616,32 @@ namespace Lizard.Logic.Util
                 {
                     (items[i], items[best]) = (items[best], items[i]);
                 }
+            }
+        }
+
+
+        public static void ParsePositionCommand(string[] input, Position pos, ThreadSetup setup)
+        {
+            //  Skip the "position fen" part, and slice until hitting the end of the input or "moves ..."
+            input = input.SkipWhile(x => x is "position" or "fen").ToArray();
+
+            string fen = string.Join(" ", input.TakeWhile(x => x != "moves"));
+
+            if (fen is "startpos")
+                fen = InitialFEN;
+
+            setup.StartFEN = fen;
+            pos.LoadFromFEN(setup.StartFEN);
+
+            setup.SetupMoves.Clear();
+            var moves = input.SkipWhile(x => x != "moves").Skip(1).ToArray();
+
+            for (int i = 0; i < moves.Length; i++)
+            {
+                if (pos.TryFindMove(moves[i], out Move m))
+                    pos.MakeMove(m);
+
+                setup.SetupMoves.Add(m);
             }
         }
 

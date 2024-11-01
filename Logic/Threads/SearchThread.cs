@@ -355,7 +355,7 @@ namespace Lizard.Logic.Threads
 
             TimeManager tm = info.TimeManager;
 
-            HardNodeLimit = info.MaxNodes;
+            HardNodeLimit = info.NodeLimit;
 
             //  And set it's Position to this SearchThread's unique copy.
             //  (The Position that AssocPool.SharedInfo has right now has the same FEN, but its "Owner" field might not be correct.)
@@ -375,8 +375,8 @@ namespace Lizard.Logic.Threads
             int maxDepth = IsMain ? MaxDepth : MaxPly;
             while (++RootDepth < maxDepth)
             {
-                //  The main thread is not allowed to search past info.MaxDepth
-                if (IsMain && RootDepth > info.MaxDepth)
+                //  The main thread is not allowed to search past info.DepthLimit
+                if (IsMain && RootDepth > info.DepthLimit)
                     break;
 
                 if (AssocPool.StopThreads)
@@ -500,7 +500,7 @@ namespace Lizard.Logic.Threads
                 }
             }
 
-            if (IsMain && RootDepth >= MaxDepth && info.MaxNodes != MaxSearchNodes && !AssocPool.StopThreads)
+            if (IsMain && RootDepth >= MaxDepth && info.HasNodeLimit && !AssocPool.StopThreads)
             {
                 //  If this was a "go nodes x" command, it is possible for the main thread to hit the
                 //  maximum depth before hitting the requested node count (causing an infinite wait).
@@ -529,10 +529,10 @@ namespace Lizard.Logic.Threads
             {
                 double nodeTM = ((1.5 - NodeTable[RootMoves[0].Move.From][RootMoves[0].Move.To] / (double)Nodes) * 1.75);
                 double bmStability = StabilityCoefficients[Math.Min(stability, StabilityMax)];
-                
+
                 double scoreStability = searchScores[searchScores.Length - 1 - 3] 
                                       - searchScores[searchScores.Length - 1 - 0];
-                
+
                 scoreStability = Math.Max(0.85, Math.Min(1.15, 0.034 * scoreStability));
 
                 multFactor = nodeTM * bmStability * scoreStability;

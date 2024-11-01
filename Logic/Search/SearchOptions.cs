@@ -39,7 +39,7 @@
         public const bool ShallowPruning = true;
         public const bool UseSingularExtensions = true;
         public const bool UseNMP = true;
-        public const bool UseRFP = true; 
+        public const bool UseRFP = true;
         public const bool UseProbCut = true;
 
 

@@ -80,8 +80,8 @@ namespace Lizard.Logic.Search
                     }
                 }
 
-                if ((SearchOptions.Threads == 1 && thisThread.Nodes >= thisThread.AssocPool.SharedInfo.MaxNodes) ||
-                    (thisThread.CheckupCount == 0 && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.MaxNodes))
+                if ((SearchOptions.Threads == 1 && thisThread.Nodes >= thisThread.AssocPool.SharedInfo.NodeLimit) ||
+                    (thisThread.CheckupCount == 0 && thisThread.AssocPool.GetNodeCount() >= thisThread.AssocPool.SharedInfo.NodeLimit))
                 {
                     thisThread.AssocPool.StopThreads = true;
                 }

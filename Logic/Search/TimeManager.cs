@@ -36,7 +36,7 @@
         /// <summary>
         /// The time in milliseconds that the search should stop at.
         /// </summary>
-        public int MaxSearchTime = DefaultSearchTime;
+        public int MaxSearchTime;
 
 
         public double SoftTimeLimit = -1;
@@ -108,12 +108,7 @@
         /// </summary>
         public void MakeMoveTime()
         {
-            int newSearchTime = PlayerIncrement + (PlayerTime / 2);
-
-            if (MovesToGo != -1)
-            {
-                newSearchTime = Math.Max(newSearchTime, PlayerIncrement + (PlayerTime / MovesToGo));
-            }
+            int newSearchTime = PlayerIncrement + Math.Max(PlayerTime / 2, PlayerTime / MovesToGo);
 
             newSearchTime = Math.Min(newSearchTime, PlayerTime);
 

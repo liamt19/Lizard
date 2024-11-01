@@ -175,7 +175,7 @@
             {
                 targets = evasions    ? LineBB[ourKing][lsb(State->Checkers)]
                         : nonEvasions ? ~us
-                        : noisyMoves   ? them
+                        : noisyMoves  ?  them
                         :               ~occ;
 
                 size = GenPawns<GenType>(list, targets, size);
@@ -270,7 +270,7 @@
             // TODO: JIT seems to prefer having separate methods for each piece type, instead of a 'pt' parameter
             // This is far more convenient though
 
-            ulong occ  = bb.Occupancy;
+            ulong occ = bb.Occupancy;
             ulong ourPieces = bb.Pieces[pt] & bb.Colors[ToMove];
             while (ourPieces != 0)
             {
@@ -300,7 +300,7 @@
                 return GenLegal(ptr);
             }
         }
-    
+
 
         /// <summary>
         /// Generates the pseudo-legal evasion or non-evasion moves for the position, depending on if the side to move is in check.

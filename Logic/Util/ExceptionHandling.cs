@@ -42,13 +42,13 @@ namespace Lizard.Logic.Util
             if (UCIClient.Active)
             {
                 //  Try to tell the UCI what happened before this process terminates
-                UCIClient.SendString("info string I'm going to crash! Exception: ");
+                Console.WriteLine("info string I'm going to crash! Exception: ");
 
                 //  Send each exception line separately, in case the UCI doesn't like
                 //  newlines in the strings that it reads.
                 foreach (string s in e.ToString().Split(Environment.NewLine))
                 {
-                    UCIClient.SendString("info string " + s);
+                    Console.WriteLine("info string " + s);
                     Thread.Sleep(10);
                 }
 

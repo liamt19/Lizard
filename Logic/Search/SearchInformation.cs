@@ -28,16 +28,8 @@ namespace Lizard.Logic.Search
 
         public Position Position;
 
-        /// <summary>
-        /// The depth to stop the search at.
-        /// </summary>
-        public int MaxDepth = DefaultSearchDepth;
-
-        /// <summary>
-        /// The number of nodes the search should stop at.
-        /// </summary>
-        public ulong MaxNodes = MaxSearchNodes;
-
+        public int DepthLimit = Utilities.MaxDepth;
+        public ulong NodeLimit = MaxSearchNodes;
         public ulong SoftNodeLimit = MaxSearchNodes;
 
 
@@ -51,36 +43,24 @@ namespace Lizard.Logic.Search
         /// </summary>
         public bool SearchActive = false;
 
-
         public TimeManager TimeManager;
 
-        public bool IsInfinite => MaxDepth == Utilities.MaxDepth && this.TimeManager.MaxSearchTime == SearchConstants.MaxSearchTime;
+        public bool HasDepthLimit => (DepthLimit != Utilities.MaxDepth);
+        public bool HasNodeLimit => (NodeLimit != MaxSearchNodes);
+        public bool HasTimeLimit => (this.TimeManager.MaxSearchTime != SearchConstants.MaxSearchTime);
 
-        public SearchInformation(Position p) : this(p, SearchConstants.DefaultSearchDepth, SearchConstants.DefaultSearchTime)
-        {
-        }
+        public bool IsInfinite => !HasDepthLimit && !HasTimeLimit;
 
-        public SearchInformation(Position p, int depth) : this(p, depth, SearchConstants.DefaultSearchTime)
-        {
-        }
-
-        public SearchInformation(Position p, int depth, int searchTime)
+        public SearchInformation(Position p, int depth = Utilities.MaxDepth, int searchTime = SearchConstants.MaxSearchTime)
         {
             this.Position = p;
-            this.MaxDepth = depth;
+            this.DepthLimit = depth;
 
             this.TimeManager = new TimeManager();
             this.TimeManager.MaxSearchTime = searchTime;
 
-            this.OnDepthFinish = PrintSearchInfo;
-            this.OnSearchFinish = PrintBestMove;
-        }
-
-        public static SearchInformation Infinite(Position p)
-        {
-            SearchInformation si = new SearchInformation(p, Utilities.MaxDepth, SearchConstants.MaxSearchTime);
-            si.MaxNodes = MaxSearchNodes;
-            return si;
+            this.OnDepthFinish = (ref SearchInformation info) => Log(FormatSearchInformationMultiPV(ref info));
+            this.OnSearchFinish = (ref SearchInformation info) => Log($"bestmove {info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move.ToString()}");
         }
 
         public void SetMoveTime(int moveTime)
@@ -89,27 +69,10 @@ namespace Lizard.Logic.Search
             TimeManager.HasMoveTime = true;
         }
 
-        /// <summary>
-        /// Prints out the "info depth (number) ..." string
-        /// </summary>
-        private void PrintSearchInfo(ref SearchInformation info)
-        {
-            Log(FormatSearchInformationMultiPV(ref info));
-        }
-
-        /// <summary>
-        /// Prints the best move from a search.
-        /// </summary>
-        private void PrintBestMove(ref SearchInformation info)
-        {
-            Move bestThreadMove = info.Position.Owner.AssocPool.GetBestThread().RootMoves[0].Move;
-            Log("bestmove " + bestThreadMove.ToString());
-        }
-
         public override string ToString()
         {
-            return "MaxDepth: " + MaxDepth + ", " + "MaxNodes: " + MaxNodes + ", " + "MaxSearchTime: " + MaxSearchTime + ", "
-                 + "SearchTime: " + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime());
+            return $"DepthLimit: {DepthLimit}, NodeLimit: {NodeLimit}, MaxSearchTime: {MaxSearchTime}, SearchTime: "
+                 + (TimeManager == null ? "0 (NULL!)" : TimeManager.GetSearchTime());
         }
     }
 }

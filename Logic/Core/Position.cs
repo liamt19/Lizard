@@ -182,8 +182,8 @@ namespace Lizard.Logic.Core
                 }
                 if (i == size - 1)
                 {
-                    Log("No move '" + moveStr + "' found, try one of the following: ");
-                    Log(Stringify(list, this) + "\r\n" + Stringify(list));
+                    Log($"No move '{moveStr}' found, try one of the following: ");
+                    Log($"{Stringify(list, this)}\r\n{Stringify(list)}");
                 }
             }
             return false;
@@ -209,8 +209,8 @@ namespace Lizard.Logic.Core
                 }
             }
 
-            Log("No move '" + moveStr + "' found, try one of the following: ");
-            Log(Stringify(list, this) + "\r\n" + Stringify(list));
+            Log($"No move '{moveStr}' found, try one of the following: ");
+            Log($"{Stringify(list, this)}\r\n{Stringify(list)}");
             move = Move.Null;
             return false;
         }
@@ -993,7 +993,7 @@ namespace Lizard.Logic.Core
                 ulong result = (depth >= PerftParallelMinDepth) ? threadPosition.PerftParallel(depth - 1) : threadPosition.Perft(depth - 1);
                 if (isRoot)
                 {
-                    Log(list[i].Move.ToString() + ": " + result);
+                    Log($"{list[i].Move.ToString()}: {result}");
                 }
                 n += result;
             });
@@ -1001,7 +1001,7 @@ namespace Lizard.Logic.Core
             if (isRoot)
             {
                 PerftTimer.Stop();
-                Log("\r\nNodes searched:  " + n + " in " + PerftTimer.Elapsed.TotalSeconds + " s (" + ((int)(n / PerftTimer.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+                Log($"\r\nNodes searched: {n} in {PerftTimer.Elapsed.TotalSeconds} s ({(int)(n / PerftTimer.Elapsed.TotalSeconds):N0} nps)\r\n");
                 PerftTimer.Reset();
             }
 
@@ -1085,7 +1085,7 @@ namespace Lizard.Logic.Core
                             }
                             else
                             {
-                                Log("ERROR x for i = " + i + " was '" + splits[i][x] + "' and didn't get parsed");
+                                Log($"ERROR x for i = {i} was '{splits[i][x]}' and didn't get parsed");
                             }
                         }
 
@@ -1168,8 +1168,7 @@ namespace Lizard.Logic.Core
             }
             catch (Exception ex)
             {
-                Log("Failed parsing '" + fen + "': ");
-                Log(ex.ToString());
+                Log($"Failed parsing '{fen}':\r\n{ex}");
 
                 return false;
             }

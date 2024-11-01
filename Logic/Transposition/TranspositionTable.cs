@@ -228,18 +228,18 @@ namespace Lizard.Logic.Transposition
             int entries = Beta + Alpha + Exact;
 
             //  "Full" is the total number of entries of any age in the TT.
-            Log("Full:\t " + entries + " / " + (ClusterCount * EntriesPerCluster) + " = " + ((double)entries / (ClusterCount * EntriesPerCluster) * 100) + "%");
+            Log($"Full:\t {entries} / {ClusterCount * EntriesPerCluster} = {(double)entries / (ClusterCount * EntriesPerCluster) * 100}%");
 
             //  "Recent" is the number of entries that have the same age as the TT's Age.
-            Log("Recent:\t " + recentEntries + " / " + (ClusterCount * EntriesPerCluster) + " = " + ((double)recentEntries / (ClusterCount * EntriesPerCluster) * 100) + "%");
+            Log($"Recent:\t {recentEntries} /{ClusterCount * EntriesPerCluster} = {(double)recentEntries / (ClusterCount * EntriesPerCluster) * 100}%");
 
             //  "Slots[0,1,2]" are the number of entries that exist in each TTCluster slot
-            Log("Slots:\t " + slots[0] + " / " + slots[1] + " / " + slots[2]);
-            Log("Alpha:\t " + Alpha);
-            Log("Beta:\t " + Beta);
-            Log("Exact:\t " + Exact);
-            Log("Invalid: " + Invalid);
-            Log("Null:\t " + NullMoves);
+            Log($"Slots:\t {slots[0]} / {slots[1]} / {slots[2]}");
+            Log($"Alpha:\t {Alpha}");
+            Log($"Beta:\t {Beta}");
+            Log($"Exact:\t {Exact}");
+            Log($"Invalid: {Alpha}");
+            Log($"Null:\t {NullMoves}");
         }
     }
 }
