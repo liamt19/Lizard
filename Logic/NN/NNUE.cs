@@ -102,7 +102,6 @@ namespace Lizard.Logic.NN
                 }
             }
             catch { }
-            
 
             //  Then look for it as an absolute path
             if (File.Exists(networkToLoad))
@@ -110,8 +109,6 @@ namespace Lizard.Logic.NN
                 Log($"Loading {networkToLoad} via absolute path");
                 return File.OpenRead(networkToLoad);
             }
-
-
 
             //  Lastly try looking for it in the current directory
             var cwdFile = Path.Combine(Environment.CurrentDirectory, networkToLoad);
@@ -124,7 +121,7 @@ namespace Lizard.Logic.NN
 
             Console.WriteLine($"Couldn't find a network named '{networkToLoad}' or as a compiled resource or as a file within the current directory!");
             Console.ReadLine();
-            
+
             if (exitIfFail)
                 Environment.Exit(-1);
 

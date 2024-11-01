@@ -52,8 +52,8 @@ namespace Lizard.Logic.Datagen
             SearchInformation info = new SearchInformation(pos)
             {
                 SoftNodeLimit = softNodeLimit,
-                MaxNodes = softNodeLimit * 20,
-                MaxDepth = (int)depthLimit,
+                NodeLimit = softNodeLimit * 20,
+                DepthLimit = (int)depthLimit,
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };
@@ -61,8 +61,8 @@ namespace Lizard.Logic.Datagen
             SearchInformation prelimInfo = new SearchInformation(pos)
             {
                 SoftNodeLimit = softNodeLimit * 20,
-                MaxNodes = softNodeLimit * 400,
-                MaxDepth = Math.Clamp((int)depthLimit, 8, 10),
+                NodeLimit = softNodeLimit * 400,
+                DepthLimit = Math.Clamp((int)depthLimit, 8, 10),
                 OnDepthFinish = null,
                 OnSearchFinish = null,
             };

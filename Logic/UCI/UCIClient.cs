@@ -29,62 +29,9 @@ namespace Lizard.Logic.UCI
 
             setup = new ThreadSetup();
             pos = new Position(owner: GlobalSearchPool.MainThread);
-            info = new SearchInformation(pos, DefaultSearchDepth);
+            info = new SearchInformation(pos);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
-            if (File.Exists(LogFileName))
-            {
-                LogString("\n\n**************************************************\n"
-                    + CenteredString(DateTime.Now.ToString(), 50) + "\n"
-                    + "**************************************************");
-            }
-        }
-
-        /// <summary>
-        /// Writes the string <paramref name="s"/> to standard output, which will be received by chess UCI's.
-        /// </summary>
-        public static void SendString(string s)
-        {
-            Console.WriteLine(s);
-            LogString("[OUT]: " + s);
-        }
-
-        /// <summary>
-        /// Appends the string <paramref name="s"/> to the file <see cref="LogFileName"/>
-        /// </summary>
-        public static void LogString(string s, bool newLine = true)
-        {
-            if (NO_LOG_FILE)
-            {
-                return;
-            }
-
-            lock (LogFileLock)
-            {
-                try
-                {
-                    string fileToWrite = LogFileName;
-
-                    using FileStream fs = new FileStream(fileToWrite, FileMode.Append, FileAccess.Write, FileShare.Read);
-                    using StreamWriter sw = new StreamWriter(fs);
-
-                    if (newLine)
-                    {
-                        sw.WriteLine(s);
-                    }
-                    else
-                    {
-                        sw.Write(s);
-                    }
-
-                    sw.Flush();
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine("ERROR LogString('" + s + "') failed!");
-                    Console.WriteLine(e.ToString());
-                }
-            }
         }
 
         /// <summary>
@@ -105,8 +52,6 @@ namespace Lizard.Logic.UCI
             cmd = splits[0].ToLower();
             string[] param = splits.ToList().GetRange(1, splits.Length - 1).ToArray();
 
-            LogString("[IN]: " + input);
-
             return param;
         }
 
@@ -118,20 +63,18 @@ namespace Lizard.Logic.UCI
             Active = true;
 
 #if DEV
-            SendString("id name Lizard " + EngineBuildVersion + " DEV");
+            Console.WriteLine($"id name Lizard {EngineBuildVersion} DEV");
 #else
-            SendString("id name Lizard " + EngineBuildVersion);
+            Console.WriteLine($"id name Lizard {EngineBuildVersion}");
 #endif
-            SendString("id author Liam McGuire");
-            SendString("info string Using Bucketed768 evaluation.");
+            Console.WriteLine("id author Liam McGuire");
+            Console.WriteLine("info string Using Bucketed768 evaluation.");
 
             foreach (string k in Options.Keys)
             {
-                SendString(Options[k].ToString());
+                Console.WriteLine(Options[k].ToString());
             }
-            SendString("uciok");
-
-            LogString("[INFO]: Compiler info -> '" + GetCompilerInfo() + "'");
+            Console.WriteLine("uciok");
 
             //  In case a "ucinewgame" isn't sent for the first game
             HandleNewGame(pos.Owner.AssocPool);
@@ -149,12 +92,11 @@ namespace Lizard.Logic.UCI
 
                 if (cmd == "quit")
                 {
-                    LogString("[INFO]: Exiting with code " + 0);
                     Environment.Exit(0);
                 }
                 else if (cmd == "isready")
                 {
-                    SendString("readyok");
+                    Console.WriteLine("readyok");
                 }
                 else if (cmd == "ucinewgame")
                 {
@@ -164,89 +106,11 @@ namespace Lizard.Logic.UCI
                 {
                     pos.IsChess960 = UCI_Chess960;
 
-                    info = new SearchInformation(pos, DefaultSearchDepth);
+                    info = new SearchInformation(pos);
                     info.OnDepthFinish = OnDepthDone;
                     info.OnSearchFinish = OnSearchDone;
 
-                    setup.SetupMoves.Clear();
-
-                    if (param[0] == "startpos")
-                    {
-                        setup.StartFEN = InitialFEN;
-
-                        //  Some UCI's send commands that look like "position startpos moves e2e4 c7c5 g1f3"
-                        //  If the command does have a "moves" component, then set the fen normally,
-                        //  and try to make the moves that we were told to.
-                        info.Position.LoadFromFEN(setup.StartFEN);
-                        if (param.Length > 1 && param[1] == "moves")
-                        {
-                            for (int i = 2; i < param.Length; i++)
-                            {
-                                if (info.Position.TryFindMove(param[i], out Move m))
-                                {
-                                    info.Position.MakeMove(m);
-                                }
-                                else
-                                {
-                                    LogString("[ERROR]: Failed doing extra moves! '" + param[i] + "' didn't work with FEN " + info.Position.GetFEN());
-                                }
-
-                                setup.SetupMoves.Add(m);
-                            }
-
-                            LogString("[INFO]: New FEN is " + info.Position.GetFEN());
-                        }
-                        else
-                        {
-                            LogString("[INFO]: Set position to " + InitialFEN);
-                        }
-                    }
-                    else
-                    {
-                        string fen = param[1];
-
-                        bool hasExtraMoves = false;
-                        for (int i = 2; i < param.Length; i++)
-                        {
-                            if (param[i] == "moves")
-                            {
-                                info.Position.LoadFromFEN(fen);
-                                for (int j = i + 1; j < param.Length; j++)
-                                {
-
-                                    if (info.Position.TryFindMove(param[j], out Move m))
-                                    {
-                                        info.Position.MakeMove(m);
-                                    }
-                                    else
-                                    {
-                                        LogString("[ERROR]: Failed doing extra moves! '" + param[j] + "' didn't work with FEN " + info.Position.GetFEN());
-                                    }
-
-                                    setup.SetupMoves.Add(m);
-                                }
-
-                                LogString("[INFO]: New FEN is " + info.Position.GetFEN());
-                                hasExtraMoves = true;
-                                break;
-                            }
-                            else
-                            {
-                                fen += " " + param[i];
-                            }
-
-                        }
-
-                        setup.StartFEN = fen;
-
-                        if (!hasExtraMoves)
-                        {
-                            LogString("[INFO]: Set position to " + fen);
-                            info.Position.LoadFromFEN(fen);
-                        }
-
-                    }
-
+                    ParsePositionCommand(param, pos, setup);
                     NNUE.RefreshAccumulator(info.Position);
                 }
                 else if (cmd == "go")
@@ -260,7 +124,6 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "leave")
                 {
-                    LogString("[INFO]: Leaving");
                     Active = false;
                     return;
                 }
@@ -294,10 +157,8 @@ namespace Lizard.Logic.UCI
                     }
                     catch (Exception e)
                     {
-                        LogString("[ERROR]: Failed parsing setoption command, got '" + param.ToString() + "'");
-                        LogString(e.ToString());
+                        Console.WriteLine($"[ERROR]: Failed parsing setoption command, got '{param}' -> {e}");
                     }
-
                 }
                 else if (cmd == "tune")
                 {
@@ -305,7 +166,7 @@ namespace Lizard.Logic.UCI
                 }
                 else if (cmd == "eval")
                 {
-                    SendString($"{NNUE.GetEvaluation(pos)}");
+                    Console.WriteLine($"{NNUE.GetEvaluation(pos)}");
                 }
             }
         }
@@ -335,7 +196,6 @@ namespace Lizard.Logic.UCI
         {
             if (info.SearchActive)
             {
-                LogString("[WARN]: Got 'go' command while a search is already in progress, ignoring");
                 return;
             }
 
@@ -357,9 +217,9 @@ namespace Lizard.Logic.UCI
             TimeManager tm = info.TimeManager;
 
             //  Assume that we can search infinitely, and let the UCI's "go" parameters constrain us accordingly.
-            info.MaxNodes = MaxSearchNodes;
+            info.NodeLimit = MaxSearchNodes;
             tm.MaxSearchTime = MaxSearchTime;
-            info.MaxDepth = MaxDepth;
+            info.DepthLimit = MaxDepth;
 
             if (info.SearchFinishedCalled)
             {
@@ -367,7 +227,7 @@ namespace Lizard.Logic.UCI
             }
 
             int stm = info.Position.ToMove;
-            
+
             setup.UCISearchMoves = new List<Move>();
 
             for (int i = 0; i < param.Length - 1; i++)
@@ -378,11 +238,11 @@ namespace Lizard.Logic.UCI
                 }
                 else if (param[i] == "depth" && int.TryParse(param[i + 1], out int reqDepth))
                 {
-                    info.MaxDepth = reqDepth;
+                    info.DepthLimit = reqDepth;
                 }
                 else if (param[i] == "nodes" && ulong.TryParse(param[i + 1], out ulong reqNodes))
                 {
-                    info.MaxNodes = reqNodes;
+                    info.NodeLimit = reqNodes;
                 }
                 else if (param[i] == "movestogo" && int.TryParse(param[i + 1], out int reqMovestogo))
                 {
@@ -414,13 +274,13 @@ namespace Lizard.Logic.UCI
                 }
                 else if (param[i] == "infinite")
                 {
-                    Assert(info.MaxNodes == MaxSearchNodes, $"go infinite should have MaxNodes == {MaxSearchNodes}, but it was {info.MaxNodes}");
+                    Assert(info.NodeLimit == MaxSearchNodes, $"go infinite should have NodeLimit == {MaxSearchNodes}, but it was {info.NodeLimit}");
                     Assert(tm.MaxSearchTime == MaxSearchTime, $"go infinite should have MaxSearchTime == {MaxSearchTime}, but it was {tm.MaxSearchTime}");
-                    Assert(info.MaxDepth == MaxDepth, $"go infinite should have MaxDepth == {MaxDepth}, but it was {info.MaxDepth}");
+                    Assert(info.DepthLimit == MaxDepth, $"go infinite should have DepthLimit == {MaxDepth}, but it was {info.DepthLimit}");
 
-                    info.MaxNodes = MaxSearchNodes;
+                    info.NodeLimit = MaxSearchNodes;
                     tm.MaxSearchTime = MaxSearchTime;
-                    info.MaxDepth = MaxDepth;
+                    info.DepthLimit = MaxDepth;
                 }
             }
 
@@ -433,7 +293,7 @@ namespace Lizard.Logic.UCI
         /// </summary>
         private void OnDepthDone(ref SearchInformation info)
         {
-            SendString(FormatSearchInformationMultiPV(ref info));
+            Console.WriteLine(FormatSearchInformationMultiPV(ref info));
         }
 
 
@@ -444,7 +304,6 @@ namespace Lizard.Logic.UCI
 
             if (info.SearchFinishedCalled)
             {
-                LogString("[INFO]: SearchFinishedCalled was true, ignoring.");
                 return;
             }
 
@@ -452,7 +311,7 @@ namespace Lizard.Logic.UCI
             var bestThread = info.Position.Owner.AssocPool.GetBestThread();
             if (bestThread.RootMoves.Count == 0)
             {
-                SendString("bestmove 0000");
+                Console.WriteLine("bestmove 0000");
                 return;
             }
 
@@ -464,7 +323,7 @@ namespace Lizard.Logic.UCI
                 bestThreadMove = legal[0].Move;
             }
 
-            SendString("bestmove " + bestThreadMove.ToString(info.Position.IsChess960));
+            Console.WriteLine($"bestmove {bestThreadMove.ToString(info.Position.IsChess960)}");
         }
 
         private static void HandleNewGame(SearchThreadPool pool)
@@ -476,86 +335,41 @@ namespace Lizard.Logic.UCI
 
         private void HandleSetOption(string optName, string optValue)
         {
-            foreach (var key in Options.Keys)
+            optName = optName.Replace(" ", string.Empty);
+
+            try
             {
-                if (key.Replace(" ", string.Empty).EqualsIgnoreCase(optName.Replace(" ", string.Empty)))
+                string key = Options.Keys.First(x => x.Replace(" ", string.Empty).EqualsIgnoreCase(optName));
+                UCIOption opt = Options[key];
+                object prevValue = opt.FieldHandle.GetValue(null);
+
+                if (opt.FieldHandle.FieldType == typeof(bool) && bool.TryParse(optValue, out bool newBool))
                 {
-                    try
+                    opt.FieldHandle.SetValue(null, newBool);
+                }
+                else if (opt.FieldHandle.FieldType == typeof(int) && int.TryParse(optValue, out int newValue))
+                {
+                    if (newValue >= opt.MinValue && newValue <= opt.MaxValue)
                     {
-                        UCIOption opt = Options[key];
-                        object prevValue = opt.FieldHandle.GetValue(null);
+                        opt.FieldHandle.SetValue(null, newValue);
 
-                        if (opt.FieldHandle.FieldType == typeof(bool))
+                        if (opt.Name == nameof(Threads))
                         {
-                            bool newValue = true;
-                            if (bool.TryParse(optValue, out bool tf))
-                            {
-                                newValue = tf;
-                            }
-                            else if (optValue == "1")
-                            {
-                                newValue = true;
-                            }
-                            else if (optValue == "0")
-                            {
-                                newValue = false;
-                            }
-                            else
-                            {
-                                LogString("[ERROR]: setoption commands for booleans need to have a \"value\" of 'True/False' or '1/0', " +
-                                    "and '" + optValue + "' wasn't one of those!");
-                                return;
-                            }
-
-                            opt.FieldHandle.SetValue(null, newValue);
+                            GlobalSearchPool.Resize(SearchOptions.Threads);
                         }
-                        else if (opt.FieldHandle.FieldType == typeof(int))
+
+                        if (opt.Name == nameof(Hash))
                         {
-                            if (int.TryParse(optValue, out int newValue))
-                            {
-                                if (newValue >= opt.MinValue && newValue <= opt.MaxValue)
-                                {
-                                    opt.FieldHandle.SetValue(null, newValue);
-
-                                    if (opt.Name == nameof(Threads))
-                                    {
-                                        GlobalSearchPool.Resize(SearchOptions.Threads);
-                                        LogString("Changed '" + key + "' from " + prevValue + " to " + GlobalSearchPool.ThreadCount);
-                                    }
-                                    if (opt.Name == nameof(Hash))
-                                    {
-                                        GlobalSearchPool.TTable.Initialize(SearchOptions.Hash);
-                                    }
-
-                                    LogString("Changed '" + key + "' from " + prevValue + " to " + opt.FieldHandle.GetValue(null));
-                                }
-                                else
-                                {
-                                    LogString("[ERROR]: '" + key + "' needs a value between [" + opt.MinValue + ", " + opt.MaxValue + "], " +
-                                        "and '" + optValue + "' isn't in that range!");
-                                    return;
-                                }
-                            }
-                            else
-                            {
-                                LogString("[ERROR]: setoption commands for integers need to have a numerical value, " +
-                                    "and '" + optValue + "' isn't!");
-                                return;
-                            }
-
+                            GlobalSearchPool.TTable.Initialize(SearchOptions.Hash);
                         }
                     }
-                    catch (Exception e)
-                    {
-                        LogString("[ERROR]: Failed handling setoption command for '" + optName + "' -> " + optValue);
-                        LogString(e.ToString());
-                    }
-
-                    return;
                 }
             }
+            catch (Exception e)
+            {
+                Console.WriteLine($"[ERROR]: Failed handling setoption command for '{optName}' -> {optValue}! {e}");
+            }
 
-            LogString("[WARN]: Got setoption for '" + optName + "' but that isn't an option!");
         }
 
         public static void ProcessUCIOptions()
@@ -679,7 +493,7 @@ namespace Lizard.Logic.UCI
                 }
 
                 var opt = Options[optName];
-                SendString(opt.GetSPSAFormat());
+                Console.WriteLine(opt.GetSPSAFormat());
             }
         }
 

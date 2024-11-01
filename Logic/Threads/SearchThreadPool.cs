@@ -140,9 +140,6 @@
 
                 td.RootPosition.LoadFromFEN(rootFEN);
 
-                Assert(td.RootPosition.Owner == td,
-                    $"The RootPosition for the thread {td} had an owner of {td.RootPosition.Owner}!");
-
                 foreach (var move in setup.SetupMoves)
                 {
                     td.RootPosition.MakeMove(move);
@@ -212,9 +209,9 @@
         {
             //  This can happen if any thread other than the main thread calls this method.
             Assert(Blocker.ParticipantCount == 1,
-                "BlockCallerUntilFinished was called, but the barrier had {Blocker.ParticipantCount} participants (should have been 1)!");
+                $"BlockCallerUntilFinished was called, but the barrier had {Blocker.ParticipantCount} participants (should have been 1)!");
 
-            if (SharedInfo.SearchActive == false)
+            if (!SharedInfo.SearchActive)
             {
                 //  Don't block if we aren't searching.
                 return;

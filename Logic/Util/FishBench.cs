@@ -68,14 +68,14 @@
                 ulong ourNodes = pos.Perft(depth);
                 if (ourNodes != correctNodes)
                 {
-                    Log('[' + fen + ']' + ": Expected " + correctNodes + " nodes but got " + ourNodes + " nodes instead!");
+                    Log($"[{fen}]: Expected {correctNodes} nodes but got {ourNodes} nodes instead!");
                     nodesCorrect = false;
                 }
 
                 total += ourNodes;
             }
 
-            Log("\r\nNodes searched:  " + total + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(total / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+            Log($"\r\nNodes searched: {total} in {sw.Elapsed.TotalSeconds} s ({(int)(total / sw.Elapsed.TotalSeconds):N0} nps)" + "\r\n");
             return nodesCorrect;
         }
     }

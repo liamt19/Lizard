@@ -29,7 +29,7 @@
                 totalNodes += thisNodeCount;
                 if (!openBench)
                 {
-                    Log(fen.PadRight(76, ' ') + "\t" + thisNodeCount);
+                    Log($"{fen,-76}\t{thisNodeCount}");
                 }
 
                 GlobalSearchPool.TTable.Clear();
@@ -39,17 +39,18 @@
 
             if (openBench)
             {
-                var time = ((int)(totalNodes / sw.Elapsed.TotalSeconds));
-                Console.WriteLine("info string " + sw.Elapsed.TotalSeconds + " seconds");
-                Console.WriteLine(totalNodes + " nodes " + string.Join("", time.ToString("N0").Where(char.IsDigit)) + " nps");
+                Console.WriteLine($"info string {sw.Elapsed.TotalSeconds} seconds");
+
+                var time = (int)(totalNodes / sw.Elapsed.TotalSeconds);
+                Console.WriteLine($"{totalNodes} nodes {string.Join("", time.ToString("N0").Where(char.IsDigit))} nps");
             }
             else if (UCIClient.Active)
             {
-                UCIClient.SendString("info string nodes " + totalNodes + " time " + Math.Round(sw.Elapsed.TotalSeconds) + " nps " + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0"));
+                Console.WriteLine($"info string nodes {totalNodes} time {Math.Round(sw.Elapsed.TotalSeconds)} nps {(int)(totalNodes / sw.Elapsed.TotalSeconds):N0}");
             }
             else
             {
-                Log("\r\nNodes searched:  " + totalNodes + " in " + sw.Elapsed.TotalSeconds + " s (" + ((int)(totalNodes / sw.Elapsed.TotalSeconds)).ToString("N0") + " nps)" + "\r\n");
+                Log($"\r\nNodes searched: {totalNodes} in {sw.Elapsed.TotalSeconds} s ({(int)(totalNodes / sw.Elapsed.TotalSeconds):N0} nps)" + "\r\n");
             }
         }
 
