@@ -9,7 +9,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "11.0.11";
+        public const string EngineBuildVersion = "11.0.12";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
@@ -583,15 +583,13 @@ namespace Lizard.Logic.Util
                 }
 
 
-                int maxWidth = Console.BufferWidth - 8;
-
                 for (int j = 0; j < MaxPly; j++)
                 {
                     if (rm.PV[j] == Move.Null) break;
 
                     string s = $" {rm.PV[j].ToString(info.Position.IsChess960)}";
 
-                    if (pretty && cursorPosition >= maxWidth)
+                    if (pretty && cursorPosition >= Console.BufferWidth - 8)
                     {
                         Console.Write(" ...");
                         break;
