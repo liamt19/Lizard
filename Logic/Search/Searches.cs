@@ -1024,6 +1024,8 @@ namespace Lizard.Logic.Search
         {
             Position pos = thread.RootPosition;
 
+            rawEval = (short)(rawEval * (200 - pos.State->HalfmoveClock) / 200);
+
             var pch = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
             var mchW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
             var mchB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
