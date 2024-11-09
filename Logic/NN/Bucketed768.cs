@@ -73,15 +73,26 @@ namespace Lizard.Logic.NN
 
         public static void Initialize(string networkToLoad, bool exitIfFail = true)
         {
-            Stream netFile = NNUE.TryOpenFile(networkToLoad, exitIfFail);
+            using Stream netStream = NNUE.TryOpenFile(networkToLoad, exitIfFail);
 
-            using BinaryReader br = new BinaryReader(netFile);
-            var stream = br.BaseStream;
+            BinaryReader br;
+
+            if (Zstd.IsCompressed(netStream))
+            {
+                byte[] buff = new byte[ExpectedNetworkSize + 64];
+                MemoryStream memStream = Zstd.Decompress(netStream, buff);
+                br = new BinaryReader(memStream);
+            }
+            else
+            {
+                br = new BinaryReader(netStream);
+            }
+
             long toRead = ExpectedNetworkSize;
-            if (stream.Position + toRead > stream.Length)
+            if (br.BaseStream.Position + toRead > br.BaseStream.Length)
             {
                 Console.WriteLine("Bucketed768's BinaryReader doesn't have enough data for all weights and biases to be read!");
-                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {stream.Position} / {stream.Length}");
+                Console.WriteLine($"It expects to read {toRead} bytes, but the stream's position is {br.BaseStream.Position} / {br.BaseStream.Length}");
                 Console.WriteLine("The file being loaded is either not a valid 768 network, or has different layer sizes than the hardcoded ones.");
                 if (exitIfFail)
                 {
@@ -98,6 +109,8 @@ namespace Lizard.Logic.NN
 
             for (int i = 0; i < LayerWeightElements; i++) LayerWeights[i] = br.ReadInt16();
             for (int i = 0; i < LayerBiasElements;   i++) LayerBiases[i]  = br.ReadInt16();
+
+            br.Dispose();
 
             //  These weights are stored in column major order, but they are easier to use in row major order.
             //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
