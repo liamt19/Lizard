@@ -69,15 +69,6 @@ namespace Lizard.Logic.NN
 
             //  Try to load the default network
             networkToLoad = Bucketed768.NetworkName;
-            string resourceName = networkToLoad.Replace(".nnue", string.Empty).Replace(".bin", string.Empty);
-
-            //  First look for it as an embedded resource
-            object o = Resources.ResourceManager.GetObject(resourceName);
-            if (o != null)
-            {
-                Log($"Loading {resourceName} via ResourceManager");
-                return new MemoryStream((byte[])o);
-            }
 
             try
             {
@@ -90,7 +81,7 @@ namespace Lizard.Logic.NN
                     if (res.ToLower().Contains("properties"))
                         continue;
 
-                    if (res.EndsWith(".bin") || res.EndsWith(".nnue"))
+                    if (res.EndsWith(".bin") || res.EndsWith(".nnue") || res.EndsWith(".zstd"))
                     {
                         Stream stream = asm.GetManifestResourceStream(res);
                         if (stream != null)
