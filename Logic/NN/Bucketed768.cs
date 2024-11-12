@@ -16,7 +16,7 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 2048;
         public const int OutputBuckets = 8;
 
-        public const int QA = 258;
+        public const int QA = 255;
         public const int QB = 64;
 
         public const int OutputScale = 400;
