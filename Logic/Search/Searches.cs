@@ -126,17 +126,18 @@ namespace Lizard.Logic.Search
 
             ss->DoubleExtensions = (ss - 1)->DoubleExtensions;
             ss->InCheck = pos.Checked;
-            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* _tte);
+            TTEntry tte = *_tte;
             if (!doSkip)
             {
-                ss->TTPV = isPV || (ss->TTHit && tte->PV);
+                ss->TTPV = isPV || (ss->TTHit && tte.PV);
             }
 
-            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
+            short ttScore = ss->TTHit ? MakeNormalScore(tte.Score, ss->Ply) : ScoreNone;
 
             //  If this is a root node, we treat the RootMove at index 0 as the ttMove.
             //  Otherwise, we use the TT entry move if it was a TT hit or a null move otherwise.
-            Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte->BestMove : Move.Null);
+            Move ttMove = isRoot ? thisThread.CurrentMove : (ss->TTHit ? tte.BestMove : Move.Null);
 
             //  For TT hits, we can accept and return the TT score if:
             //  We aren't in a PV node,
@@ -147,10 +148,10 @@ namespace Lizard.Logic.Search
             //  and the tt entry's bound fits the criteria.
             if (!isPV
                 && !doSkip
-                && tte->Depth >= depth
+                && tte.Depth >= depth
                 && ttScore != ScoreNone
                 && (ttScore < alpha || cutNode)
-                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
+                && (tte.Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
                 return ttScore;
             }
@@ -172,12 +173,12 @@ namespace Lizard.Logic.Search
             {
                 //  Use the static evaluation from the TT if it had one, or get a new one.
                 //  We don't overwrite that TT's StatEval score yet though.
-                rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                rawEval = tte.StatEval != ScoreNone ? tte.StatEval : NNUE.GetEvaluation(pos);
 
                 eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
-                if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
+                if (ttScore != ScoreNone && (tte.Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
                 {
                     eval = ttScore;
                 }
@@ -189,7 +190,7 @@ namespace Lizard.Logic.Search
 
                 eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
-                tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
+                _tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
             }
 
             if (ss->Ply >= 2)
@@ -259,7 +260,7 @@ namespace Lizard.Logic.Search
                 && !doSkip
                 && depth >= ProbcutMinDepth
                 && Math.Abs(beta) < ScoreTTWin
-                && (!ss->TTHit || tte->Depth < depth - 3 || tte->Score >= probBeta))
+                && (!ss->TTHit || tte.Depth < depth - 3 || tte.Score >= probBeta))
             {
                 //  nnnnnnnn/PPPPPPPP/1N1N4/1rbrB3/1QbR1q2/1nRn4/2B5/3K3k w - - 0 1
                 //  This position has 88 different captures (the most I could come up with), so 128 as a limit is fair.
@@ -313,8 +314,8 @@ namespace Lizard.Logic.Search
             if (ss->InCheck
                 && !isPV
                 && (ttMove != Move.Null && bb.GetPieceAtIndex(ttMove.To) != None)
-                && ((tte->Bound & BoundLower) != 0)
-                && tte->Depth >= depth - 6
+                && ((tte.Bound & BoundLower) != 0)
+                && tte.Depth >= depth - 6
                 && ttScore >= probBeta
                 && Math.Abs(ttScore) < ScoreTTWin
                 && Math.Abs(beta) < ScoreTTWin)
@@ -420,11 +421,11 @@ namespace Lizard.Logic.Search
                     && !isRoot
                     && !doSkip
                     && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
+                    && depth >= (SEMinDepth + (isPV && tte.PV ? 1 : 0))
                     && m.Equals(ttMove)
                     && Math.Abs(ttScore) < ScoreWin
-                    && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
+                    && ((tte.Bound & BoundLower) != 0)
+                    && tte.Depth >= depth - 3)
                 {
                     int singleBeta = ttScore - (SENumerator * depth / 10);
                     int singleDepth = (depth + SEDepthAdj) / 2;
@@ -685,7 +686,7 @@ namespace Lizard.Logic.Search
 
                 Move toSave = (bound == TTNodeType.Beta) ? Move.Null : bestMove;
 
-                tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
+                _tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
 
                 if (!ss->InCheck
                     && (bestMove.IsNull() || !pos.IsCapture(bestMove))
@@ -739,10 +740,11 @@ namespace Lizard.Logic.Search
             int startingAlpha = alpha;
 
             ss->InCheck = pos.Checked;
-            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
-            short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
-            Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
-            bool ttPV = ss->TTHit && tte->PV;
+            ss->TTHit = TT.Probe(pos.Hash, out TTEntry* _tte);
+            TTEntry tte = *_tte;
+            short ttScore = ss->TTHit ? MakeNormalScore(tte.Score, ss->Ply) : ScoreNone;
+            Move ttMove = ss->TTHit ? tte.BestMove : Move.Null;
+            bool ttPV = ss->TTHit && tte.PV;
 
             if (isPV)
             {
@@ -763,7 +765,7 @@ namespace Lizard.Logic.Search
 
             if (!isPV
                 && ttScore != ScoreNone
-                && (tte->Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
+                && (tte.Bound & (ttScore >= beta ? BoundLower : BoundUpper)) != 0)
             {
                 return ttScore;
             }
@@ -777,11 +779,11 @@ namespace Lizard.Logic.Search
                 if (ss->TTHit)
                 {
                     //  If the TT hit didn't have a static eval, get one now.
-                    rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
+                    rawEval = tte.StatEval != ScoreNone ? tte.StatEval : NNUE.GetEvaluation(pos);
 
                     eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
 
-                    if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
+                    if (ttScore != ScoreNone && ((tte.Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
                         //  If the TTEntry has a valid score and the bound is correct, use that score in place of the static eval.
                         eval = ttScore;
@@ -799,7 +801,7 @@ namespace Lizard.Logic.Search
                 if (eval >= beta)
                 {
                     if (!ss->TTHit)
-                        tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, rawEval, TT.Age, false);
+                        _tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, rawEval, TT.Age, false);
 
                     if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
                     return eval;
@@ -938,7 +940,7 @@ namespace Lizard.Logic.Search
 
             var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ss->TTPV);
+            _tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ss->TTPV);
 
             return bestScore;
         }
