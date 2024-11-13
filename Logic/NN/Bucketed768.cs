@@ -16,7 +16,7 @@ namespace Lizard.Logic.NN
         public const int HiddenSize = 2048;
         public const int OutputBuckets = 8;
 
-        public const int QA = 258;
+        public const int QA = 255;
         public const int QB = 64;
 
         public const int OutputScale = 400;
@@ -229,7 +229,7 @@ namespace Lizard.Logic.NN
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
+            int outputBucket = (occ - 2) / ((32 + OutputBuckets - 1) / OutputBuckets);
 
             int Stride = (HiddenSize / Vector256<short>.Count) / 2;
 
