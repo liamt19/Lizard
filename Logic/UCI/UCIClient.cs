@@ -70,10 +70,7 @@ namespace Lizard.Logic.UCI
             Console.WriteLine("id author Liam McGuire");
             Console.WriteLine("info string Using Bucketed768 evaluation.");
 
-            foreach (string k in Options.Keys)
-            {
-                Console.WriteLine(Options[k].ToString());
-            }
+            PrintUCIOptions();
             Console.WriteLine("uciok");
 
             //  In case a "ucinewgame" isn't sent for the first game
@@ -372,7 +369,7 @@ namespace Lizard.Logic.UCI
 
         }
 
-        public static void ProcessUCIOptions()
+        private static void ProcessUCIOptions()
         {
             Options = new Dictionary<string, UCIOption>();
 
@@ -392,8 +389,6 @@ namespace Lizard.Logic.UCI
 
                 Options.Add(fieldName, opt);
             }
-
-            //SetSPSAOutputParams();
 
             Options[nameof(Threads)].SetMinMax(1, 512);
             Options[nameof(MultiPV)].SetMinMax(1, 256);
@@ -415,9 +410,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(RFPMaxDepth)].AutoMinMax();
             Options[nameof(RFPMargin)].AutoMinMax();
 
+            Options[nameof(ProbcutMinDepth)].SetMinMax(1, 5);
             Options[nameof(ProbcutBeta)].AutoMinMax();
             Options[nameof(ProbcutBetaImp)].AutoMinMax();
-            Options[nameof(ProbcutMinDepth)].SetMinMax(1, 5);
 
             Options[nameof(ShallowSEEMargin)].AutoMinMax();
             Options[nameof(ShallowMaxDepth)].AutoMinMax();
@@ -434,7 +429,6 @@ namespace Lizard.Logic.UCI
 
             Options[nameof(IIRMinDepth)].SetMinMax(2, 6);
             Options[nameof(AspWindow)].AutoMinMax();
-            Options[nameof(CaptureBonusMargin)].AutoMinMax();
 
             Options[nameof(StatBonusMult)].AutoMinMax();
             Options[nameof(StatBonusSub)].AutoMinMax();
@@ -474,7 +468,40 @@ namespace Lizard.Logic.UCI
             }
         }
 
-        public static void PrintSPSAParams()
+
+        private static void PrintUCIOptions()
+        {
+            List<string> whitelist =
+            [
+                nameof(SearchOptions.Threads),
+                nameof(SearchOptions.MultiPV),
+                nameof(SearchOptions.Hash),
+                nameof(SearchOptions.UCI_Chess960),
+                nameof(SearchOptions.UCI_ShowWDL),
+                nameof(SearchOptions.UCI_PrettyPrint),
+
+                nameof(SearchOptions.SEMinDepth),
+                nameof(SearchOptions.NMPMinDepth),
+                nameof(SearchOptions.RFPMaxDepth),
+                nameof(SearchOptions.RFPMargin),
+                nameof(SearchOptions.ProbcutMinDepth),
+                nameof(SearchOptions.ProbcutBeta),
+                nameof(SearchOptions.IIRMinDepth),
+                nameof(SearchOptions.AspWindow),
+                nameof(SearchOptions.ValuePawn),
+                nameof(SearchOptions.ValueKnight),
+                nameof(SearchOptions.ValueBishop),
+                nameof(SearchOptions.ValueRook),
+                nameof(SearchOptions.ValueQueen),
+            ];
+
+            foreach (string k in Options.Keys.Where(x => whitelist.Contains(x)))
+            {
+                Console.WriteLine(Options[k].ToString());
+            }
+        }
+
+        private static void PrintSPSAParams()
         {
             List<string> ignore =
             [
@@ -498,21 +525,5 @@ namespace Lizard.Logic.UCI
             }
         }
 
-        private static void SetSPSAOutputParams()
-        {
-            string output =
-                "" +
-                "SingularExtensionsMinDepth, 5\r\nSingularExtensionsNumerator, 11\r\nSingularExtensionsBeta, 25\r\nSingularExtensionsDepthAugment, -1\r\nNMPMinDepth, 6\r\nNMPReductionBase, 4\r\nNMPReductionDivisor, 4\r\nNMPEvalDivisor, 184\r\nNMPEvalMin, 2\r\nRFPMaxDepth, 6\r\nRFPMargin, 46\r\nProbCutBeta, 246\r\nProbCutBetaImproving, 103\r\nLMRExtensionThreshold, 132\r\nLMRExchangeBase, 208\r\nHistoryReductionMultiplier, 12\r\nFutilityExchangeBase, 184\r\nExtraCutNodeReductionMinDepth, 4\r\nSkipQuietsMaxDepth, 9\r\nQSSeeThreshold, 78\r\nAspirationWindowMargin, 12\r\nHistoryCaptureBonusMargin, 163\r\nOrderingGivesCheckBonus, 9652\r\nOrderingVictimValueMultiplier, 15\r\nStatBonusMult, 182\r\nStatBonusSub, 80\r\nStatBonusMax, 1653\r\nStatMalusMult, 582\r\nStatMalusSub, 110\r\nStatMalusMax, 1625\r\nSEEValue_Pawn, 101\r\nSEEValue_Knight, 881\r\nSEEValue_Bishop, 1016\r\nSEEValue_Rook, 1351\r\nSEEValue_Queen, 2285\r\nValuePawn, 164\r\nValueKnight, 799\r\nValueBishop, 985\r\nValueRook, 1631\r\nValueQueen, 3000" +
-                "";
-
-            var lines = output.Split("\r\n");
-
-            foreach (string line in lines)
-            {
-                var splits = line.Split(", ");
-                Options[splits[0]].DefaultValue = splits[1];
-                Options[splits[0]].RefreshBackingField();
-            }
-        }
     }
 }
