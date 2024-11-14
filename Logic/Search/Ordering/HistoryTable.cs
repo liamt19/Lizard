@@ -23,13 +23,13 @@ namespace Lizard.Logic.Search.History
         /// Stores history for how far off the static evaluation was from the result of a search for either color,
         /// indexed by a position's pawn PSQT hash.
         /// </summary>
-        public PawnCorrectionTable PawnCorrection;
+        public readonly PawnCorrectionTable PawnCorrection;
 
         /// <summary>
         /// Stores history for how far off the static evaluation was from the result of a search for either color,
         /// indexed by a position's non-pawn PSQT hash.
         /// </summary>
-        public NonPawnCorrectionTable NonPawnCorrection;
+        public readonly NonPawnCorrectionTable NonPawnCorrection;
 
         /// <summary>
         /// Index with [inCheck] [Capture]
@@ -60,7 +60,7 @@ namespace Lizard.Logic.Search.History
 
             cont1[0] = new ContinuationHistory();
             cont1[1] = new ContinuationHistory();
-            
+
             Continuations[0] = cont0;
             Continuations[1] = cont1;
         }
