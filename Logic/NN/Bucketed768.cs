@@ -1,25 +1,44 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
+﻿
+//#define NO_PERM
+//#define PERM_COUNT
 
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics;
 using Lizard.Logic.Threads;
 
+using static Lizard.Logic.NN.Aliases;
 using static Lizard.Logic.NN.FunUnrollThings;
-using static Lizard.Logic.NN.NNUE;
 
 namespace Lizard.Logic.NN
 {
     public static unsafe partial class Bucketed768
     {
-        public const int InputBuckets = 16;
-        public const int InputSize = 768;
-        public const int HiddenSize = 2048;
-        public const int OutputBuckets = 8;
+        public const int INPUT_BUCKETS = 16;
+        public const int INPUT_SIZE = 768;
+        public const int L1_SIZE = 1024;
+        public const int L2_SIZE = 16;
+        public const int L3_SIZE = 32;
+        public const int OUTPUT_BUCKETS = 8;
 
-        public const int QA = 258;
-        public const int QB = 64;
+        private const int FT_QUANT = 255;
+        private const int FT_SHIFT = 10;
+        private const int L1_QUANT = 64;
+        private const int OutputScale = 400;
 
-        public const int OutputScale = 400;
+        private static readonly int U8_CHUNK_SIZE = sizeof(Vector256<byte>) / sizeof(byte);
+        private static readonly int I16_CHUNK_SIZE = sizeof(Vector256<short>) / sizeof(short);
+        private static readonly int I32_CHUNK_SIZE = sizeof(Vector256<int>) / sizeof(int);
+        private static readonly int F32_CHUNK_SIZE = sizeof(Vector256<float>) / sizeof(float);
+
+        private static readonly int NNZ_INPUT_SIMD_WIDTH = sizeof(Vector256<int>) / sizeof(int);
+        private static readonly int NNZ_CHUNK_SIZE = Math.Max(NNZ_INPUT_SIMD_WIDTH, 8);
+        private static readonly int NNZ_OUTPUTS_PER_CHUNK = NNZ_CHUNK_SIZE / 8;
+
+        private const int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
+        private const int L1_PAIR_COUNT = L1_SIZE / 2;
+
 
         public static string NetworkName
         {
@@ -33,18 +52,25 @@ namespace Lizard.Logic.NN
             }
         }
 
-        public static readonly short* FeatureWeights;
-        public static readonly short* FeatureBiases;
-        public static readonly short* LayerWeights;
-        public static readonly short* LayerBiases;
+        private static readonly NetContainer<short, sbyte, float> Net;
+        private static readonly Vector128<ushort>* NNZLookup;
 
-        private const int FeatureWeightElements = InputSize * HiddenSize * InputBuckets;
-        private const int FeatureBiasElements = HiddenSize;
+        private const int N_FTW = INPUT_SIZE * L1_SIZE * INPUT_BUCKETS;
+        private const int N_FTB = L1_SIZE;
 
-        private const int LayerWeightElements = HiddenSize * OutputBuckets;
-        private const int LayerBiasElements = OutputBuckets;
+        private const int N_L1W = OUTPUT_BUCKETS * L1_SIZE * L2_SIZE;
+        private const int N_L1B = OUTPUT_BUCKETS * L2_SIZE;
 
-        private const long ExpectedNetworkSize = (FeatureWeightElements + FeatureBiasElements + LayerWeightElements + LayerBiasElements) * sizeof(short);
+        private const int N_L2W = OUTPUT_BUCKETS * L2_SIZE * L3_SIZE;
+        private const int N_L2B = OUTPUT_BUCKETS * L3_SIZE;
+
+        private const int N_L3W = OUTPUT_BUCKETS * L3_SIZE;
+        private const int N_L3B = OUTPUT_BUCKETS;
+
+        private static long ExpectedNetworkSize => (N_FTW + N_FTB) * sizeof(short) +
+                                                           (N_L1W) * sizeof(byte)  + 
+                                           (N_L1B + N_L2W + N_L2B) * sizeof(float) +
+                                                   (N_L3W + N_L3B) * sizeof(float);
 
         private static ReadOnlySpan<int> KingBuckets =>
         [
@@ -60,13 +86,25 @@ namespace Lizard.Logic.NN
 
         public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
 
+
+#if PERM_COUNT
+        public static ulong ActivationCount = 0;
+        public static ulong EvalCalls = 0;
+        public static readonly ulong[] NNZCounts = new ulong[L1_SIZE];
+#endif
+
+
         static Bucketed768()
         {
-            FeatureWeights = AlignedAllocZeroed<short>(FeatureWeightElements);
-            FeatureBiases = AlignedAllocZeroed<short>(FeatureBiasElements);
+            Net = new NetContainer<short, sbyte, float>();
+            NNZLookup = AlignedAllocZeroed<Vector128<ushort>>(256);
+            SetupNNZ();
 
-            LayerWeights = AlignedAllocZeroed<short>(LayerWeightElements);
-            LayerBiases = AlignedAllocZeroed<short>((nuint)Math.Max(LayerBiasElements, Vector512<short>.Count));
+#if NO_PERM
+            PermuteIndices = Enumerable.Range(0, L1_PAIR_COUNT).ToArray();
+#else
+            PermuteIndices = BestIndices.ToArray();
+#endif
 
             Initialize(NetworkName);
         }
@@ -104,28 +142,118 @@ namespace Lizard.Logic.NN
                 }
             }
 
-            for (int i = 0; i < FeatureWeightElements; i++) FeatureWeights[i] = br.ReadInt16();
-            for (int i = 0; i < FeatureBiasElements;   i++) FeatureBiases[i]  = br.ReadInt16();
+             UQNetContainer UQNet = new UQNetContainer();
 
-            for (int i = 0; i < LayerWeightElements; i++) LayerWeights[i] = br.ReadInt16();
-            for (int i = 0; i < LayerBiasElements;   i++) LayerBiases[i]  = br.ReadInt16();
+            for (int i = 0; i < N_FTW; i++)
+            {
+                UQNet.FTWeights[i] = br.ReadInt16();
+                Net.FTWeights[i] = UQNet.FTWeights[i];
+            }
 
-            br.Dispose();
+            for (int i = 0; i < N_FTB; i++)
+            {
+                UQNet.FTBiases[i] = br.ReadInt16();
+                Net.FTBiases[i] = UQNet.FTBiases[i];
+            }
 
-            //  These weights are stored in column major order, but they are easier to use in row major order.
-            //  The first 8 weights in the binary file are actually the first weight for each of the 8 output buckets,
-            //  so we will transpose them so that the all of the weights for each output bucket are contiguous.
-            TransposeLayerWeights((short*)LayerWeights, HiddenSize, OutputBuckets);
+            PermuteFT(new Span<short>(Net.FTWeights, N_FTW), new Span<short>(Net.FTBiases, N_FTB));
 
-#if DEBUG
-            NetStats("ft weight", FeatureWeights, FeatureWeightElements);
-            NetStats("ft bias\t", FeatureBiases, FeatureBiasElements);
+            fixed (sbyte* ptr = UQNet.L1Weights)
+                for (int i = 0; i < N_L1W; i++)
+                    ptr[i] = br.ReadSByte();
 
-            NetStats("fc weight", LayerWeights, LayerWeightElements);
-            NetStats("fc bias\t", LayerBiases, LayerBiasElements);
+            PermuteL1(UQNet.L1Weights);
 
-            Log("Init Bucketed768 done");
-#endif
+            fixed (float* ptr = UQNet.L1Biases)
+                for (int i = 0; i < N_L1B; i++)
+                    ptr[i] = br.ReadSingle();
+
+            fixed (float* ptr = UQNet.L2Weights)
+                for (int i = 0; i < N_L2W; i++)
+                    ptr[i] = br.ReadSingle();
+
+            fixed (float* ptr = UQNet.L2Biases)
+                for (int i = 0; i < N_L2B; i++)
+                    ptr[i] = br.ReadSingle();
+
+            fixed (float* ptr = UQNet.L3Weights)
+                for (int i = 0; i < N_L3W; i++)
+                    ptr[i] = br.ReadSingle();
+
+            fixed (float* ptr = UQNet.L3Biases)
+                for (int i = 0; i < N_L3B; i++)
+                    ptr[i] = br.ReadSingle();
+
+            
+            for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
+            {
+                for (int i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+                    for (int j = 0; j < L2_SIZE; ++j)
+                        for (int k = 0; k < L1_CHUNK_PER_32; ++k)
+                            Net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
+                                                + j * L1_CHUNK_PER_32
+                                                + k] = UQNet.L1Weights[i * L1_CHUNK_PER_32 + k, bucket, j];
+
+                for (int i = 0; i < L2_SIZE; ++i)
+                    Net.L1Biases[bucket][i] = UQNet.L1Biases[bucket, i];
+
+                for (int i = 0; i < L2_SIZE; ++i)
+                    for (int j = 0; j < L3_SIZE; ++j)
+                        Net.L2Weights[bucket][i * L3_SIZE + j] = UQNet.L2Weights[i, bucket, j];
+
+                for (int i = 0; i < L3_SIZE; ++i)
+                    Net.L2Biases[bucket][i] = UQNet.L2Biases[bucket, i];
+
+                for (int i = 0; i < L3_SIZE; ++i)
+                    Net.L3Weights[bucket][i] = UQNet.L3Weights[i, bucket];
+
+                Net.L3Biases[bucket] = UQNet.L3Biases[bucket];
+            }
+
+            const int numRegi = 4;
+            const int numChunks = (32 / 2) / sizeof(short);
+            Span<int> order = [0, 2, 1, 3];
+            Vector128<short>[] regi = new Vector128<short>[numRegi];
+            var ws = (Vector128<short>*)Net.FTWeights;
+            var bs = (Vector128<short>*)Net.FTBiases;
+
+            for (int i = 0; i < INPUT_SIZE * L1_SIZE * INPUT_BUCKETS / numChunks; i += numRegi)
+            {
+                for (int j = 0; j < numRegi; j++)
+                    regi[j] = ws[i + j];
+
+                for (int j = 0; j < numRegi; j++)
+                    ws[i + j] = regi[order[j]];
+            }
+
+            for (int i = 0; i < L1_SIZE / numChunks; i += numRegi)
+            {
+                for (int j = 0; j < numRegi; j++)
+                    regi[j] = bs[i + j];
+
+                for (int j = 0; j < numRegi; j++)
+                    bs[i + j] = regi[order[j]];
+            }
+        }
+
+        private static void SetupNNZ()
+        {
+            ushort[] temp = new ushort[8];
+            for (int i = 0; i < 256; i++)
+            {
+                Array.Clear(temp);
+                int j = i;
+                int k = 0;
+                while (j != 0)
+                {
+                    uint lsbIndex = uint.TrailingZeroCount((uint)j);
+                    j &= j - 1;
+                    temp[k] = (ushort)lsbIndex;
+                    k++;
+                }
+
+                NNZLookup[i] = Vector128.Create(temp);
+            }
         }
 
         public static void RefreshAccumulator(Position pos)
@@ -140,7 +268,7 @@ namespace Lizard.Logic.NN
             ref Bitboard bb = ref pos.bb;
 
             var ourAccumulation = (short*)accumulator[perspective];
-            Unsafe.CopyBlock(ourAccumulation, FeatureBiases, Accumulator.ByteSize);
+            Unsafe.CopyBlock(ourAccumulation, Net.FTBiases, sizeof(short) * L1_SIZE);
             accumulator.NeedsRefresh[perspective] = false;
             accumulator.Computed[perspective] = true;
 
@@ -154,7 +282,7 @@ namespace Lizard.Logic.NN
                 int pc = bb.GetColorAtIndex(pieceIdx);
 
                 int idx = FeatureIndexSingle(pc, pt, pieceIdx, ourKing, perspective);
-                UnrollAdd(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
+                UnrollAdd(ourAccumulation, ourAccumulation, Net.FTWeights + idx);
             }
 
             if (pos.Owner.CachedBuckets == null)
@@ -200,14 +328,14 @@ namespace Lizard.Logic.NN
                     {
                         int sq = poplsb(&added);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        UnrollAdd(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
+                        UnrollAdd(ourAccumulation, ourAccumulation, Net.FTWeights + idx);
                     }
 
                     while (removed != 0)
                     {
                         int sq = poplsb(&removed);
                         int idx = FeatureIndexSingle(pc, pt, sq, ourKing, perspective);
-                        UnrollSubtract(ourAccumulation, ourAccumulation, &FeatureWeights[idx]);
+                        UnrollSubtract(ourAccumulation, ourAccumulation, Net.FTWeights + idx);
                     }
                 }
             }
@@ -218,53 +346,181 @@ namespace Lizard.Logic.NN
             accumulator.Computed[perspective] = true;
         }
 
-        public static int GetEvaluation(Position pos)
+
+        public static int GetEvaluation(Position pos, int outputBucket)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
+
             Bucketed768.ProcessUpdates(pos);
 
-            Vector256<short> maxVec = Vector256.Create((short)QA);
-            Vector256<short> zeroVec = Vector256<short>.Zero;
-            Vector256<int> sum = Vector256<int>.Zero;
+            float* L1Outputs = stackalloc float[L2_SIZE];
+            float* L2Outputs = stackalloc float[L3_SIZE];
+            float L3Output = 0;
 
+            var us   = (short*)(accumulator[pos.ToMove]);
+            var them = (short*)(accumulator[Not(pos.ToMove)]);
+
+            ActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+            ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+            ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+
+            return (int)(L3Output * OutputScale);
+        }
+
+        public static int GetEvaluation(Position pos)
+        {
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
+            int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
-            int Stride = (HiddenSize / Vector256<short>.Count) / 2;
-
-            var data0 = accumulator[pos.ToMove];
-            var data1 = data0 + Stride;
-            var weights = (Vector256<short>*)(&LayerWeights[(outputBucket * HiddenSize)]);
-            for (int i = 0; i < Stride; i++)
-            {
-                Vector256<short> c_0 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data0[i]));
-                Vector256<short> c_1 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data1[i]));
-
-                (var mLo, var mHi) = Vector256.Widen(c_0 * weights[i]);
-                (var cLo, var cHi) = Vector256.Widen(c_1);
-
-                sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
-            }
-
-            data0 = accumulator[Not(pos.ToMove)];
-            data1 = data0 + Stride;
-            weights = (Vector256<short>*)(&LayerWeights[(outputBucket * HiddenSize) + HiddenSize / 2]);
-            for (int i = 0; i < Stride; i++)
-            {
-                Vector256<short> c_0 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data0[i]));
-                Vector256<short> c_1 = Vector256.Min(maxVec, Vector256.Max(zeroVec, data1[i]));
-
-                (var mLo, var mHi) = Vector256.Widen(c_0 * weights[i]);
-                (var cLo, var cHi) = Vector256.Widen(c_1);
-
-                sum = Vector256.Add(sum, Vector256.Add(mLo * cLo, mHi * cHi));
-            }
-
-            int output = Vector256.Sum(sum);
-
-            return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
+            return GetEvaluation(pos, outputBucket);
         }
+
+
+        private static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output)
+        {
+            var ft_zero = _mm256_setzero_epi16();
+            var ft_one = _mm256_set1_epi16(FT_QUANT);
+
+            int nnzCount = 0;
+            int offset = 0;
+
+            sbyte* ft_outputs = stackalloc sbyte[L1_SIZE];
+            ushort* nnzIndices = stackalloc ushort[L1_SIZE / L1_CHUNK_PER_32];
+
+            Vector128<ushort> baseInc = Vector128.Create((ushort)8);
+            Vector128<ushort> baseVec = Vector128<ushort>.Zero;
+
+            for (int perspective = 0; perspective < 2; perspective++)
+            {
+                short* acc = perspective == 0 ? us : them;
+
+                for (int i = 0; i < L1_PAIR_COUNT; i += (I16_CHUNK_SIZE * 2))
+                {
+                    var input0a = _mm256_load_si256(&acc[i + 0 * I16_CHUNK_SIZE + 0]);
+                    var input0b = _mm256_load_si256(&acc[i + 1 * I16_CHUNK_SIZE + 0]);
+
+                    var input1a = _mm256_load_si256(&acc[i + 0 * I16_CHUNK_SIZE + L1_PAIR_COUNT]);
+                    var input1b = _mm256_load_si256(&acc[i + 1 * I16_CHUNK_SIZE + L1_PAIR_COUNT]);
+
+                    var clipped0a = _mm256_min_epi16(_mm256_max_epi16(input0a, ft_zero), ft_one);
+                    var clipped0b = _mm256_min_epi16(_mm256_max_epi16(input0b, ft_zero), ft_one);
+
+                    var clipped1a = _mm256_min_epi16(input1a, ft_one);
+                    var clipped1b = _mm256_min_epi16(input1b, ft_one);
+
+                    var producta = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    var productb = _mm256_mulhi_epi16(_mm256_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+
+                    var product_one = _mm256_packus_epi16(producta, productb).AsByte();
+                    _mm256_storeu_si256(&ft_outputs[offset + i], product_one.AsSByte());
+
+                    var nnz_mask = vec_nnz_mask(product_one);
+
+                    for (int j = 0; j < NNZ_OUTPUTS_PER_CHUNK; j++)
+                    {
+                        int lookup = (nnz_mask >> (j * 8)) & 0xFF;
+                        var offsets = NNZLookup[lookup];
+                        _mm128_storeu_si128(&nnzIndices[nnzCount], _mm_add_epi16(baseVec, offsets));
+
+                        nnzCount += int.PopCount(lookup);
+                        baseVec += baseInc;
+                    }
+
+                }
+
+                offset += L1_PAIR_COUNT;
+            }
+
+#if PERM_COUNT
+            EvalCalls++;
+            ActivationCount += (ulong)nnzCount;
+            lock (NNZCounts)
+            {
+                for (int i = 0; i < L1_SIZE; i++)
+                    NNZCounts[i] += (ft_outputs[i] != 0) ? 1UL : 0;
+            }
+#endif
+
+            ActivateL1Sparse(ft_outputs, weights, biases, output, new Span<ushort>(nnzIndices, nnzCount));
+        }
+
+
+        private static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, Span<ushort> nnzIndices)
+        {
+            var sums = stackalloc Vector256<int>[L2_SIZE / I32_CHUNK_SIZE];
+
+            int nnzCount = nnzIndices.Length;
+            int* inputs32 = (int*)(inputs);
+            for (int i = 0; i < nnzCount; i++)
+            {
+                var index = nnzIndices[i];
+                var input32 = _mm256_set1_epi32(inputs32[index]);
+                var weight = (Vector256<sbyte>*)(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
+                for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
+                {
+                    sums[k] = vec_dpbusd_epi32(sums[k], input32.AsByte(), weight[k]);
+                }
+            }
+
+            var zero = _mm256_set1_ps(0.0f);
+            var one = Vector256<float>.One;
+
+            var sumMul = _mm256_set1_ps((1 << FT_SHIFT) / (float)(FT_QUANT * FT_QUANT * L1_QUANT));
+            for (int i = 0; i < L2_SIZE / F32_CHUNK_SIZE; ++i)
+            {
+                var biasVec = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+                var sumPs = _mm256_fmadd_ps(_mm256_cvtepi32_ps(sums[i]), sumMul, biasVec);
+                var clipped = _mm256_min_ps(_mm256_max_ps(sumPs, zero), one);
+                var squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+
+            }
+        }
+
+
+        private static void ActivateL2(float* inputs, float* weights, float* biases, float* output)
+        {
+            var sumVecs = stackalloc Vector256<float>[L3_SIZE / F32_CHUNK_SIZE];
+
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+                sumVecs[i] = _mm256_loadu_ps(&biases[i * F32_CHUNK_SIZE]);
+
+            for (int i = 0; i < L2_SIZE; ++i)
+            {
+                var inputVec = _mm256_set1_ps(inputs[i]);
+                var weight = (Vector256<float>*)(&weights[i * L3_SIZE]);
+                for (int j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
+                {
+                    sumVecs[j] = vec_mul_add_ps(inputVec, weight[j], sumVecs[j]);
+                }
+            }
+
+            var zero = _mm256_set1_ps(0.0f);
+            var one = _mm256_set1_ps(1.0f);
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
+            {
+                var clipped = _mm256_min_ps(_mm256_max_ps(sumVecs[i], zero), one);
+                var squared = _mm256_mul_ps(clipped, clipped);
+                _mm256_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
+            }
+        }
+
+
+        private static void ActivateL3(float* inputs, float* weights, float bias, ref float output)
+        {
+            var sumVec = _mm256_set1_ps(0.0f);
+
+            for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; i++)
+            {
+                var weightVec = _mm256_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
+                var inputsVec = _mm256_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
+                sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
+            }
+
+            output = bias + Vector256.Sum(sumVec);
+        }
+
 
         [MethodImpl(Inline)]
         private static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
@@ -284,7 +540,7 @@ namespace Lizard.Logic.NN
                 kingSq ^= 7;
             }
 
-            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * HiddenSize;
+            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * L1_SIZE;
         }
 
         [MethodImpl(Inline)]
@@ -312,7 +568,7 @@ namespace Lizard.Logic.NN
             int whiteIndex = (768 * KingBuckets[wk]) + (    pc  * ColorStride) + (pt * PieceStride) + wSq;
             int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
 
-            return (whiteIndex * HiddenSize, blackIndex * HiddenSize);
+            return (whiteIndex * L1_SIZE, blackIndex * L1_SIZE);
         }
 
         public static void MakeMove(Position pos, Move m)
@@ -497,6 +753,8 @@ namespace Lizard.Logic.NN
             var src = (short*)((*prev)[perspective]);
             var dst = (short*)((*curr)[perspective]);
 
+            var FeatureWeights = Net.FTWeights;
+
             if (updates.AddCnt == 1 && updates.SubCnt == 1)
             {
                 SubAdd(src, dst,
@@ -527,11 +785,132 @@ namespace Lizard.Logic.NN
             for (int bIdx = 0; bIdx < td.CachedBuckets.Length; bIdx++)
             {
                 ref BucketCache bc = ref td.CachedBuckets[bIdx];
-                bc.Accumulator.ResetWithBiases(FeatureBiases, sizeof(short) * HiddenSize);
+                bc.Accumulator.ResetWithBiases(Net.FTBiases, sizeof(short) * L1_SIZE);
                 bc.Boards[White].Reset();
                 bc.Boards[Black].Reset();
             }
         }
+
+
+
+        private static void PermuteFT(Span<short> ftWeights, Span<short> ftBiases)
+        {
+            const int OneBucket = (INPUT_SIZE * L1_SIZE);
+            short* temp = AlignedAllocZeroed<short>(OneBucket);
+
+            for (int bucket = 0; bucket < INPUT_BUCKETS; bucket++)
+            {
+                Span<short> ftBucket = ftWeights[(bucket * OneBucket)..((bucket + 1) * OneBucket)];
+                ftBucket.CopyTo(new Span<short>(temp, OneBucket));
+                for (int i = 0; i < INPUT_SIZE; i++)
+                {
+                    for (int dst = 0; dst < PermuteIndices.Length; dst++)
+                    {
+                        int src = PermuteIndices[dst];
+                        var f = i * L1_SIZE;
+
+                        ftBucket[f + dst] = temp[f + src];
+                        ftBucket[f + dst + L1_PAIR_COUNT] = temp[f + src + L1_PAIR_COUNT];
+                    }
+                }
+            }
+
+            ftBiases.CopyTo(new Span<short>(temp, L1_SIZE));
+            for (int dst = 0; dst < PermuteIndices.Length; dst++)
+            {
+                int src = PermuteIndices[dst];
+
+                ftBiases[dst] = temp[src];
+                ftBiases[dst + L1_PAIR_COUNT] = temp[src + L1_PAIR_COUNT];
+            }
+
+            NativeMemory.AlignedFree(temp);
+        }
+
+        private static void PermuteL1(sbyte[,,] l1Weights)
+        {
+            sbyte[,,] temp = new sbyte[L1_SIZE, OUTPUT_BUCKETS, L2_SIZE];
+
+            Array.Copy(l1Weights, temp, N_L1W);
+            for (int dst = 0; dst < PermuteIndices.Length; dst++)
+            {
+                int src = PermuteIndices[dst];
+
+                for (int b = 0; b < OUTPUT_BUCKETS; b++)
+                {
+                    for (int l2 = 0; l2 < L2_SIZE; l2++)
+                    {
+                        l1Weights[dst, b, l2] = temp[src, b, l2];
+                        l1Weights[dst + L1_PAIR_COUNT, b, l2] = temp[src + L1_PAIR_COUNT, b, l2];
+                    }
+                }
+            }
+        }
+
+        public static void PrintActivationStats()
+        {
+#if PERM_COUNT
+            using var f = File.Open("perm.txt", FileMode.Create);
+            using StreamWriter tw = new StreamWriter(f);
+            for (int i = 0; i < NNZCounts.Length; i++)
+            {
+                tw.WriteLine($"{i} {NNZCounts[i]}");
+            }
+            Log($"{ActivationCount} / {EvalCalls} = {(double)ActivationCount / EvalCalls}");
+
+            NNZCounts
+                .Select((v, i) => (i, v))
+                .Where(pair => pair.i < (L1_SIZE / 2))
+                .OrderByDescending(pair => pair.v)
+                .Select(pair => pair.i)
+                .Chunk(16)
+                .ToList()
+                .ForEach(chunk =>
+                {
+                    Console.WriteLine($"{string.Join(", ", chunk)},");
+                });
+#endif
+        }
+
+
+        private static readonly int[] PermuteIndices = new int[L1_PAIR_COUNT];
+        //  ((?:\d+, ){16})
+        //  $1\n
+        private static ReadOnlySpan<int> BestIndices =>
+        [
+            477, 189, 371, 236, 460, 14, 22, 223, 109, 482, 38, 46, 493, 336, 89, 76,
+            433, 84, 340, 474, 80, 2, 83, 420, 139, 378, 242, 490, 36, 86, 67, 306,
+            195, 496, 246, 21, 254, 453, 42, 261, 78, 219, 168, 399, 216, 117, 419, 272,
+            218, 41, 202, 267, 391, 53, 270, 59, 470, 489, 449, 209, 510, 273, 366, 112,
+            348, 94, 423, 504, 498, 229, 456, 50, 8, 354, 345, 23, 214, 435, 172, 395,
+            343, 472, 137, 81, 40, 173, 331, 95, 392, 100, 62, 398, 58, 446, 20, 467,
+            397, 4, 3, 12, 176, 298, 91, 262, 72, 25, 494, 305, 191, 379, 49, 32,
+            97, 6, 161, 484, 88, 210, 148, 458, 87, 211, 418, 509, 165, 188, 416, 114,
+            359, 438, 221, 102, 43, 63, 462, 75, 383, 295, 65, 235, 297, 459, 217, 60,
+            281, 17, 159, 415, 352, 486, 386, 454, 322, 151, 408, 156, 120, 265, 198, 205,
+            150, 445, 110, 131, 358, 0, 308, 377, 177, 413, 436, 222, 152, 101, 317, 361,
+            174, 240, 407, 380, 231, 149, 319, 200, 54, 455, 206, 175, 244, 193, 122, 367,
+            208, 155, 353, 213, 227, 230, 116, 362, 338, 310, 146, 393, 61, 249, 105, 69,
+            304, 428, 287, 68, 443, 311, 123, 18, 299, 320, 337, 466, 495, 196, 439, 447,
+            315, 169, 469, 375, 82, 274, 473, 369, 409, 339, 388, 451, 269, 389, 145, 363,
+            326, 180, 7, 185, 387, 325, 296, 346, 275, 403, 350, 401, 430, 138, 35, 144,
+            171, 70, 241, 224, 93, 475, 128, 226, 215, 480, 45, 143, 499, 356, 238, 263,
+            121, 15, 288, 247, 478, 233, 134, 256, 186, 404, 133, 349, 492, 243, 335, 228,
+            400, 373, 421, 487, 24, 434, 410, 66, 77, 277, 197, 158, 201, 425, 162, 450,
+            199, 323, 334, 431, 502, 106, 245, 251, 279, 212, 140, 154, 192, 427, 374, 497,
+            19, 342, 111, 503, 355, 312, 301, 441, 16, 276, 26, 465, 505, 178, 44, 27,
+            508, 48, 257, 368, 181, 130, 501, 51, 99, 28, 260, 29, 293, 344, 280, 330,
+            307, 500, 290, 132, 506, 444, 483, 328, 329, 333, 184, 316, 170, 47, 255, 11,
+            179, 440, 194, 402, 417, 250, 488, 464, 384, 127, 190, 79, 271, 463, 124, 264,
+            314, 108, 284, 291, 113, 57, 73, 129, 357, 166, 511, 485, 239, 283, 237, 507,
+            266, 248, 253, 33, 372, 204, 153, 118, 64, 411, 461, 259, 103, 258, 376, 126,
+            278, 385, 225, 406, 135, 141, 382, 13, 471, 52, 167, 182, 303, 203, 332, 452,
+            327, 1, 491, 30, 232, 381, 321, 37, 365, 426, 324, 285, 394, 119, 405, 115,
+            396, 74, 414, 85, 10, 142, 147, 318, 207, 125, 289, 5, 96, 479, 390, 220,
+            341, 164, 448, 187, 160, 476, 422, 468, 55, 31, 292, 432, 360, 309, 370, 56,
+            98, 300, 302, 457, 34, 294, 9, 437, 429, 39, 282, 351, 412, 234, 90, 268,
+            347, 183, 107, 163, 313, 71, 92, 104, 136, 157, 252, 286, 364, 424, 442, 481,
+        ];
 
     }
 }

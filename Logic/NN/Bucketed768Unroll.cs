@@ -24,11 +24,12 @@ namespace Lizard.Logic.NN
         private const int N = 16;
 #endif
 
-        private const int StopBefore = HiddenSize / 2 / N;
+        private const int StopBefore = L1_SIZE / N;
 
 
         public static int GetEvaluationUnrolled512(Position pos)
         {
+#if NO
             ref Accumulator accumulator = ref *pos.State->Accumulator;
             var maxVec = VectorT.Create((short)QA);
             var zeroVec = VShort.Zero;
@@ -38,7 +39,7 @@ namespace Lizard.Logic.NN
 
             //  Formula from BlackMarlin
             int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = Math.Min((63 - occ) * (32 - occ) / 225, 7);
+            int outputBucket = int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
 
             const int Stride = (HiddenSize / N) / 2;
 
@@ -513,6 +514,8 @@ namespace Lizard.Logic.NN
             int output = NNUE.SumVectorNoHadd(sumVec);
 
             return (output / QA + LayerBiases[outputBucket]) * OutputScale / (QA * QB);
+#endif
+            return 1;
         }
     }
 }
