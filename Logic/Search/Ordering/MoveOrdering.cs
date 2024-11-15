@@ -52,7 +52,7 @@ namespace Lizard.Logic.Search.Ordering
 
                     if (ss->Ply < PlyHistoryTable.MaxPlies)
                     {
-                        sm.Score += ((PlyHistoryTable.MaxPlies + 1) * history.PlyHistory[ss->Ply, m]) / (ss->Ply + 1);
+                        sm.Score += ((2 * PlyHistoryTable.MaxPlies + 1) * history.PlyHistory[ss->Ply, m]) / (2 * ss->Ply + 1);
                     }
 
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
