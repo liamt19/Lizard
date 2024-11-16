@@ -72,18 +72,14 @@ namespace Lizard
 
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
-
-            //  The GC seems to drag its feet collecting some of the now unneeded memory (random strings and RunClassConstructor junk).
-            //  This doesn't HAVE to be done now, and generally it isn't productive to force GC collections,
-            //  but it will inevitably occur at some point later so we can take a bit of pressure off of it by doing this now.
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-            GC.WaitForPendingFinalizers();
         }
 
 
         private static void DoInputLoop()
         {
             Log($"Lizard version {EngineBuildVersion}\r\n");
+
+            ForceGC();
 
             ThreadSetup setup = new ThreadSetup();
             while (true)
@@ -97,7 +93,7 @@ namespace Lizard
 
                 if (input.EqualsIgnoreCase("uci"))
                 {
-                    new UCIClient().Run();
+                    new UCIClient(p).Run();
                 }
                 else if (input.EqualsIgnoreCase("ucinewgame"))
                 {
