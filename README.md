@@ -20,13 +20,14 @@ I'm uploading it here so I can keep backups of it and not lose it when my laptop
 | 10.3 | Mar. 8 2024 | 3513 | -    | 3600 | Significant speedups, FRC support |
 | 10.4 | Jun. 2 2024 | 3548 | 3635    | 3612 | Larger network, better time management |
 | 10.5 | Jul. 13 2024 | 3556 | 3665 | 3685 | Significant speedups, DFRC data |
-| 11.0 | Sep. 26 2024 | 3555 | TBD | 3809 | More heuristics, Selfplay data |
+| 11.0 | Sep. 26 2024 | 3555 | - | 3810 | More heuristics, Selfplay data |
+| 11.1 | Nov. 10 2024 | TBD | TBD | TBD | QOL/bugfixes, more DFRC data |
 
 </div>
 
 ## Features
 ### NNUE Evaluation:
-Version 11.0 uses a (768x4 -> 1536)x2 -> 8 neural network to evaluate positions, which was trained on incremental self-play data starting with the network from version 10.5. The current size of the dataset is around 3.8 billion positions.
+Version 11.1 uses a (768x16 -> 2048)x2 -> 8 neural network to evaluate positions, which was trained on incremental self-play data starting with the network from version 10.5. The current size of the dataset is around 4.5 billion positions.
 
 Version 10.5 used a (768x5 -> 1536)x2 -> 8 network, and used ~8 billion positions from a collection of Lc0 datasets.
 

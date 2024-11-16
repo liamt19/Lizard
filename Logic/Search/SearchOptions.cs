@@ -60,9 +60,9 @@
         public static int RFPMaxDepth = 6;
         public static int RFPMargin = 47;
 
+        public static int ProbcutMinDepth = 2;
         public static int ProbcutBeta = 256;
         public static int ProbcutBetaImp = 101;
-        public static int ProbcutMinDepth = 2;
 
         public static int ShallowSEEMargin = 216;
         public static int ShallowMaxDepth = 9;
@@ -79,7 +79,6 @@
 
         public static int IIRMinDepth = 4;
         public static int AspWindow = 12;
-        public static int CaptureBonusMargin = 167;
 
         public static int StatBonusMult = 184;
         public static int StatBonusSub = 80;
