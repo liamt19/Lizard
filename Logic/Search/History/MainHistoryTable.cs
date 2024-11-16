@@ -2,11 +2,10 @@
 
 namespace Lizard.Logic.Search.History
 {
-    public unsafe readonly struct MainHistoryTable
+    public readonly unsafe struct MainHistoryTable
     {
-        public readonly StatEntry* _History;
-        public const int MainHistoryPCStride = 4096;
-        public const int MainHistoryElements = ColorNB * SquareNB * SquareNB;
+        private readonly StatEntry* _History;
+        private const int MainHistoryElements = ColorNB * SquareNB * SquareNB;
 
         public MainHistoryTable()
         {
@@ -25,22 +24,9 @@ namespace Lizard.Logic.Search.History
             set => _History[HistoryIndex(pc, m)] = value;
         }
 
-        public void Dispose()
-        {
-            NativeMemory.AlignedFree(_History);
-        }
+        public static int HistoryIndex(int pc, Move m) => (pc * 4096) + m.MoveMask;
 
-        public void Clear()
-        {
-            NativeMemory.Clear(_History, (nuint)sizeof(StatEntry) * MainHistoryElements);
-        }
-
-        public static int HistoryIndex(int pc, Move m)
-        {
-            Assert(((pc * MainHistoryPCStride) + m.MoveMask) is >= 0 and < MainHistoryElements, 
-                $"HistoryIndex({pc}, {m.MoveMask}) should be < {MainHistoryElements}");
-
-            return (pc * MainHistoryPCStride) + m.MoveMask;
-        }
+        public void Dispose() => NativeMemory.AlignedFree(_History);
+        public void Clear() => NativeMemory.Clear(_History, (nuint)sizeof(StatEntry) * MainHistoryElements);
     }
 }

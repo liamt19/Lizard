@@ -997,6 +997,9 @@ namespace Lizard.Logic.Search
                 }
 
                 history.MainHistory[thisColor, bestMove] <<= bonus;
+                if (ss->Ply < PlyHistoryTable.MaxPlies)
+                    history.PlyHistory[ss->Ply, bestMove] <<= bonus;
+
                 UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
 
                 for (int i = 0; i < quietCount; i++)
@@ -1005,6 +1008,9 @@ namespace Lizard.Logic.Search
                     thisPiece = bb.GetPieceAtIndex(m.From);
 
                     history.MainHistory[thisColor, m] <<= -malus;
+                    if (ss->Ply < PlyHistoryTable.MaxPlies)
+                        history.PlyHistory[ss->Ply, m] <<= -malus;
+
                     UpdateContinuations(ss, thisColor, thisPiece, m.To, -malus);
                 }
             }
