@@ -9,7 +9,8 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "11.1.1";
+
+        public const string EngineBuildVersion = "11.1.2";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
@@ -67,6 +68,17 @@ namespace Lizard.Logic.Util
             Debug.WriteLine(s);
         }
 
+
+        public static void ForceGC()
+        {
+            //  This is only being used to keep memory usage as low as possible when running multiple instances concurrently,
+            //  and this won't be an issue if there are multiple threads.
+            if (SearchOptions.Threads > 3)
+                return;
+
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+            GC.WaitForPendingFinalizers();
+        }
 
         public static string GetCompilerInfo()
         {

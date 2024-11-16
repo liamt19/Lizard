@@ -10,28 +10,25 @@ namespace Lizard.Logic.UCI
 {
     public unsafe class UCIClient
     {
-
         private Position pos;
         private SearchInformation info;
         private ThreadSetup setup;
 
-        private static readonly string LogFileName = $".\\ucilog_{ProcessID}.txt";
-
         private static Dictionary<string, UCIOption> Options;
-
-        private static object LogFileLock = new object();
 
         public static bool Active = false;
 
-        public UCIClient()
+        public UCIClient(Position pos)
         {
             ProcessUCIOptions();
 
-            setup = new ThreadSetup();
-            pos = new Position(owner: GlobalSearchPool.MainThread);
+            this.pos = pos;
+
             info = new SearchInformation(pos);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
+
+            setup = new ThreadSetup();
         }
 
         /// <summary>
