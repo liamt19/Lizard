@@ -77,7 +77,7 @@
         public static int OrderingCheckBonus = 9546;
         public static int OrderingVictimMult = 14;
 
-        public static int IIRMinDepth = 4;
+        public static int IIRMinDepth = 3;
         public static int AspWindow = 12;
 
         public static int StatBonusMult = 184;
