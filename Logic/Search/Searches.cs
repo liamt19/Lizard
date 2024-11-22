@@ -243,13 +243,17 @@ namespace Lizard.Logic.Search
             }
 
 
-            if (ttMove.Equals(Move.Null)
-                && (cutNode || isPV)
-                && depth >= IIRMinDepth)
+            if (ttMove.Equals(Move.Null))
             {
-                //  We expected this node to be a bad one, so give it an extra depth reduction
-                //  if the depth is at or above a threshold (currently 4).
-                depth--;
+                if (cutNode && depth >= IIRMinDepth + 2)
+                {
+                    depth--;
+                }
+
+                if (isPV && depth >= IIRMinDepth)
+                {
+                    depth--;
+                }
             }
 
 
