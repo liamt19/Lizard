@@ -216,10 +216,11 @@ namespace Lizard.Logic.Search
 
             if (UseNMP
                 && !isPV
+                && !doSkip
                 && depth >= NMPMinDepth
+                && ss->Ply >= thisThread.NMPPly
                 && eval >= beta
                 && eval >= ss->StaticEval
-                && !doSkip
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.HasNonPawnMaterial(pos.ToMove))
             {
@@ -230,15 +231,24 @@ namespace Lizard.Logic.Search
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 pos.MakeNullMove();
                 prefetch(TT.GetCluster(pos.State->Hash));
-
                 score = -Negamax<NonPVNode>(pos, ss + 1, -beta, -beta + 1, depth - reduction, !cutNode);
-
                 pos.UnmakeNullMove();
 
                 if (score >= beta)
                 {
-                    //  Null moves are not allowed to return mate or TT win scores, so ensure the score is below that.
-                    return score < ScoreTTWin ? score : beta;
+                    if (thisThread.NMPPly > 0 || depth <= 15)
+                    {
+                        return score > ScoreWin ? beta : score;
+                    }
+
+                    thisThread.NMPPly = (3 * (depth - reduction) / 4) + ss->Ply;
+                    int verification = Negamax<NonPVNode>(pos, ss, beta - 1, beta, depth - reduction, false);
+                    thisThread.NMPPly = 0;
+
+                    if (verification >= beta)
+                    {
+                        return score;
+                    }
                 }
             }
 
