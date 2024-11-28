@@ -103,7 +103,9 @@
     <ServerGarbageCollection>false</ServerGarbageCollection>
 
 
-    <!--https://learn.microsoft.com/en-us/dotnet/core/compatibility/interop/9.0/cet-support-->
+    <!-- CET is enabled for .NET 9 by default, which can cause a performance regression
+         (https://learn.microsoft.com/en-us/dotnet/core/compatibility/interop/9.0/cet-support)
+    -->
     <CETCompat>false</CETCompat>
   </PropertyGroup>
 
