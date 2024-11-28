@@ -102,6 +102,9 @@
     -->
     <ServerGarbageCollection>false</ServerGarbageCollection>
 
+
+    <!--https://learn.microsoft.com/en-us/dotnet/core/compatibility/interop/9.0/cet-support-->
+    <CETCompat>false</CETCompat>
   </PropertyGroup>
 
   <!-- The "instruction-set" argument is required for AOT to generate code with intrinsics -->
