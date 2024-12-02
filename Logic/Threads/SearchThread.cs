@@ -61,6 +61,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public int CompletedDepth;
 
+        public int NMPPly;
+
         /// <summary>
         /// When this number reaches <see cref="CheckupMax"/>, the main thread will check to see if the search 
         /// needs to stop because of max time or max node constraints.
