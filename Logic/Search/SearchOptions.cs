@@ -69,7 +69,7 @@
 
         public static int LMRQuietDiv = 12288;
         public static int LMRCaptureDiv = 10288;
-        public static int LMRExtMargin = 128;
+        public static int LMRExtMargin = 48;
 
         public static int QSFutileMargin = 183;
         public static int QSSeeMargin = 81;

@@ -523,40 +523,25 @@ namespace Lizard.Logic.Search
 
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
-                    //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
-                    //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
-                    //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
-                    R = Math.Clamp(R, 0, newDepth - 1);
-                    int reducedDepth = (newDepth - R);
 
+                    int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth);
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
-                    //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
-                    //  before updating this move's continuation history.
                     if (score > alpha && reducedDepth < newDepth)
                     {
-                        //  This is mainly SF's idea about a verification search, and updating
-                        //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
-                        newDepth -= (score < (bestScore + newDepth + 1)) ? 1 : 0;
+                        bool deeper    = score > (bestScore + LMRExtMargin + 2 * newDepth);
+                        bool shallower = score < (bestScore + newDepth);
+
+                        newDepth += deeper.AsInt() - shallower.AsInt();
 
                         if (newDepth > reducedDepth)
                         {
                             score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
 
-                        int bonus = 0;
-                        if (score <= alpha)
-                        {
-                            //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth);
-                        }
-                        else if (score >= beta)
-                        {
-                            //  Apply a bonus to this continuation.
-                            bonus = StatBonus(newDepth);
-                        }
-
+                        int bonus = score <= alpha ? -StatBonus(newDepth) :
+                                    score >= beta  ?  StatBonus(newDepth) :
+                                                      0;
                         UpdateContinuations(ss, us, ourPiece, m.To, bonus);
                     }
                 }
