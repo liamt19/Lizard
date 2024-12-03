@@ -524,7 +524,7 @@ namespace Lizard.Logic.Search
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
 
-                    int reducedDepth = Math.Clamp(newDepth - R, 1, newDepth);
+                    int reducedDepth = Math.Clamp(newDepth - R, 0, newDepth);
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
                     if (score > alpha && reducedDepth < newDepth)
