@@ -22,12 +22,7 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            int v = UseAvx ? Bucketed768.GetEvaluationUnrolled512(pos) :
-                             Bucketed768.GetEvaluation(pos);
-
-            v = int.Clamp(v, -MaxNormalScore, MaxNormalScore);
-
-            return (short)v;
+            return (short)Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]
@@ -232,6 +227,14 @@ namespace Lizard.Logic.NN
             for (int row = 0; row < 3 * 8 + 1; row++)
             {
                 Log(new string(board[row]));
+            }
+
+            RefreshAccumulator(pos);
+            Log("Buckets:\n");
+            for (int b = 0; b < Bucketed768.OUTPUT_BUCKETS; b++)
+            {
+                var ev = Bucketed768.GetEvaluation(pos, b);
+                Log($"bucket {b}: {ev,6}" + ((baseEval == ev) ? "    <--- Using this bucket" : string.Empty));
             }
         }
 
