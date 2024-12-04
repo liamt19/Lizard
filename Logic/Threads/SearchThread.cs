@@ -443,6 +443,11 @@ namespace Lizard.Logic.Threads
                     }
                 }
 
+                if (!AssocPool.StopThreads)
+                {
+                    CompletedDepth = RootDepth;
+                }
+
                 if (!IsMain)
                     continue;
 
@@ -494,11 +499,6 @@ namespace Lizard.Logic.Threads
                 if (Nodes >= info.SoftNodeLimit)
                 {
                     break;
-                }
-
-                if (!AssocPool.StopThreads)
-                {
-                    CompletedDepth = RootDepth;
                 }
             }
 
