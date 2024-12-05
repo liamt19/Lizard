@@ -50,6 +50,11 @@ namespace Lizard.Logic.Search.Ordering
                     sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
                     sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
 
+                    if (ss->Ply < PlyHistoryTable.MaxPlies)
+                    {
+                        sm.Score += ((2 * PlyHistoryTable.MaxPlies + 1) * history.PlyHistory[ss->Ply, m]) / (2 * ss->Ply + 1);
+                    }
+
                     if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
                     {
                         sm.Score += OrderingCheckBonus;

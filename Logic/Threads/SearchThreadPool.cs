@@ -122,6 +122,7 @@
                 td.CompletedDepth = 0;
                 td.RootDepth = 0;
                 td.SelDepth = 0;
+                td.NMPPly = 0;
 
                 //  Each thread gets its own copy of each of the root position's "RootMoves" since the thread will be sorting these
                 //  and doing that simultaneously would cause data races

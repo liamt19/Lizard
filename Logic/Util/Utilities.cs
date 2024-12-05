@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
@@ -67,6 +67,17 @@ namespace Lizard.Logic.Util
             Debug.WriteLine(s);
         }
 
+
+        public static void ForceGC()
+        {
+            //  This is only being used to keep memory usage as low as possible when running multiple instances concurrently,
+            //  and this won't be an issue if there are multiple threads.
+            if (SearchOptions.Threads > 3)
+                return;
+
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+            GC.WaitForPendingFinalizers();
+        }
 
         public static string GetCompilerInfo()
         {
