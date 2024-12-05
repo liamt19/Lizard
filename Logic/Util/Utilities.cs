@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
@@ -9,8 +9,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-
-        public const string EngineBuildVersion = "11.1.4";
+        public const string EngineBuildVersion = "11.1.5";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;

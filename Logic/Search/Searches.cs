@@ -294,7 +294,7 @@ namespace Lizard.Logic.Search
 
                     bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
                     int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
-                    
+
                     ss->CurrentMove = m;
                     ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
                     thisThread.Nodes++;
@@ -313,6 +313,7 @@ namespace Lizard.Logic.Search
 
                     if (score >= probBeta)
                     {
+                        tte->Update(pos.Hash, MakeTTScore((short)score, ss->Ply), TTNodeType.Alpha, depth - 2, m, rawEval, TT.Age, ss->TTPV);
                         return score;
                     }
                 }
