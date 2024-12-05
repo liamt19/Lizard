@@ -494,7 +494,7 @@ namespace Lizard.Logic.Search
                     System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
                 }
 
-                int newDepth = depth + extend;
+                int newDepth = depth + extend - 1;
 
                 if (depth >= 2
                     && legalMoves >= 2
@@ -503,18 +503,11 @@ namespace Lizard.Logic.Search
 
                     int R = LogarithmicReductionTable[depth][legalMoves];
 
-                    //  Reduce if our static eval is declining
                     R += (!improving).AsInt();
-
-                    //  Reduce if we think that this move is going to be a bad one
                     R += cutNode.AsInt() * 2;
 
                     R -= ss->TTPV.AsInt();
-
-                    //  Extend for PV searches
                     R -= isPV.AsInt();
-
-                    //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
 
                     var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
@@ -524,54 +517,37 @@ namespace Lizard.Logic.Search
 
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
-                    //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
-                    //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
-                    //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
-                    R = Math.Clamp(R, 1, newDepth);
-                    int reducedDepth = (newDepth - R);
 
+                    int reducedDepth = Math.Clamp(newDepth - R, 0, newDepth);
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reducedDepth, true);
 
-                    //  If we reduced by any amount and got a promising score, then do another search at a slightly deeper depth
-                    //  before updating this move's continuation history.
-                    if (score > alpha && R > 1)
+                    if (score > alpha && reducedDepth < newDepth)
                     {
-                        //  This is mainly SF's idea about a verification search, and updating
-                        //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
-                        newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
+                        bool deeper    = score > (bestScore + LMRExtMargin + 2 * newDepth);
+                        bool shallower = score < (bestScore + newDepth);
 
-                        if (newDepth - 1 > reducedDepth)
+                        newDepth += deeper.AsInt() - shallower.AsInt();
+
+                        if (newDepth > reducedDepth)
                         {
-                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                            score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
 
-                        int bonus = 0;
-                        if (score <= alpha)
-                        {
-                            //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth - 1);
-                        }
-                        else if (score >= beta)
-                        {
-                            //  Apply a bonus to this continuation.
-                            bonus = StatBonus(newDepth - 1);
-                        }
-
+                        int bonus = score <= alpha ? -StatBonus(newDepth) :
+                                    score >= beta  ?  StatBonus(newDepth) :
+                                                      0;
                         UpdateContinuations(ss, us, ourPiece, m.To, bonus);
                     }
                 }
                 else if (!isPV || legalMoves > 1)
                 {
-                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth - 1, !cutNode);
+                    score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                 }
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
-                    //  Do a new PV search here.
-                    //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV[0] = Move.Null;
-                    score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth - 1, false);
+                    score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth, false);
                 }
 
                 pos.UnmakeMove(m);
