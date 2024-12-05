@@ -502,18 +502,11 @@ namespace Lizard.Logic.Search
 
                     int R = LogarithmicReductionTable[depth][legalMoves];
 
-                    //  Reduce if our static eval is declining
                     R += (!improving).AsInt();
-
-                    //  Reduce if we think that this move is going to be a bad one
                     R += cutNode.AsInt() * 2;
 
                     R -= ss->TTPV.AsInt();
-
-                    //  Extend for PV searches
                     R -= isPV.AsInt();
-
-                    //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
 
                     var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
@@ -552,8 +545,6 @@ namespace Lizard.Logic.Search
 
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
-                    //  Do a new PV search here.
-                    //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth, false);
                 }
