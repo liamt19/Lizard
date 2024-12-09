@@ -75,7 +75,7 @@
         public static int QSSeeMargin = 81;
 
         public static int OrderingCheckBonus = 9546;
-        public static int OrderingVictimMult = 14;
+        public static int OrderingVictimMult = 12;
 
         public static int IIRMinDepth = 3;
         public static int AspWindow = 12;
