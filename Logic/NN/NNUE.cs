@@ -22,12 +22,7 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            int v = UseAvx ? Bucketed768.GetEvaluationUnrolled512(pos) :
-                             Bucketed768.GetEvaluation(pos);
-
-            v = int.Clamp(v, -MaxNormalScore, MaxNormalScore);
-
-            return (short)v;
+            return (short)Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]
@@ -233,6 +228,14 @@ namespace Lizard.Logic.NN
             {
                 Log(new string(board[row]));
             }
+
+            RefreshAccumulator(pos);
+            Log("Buckets:\n");
+            for (int b = 0; b < Bucketed768.OUTPUT_BUCKETS; b++)
+            {
+                var ev = Bucketed768.GetEvaluation(pos, b);
+                Log($"bucket {b}: {ev,6}" + ((baseEval == ev) ? "    <--- Using this bucket" : string.Empty));
+            }
         }
 
         public static void TracePieceValues(int pieceType, int pieceColor)
@@ -251,6 +254,7 @@ namespace Lizard.Logic.NN
 
             //  White king on A1, black king on H8
             Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: GlobalSearchPool.MainThread);
+            RefreshAccumulator(pos);
             int baseEval = GetEvaluation(pos);
 
             Log($"\nNNUE evaluation: {baseEval}\n");
