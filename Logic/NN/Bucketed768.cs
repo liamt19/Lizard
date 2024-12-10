@@ -99,6 +99,7 @@ namespace Lizard.Logic.NN
             Net = new NetContainer<short, sbyte, float>();
             NNZLookup = AlignedAllocZeroed<Vector128<ushort>>(256);
             SetupNNZ();
+            HorsieSetupNNZ();
 
 #if NO_PERM
             PermuteIndices = Enumerable.Range(0, L1_PAIR_COUNT).ToArray();
@@ -360,9 +361,9 @@ namespace Lizard.Logic.NN
             var us   = (short*)(accumulator[pos.ToMove]);
             var them = (short*)(accumulator[Not(pos.ToMove)]);
 
-            ActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
-            ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
-            ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+            HorsieActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+            HorsieActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+            HorsieActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
 
             return (int)(L3Output * OutputScale);
         }
@@ -927,5 +928,17 @@ namespace Lizard.Logic.NN
             463, 45, 745, 268, 30, 8, 188, 559, 647, 213, 389, 668, 716, 645, 158, 343,
         ];
 
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "SetupNNZ", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieSetupNNZ();
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateFTSparse", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output);
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateL2", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateL2(float* inputs, float* weights, float* biases, float* output);
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateL3", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateL3(float* inputs, float* weights, float bias, ref float output);
     }
 }
