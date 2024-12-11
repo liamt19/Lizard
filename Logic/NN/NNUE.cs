@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 using Lizard.Properties;
@@ -13,6 +14,8 @@ namespace Lizard.Logic.NN
         public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
         public static readonly bool UseAvx = Avx2.IsSupported;
         public static readonly bool UseSSE = Sse3.IsSupported;
+        public static readonly bool UseARM = AdvSimd.IsSupported;
+        public static bool UseFallback => !(UseAvx || UseSSE || UseARM);
 
         [MethodImpl(Inline)]
         public static void RefreshAccumulator(Position pos)

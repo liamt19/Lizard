@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 using System.Text;
 
@@ -98,6 +99,7 @@ namespace Lizard.Logic.Util
 
             sb.Append(Avx2.IsSupported ? "Avx2 " : string.Empty);
 
+            sb.Append(AdvSimd.IsSupported ? "AdvSimd/ARM " : string.Empty);
 #if AVX512
             sb.Append(Avx512BW.IsSupported ? "Avx512=(supported, used) " : "Avx512=(unsupported, used!) ");
 #else
@@ -106,7 +108,6 @@ namespace Lizard.Logic.Util
 
             sb.Append(Bmi2.IsSupported ? "Bmi2 " : string.Empty);
             sb.Append(Sse3.IsSupported ? "Sse3 " : string.Empty);
-            sb.Append(Sse42.IsSupported ? "Sse42 " : string.Empty);
             sb.Append(Sse.IsSupported ? "Prefetch " : string.Empty);
             sb.Append(Popcnt.X64.IsSupported ? "Popcount " : string.Empty);
             sb.Append(Bmi2.X64.IsSupported && MagicBitboards.UsePext ? "Pext " : string.Empty);
