@@ -80,12 +80,11 @@ namespace Lizard.Logic.NN
 
 
 
-        public static Vector128<int> arm_add_epi32(Vector128<int> a, Vector128<int> b) => AdvSimd.Add(a, b);
         public static Vector128<int> arm_madd_epi16(Vector128<short> a, Vector128<short> b)
         {
             var low = vmull_s16(vget_low_s16(a), vget_low_s16(b));
             var high = vmull_high_s16(a, b);
-            return arm_add_epi32(low, high);
+            return vpaddq_s32(low, high);
         }
         public static Vector128<int> arm_cmpgt_epi32(Vector128<int> a, Vector128<int> b) => AdvSimd.CompareGreaterThan(a, b);
         public static Vector128<int> arm_setzero_epi32() => Vector128<int>.Zero;
@@ -128,6 +127,7 @@ namespace Lizard.Logic.NN
         }
 
 
+        private static Vector128<int> vpaddq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.Arm64.AddPairwise(a, b);
         private static Vector128<int> vaddq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.Add(a, b);
         private static Vector128<byte> vcombine_u8(Vector64<byte> a, Vector64<byte> b) => Vector128.Create(a, b);
         private static Vector64<byte> vqmovun_s16(Vector128<short> a) => AdvSimd.ExtractNarrowingSaturateUnsignedLower(a);
