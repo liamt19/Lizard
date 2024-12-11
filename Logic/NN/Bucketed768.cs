@@ -186,7 +186,7 @@ namespace Lizard.Logic.NN
 
             for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
             {
-                if (NNUE.UseAvx || NNUE.UseSSE)
+                if (!NNUE.UseFallback)
                 {
                     for (int i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
                         for (int j = 0; j < L2_SIZE; ++j)
@@ -218,7 +218,7 @@ namespace Lizard.Logic.NN
                 Net.L3Biases[bucket] = UQNet.L3Biases[bucket];
             }
 
-            if (!(NNUE.UseAvx || NNUE.UseSSE))
+            if (NNUE.UseFallback)
                 return;
 
             int numRegi = NNUE.UseAvx ? 4 : 2;
@@ -366,6 +366,7 @@ namespace Lizard.Logic.NN
 
             var v = NNUE.UseAvx ? GetEvaluation(pos, outputBucket) :
                     NNUE.UseSSE ? GetEvaluationSSE(pos, outputBucket) :
+                    NNUE.UseARM ? GetEvaluationARM(pos, outputBucket) :
                                   GetEvaluationFallback(pos, outputBucket);
 
             return (short)v;
