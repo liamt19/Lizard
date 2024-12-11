@@ -231,9 +231,7 @@ namespace Lizard.Logic.NN
 
         public static float arm_vec_reduce_add_ps(Vector128<float> sum)
         {
-            float* temp = stackalloc float[sizeof(Vector128<float>) / sizeof(float)];
-            sum.Store(temp);
-            return reduceAddPs((Vector128<float>*)temp);
+            return Vector128.Sum(sum);
         }
     }
 
