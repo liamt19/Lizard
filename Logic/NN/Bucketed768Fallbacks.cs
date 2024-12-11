@@ -100,7 +100,13 @@ namespace Lizard.Logic.NN
                 var weight = (Vector128<sbyte>*)(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
                 {
+                    var temp = sums[k];
                     sums[k] = vec_dpbusd_epi32(sums[k], input32.AsByte(), weight[k]);
+
+                    //if (i == 0 || i == 1)
+                    //{
+                    //    Console.WriteLine($"{i} sums[{k}] = dpbusd({temp}, {input32} {weight[k]}) = {sums[k]}");
+                    //}
                 }
             }
 

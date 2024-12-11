@@ -195,7 +195,14 @@ namespace Lizard.Logic.NN
 
         public static Vector128<int> arm_vec_dpbusd_epi32(Vector128<int> sum, Vector128<byte> a, Vector128<sbyte> b)
         {
-            var sum32 = arm_madd_epi16(arm_maddubs_epi16(a, b), vdupq_n_s16(1));
+            Console.WriteLine($"arm_vec_dpbusd_epi32({sum}, {a}, {b})");
+            var ubs = arm_maddubs_epi16(a, b);
+            Console.WriteLine($"arm_maddubs_epi16({a}, {b}) = {ubs}");
+
+            var sum32 = arm_madd_epi16(ubs, vdupq_n_s16(1));
+            Console.WriteLine($"arm_madd_epi16({ubs}, {vdupq_n_s16(1)}) = {sum32}");
+
+            Console.WriteLine($"vaddq_s32({sum32}, {sum}) = {vaddq_s32(sum32, sum)}");
             return vaddq_s32(sum32, sum);
         }
 
