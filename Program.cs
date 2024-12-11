@@ -19,13 +19,6 @@ namespace Lizard
             {
                 if (args[0] == "bench")
                 {
-                    InitializeAll();
-
-                    p = new Position(owner: GlobalSearchPool.MainThread);
-                    info = new SearchInformation(p);
-                    Console.WriteLine($"eval {NNUE.GetEvaluation(p)}");
-                    Environment.Exit(0);
-
                     SearchBench.Go(12, openBench: true);
                     Environment.Exit(0);
                 }

@@ -12,7 +12,7 @@ namespace Lizard.Logic.NN
     public static unsafe class NNUE
     {
         public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
-        public static readonly bool UseAvx = Avx2.IsSupported && false;
+        public static readonly bool UseAvx = Avx2.IsSupported;
         public static readonly bool UseSSE = Sse3.IsSupported;
         public static readonly bool UseARM = AdvSimd.IsSupported;
         public static bool UseFallback => !(UseAvx || UseSSE || UseARM);

@@ -171,16 +171,13 @@ namespace Lizard.Logic.NN
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
 
-            var us = (short*)(accumulator[pos.ToMove]);
+            var us   = (short*)(accumulator[pos.ToMove]);
             var them = (short*)(accumulator[Not(pos.ToMove)]);
 
-            Console.WriteLine("calling ActivateFTSparseARM");
             ActivateFTSparseARM(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
-            Console.WriteLine("calling ActivateL2ARM");
             ActivateL2ARM(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
-            Console.WriteLine("calling ActivateL3ARM");
             ActivateL3ARM(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
-            Console.WriteLine("eval done");
+
             return (int)(L3Output * OutputScale);
         }
 
@@ -259,8 +256,6 @@ namespace Lizard.Logic.NN
                 }
             }
 
-            Console.WriteLine($"\nActivateL1SparseARM {sums[0]} {sums[1]} {sums[2]} {sums[3]}");
-
             var zero = arm_set1_ps(0.0f);
             var one = Vector128<float>.One;
 
@@ -273,8 +268,6 @@ namespace Lizard.Logic.NN
                 var squared = arm_mul_ps(clipped, clipped);
                 arm_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
             }
-
-            Console.WriteLine($"ActivateL1SparseARM <{string.Join(", ", new Span<float>(output, L2_SIZE).ToArray())}>");
         }
 
         private static void ActivateL2ARM(float* inputs, float* weights, float* biases, float* output)
@@ -294,8 +287,6 @@ namespace Lizard.Logic.NN
                 }
             }
 
-            Console.WriteLine($"ActivateL2ARM {sumVecs[0]} {sumVecs[1]} {sumVecs[2]} {sumVecs[3]}");
-
             var zero = arm_set1_ps(0.0f);
             var one = arm_set1_ps(1.0f);
             for (int i = 0; i < L3_SIZE / F32_CHUNK_SIZE; ++i)
@@ -304,8 +295,6 @@ namespace Lizard.Logic.NN
                 var squared = arm_mul_ps(clipped, clipped);
                 arm_storeu_ps(&output[i * F32_CHUNK_SIZE], squared);
             }
-
-            Console.WriteLine($"ActivateL2ARM <{string.Join(", ", new Span<float>(output, L3_SIZE).ToArray())}>");
         }
 
         private static void ActivateL3ARM(float* inputs, float* weights, float bias, ref float output)
@@ -317,7 +306,6 @@ namespace Lizard.Logic.NN
                 var inputsVec = arm_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
                 sumVec = arm_fmadd_ps(inputsVec, weightVec, sumVec);
             }
-            Console.WriteLine($"ActivateL3ARM {sumVec}");
 
             output = bias + arm_vec_reduce_add_ps(sumVec);
         }
