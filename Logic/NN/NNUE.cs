@@ -2,6 +2,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
+using System.Runtime.Intrinsics.Arm;
 using System.Runtime.Intrinsics.X86;
 
 using Lizard.Properties;
@@ -12,6 +13,9 @@ namespace Lizard.Logic.NN
     {
         public const NetworkArchitecture NetArch = NetworkArchitecture.Bucketed768;
         public static readonly bool UseAvx = Avx2.IsSupported;
+        public static readonly bool UseSSE = Sse3.IsSupported;
+        public static readonly bool UseARM = AdvSimd.IsSupported;
+        public static bool UseFallback => !(UseAvx || UseSSE || UseARM);
 
         [MethodImpl(Inline)]
         public static void RefreshAccumulator(Position pos)
@@ -22,12 +26,7 @@ namespace Lizard.Logic.NN
         [MethodImpl(Inline)]
         public static short GetEvaluation(Position pos)
         {
-            int v = UseAvx ? Bucketed768.GetEvaluationUnrolled512(pos) :
-                             Bucketed768.GetEvaluation(pos);
-
-            v = int.Clamp(v, -MaxNormalScore, MaxNormalScore);
-
-            return (short)v;
+            return Bucketed768.GetEvaluation(pos);
         }
 
         [MethodImpl(Inline)]
@@ -120,30 +119,6 @@ namespace Lizard.Logic.NN
         }
 
 
-        [MethodImpl(Inline)]
-        public static int SumVectorNoHadd(Vector256<int> vect)
-        {
-            Vector128<int> lo = vect.GetLower();
-            Vector128<int> hi = Avx.ExtractVector128(vect, 1);
-            Vector128<int> sum128 = Sse2.Add(lo, hi);
-
-            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, 0b_10_11_00_01));
-            sum128 = Sse2.Add(sum128, Sse2.Shuffle(sum128, 0b_01_00_11_10));
-
-            //  Something along the lines of Add(sum128, UnpackHigh(sum128, sum128))
-            //  would also work here but it is occasionally off by +- 1.
-            //  The JIT also seems to replace the unpack with a shuffle anyways depending on the instruction order,
-            //  and who am I to not trust the JIT? :)
-
-            return Sse2.ConvertToInt32(sum128);
-        }
-
-        [MethodImpl(Inline)]
-        public static int SumVectorNoHadd(Vector512<int> vect)
-        {
-            //  _mm512_reduce_add_epi32 is a sequence instruction and isn't callable
-            return SumVectorNoHadd(vect.GetLower()) + SumVectorNoHadd(vect.GetUpper());
-        }
 
         /// <summary>
         /// Transposes the weights stored in <paramref name="block"/>
@@ -233,6 +208,14 @@ namespace Lizard.Logic.NN
             {
                 Log(new string(board[row]));
             }
+
+            RefreshAccumulator(pos);
+            Log("Buckets:\n");
+            for (int b = 0; b < Bucketed768.OUTPUT_BUCKETS; b++)
+            {
+                var ev = Bucketed768.GetEvaluation(pos, b);
+                Log($"bucket {b}: {ev,6}" + ((baseEval == ev) ? "    <--- Using this bucket" : string.Empty));
+            }
         }
 
         public static void TracePieceValues(int pieceType, int pieceColor)
@@ -251,6 +234,7 @@ namespace Lizard.Logic.NN
 
             //  White king on A1, black king on H8
             Position pos = new Position("7k/8/8/8/8/8/8/K7 w - - 0 1", true, owner: GlobalSearchPool.MainThread);
+            RefreshAccumulator(pos);
             int baseEval = GetEvaluation(pos);
 
             Log($"\nNNUE evaluation: {baseEval}\n");
