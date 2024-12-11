@@ -100,13 +100,7 @@ namespace Lizard.Logic.NN
                 var weight = (Vector128<sbyte>*)(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
                 {
-                    var temp = sums[k];
                     sums[k] = vec_dpbusd_epi32(sums[k], input32.AsByte(), weight[k]);
-
-                    //if (i == 0 || i == 1)
-                    //{
-                    //    Console.WriteLine($"{i} sums[{k}] = dpbusd({temp}, {input32} {weight[k]}) = {sums[k]}");
-                    //}
                 }
             }
 
@@ -245,10 +239,6 @@ namespace Lizard.Logic.NN
                 offset += L1_PAIR_COUNT;
             }
 
-            Console.WriteLine($"ActivateL1ARM <{string.Join(", ", new Span<sbyte>(ft_outputs, 32).ToArray())}>");
-            Console.WriteLine($"ActivateL1ARM <{string.Join(", ", new Span<sbyte>(ft_outputs + L1_PAIR_COUNT, 32).ToArray())}>");
-            Console.WriteLine($"ActivateL1ARM nnz: <{string.Join(", ", new Span<ushort>(nnzIndices, nnzCount).ToArray())}>");
-
             ActivateL1SparseARM(ft_outputs, weights, biases, output, new Span<ushort>(nnzIndices, nnzCount));
         }
 
@@ -265,12 +255,7 @@ namespace Lizard.Logic.NN
                 var weight = (Vector128<sbyte>*)(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
                 {
-                    var temp = sums[k];
                     sums[k] = arm_vec_dpbusd_epi32(sums[k], input32.AsByte(), weight[k]);
-                    if (i == 0 || i == 1)
-                    {
-                        Console.WriteLine($"{i} sums[{k}] = dpbusd({temp}, {input32} {weight[k]}) = {sums[k]}");
-                    }
                 }
             }
 
@@ -305,7 +290,7 @@ namespace Lizard.Logic.NN
                 var weight = (Vector128<float>*)(&weights[i * L3_SIZE]);
                 for (int j = 0; j < L3_SIZE / F32_CHUNK_SIZE; ++j)
                 {
-                    sumVecs[j] = arm_vec_mul_add_ps(inputVec, weight[j], sumVecs[j]);
+                    sumVecs[j] = arm_fmadd_ps(inputVec, weight[j], sumVecs[j]);
                 }
             }
 
@@ -330,7 +315,7 @@ namespace Lizard.Logic.NN
             {
                 var weightVec = arm_loadu_ps(&weights[i * F32_CHUNK_SIZE]);
                 var inputsVec = arm_loadu_ps(&inputs[i * F32_CHUNK_SIZE]);
-                sumVec = arm_vec_mul_add_ps(inputsVec, weightVec, sumVec);
+                sumVec = arm_fmadd_ps(inputsVec, weightVec, sumVec);
             }
             Console.WriteLine($"ActivateL3ARM {sumVec}");
 

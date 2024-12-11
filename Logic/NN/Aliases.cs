@@ -114,7 +114,7 @@ namespace Lizard.Logic.NN
         public static Vector128<float> arm_min_ps(Vector128<float> a, Vector128<float> b) => AdvSimd.Min(a, b);
         public static Vector128<float> arm_max_ps(Vector128<float> a, Vector128<float> b) => AdvSimd.Max(a, b);
         public static Vector128<float> arm_mul_ps(Vector128<float> a, Vector128<float> b) => AdvSimd.Multiply(a, b);
-        public static Vector128<float> arm_fmadd_ps(Vector128<float> a, Vector128<float> b, Vector128<float> c) => AdvSimd.FusedMultiplyAdd(a, b, c);
+        public static Vector128<float> arm_fmadd_ps(Vector128<float> a, Vector128<float> b, Vector128<float> c) => AdvSimd.FusedMultiplyAdd(c, a, b);
         public static Vector128<float> arm_castsi128_ps(Vector128<int> a) => a.AsSingle();
         public static Vector128<float> arm_cvtepi32_ps(Vector128<int> a) => AdvSimd.ConvertToSingle(a);
         public static Vector128<float> arm_set1_ps(float a) => Vector128.Create(a);
@@ -127,6 +127,8 @@ namespace Lizard.Logic.NN
         }
 
 
+        private static Vector128<float> vmulq_f32(Vector128<float> a, Vector128<float> b) => AdvSimd.Multiply(a, b);
+        private static Vector128<float> vaddq_f32(Vector128<float> a, Vector128<float> b) => AdvSimd.Add(a, b);
         private static Vector128<int> vpaddq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.Arm64.AddPairwise(a, b);
         private static Vector128<int> vaddq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.Add(a, b);
         private static Vector128<byte> vcombine_u8(Vector64<byte> a, Vector64<byte> b) => Vector128.Create(a, b);
@@ -161,7 +163,7 @@ namespace Lizard.Logic.NN
 
         public static Vector256<float> vec_mul_add_ps(Vector256<float> a, Vector256<float> b, Vector256<float> c) => _mm256_fmadd_ps(a, b, c);
         public static Vector128<float> vec_mul_add_ps(Vector128<float> a, Vector128<float> b, Vector128<float> c) => _mm_fmadd_ps(a, b, c);
-        public static Vector128<float> arm_vec_mul_add_ps(Vector128<float> a, Vector128<float> b, Vector128<float> c) => arm_fmadd_ps(a, b, c);
+        public static Vector128<float> arm_vec_mul_add_ps(Vector128<float> a, Vector128<float> b, Vector128<float> c) => AdvSimd.FusedMultiplyAdd(c, a, b);
 
         public static int vec_nnz_mask(Vector256<byte> a) => _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a.AsInt32(), _mm256_setzero_epi32())));
         public static int vec_nnz_mask(Vector128<byte> a) => _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a.AsInt32(), _mm_setzero_epi32())));
@@ -195,14 +197,8 @@ namespace Lizard.Logic.NN
 
         public static Vector128<int> arm_vec_dpbusd_epi32(Vector128<int> sum, Vector128<byte> a, Vector128<sbyte> b)
         {
-            Console.WriteLine($"arm_vec_dpbusd_epi32({sum}, {a}, {b})");
             var ubs = arm_maddubs_epi16(a, b);
-            Console.WriteLine($"arm_maddubs_epi16({a}, {b}) = {ubs}");
-
             var sum32 = arm_madd_epi16(ubs, vdupq_n_s16(1));
-            Console.WriteLine($"arm_madd_epi16({ubs}, {vdupq_n_s16(1)}) = {sum32}");
-
-            Console.WriteLine($"vaddq_s32({sum32}, {sum}) = {vaddq_s32(sum32, sum)}");
             return vaddq_s32(sum32, sum);
         }
 
