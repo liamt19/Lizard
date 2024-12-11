@@ -83,8 +83,8 @@ namespace Lizard.Logic.NN
         public static Vector128<int> arm_add_epi32(Vector128<int> a, Vector128<int> b) => AdvSimd.Add(a, b);
         public static Vector128<int> arm_madd_epi16(Vector128<short> a, Vector128<short> b)
         {
-            var low = AdvSimd.MultiplyWideningLower(a.GetLower(), b.GetLower());
-            var high = AdvSimd.MultiplyWideningUpper(a, b);
+            var low = vmull_s16(vget_low_s16(a), vget_low_s16(b));
+            var high = vmull_high_s16(a, b);
             return arm_add_epi32(low, high);
         }
         public static Vector128<int> arm_cmpgt_epi32(Vector128<int> a, Vector128<int> b) => AdvSimd.CompareGreaterThan(a, b);
@@ -96,17 +96,17 @@ namespace Lizard.Logic.NN
         public static Vector128<short> arm_max_epi16(Vector128<short> a, Vector128<short> b) => AdvSimd.Max(a, b);
         public static Vector128<short> arm_mulhi_epi16(Vector128<short> a, Vector128<short> b)
         {
-            var lo = vmull_s16(a.GetLower(), b.GetLower());
-            var hi = vmull_s16(a.GetUpper(), b.GetUpper());
-            return Vector128.Create(AdvSimd.ShiftRightLogicalNarrowingLower(lo, 16), AdvSimd.ShiftRightLogicalNarrowingLower(hi, 16));
+            var lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
+            var hi = vmull_s16(vget_high_s16(a), vget_high_s16(b));
+            return vcombine_s16(vshrn_n_s32(lo, 16), vshrn_n_s32(hi, 16));
         }
 
-        public static Vector128<short> arm_slli_epi16(Vector128<short> a, [ConstantExpected] byte count) => AdvSimd.ShiftLeftLogical(a, count);
+        public static Vector128<short> arm_slli_epi16(Vector128<short> a, [ConstantExpected(Min = 0, Max = 63)] byte count) => AdvSimd.ShiftLeftLogical(a, count);
         public static Vector128<short> arm_maddubs_epi16(Vector128<byte> a, Vector128<sbyte> b)
         {
-            var tl = AdvSimd.Multiply(vreinterpretq_s16_u16(AdvSimd.ZeroExtendWideningLower(a.GetLower())), AdvSimd.SignExtendWideningLower(b.GetLower()));
-            var th = AdvSimd.Multiply(vreinterpretq_s16_u16(AdvSimd.ZeroExtendWideningLower(a.GetUpper())), AdvSimd.SignExtendWideningLower(b.GetUpper()));
-            return AdvSimd.AddSaturate(AdvSimd.Arm64.UnzipEven(tl, th), AdvSimd.Arm64.UnzipOdd(tl, th));
+            var tl = vmulq_s16(vreinterpretq_s16_u16(vmovl_u8(vget_low_u8(a))), vmovl_s8(vget_low_s8(b)));
+            var th = vmulq_s16(vreinterpretq_s16_u16(vmovl_u8(vget_high_u8(a))), vmovl_s8(vget_high_s8(b)));
+            return vqaddq_s16(vuzp1q_s16(tl, th), vuzp2q_s16(tl, th));
         }
         public static Vector128<short> arm_setzero_epi16() => Vector128<short>.Zero;
         public static Vector128<short> arm_set1_epi16(short a) => Vector128.Create(a);
@@ -124,39 +124,39 @@ namespace Lizard.Logic.NN
         public static void arm_storeu_si128(sbyte* mem_addr, Vector128<sbyte> a) => AdvSimd.Store(mem_addr, a);
         public static Vector128<byte> arm_packus_epi16(Vector128<short> a, Vector128<short> b)
         {
-            return Vector128.Create(AdvSimd.ExtractNarrowingSaturateUnsignedLower(a), AdvSimd.ExtractNarrowingSaturateUnsignedLower(b));
-        }
-
-        private static float reduceAddPs(Vector128<float>* sums) => reduceAddPsR((float*)sums, 64 / sizeof(float));
-        private static float reduceAddPsR(float* sums, int length)
-        {
-            if (length == 2) return sums[0] + sums[1];
-            length /= 2;
-            for (int i = 0; i < length; ++i)
-                sums[i] += sums[i + length];
-            return reduceAddPsR(sums, length);
+            return vcombine_u8(vqmovun_s16(a), vqmovun_s16(b));
         }
 
 
-
-        public static void _mm_storeu_si128(ushort* mem_addr, Vector128<ushort> a) => Sse2.Store(mem_addr, a);
-        public static Vector128<float> _mm_shuffle_ps(Vector128<float> a, Vector128<float> b, [ConstantExpected] byte control) => Sse.Shuffle(a, b, control);
-        public static Vector128<float> _mm_movehl_ps(Vector128<float> a, Vector128<float> b) => Sse.MoveHighToLow(a, b);
-        public static Vector128<float> _mm_add_ss(Vector128<float> a, Vector128<float> b) => Sse.AddScalar(a, b);
-        public static Vector128<float> _mm_add_ps(Vector128<float> a, Vector128<float> b) => Sse.Add(a, b);
-        public static Vector128<ushort> _mm_add_epi16(Vector128<ushort> a, Vector128<ushort> b) => Sse2.Add(a, b);
-
-
-        public static float _mm_cvtss_f32(Vector128<float> a) => a.GetElement(0);
-
-        public static void arm_storeu_si128(ushort* mem_addr, Vector128<ushort> a) => AdvSimd.Store(mem_addr, a);
+        private static Vector128<int> vaddq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.Add(a, b);
+        private static Vector128<byte> vcombine_u8(Vector64<byte> a, Vector64<byte> b) => Vector128.Create(a, b);
+        private static Vector64<byte> vqmovun_s16(Vector128<short> a) => AdvSimd.ExtractNarrowingSaturateUnsignedLower(a);
+        private static Vector128<short> vuzp2q_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.Arm64.UnzipOdd(a, b);
+        private static Vector128<short> vuzp1q_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.Arm64.UnzipEven(a, b);
+        private static Vector128<short> vqaddq_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.AddSaturate(a, b);
+        private static Vector64<byte> vget_low_u8(Vector128<byte> a) => a.GetLower();
+        private static Vector64<sbyte> vget_low_s8(Vector128<sbyte> a) => a.GetLower();
+        private static Vector64<byte> vget_high_u8(Vector128<byte> a) => a.GetUpper();
+        private static Vector64<sbyte> vget_high_s8(Vector128<sbyte> a) => a.GetUpper();
+        private static Vector128<short> vmulq_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.Multiply(a, b);
+        private static Vector128<int> vmull_high_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.MultiplyWideningUpper(a, b);
+        private static Vector64<short> vshrn_n_s32(Vector128<int> a, [ConstantExpected(Min = 1, Max = 32)] byte count) => AdvSimd.ShiftRightLogicalNarrowingLower(a, count);
+        private static Vector128<short> vcombine_s16(Vector64<short> a, Vector64<short> b) => Vector128.Create(a, b);
+        private static Vector64<short> vget_low_s16(Vector128<short> a) => a.GetLower();
+        private static Vector64<short> vget_high_s16(Vector128<short> a) => a.GetUpper();
         private static Vector128<int> vmull_s16(Vector64<short> a, Vector64<short> b) => AdvSimd.MultiplyWideningLower(a, b);
         private static Vector128<int> vdupq_n_s32(int a) => AdvSimd.DuplicateToVector128(a);
-        private static Vector128<int> vcgtq_s32(Vector128<int> a, int b) => AdvSimd.CompareGreaterThan(a, vdupq_n_s32(b));
+        private static Vector128<short> vdupq_n_s16(short a) => AdvSimd.DuplicateToVector128(a);
+        private static Vector128<int> vcgtq_s32(Vector128<int> a, Vector128<int> b) => AdvSimd.CompareGreaterThan(a, b);
         private static Vector64<ushort> vmovn_u32(Vector128<uint> a) => AdvSimd.ExtractNarrowingLower(a);
+        private static Vector128<ushort> vmovl_u8(Vector64<byte> a) => AdvSimd.ZeroExtendWideningLower(a);
+        private static Vector128<short> vmovl_s8(Vector64<sbyte> a) => AdvSimd.SignExtendWideningLower(a);
+
         private static ulong vget_lane_u64(Vector64<ulong> a, int b) => a.GetElement(b);
         private static Vector128<short> vreinterpretq_s16_u16(Vector128<ushort> a) => a.AsInt16();
         private static Vector64<ulong> vreinterpret_u64_u16(Vector64<ushort> a) => a.AsUInt64();
+
+        public static void arm_storeu_si128(ushort* mem_addr, Vector128<ushort> a) => AdvSimd.Store(mem_addr, a); 
         public static Vector128<ushort> arm_add_epi16(Vector128<ushort> a, Vector128<ushort> b) => AdvSimd.Add(a, b);
 
         public static Vector256<float> vec_mul_add_ps(Vector256<float> a, Vector256<float> b, Vector256<float> c) => _mm256_fmadd_ps(a, b, c);
@@ -167,7 +167,7 @@ namespace Lizard.Logic.NN
         public static int vec_nnz_mask(Vector128<byte> a) => _mm_movemask_ps(_mm_castsi128_ps(_mm_cmpgt_epi32(a.AsInt32(), _mm_setzero_epi32())));
         public static int arm_vec_nnz_mask(Vector128<byte> a)
         {
-            var mask = vcgtq_s32(a.AsInt32(), 0);
+            var mask = vcgtq_s32(a.AsInt32(), vdupq_n_s32(0));
             Vector64<ushort> narrowed_mask = vmovn_u32(mask.AsUInt32());
             var packed_mask = vget_lane_u64(vreinterpret_u64_u16(narrowed_mask), 0);
             var retVal = ((packed_mask & (1UL <<  0)) >>  0) |
@@ -195,10 +195,22 @@ namespace Lizard.Logic.NN
 
         public static Vector128<int> arm_vec_dpbusd_epi32(Vector128<int> sum, Vector128<byte> a, Vector128<sbyte> b)
         {
-            var product16 = arm_maddubs_epi16(a, b);
-            var product32 = arm_madd_epi16(product16, arm_set1_epi16(1));
-            return arm_add_epi32(sum, product32);
+            var sum32 = arm_madd_epi16(arm_maddubs_epi16(a, b), vdupq_n_s16(1));
+            return vaddq_s32(sum32, sum);
         }
+
+
+
+
+        public static void _mm_storeu_si128(ushort* mem_addr, Vector128<ushort> a) => Sse2.Store(mem_addr, a);
+        public static Vector128<float> _mm_shuffle_ps(Vector128<float> a, Vector128<float> b, [ConstantExpected] byte control) => Sse.Shuffle(a, b, control);
+        public static Vector128<float> _mm_movehl_ps(Vector128<float> a, Vector128<float> b) => Sse.MoveHighToLow(a, b);
+        public static Vector128<float> _mm_add_ss(Vector128<float> a, Vector128<float> b) => Sse.AddScalar(a, b);
+        public static Vector128<float> _mm_add_ps(Vector128<float> a, Vector128<float> b) => Sse.Add(a, b);
+        public static Vector128<ushort> _mm_add_epi16(Vector128<ushort> a, Vector128<ushort> b) => Sse2.Add(a, b);
+
+
+        public static float _mm_cvtss_f32(Vector128<float> a) => a.GetElement(0);
 
 
         public static float vec_reduce_add_ps(Vector256<float> sum)
