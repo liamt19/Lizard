@@ -259,11 +259,16 @@ namespace Lizard.Logic.NN
                 var weight = (Vector128<sbyte>*)(&weights[index * L1_CHUNK_PER_32 * L2_SIZE]);
                 for (int k = 0; k < L2_SIZE / F32_CHUNK_SIZE; k++)
                 {
+                    var temp = sums[k];
                     sums[k] = arm_vec_dpbusd_epi32(sums[k], input32.AsByte(), weight[k]);
+                    if (i == 0 || i == 1)
+                    {
+                        Console.WriteLine($"{i} sums[{k}] = dpbusd({temp}, {input32} {weight[k]}) = {sums[k]}");
+                    }
                 }
             }
 
-            Console.WriteLine($"ActivateL1SparseARM {sums[0]} {sums[1]} {sums[2]} {sums[3]}");
+            Console.WriteLine($"\nActivateL1SparseARM {sums[0]} {sums[1]} {sums[2]} {sums[3]}");
 
             var zero = arm_set1_ps(0.0f);
             var one = Vector128<float>.One;
