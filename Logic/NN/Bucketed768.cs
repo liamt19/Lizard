@@ -27,14 +27,13 @@ namespace Lizard.Logic.NN
         private const int L1_QUANT = 64;
         private const int OutputScale = 400;
 
-        private static readonly int U8_CHUNK_SIZE = sizeof(Vector256<byte>) / sizeof(byte);
-        private static readonly int I16_CHUNK_SIZE = sizeof(Vector256<short>) / sizeof(short);
-        private static readonly int I32_CHUNK_SIZE = sizeof(Vector256<int>) / sizeof(int);
-        private static readonly int F32_CHUNK_SIZE = sizeof(Vector256<float>) / sizeof(float);
+        private static readonly int U8_CHUNK_SIZE = (NNUE.UseAvx ? sizeof(Vector256<byte>) : sizeof(Vector128<byte>)) / sizeof(byte);
+        private static readonly int I16_CHUNK_SIZE = (NNUE.UseAvx ? sizeof(Vector256<short>) : sizeof(Vector128<short>)) / sizeof(short);
+        private static readonly int I32_CHUNK_SIZE = (NNUE.UseAvx ? sizeof(Vector256<int>) : sizeof(Vector128<int>)) / sizeof(int);
+        private static readonly int F32_CHUNK_SIZE = (NNUE.UseAvx ? sizeof(Vector256<float>) : sizeof(Vector128<float>)) / sizeof(float);
 
-        private static readonly int NNZ_INPUT_SIMD_WIDTH = sizeof(Vector256<int>) / sizeof(int);
-        private static readonly int NNZ_CHUNK_SIZE = Math.Max(NNZ_INPUT_SIMD_WIDTH, 8);
-        private static readonly int NNZ_OUTPUTS_PER_CHUNK = NNZ_CHUNK_SIZE / 8;
+        private static readonly int NNZ_INPUT_SIMD_WIDTH = I32_CHUNK_SIZE;
+        private static readonly int NNZ_OUTPUTS_PER_CHUNK = Math.Max(NNZ_INPUT_SIMD_WIDTH, 8) / 8;
 
         private const int L1_CHUNK_PER_32 = sizeof(int) / sizeof(sbyte);
         private const int L1_PAIR_COUNT = L1_SIZE / 2;
@@ -187,12 +186,21 @@ namespace Lizard.Logic.NN
 
             for (int bucket = 0; bucket < OUTPUT_BUCKETS; bucket++)
             {
-                for (int i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
-                    for (int j = 0; j < L2_SIZE; ++j)
-                        for (int k = 0; k < L1_CHUNK_PER_32; ++k)
-                            Net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
-                                                + j * L1_CHUNK_PER_32
-                                                + k] = UQNet.L1Weights[i * L1_CHUNK_PER_32 + k, bucket, j];
+                if (NNUE.UseAvx || NNUE.UseSSE)
+                {
+                    for (int i = 0; i < L1_SIZE / L1_CHUNK_PER_32; ++i)
+                        for (int j = 0; j < L2_SIZE; ++j)
+                            for (int k = 0; k < L1_CHUNK_PER_32; ++k)
+                                Net.L1Weights[bucket][i * L1_CHUNK_PER_32 * L2_SIZE
+                                                    + j * L1_CHUNK_PER_32
+                                                    + k] = UQNet.L1Weights[i * L1_CHUNK_PER_32 + k, bucket, j];
+                }
+                else
+                {
+                    for (int i = 0; i < L1_SIZE; ++i)
+                        for (int j = 0; j < L2_SIZE; ++j)
+                            Net.L1Weights[bucket][j * L1_SIZE + i] = UQNet.L1Weights[i, bucket, j];
+                }
 
                 for (int i = 0; i < L2_SIZE; ++i)
                     Net.L1Biases[bucket][i] = UQNet.L1Biases[bucket, i];
@@ -210,9 +218,13 @@ namespace Lizard.Logic.NN
                 Net.L3Biases[bucket] = UQNet.L3Biases[bucket];
             }
 
-            const int numRegi = 4;
-            const int numChunks = (32 / 2) / sizeof(short);
-            Span<int> order = [0, 2, 1, 3];
+            if (!(NNUE.UseAvx || NNUE.UseSSE))
+                return;
+
+            int numRegi = NNUE.UseAvx ? 4 : 2;
+            int numChunks = 16 / sizeof(short);
+            Span<int> order = NNUE.UseAvx ? [0, 2, 1, 3] : [0, 1];
+
             Vector128<short>[] regi = new Vector128<short>[numRegi];
             var ws = (Vector128<short>*)Net.FTWeights;
             var bs = (Vector128<short>*)Net.FTBiases;
@@ -347,7 +359,20 @@ namespace Lizard.Logic.NN
         }
 
 
-        public static int GetEvaluation(Position pos, int outputBucket)
+        public static short GetEvaluation(Position pos)
+        {
+            int occ = (int)popcount(pos.bb.Occupancy);
+            int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
+
+            var v = NNUE.UseAvx ? GetEvaluation(pos, outputBucket) :
+                    NNUE.UseSSE ? GetEvaluationSSE(pos, outputBucket) :
+                                  GetEvaluationFallback(pos, outputBucket);
+
+            return (short)v;
+        }
+
+
+        public static short GetEvaluation(Position pos, int outputBucket)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
 
@@ -364,17 +389,8 @@ namespace Lizard.Logic.NN
             ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
             ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
 
-            return (int)(L3Output * OutputScale);
+            return (short)(L3Output * OutputScale);
         }
-
-        public static int GetEvaluation(Position pos)
-        {
-            int occ = (int)popcount(pos.bb.Occupancy);
-            int outputBucket = (occ - 2) / ((32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS);
-
-            return GetEvaluation(pos, outputBucket);
-        }
-
 
         private static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output)
         {
@@ -420,7 +436,7 @@ namespace Lizard.Logic.NN
                     {
                         int lookup = (nnz_mask >> (j * 8)) & 0xFF;
                         var offsets = NNZLookup[lookup];
-                        _mm128_storeu_si128(&nnzIndices[nnzCount], _mm_add_epi16(baseVec, offsets));
+                        _mm_storeu_si128(&nnzIndices[nnzCount], _mm_add_epi16(baseVec, offsets));
 
                         nnzCount += int.PopCount(lookup);
                         baseVec += baseInc;
@@ -443,7 +459,6 @@ namespace Lizard.Logic.NN
 
             ActivateL1Sparse(ft_outputs, weights, biases, output, new Span<ushort>(nnzIndices, nnzCount));
         }
-
 
         private static void ActivateL1Sparse(sbyte* inputs, sbyte* weights, float* biases, float* output, Span<ushort> nnzIndices)
         {
@@ -477,7 +492,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-
         private static void ActivateL2(float* inputs, float* weights, float* biases, float* output)
         {
             var sumVecs = stackalloc Vector256<float>[L3_SIZE / F32_CHUNK_SIZE];
@@ -505,7 +519,6 @@ namespace Lizard.Logic.NN
             }
         }
 
-
         private static void ActivateL3(float* inputs, float* weights, float bias, ref float output)
         {
             var sumVec = _mm256_set1_ps(0.0f);
@@ -517,7 +530,7 @@ namespace Lizard.Logic.NN
                 sumVec = vec_mul_add_ps(inputsVec, weightVec, sumVec);
             }
 
-            output = bias + Vector256.Sum(sumVec);
+            output = bias + vec_reduce_add_ps(sumVec);
         }
 
 
