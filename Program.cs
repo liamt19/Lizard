@@ -34,17 +34,26 @@ using System.Reflection;
 using LTChess.Logic.NN;
 using System.Runtime.InteropServices;
 using LTChess.Logic.NN.HalfKA_HM;
+using Lizard.Logic.Util;
 
 namespace LTChess
 {
-
     public static unsafe class Program
     {
         private static Position p;
         private static SearchInformation info;
 
-        public static void Main()
+        public static void Main(string[] args)
         {
+            if (args.Length != 0)
+            {
+                if (args[0] == "bench")
+                {
+                    SearchBench.Go(12, openBench: true);
+                    Environment.Exit(0);
+                }
+            }
+
             InitializeAll();
             p = new Position();
             info = new SearchInformation(p);
@@ -275,10 +284,9 @@ namespace LTChess
                 {
                     EvaluationConstants.PrintConstants();
                 }
-                else if (input.StartsWithIgnoreCase("bench "))
+                else if (input.StartsWithIgnoreCase("bench"))
                 {
-                    int depth = int.Parse(input.Substring(6));
-                    FishBench.Go(depth);
+                    SearchBench.Go(12, openBench: false);
                 }
                 else if (input.EqualsIgnoreCase("gc"))
                 {

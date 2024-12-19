@@ -1,6 +1,6 @@
 ﻿
 #define SHOW_STATS
-
+#undef SHOW_STATS
 
 using System.Runtime.InteropServices;
 
