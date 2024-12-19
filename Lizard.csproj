@@ -24,6 +24,7 @@
 
     <PublishReadyToRun>true</PublishReadyToRun>
     <PublishSingleFile>true</PublishSingleFile>
+    <PublishTrimmed>True</PublishTrimmed>
     
   </PropertyGroup>
 
