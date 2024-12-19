@@ -22,17 +22,22 @@ namespace LTChess.Logic.Transposition
         {
             if (!Initialized)
             {
-                Initialize();
+                Initialize(Hash);
             }
         }
 
         /// <summary>
         /// 1 mb is enough for 65,536 entries. 
         /// </summary>
-        public static unsafe void Initialize(int mb = 32)
+        public static unsafe void Initialize(int mb)
         {
-
             ClusterCount = ((ulong)mb * 0x100000UL) / (ulong)sizeof(TTCluster);
+
+            if (Clusters != null)
+            {
+                NativeMemory.AlignedFree(Clusters);
+            }
+
             Clusters = (TTCluster*) AlignedAllocZeroed((nuint)(sizeof(TTCluster) * (int)ClusterCount), AllocAlignment);
             for (ulong i = 0; i < ClusterCount; i++)
             {

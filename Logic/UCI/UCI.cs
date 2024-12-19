@@ -551,6 +551,11 @@ namespace LTChess.Logic.Core
                     opt.FieldHandle.SetValue(null, arr);
                 }
 
+                if (optName == nameof(Hash))
+                {
+                    TranspositionTable.Initialize(Hash);
+                }
+
                 Tune.NormalizeTerms();
 
             }
@@ -582,8 +587,14 @@ namespace LTChess.Logic.Core
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
                 UCIOption opt = new UCIOption(friendlyName, fieldType, defaultValue, field);
+                if (field.Name == nameof(Hash))
+                {
+                    opt.MinValue = "1"; 
+                    opt.MaxValue = "1048576";
+                }
                 Options.Add(friendlyName, opt);
             }
+
 
             //  Add some of the terms in EvaluationConstants as UCI options
 #if TUNE

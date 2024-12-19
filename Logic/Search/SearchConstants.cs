@@ -5,6 +5,8 @@
         public const int AlphaStart = -ScoreInfinite;
         public const int BetaStart = ScoreInfinite;
 
+        public static int Hash = 32;
+
         /// <summary>
         /// The halfmove clock needs to be at least 8 before a draw by threefold repetition can occur.
         /// </summary>
