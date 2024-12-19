@@ -42,7 +42,9 @@ namespace LTChess.Logic.Core
             info = new SearchInformation(new Position(), DefaultSearchDepth);
             info.OnDepthFinish = OnDepthDone;
             info.OnSearchFinish = OnSearchDone;
-            if (File.Exists(LogFileName))
+
+            
+            if (false && File.Exists(LogFileName))
             {
                 LogString("\n\n**************************************************\n"
                     + CenteredString(DateTime.Now.ToString(), 50) + "\n"
@@ -64,6 +66,7 @@ namespace LTChess.Logic.Core
         /// </summary>
         public static void LogString(string s, bool newLine = true)
         {
+            return;
             lock (LogFileLock)
             {
                 try
