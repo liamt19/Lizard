@@ -275,9 +275,9 @@ namespace LTChess.Logic.Search
             bool isPV = (typeof(NodeType) != typeof(NonPVNode));
 
             //  Check every few thousand nodes if we need to stop the search.
-            if ((info.NodeCount & SearchCheckInCount) == 0)
+            if (!isRoot)
             {
-                if (info.TimeManager.CheckUp(info.RootPlayerToMove))
+                if ((info.NodeCount & SearchCheckInCount) == 0 && info.TimeManager.CheckUp(info.RootPlayerToMove))
                 {
                     info.StopSearching = true;
                 }
