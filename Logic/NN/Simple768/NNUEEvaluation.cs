@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 using LTChess.Logic.Data;
-using LTChess.Properties;
+using Lizard.Properties;
 
 namespace LTChess.Logic.NN.Simple768
 {

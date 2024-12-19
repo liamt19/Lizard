@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-using LTChess.Properties;
+using Lizard.Properties;
 
 namespace LTChess.Logic.Book
 {
@@ -105,7 +105,7 @@ namespace LTChess.Logic.Book
             //using Stream stream = File.OpenRead(BookFile);
             //using BinaryReader reader = new BinaryReader(stream);
 
-            var bookData = Resources.baron30;
+            var bookData = new byte[0];
 
             entries = new List<PolyglotEntry>();
 

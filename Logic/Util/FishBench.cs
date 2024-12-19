@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-using LTChess.Properties;
+using Lizard.Properties;
 
 namespace LTChess.Logic.Util
 {
@@ -51,8 +51,8 @@ namespace LTChess.Logic.Util
 
         static FishBench()
         {
-            Load(Resources.sf14bench_perft4, 4);
-            Load(Resources.sf14bench_perft5, 5);
+            //Load(Resources.sf14bench_perft4, 4);
+            //Load(Resources.sf14bench_perft5, 5);
         }
 
         public static void Load(string str, int Depth)

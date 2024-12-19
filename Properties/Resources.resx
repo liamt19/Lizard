@@ -118,19 +118,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="baron30" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\baron30.bin;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
   <data name="network" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\network.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
-  <data name="nn-e1fb1ade4432" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Resources\nn-e1fb1ade4432.nnue;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
-  </data>
-  <data name="sf14bench_perft4" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\resources\sf14bench_perft4.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
-  </data>
-  <data name="sf14bench_perft5" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\resources\sf14bench_perft5.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;Windows-1252</value>
+    <value>..\Resources\network.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;iso-8859-1</value>
   </data>
 </root>

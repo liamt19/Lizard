@@ -11,3 +11,6 @@
 /TB_Files
 /Logic/Tablebase
 /LTChess.csproj.user
+/Properties/PublishProfiles
+*.user
+*.bin

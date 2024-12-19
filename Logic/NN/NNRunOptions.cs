@@ -26,6 +26,6 @@ namespace LTChess.Logic.NN
         /// It takes around 8 times as long to recalculate the entire board 
         /// than it does to update it incrementally with <see cref="HalfKA_HM.HalfKA_HM.MakeMove"/>
         /// </summary>
-        public const bool UseHalfKA = true;
+        public const bool UseHalfKA = false;
     }
 }

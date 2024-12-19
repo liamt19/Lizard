@@ -8,7 +8,7 @@ using System;
 
 using LTChess.Logic.Data;
 using LTChess.Logic.NN.HalfKA_HM.Layers;
-using LTChess.Properties;
+using Lizard.Properties;
 
 using static LTChess.Logic.NN.HalfKA_HM.HalfKA_HM.UniquePiece;
 using LTChess.Logic.Core;
