@@ -27,9 +27,9 @@ FULL_EXE_PATH = $(EXE)$(BINARY_SUFFIX)
 RM_PDB = -$(RM_FILE_CMD) $(EXE).$(PDB_SUFF)
 RM_BLD_FOLDER = -cd bin && $(RM_FOLDER_CMD) Release && cd ..
 RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
+RM_BINDINGS = -$(RM_FILE_CMD) $(BINDINGS)
 
 INST_SET = native
-
 
 # Macos doesn't seem to like this parameter and the GenerateBundle task fails during building.
 OUT_DIR = -o ./
@@ -89,11 +89,16 @@ $(EVALFILE):
 download-net: $(EVALFILE)
 endif
 
+CXX = g++
+BINDINGS_NAME = HorsieBindings.dll
+BINDINGS_CMD = $(CXX) -std=c++20 -O3 -fuse-ld=lld -funroll-loops -mavx -mavx2 -march=x86-64-v3 -shared -o $(BINDINGS_NAME) ./Logic/Bindings/simd.cpp
+
 #  Try building the non-AOT version first, and then try to build the AOT version if possible.
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
 release: $(EVALFILE)
 	dotnet publish . $(BUILD_OPTS)
 	$(FIX_OUTPUT)
+	-$(MAKE) bindings
 
 #  This will/might only succeed if you have the right toolchain
 aot: $(EVALFILE)
@@ -105,6 +110,10 @@ aot: $(EVALFILE)
 
 aot_512: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX512"
+
+bindings:
+	$(BINDINGS_CMD)
+	dotnet publish . $(BUILD_OPTS) /p:BINDINGS=true
 
 all:
 	$(MAKE) aot INST_SET=x86-x64

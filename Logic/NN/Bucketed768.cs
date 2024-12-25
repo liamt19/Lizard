@@ -96,8 +96,16 @@ namespace Lizard.Logic.NN
         static Bucketed768()
         {
             Net = new NetContainer<short, sbyte, float>();
+
+#if BINDINGS
+            HorsieSetupNNZ();
+            Log("Bindings found " + (NNUE.UseAvx ? "and in use" : "but (intentionally) unused"));
+#else
             NNZLookup = AlignedAllocZeroed<Vector128<ushort>>(256);
             SetupNNZ();
+            Log("Bindings are not in use");
+#endif
+
 
 #if NO_PERM
             PermuteIndices = Enumerable.Range(0, L1_PAIR_COUNT).ToArray();
@@ -386,9 +394,15 @@ namespace Lizard.Logic.NN
             var us   = (short*)(accumulator[pos.ToMove]);
             var them = (short*)(accumulator[Not(pos.ToMove)]);
 
+#if BINDINGS
+            HorsieActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+            HorsieActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+            HorsieActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+#else
             ActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
             ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
             ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+#endif
 
             return (short)(L3Output * OutputScale);
         }
@@ -957,5 +971,18 @@ namespace Lizard.Logic.NN
             207, 690, 403, 917, 866, 939, 278, 423, 674, 497, 298, 226, 18, 865, 995, 924,
         ];
 
+#if BINDINGS
+        [DllImport("HorsieBindings.dll", EntryPoint = "SetupNNZ", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieSetupNNZ();
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateFTSparse", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output);
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateL2", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateL2(float* inputs, float* weights, float* biases, float* output);
+
+        [DllImport("HorsieBindings.dll", EntryPoint = "ActivateL3", CallingConvention = CallingConvention.Cdecl)]
+        public static extern void HorsieActivateL3(float* inputs, float* weights, float bias, ref float output);
+#endif
     }
 }
