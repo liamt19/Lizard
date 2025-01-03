@@ -24,7 +24,7 @@ namespace Lizard.Logic.NN
 
         private const int FT_QUANT = 255;
         private const int FT_SHIFT = 10;
-        private const int L1_QUANT = 64;
+        private const int L1_QUANT = 132;
         private const int OutputScale = 400;
 
         private static readonly int U8_CHUNK_SIZE = (NNUE.UseAvx ? sizeof(Vector256<byte>) : sizeof(Vector128<byte>)) / sizeof(byte);
