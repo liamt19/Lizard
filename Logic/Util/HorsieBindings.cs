@@ -10,24 +10,25 @@ namespace Lizard.Logic.Util
         public static readonly bool HasBindings;
         private static readonly nint Handle;
 
-        private const string DEST_NAME = "HorsieBindings.dll";
+        private const string DEST_NAME = "HorsieBindings";
+        private static readonly bool IsWin = IsOSPlatform(OSPlatform.Windows);
 
         static HorsieBindings()
         {
             HasBindings = false;
-            if (!IsOSPlatform(OSPlatform.Windows) || IsOSPlatform(OSPlatform.Linux))
+            if (!IsOSPlatform(OSPlatform.Windows) && !IsOSPlatform(OSPlatform.Linux))
                 return;
 
-            string fExt = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "dll" : "so";
+            string fExt = IsWin ? "dll" : "so";
             string asmName = Assembly.GetExecutingAssembly().GetName().Name;
-            string resName = $"{asmName}.HorsieBindings.{fExt}";
+            string fileName = $"{DEST_NAME}.{fExt}";
+            string resName = $"{asmName}.{fileName}";
 
-            string exePath = Path.GetDirectoryName(AppContext.BaseDirectory);
-            string absPath = Path.Combine(exePath, DEST_NAME);
+            string absPath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), fileName);
 
             try
             {
-                if (!File.Exists(absPath) && !ExtractEmbeddedLibrary(resName, DEST_NAME))
+                if (!File.Exists(absPath) && !ExtractEmbeddedLibrary(resName, fileName))
                 {
                     return;
                 }
@@ -68,12 +69,38 @@ namespace Lizard.Logic.Util
 
 
 
-        [LibraryImport("HorsieBindings.dll", EntryPoint = "SetupNNZ")]
-        public static partial void HorsieSetupNNZ();
+        public static void DoSetupNNZ()
+        {
+            if (IsWin)
+                HorsieSetupNNZWin();
+            else
+                HorsieSetupNNZUnix();
+        }
 
-        [LibraryImport("HorsieBindings.dll", EntryPoint = "EvaluateBound")]
-        public static partial void HorsieGetEvaluation(short* us, short* them, sbyte* L1Weights, float* L1Biases,
+        public static void DoGetEvaluation(short* us, short* them, sbyte* L1Weights, float* L1Biases,
+            float* L2Weights, float* L2Biases, float* L3weights, float L3bias, ref int L3Output)
+        {
+            if (IsWin)
+                HorsieGetEvaluationWin(us, them, L1Weights, L1Biases, L2Weights, L2Biases, L3weights, L3bias, ref L3Output);
+            else
+                HorsieGetEvaluationUnix(us, them, L1Weights, L1Biases, L2Weights, L2Biases, L3weights, L3bias, ref L3Output);
+        }
+
+
+
+        [LibraryImport("HorsieBindings.so", EntryPoint = "SetupNNZ")]
+        public static partial void HorsieSetupNNZUnix();
+
+        [LibraryImport("HorsieBindings.so", EntryPoint = "EvaluateBound")]
+        public static partial void HorsieGetEvaluationUnix(short* us, short* them, sbyte* L1Weights, float* L1Biases,
             float* L2Weights, float* L2Biases, float* L3weights, float L3bias, ref int L3Output);
 
+
+        [LibraryImport("HorsieBindings.dll", EntryPoint = "SetupNNZ")]
+        public static partial void HorsieSetupNNZWin();
+
+        [LibraryImport("HorsieBindings.dll", EntryPoint = "EvaluateBound")]
+        public static partial void HorsieGetEvaluationWin(short* us, short* them, sbyte* L1Weights, float* L1Biases,
+            float* L2Weights, float* L2Biases, float* L3weights, float L3bias, ref int L3Output);
     }
 }

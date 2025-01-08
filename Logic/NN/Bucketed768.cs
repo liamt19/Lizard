@@ -99,7 +99,7 @@ namespace Lizard.Logic.NN
 
             if (HorsieBindings.HasBindings)
             {
-                HorsieBindings.HorsieSetupNNZ();
+                HorsieBindings.DoSetupNNZ();
             }
             else
             {
@@ -393,7 +393,7 @@ namespace Lizard.Logic.NN
             {
                 int L3Output = 0;
 
-                HorsieBindings.HorsieGetEvaluation(us, them,
+                HorsieBindings.DoGetEvaluation(us, them,
                     Net.L1Weights[outputBucket], Net.L1Biases[outputBucket],
                     Net.L2Weights[outputBucket], Net.L2Biases[outputBucket],
                     Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
