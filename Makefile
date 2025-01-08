@@ -10,6 +10,7 @@ endif
 ifeq ($(OS),Windows_NT) 
 	BINARY_SUFFIX = .exe
 	PDB_SUFF = pdb
+	DLL_SUFF = dll
 
 	RENAME_CMD = -ren
 	RM_FILE_CMD = del
@@ -17,6 +18,7 @@ ifeq ($(OS),Windows_NT)
 else
 	PDB_SUFF = dbg
 	BINARY_SUFFIX = 
+	DLL_SUFF = so
 
 	RENAME_CMD = mv
 	RM_FILE_CMD = rm
@@ -24,6 +26,7 @@ else
 endif
 
 FULL_EXE_PATH = $(EXE)$(BINARY_SUFFIX)
+BINDINGS_FILE = HorsieBindings.$(DLL_SUFF)
 RM_PDB = -$(RM_FILE_CMD) $(EXE).$(PDB_SUFF)
 RM_BLD_FOLDER = -cd bin && $(RM_FOLDER_CMD) Release && cd ..
 RM_OBJ_FOLDER = -$(RM_FOLDER_CMD) obj
@@ -68,7 +71,7 @@ endif
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
 #  -p:EVALFILE=$(EVALFILE)     Path to a network to be bundled.
-BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE)
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE) -p:BINDINGS=$(BINDINGS_FILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
@@ -89,9 +92,15 @@ $(EVALFILE):
 download-net: $(EVALFILE)
 endif
 
+
+$(BINDINGS_FILE):
+	-g++ -std=c++20 -O3 -funroll-loops -march=x86-64-v3 -fPIC -shared -o $(BINDINGS_FILE) ./Bindings/simd.cpp
+bindings: $(BINDINGS_FILE)
+
+
 #  Try building the non-AOT version first, and then try to build the AOT version if possible.
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
-release: $(EVALFILE)
+release: $(EVALFILE) $(BINDINGS_FILE)
 	dotnet publish . $(BUILD_OPTS)
 	$(FIX_OUTPUT)
 
@@ -99,7 +108,7 @@ release: $(EVALFILE)
 aot: $(EVALFILE)
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
 
-512: $(EVALFILE)
+512: $(EVALFILE) $(BINDINGS_FILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
 	$(FIX_OUTPUT)
 
