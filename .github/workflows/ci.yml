@@ -33,19 +33,13 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Nuget cache
-      uses: actions/cache@v4
-      with:
-        path:
-          ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-    - name: Build
-      run: dotnet build -c Release
+    - name: Run Make
+      run: make
 
-    - name: Publish Engine
-      run: dotnet publish Lizard.csproj --self-contained -p:DebugType=embedded -c release -r ${{ matrix.runtime-identifier }} -o artifacts/${{ matrix.runtime-identifier }}
+    - name: Move files
+      run: |
+        mkdir -p artifacts
+        mv Lizard artifacts/Lizard-${{ matrix.runtime-identifier }}
 
     - name: Upload Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }} artifact
       uses: actions/upload-artifact@v4
