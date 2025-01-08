@@ -126,7 +126,12 @@
     </AssemblyAttribute>
   </ItemGroup>
 
-  
+  <!-- Embed the BINDINGS file if it's defined and the file actually exists
+  -->
+  <ItemGroup>
+    <EmbeddedResource Condition="'$(BINDINGS)' != '' AND Exists('$(BINDINGS)')" Include="$(BINDINGS)" />
+  </ItemGroup>
+
   <!-- Targeting the "aot" recipe in the makefile will set this to true.
   -->
   <ItemGroup>
@@ -177,6 +182,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Bindings\" />
     <Folder Include="obj\" />
   </ItemGroup>
 

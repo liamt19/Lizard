@@ -16,3 +16,5 @@
 /*.nnue
 /data
 /.vs/ProjectEvaluation
+*.dll
+*.so

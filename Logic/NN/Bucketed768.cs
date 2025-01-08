@@ -96,8 +96,16 @@ namespace Lizard.Logic.NN
         static Bucketed768()
         {
             Net = new NetContainer<short, sbyte, float>();
-            NNZLookup = AlignedAllocZeroed<Vector128<ushort>>(256);
-            SetupNNZ();
+
+            if (HorsieBindings.HasBindings)
+            {
+                HorsieBindings.DoSetupNNZ();
+            }
+            else
+            {
+                NNZLookup = AlignedAllocZeroed<Vector128<ushort>>(256);
+                SetupNNZ();
+            }
 
 #if NO_PERM
             PermuteIndices = Enumerable.Range(0, L1_PAIR_COUNT).ToArray();
@@ -376,21 +384,35 @@ namespace Lizard.Logic.NN
         public static short GetEvaluation(Position pos, int outputBucket)
         {
             ref Accumulator accumulator = ref *pos.State->Accumulator;
-
             Bucketed768.ProcessUpdates(pos);
-
-            float* L1Outputs = stackalloc float[L2_SIZE];
-            float* L2Outputs = stackalloc float[L3_SIZE];
-            float L3Output = 0;
 
             var us   = (short*)(accumulator[pos.ToMove]);
             var them = (short*)(accumulator[Not(pos.ToMove)]);
 
-            ActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
-            ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
-            ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+            if (HorsieBindings.HasBindings)
+            {
+                int L3Output = 0;
 
-            return (short)(L3Output * OutputScale);
+                HorsieBindings.DoGetEvaluation(us, them,
+                    Net.L1Weights[outputBucket], Net.L1Biases[outputBucket],
+                    Net.L2Weights[outputBucket], Net.L2Biases[outputBucket],
+                    Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+
+                return (short)L3Output;
+            }
+            else
+            {
+                float L3Output = 0;
+
+                float* L1Outputs = stackalloc float[L2_SIZE];
+                float* L2Outputs = stackalloc float[L3_SIZE];
+
+                ActivateFTSparse(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
+                ActivateL2(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
+                ActivateL3(L2Outputs, Net.L3Weights[outputBucket], Net.L3Biases[outputBucket], ref L3Output);
+
+                return (short)(L3Output * OutputScale);
+            }
         }
 
         private static void ActivateFTSparse(short* us, short* them, sbyte* weights, float* biases, float* output)
