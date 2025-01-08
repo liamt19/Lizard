@@ -35,19 +35,10 @@ jobs:
 
     - name: Run Make
       run: make
-
-    - name: Move files
-      run: |
-        ls -la
-        mkdir -p artifacts
-        mv ./Lizard ./artifacts/Lizard-${{ matrix.runtime-identifier }}
-        ls -la
-
+      
     - name: Upload Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }} artifact
       uses: actions/upload-artifact@v4
       with:
         name: Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }}
-        path: |
-          artifacts/${{ matrix.runtime-identifier }}/
-          !artifacts/**/*.pdb
+        path: ./Lizard
         if-no-files-found: error
