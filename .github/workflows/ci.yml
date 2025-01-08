@@ -40,7 +40,7 @@ jobs:
       run: |
         ls -la
         mkdir -p artifacts
-        mv ./Lizard artifacts/Lizard-${{ matrix.runtime-identifier }}
+        mv ./Lizard ./artifacts/Lizard-${{ matrix.runtime-identifier }}
         ls -la
 
     - name: Upload Lizard-${{ github.run_number }}-${{ matrix.runtime-identifier }} artifact
