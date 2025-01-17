@@ -271,7 +271,6 @@ namespace Lizard.Logic.Search
             if (UseProbCut
                 && !isPV
                 && !doSkip
-                && depth >= ProbcutMinDepth
                 && Math.Abs(beta) < ScoreTTWin
                 && (!ss->TTHit || tte->Depth < depth - 3 || tte->Score >= probBeta))
             {

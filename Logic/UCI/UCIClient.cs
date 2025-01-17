@@ -407,7 +407,6 @@ namespace Lizard.Logic.UCI
             Options[nameof(RFPMaxDepth)].AutoMinMax();
             Options[nameof(RFPMargin)].AutoMinMax();
 
-            Options[nameof(ProbcutMinDepth)].SetMinMax(1, 5);
             Options[nameof(ProbcutBeta)].AutoMinMax();
             Options[nameof(ProbcutBetaImp)].AutoMinMax();
 
@@ -481,7 +480,6 @@ namespace Lizard.Logic.UCI
                 nameof(SearchOptions.NMPMinDepth),
                 nameof(SearchOptions.RFPMaxDepth),
                 nameof(SearchOptions.RFPMargin),
-                nameof(SearchOptions.ProbcutMinDepth),
                 nameof(SearchOptions.ProbcutBeta),
                 nameof(SearchOptions.IIRMinDepth),
                 nameof(SearchOptions.AspWindow),

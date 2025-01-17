@@ -60,7 +60,6 @@
         public static int RFPMaxDepth = 6;
         public static int RFPMargin = 47;
 
-        public static int ProbcutMinDepth = 2;
         public static int ProbcutBeta = 256;
         public static int ProbcutBetaImp = 101;
 
