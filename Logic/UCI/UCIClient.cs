@@ -410,6 +410,13 @@ namespace Lizard.Logic.UCI
             Options[nameof(ProbcutBeta)].AutoMinMax();
             Options[nameof(ProbcutBetaImp)].AutoMinMax();
 
+            Options[nameof(NMFutileBase)].AutoMinMax();
+            Options[nameof(NMFutilePVCoeff)].AutoMinMax();
+            Options[nameof(NMFutileImpCoeff)].AutoMinMax();
+            Options[nameof(NMFutileHistCoeff)].AutoMinMax();
+            Options[nameof(NMFutMarginB)].AutoMinMax();
+            Options[nameof(NMFutMarginM)].AutoMinMax();
+            Options[nameof(NMFutMarginDiv)].AutoMinMax();
             Options[nameof(ShallowSEEMargin)].AutoMinMax();
             Options[nameof(ShallowMaxDepth)].AutoMinMax();
 
@@ -434,11 +441,11 @@ namespace Lizard.Logic.UCI
             Options[nameof(StatMalusSub)].AutoMinMax();
             Options[nameof(StatMalusMax)].AutoMinMax();
 
-            Options[nameof(SEEValue_Pawn)].AutoMinMax();
-            Options[nameof(SEEValue_Knight)].AutoMinMax();
-            Options[nameof(SEEValue_Bishop)].AutoMinMax();
-            Options[nameof(SEEValue_Rook)].AutoMinMax();
-            Options[nameof(SEEValue_Queen)].AutoMinMax();
+            Options[nameof(SEEValuePawn)].AutoMinMax();
+            Options[nameof(SEEValueKnight)].AutoMinMax();
+            Options[nameof(SEEValueBishop)].AutoMinMax();
+            Options[nameof(SEEValueRook)].AutoMinMax();
+            Options[nameof(SEEValueQueen)].AutoMinMax();
 
             Options[nameof(ValuePawn)].AutoMinMax();
             Options[nameof(ValueKnight)].AutoMinMax();

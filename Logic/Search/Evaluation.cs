@@ -40,11 +40,11 @@ namespace Lizard.Logic.Search
         {
             return pt switch
             {
-                Pawn   => SEEValue_Pawn,
-                Knight => SEEValue_Knight,
-                Bishop => SEEValue_Bishop,
-                Rook   => SEEValue_Rook,
-                Queen  => SEEValue_Queen,
+                Pawn   => SEEValuePawn,
+                Knight => SEEValueKnight,
+                Bishop => SEEValueBishop,
+                Rook   => SEEValueRook,
+                Queen  => SEEValueQueen,
                 _      => 0,
             };
         }

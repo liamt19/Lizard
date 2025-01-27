@@ -63,6 +63,13 @@
         public static int ProbcutBeta = 256;
         public static int ProbcutBetaImp = 101;
 
+        public static int NMFutileBase = 512;
+        public static int NMFutilePVCoeff = 1024;
+        public static int NMFutileImpCoeff = 1024;
+        public static int NMFutileHistCoeff = 1024;
+        public static int NMFutMarginB = 200;
+        public static int NMFutMarginM = 80;
+        public static int NMFutMarginDiv = 150;
         public static int ShallowSEEMargin = 216;
         public static int ShallowMaxDepth = 9;
 
@@ -87,11 +94,11 @@
         public static int StatMalusSub = 111;
         public static int StatMalusMax = 1663;
 
-        public static int SEEValue_Pawn = 105;
-        public static int SEEValue_Knight = 900;
-        public static int SEEValue_Bishop = 1054;
-        public static int SEEValue_Rook = 1332;
-        public static int SEEValue_Queen = 2300;
+        public static int SEEValuePawn = 105;
+        public static int SEEValueKnight = 900;
+        public static int SEEValueBishop = 1054;
+        public static int SEEValueRook = 1332;
+        public static int SEEValueQueen = 2300;
 
         public static int ValuePawn = 171;
         public static int ValueKnight = 794;

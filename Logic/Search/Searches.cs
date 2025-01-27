@@ -399,7 +399,8 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
                 int extend = 0;
-
+                int R = LogarithmicReductionTable[depth][legalMoves];
+                int moveHist = (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]);
 
                 if (ShallowPruning
                     && !isRoot
@@ -407,28 +408,38 @@ namespace Lizard.Logic.Search
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
                     if (skipQuiets == false)
-                    {
                         skipQuiets = legalMoves >= lmpMoves;
-                    }
 
                     bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                    bool isQuiet = !(givesCheck || isCapture);
 
-                    if (skipQuiets && depth <= ShallowMaxDepth && !(givesCheck || isCapture))
+                    if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
+                        continue;
+
+                    int lmrRed = (R * 1024) + NMFutileBase;
+
+                    lmrRed += (!isPV).AsInt() * NMFutilePVCoeff;
+                    lmrRed += (!improving).AsInt() * NMFutileImpCoeff;
+                    lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
+
+                    lmrRed /= 1024;
+                    int lmrDepth = Math.Max(0, depth - lmrRed);
+
+                    int futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                    if (isQuiet
+                        && !ss->InCheck
+                        && lmrDepth <= 8
+                        && ss->StaticEval + futilityMargin < alpha)
                     {
+                        skipQuiets = true;
                         continue;
                     }
 
-                    if (givesCheck || isCapture || skipQuiets)
+                    if ((!isQuiet || skipQuiets) && !SEE_GE(pos, m, -ShallowSEEMargin * depth))
                     {
-                        //  Once we've found at least 1 move that doesn't lead to mate,
-                        //  we can start ignoring checks/captures/quiets that lose us significant amounts of material.
-                        if (!SEE_GE(pos, m, -ShallowSEEMargin * depth))
-                        {
-                            continue;
-                        }
+                        continue;
                     }
                 }
-
 
                 if (UseSingularExtensions
                     && !isRoot
@@ -500,8 +511,6 @@ namespace Lizard.Logic.Search
                     && !(isPV && isCapture))
                 {
 
-                    int R = LogarithmicReductionTable[depth][legalMoves];
-
                     //  Reduce if our static eval is declining
                     R += (!improving).AsInt();
 
@@ -516,7 +525,7 @@ namespace Lizard.Logic.Search
                     //  Extend killer moves
                     R -= (m == ss->KillerMove).AsInt();
 
-                    var histScore = 2 * (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]) +
+                    var histScore = 2 * moveHist +
                                     2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
                                         (*(ss - 2)->ContinuationHistory)[histIdx] +
                                         (*(ss - 4)->ContinuationHistory)[histIdx];
@@ -1183,7 +1192,7 @@ namespace Lizard.Logic.Search
                 if ((temp = stmAttackers & bb.Pieces[Pawn]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = SEEValue_Pawn - swap) < res)
+                    if ((swap = SEEValuePawn - swap) < res)
                         break;
 
                     attackers |= GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
@@ -1191,13 +1200,13 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Knight]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = SEEValue_Knight - swap) < res)
+                    if ((swap = SEEValueKnight - swap) < res)
                         break;
                 }
                 else if ((temp = stmAttackers & bb.Pieces[Bishop]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = SEEValue_Bishop - swap) < res)
+                    if ((swap = SEEValueBishop - swap) < res)
                         break;
 
                     attackers |= GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen]);
@@ -1205,7 +1214,7 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Rook]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = SEEValue_Rook - swap) < res)
+                    if ((swap = SEEValueRook - swap) < res)
                         break;
 
                     attackers |= GetRookMoves(occ, to) & (bb.Pieces[Rook] | bb.Pieces[Queen]);
@@ -1213,7 +1222,7 @@ namespace Lizard.Logic.Search
                 else if ((temp = stmAttackers & bb.Pieces[Queen]) != 0)
                 {
                     occ ^= SquareBB[lsb(temp)];
-                    if ((swap = SEEValue_Queen - swap) < res)
+                    if ((swap = SEEValueQueen - swap) < res)
                         break;
 
                     attackers |= (GetBishopMoves(occ, to) & (bb.Pieces[Bishop] | bb.Pieces[Queen])) | (GetRookMoves(occ, to) & (bb.Pieces[Rook] | bb.Pieces[Queen]));
