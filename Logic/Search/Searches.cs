@@ -952,7 +952,7 @@ namespace Lizard.Logic.Search
 
             var bound = (bestScore >= beta) ? TTNodeType.Alpha : TTNodeType.Beta;
 
-            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ss->TTPV);
+            tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, 0, bestMove, rawEval, TT.Age, ttPV);
 
             return bestScore;
         }
