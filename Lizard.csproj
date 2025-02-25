@@ -112,29 +112,54 @@
 
 
   <PropertyGroup>
-    <!-- Check if EVALFILE is not defined and set it to the content of network.txt if necessary -->
-    <ReadNetworkFile Condition="'$(EVALFILE)' == ''">
-      $([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt)).bin
-    </ReadNetworkFile>
-    <EVALFILE Condition="'$(EVALFILE)' == ''">$(ReadNetworkFile)</EVALFILE>
+    <EFileExt>.bin</EFileExt>
   </PropertyGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="$(EVALFILE)" />
-    <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
-      <_Parameter1>$(EVALFILE)</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
-
-  <!-- Embed the BINDINGS file if it's defined and the file actually exists
+  <!-- PreBuildEvent is early enough that the EmbedNetworkFile target works properly
+       but late enough that VS doesn't constantly try to download the file
   -->
+  <Target Name="SetEvalFile" BeforeTargets="PreBuildEvent" Condition="'$(EVALFILE)' == ''">
+    <PropertyGroup>
+      <EVALFILE>$([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt))</EVALFILE>
+    </PropertyGroup>
+
+    <Message Text="EVALFILE set to $(EVALFILE)" Importance="high"/>
+  </Target>
+
+
+  <Target Name="DownloadNetworkFiles" AfterTargets="SetEvalFile" Condition="!Exists('$(EVALFILE)$(EFileExt)')">
+    <PropertyGroup>
+      <NetworkFileURL>https://github.com/liamt19/lizard-nets/releases/download/$(EVALFILE)/$(EVALFILE)$(EFileExt)</NetworkFileURL>
+    </PropertyGroup>
+
+    <Message Text="Downloading $(NetworkFileURL) into $(MSBuildThisFileDirectory)" Importance="high"/>
+
+    <DownloadFile 
+      SourceUrl="$(NetworkFileURL)" 
+      DestinationFolder="$(MSBuildThisFileDirectory)">
+      <Output TaskParameter="DownloadedFile" ItemName="Content" />
+    </DownloadFile>
+  </Target>
+
+
+  <Target Name="EmbedNetworkFile" AfterTargets="DownloadNetworkFiles;SetEvalFile">
+    <Message Text="Embedding $(EVALFILE)$(EFileExt) as a resource" Importance="high"/>
+
+    <ItemGroup>
+      <EmbeddedResource Include="$(EVALFILE)$(EFileExt)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
+        <_Parameter1>$(EVALFILE)$(EFileExt)</_Parameter1>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
+
   <ItemGroup>
     <EmbeddedResource Condition="'$(BINDINGS)' != '' AND Exists('$(BINDINGS)')" Include="$(BINDINGS)" />
-  </ItemGroup>
 
-  <!-- Targeting the "aot" recipe in the makefile will set this to true.
-  -->
-  <ItemGroup>
     <AssemblyAttribute Include="Lizard.Logic.Util.IsAOTAttribute">
       <_Parameter1>$(IS_AOT)</_Parameter1>
     </AssemblyAttribute>

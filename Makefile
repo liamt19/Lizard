@@ -59,7 +59,7 @@ else
 endif
 
 ifndef EVALFILE
-	EVALFILE = $(DEFAULT_NET).bin
+	EVALFILE = $(DEFAULT_NET)
 	NO_EVALFILE_SET = true
 endif
 
