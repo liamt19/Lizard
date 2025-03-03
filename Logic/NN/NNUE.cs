@@ -78,7 +78,7 @@ namespace Lizard.Logic.NN
                     if (res.ToLower().Contains("properties"))
                         continue;
 
-                    if (res.EndsWith(".bin") || res.EndsWith(".nnue") || res.EndsWith(".zstd"))
+                    if (!res.EndsWith(".dll") && !res.EndsWith(".so") && !res.Contains("HorsieBindings"))
                     {
                         Stream stream = asm.GetManifestResourceStream(res);
                         if (stream != null)

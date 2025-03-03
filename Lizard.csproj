@@ -104,6 +104,7 @@
 
   </PropertyGroup>
 
+  
   <!-- The "instruction-set" argument is required for AOT to generate code with intrinsics -->
   <ItemGroup>
     <ilcArg Include="--Ot" />
@@ -111,10 +112,14 @@
   </ItemGroup>
 
 
+  <!-- Network files are stored with the .bin extension in the network repository.
+       If an EVALFILE isn't explicitly given, then we'll try to download the file from the repository, and append .bin to the name given in network.txt
+  -->
   <PropertyGroup>
-    <EFileExt>.bin</EFileExt>
+    <EFileExt></EFileExt>
   </PropertyGroup>
 
+  
   <!-- PreBuildEvent is early enough that the EmbedNetworkFile target works properly
        but late enough that VS doesn't constantly try to download the file
   -->
@@ -122,11 +127,18 @@
     <PropertyGroup>
       <EVALFILE>$([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt))</EVALFILE>
     </PropertyGroup>
+    
+    <CreateProperty Value=".bin">
+      <Output TaskParameter="Value" PropertyName="EFileExt"/>
+    </CreateProperty>
 
     <Message Text="EVALFILE set to $(EVALFILE)" Importance="high"/>
   </Target>
 
-
+  
+  <!-- PreBuildEvent is early enough that the EmbedNetworkFile target works properly
+       but late enough that VS doesn't constantly try to download the file
+  -->
   <Target Name="DownloadNetworkFiles" AfterTargets="SetEvalFile" Condition="!Exists('$(EVALFILE)$(EFileExt)')">
     <PropertyGroup>
       <NetworkFileURL>https://github.com/liamt19/lizard-nets/releases/download/$(EVALFILE)/$(EVALFILE)$(EFileExt)</NetworkFileURL>
@@ -141,7 +153,10 @@
     </DownloadFile>
   </Target>
 
-
+  
+  <!-- Embed the file here, after reading network.txt (if EVALFILE wasn't provided) and downloading it (if necessary).
+       Also set EvalFileAttribute so we know what the file is named
+  -->
   <Target Name="EmbedNetworkFile" AfterTargets="DownloadNetworkFiles;SetEvalFile">
     <Message Text="Embedding $(EVALFILE)$(EFileExt) as a resource" Importance="high"/>
 
@@ -157,6 +172,7 @@
   </Target>
 
 
+  <!-- Handle Horsie bindings and AOT -->
   <ItemGroup>
     <EmbeddedResource Condition="'$(BINDINGS)' != '' AND Exists('$(BINDINGS)')" Include="$(BINDINGS)" />
 

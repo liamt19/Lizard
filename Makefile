@@ -50,17 +50,8 @@ ifneq ($(OS),Windows_NT)
 endif
 
 
-#  DEFAULT_NET trick here is based off of Stormphrax (https://github.com/Ciekce/Stormphrax/blob/main/Makefile)
-#  It uses Github releases so that the size of this main repo doesn't get too large.
-ifeq ($(UNAME_S),Darwin)
-	DEFAULT_NET := $(shell cat network.txt)
-else
-	DEFAULT_NET := $(file < network.txt)
-endif
-
-ifndef EVALFILE
-	EVALFILE = $(DEFAULT_NET)
-	NO_EVALFILE_SET = true
+ifdef EVALFILE
+	EVALFILE_STR = -p:EVALFILE=$(EVALFILE)
 endif
 
 
@@ -71,7 +62,7 @@ endif
 #  -c Release                  Builds using the Release configuration in Lizard.csproj
 #  -p:AssemblyName=$(EXE)      Renames the binary to whatever $(EXE) is.
 #  -p:EVALFILE=$(EVALFILE)     Path to a network to be bundled.
-BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) -p:EVALFILE=$(EVALFILE) -p:BINDINGS=$(BINDINGS_FILE)
+BUILD_OPTS := --self-contained -v quiet -p:WarningLevel=0 $(OUT_DIR) -c Release -p:AssemblyName=$(EXE) $(EVALFILE_STR) -p:BINDINGS=$(BINDINGS_FILE)
 
 
 #  -p:PublishAOT=true                 Actually enables AOT
@@ -84,14 +75,6 @@ AOT_OPTS = -p:PublishAOT=true -p:PublishSingleFile=false -p:IS_AOT=true -p:IlcIn
 .PHONY: release
 .DEFAULT_GOAL := release
 
-ifdef NO_EVALFILE_SET
-$(EVALFILE):
-	$(info Downloading default network $(DEFAULT_NET).bin)
-	curl -sOL https://github.com/liamt19/lizard-nets/releases/download/$(DEFAULT_NET)/$(DEFAULT_NET).bin
-
-download-net: $(EVALFILE)
-endif
-
 
 $(BINDINGS_FILE):
 	-g++ -std=c++20 -O3 -funroll-loops -march=x86-64-v3 -fPIC -shared -o $(BINDINGS_FILE) ./Bindings/simd.cpp
@@ -100,19 +83,19 @@ bindings: $(BINDINGS_FILE)
 
 #  Try building the non-AOT version first, and then try to build the AOT version if possible.
 #  This recipe should always work, but AOT requires some additional setup so that recipe may fail.
-release: $(EVALFILE) $(BINDINGS_FILE)
+release: $(BINDINGS_FILE)
 	dotnet publish . $(BUILD_OPTS)
 	$(FIX_OUTPUT)
 
 #  This will/might only succeed if you have the right toolchain
-aot: $(EVALFILE)
+aot:
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS)
 
-512: $(EVALFILE) $(BINDINGS_FILE)
+512: $(BINDINGS_FILE)
 	dotnet publish . $(BUILD_OPTS) -p:DefineConstants="AVX512"
 	$(FIX_OUTPUT)
 
-aot_512: $(EVALFILE)
+aot_512:
 	-dotnet publish . $(BUILD_OPTS) $(AOT_OPTS) -p:DefineConstants="AVX512"
 
 all:
