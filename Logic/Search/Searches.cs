@@ -838,9 +838,7 @@ namespace Lizard.Logic.Search
                 futility = (short)(Math.Min(ss->StaticEval, bestScore) + QSFutileMargin);
             }
 
-            int prevSquare = (ss - 1)->CurrentMove.IsNull() ? SquareNB : (ss - 1)->CurrentMove.To;
             int legalMoves = 0;
-            int movesMade = 0;
             int checkEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
@@ -867,12 +865,10 @@ namespace Lizard.Logic.Search
                 bool isCapture = (theirPiece != None && !m.IsCastle);
                 bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
-                movesMade++;
-
                 if (bestScore > ScoreTTLoss)
                 {
-                    if (!(givesCheck || m.IsPromotion)
-                        && (prevSquare != moveTo)
+                    if (!givesCheck
+                        && !m.IsPromotion
                         && futility > -ScoreWin)
                     {
                         if (legalMoves > 3 && !ss->InCheck)
