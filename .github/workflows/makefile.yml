@@ -32,6 +32,9 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    - name: Check ver
+      run: make --version
+      
     - name: Run Make
       run: make
       
