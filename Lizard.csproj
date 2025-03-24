@@ -104,6 +104,7 @@
 
   </PropertyGroup>
 
+  
   <!-- The "instruction-set" argument is required for AOT to generate code with intrinsics -->
   <ItemGroup>
     <ilcArg Include="--Ot" />
@@ -111,30 +112,67 @@
   </ItemGroup>
 
 
+  <!-- Network files are stored with the .bin extension in the network repository.
+       If an EVALFILE isn't explicitly given, then we'll try to download the file from the repository, and append .bin to the name given in network.txt
+  -->
   <PropertyGroup>
-    <!-- Check if EVALFILE is not defined and set it to the content of network.txt if necessary -->
-    <ReadNetworkFile Condition="'$(EVALFILE)' == ''">
-      $([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt)).bin
-    </ReadNetworkFile>
-    <EVALFILE Condition="'$(EVALFILE)' == ''">$(ReadNetworkFile)</EVALFILE>
+    <EFileExt></EFileExt>
   </PropertyGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="$(EVALFILE)" />
-    <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
-      <_Parameter1>$(EVALFILE)</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
-
-  <!-- Embed the BINDINGS file if it's defined and the file actually exists
+  
+  <!-- PreBuildEvent is early enough that the EmbedNetworkFile target works properly
+       but late enough that VS doesn't constantly try to download the file
   -->
+  <Target Name="SetEvalFile" BeforeTargets="PreBuildEvent" Condition="'$(EVALFILE)' == ''">
+    <PropertyGroup>
+      <EVALFILE>$([System.IO.File]::ReadAllText($(MSBuildThisFileDirectory)network.txt))</EVALFILE>
+    </PropertyGroup>
+    
+    <CreateProperty Value=".bin">
+      <Output TaskParameter="Value" PropertyName="EFileExt" />
+    </CreateProperty>
+
+    <Message Text="EVALFILE set to $(EVALFILE)" Importance="high" />
+  </Target>
+
+  
+  <!-- Download the network file if it doesn't already exist, and place it into the current directory
+  -->
+  <Target Name="DownloadNetworkFiles" AfterTargets="SetEvalFile" Condition="!Exists('$(EVALFILE)$(EFileExt)')">
+    <PropertyGroup>
+      <NetworkFileURL>https://github.com/liamt19/lizard-nets/releases/download/$(EVALFILE)/$(EVALFILE)$(EFileExt)</NetworkFileURL>
+    </PropertyGroup>
+
+    <Message Text="Downloading $(NetworkFileURL) into $(MSBuildThisFileDirectory)" Importance="high" />
+
+    <DownloadFile SourceUrl="$(NetworkFileURL)" DestinationFolder="$(MSBuildThisFileDirectory)">
+      <Output TaskParameter="DownloadedFile" ItemName="Content" />
+    </DownloadFile>
+  </Target>
+
+  
+  <!-- Embed the file here, after reading network.txt (if EVALFILE wasn't provided) and downloading it (if necessary).
+       Also set EvalFileAttribute so we know what the file is named
+  -->
+  <Target Name="EmbedNetworkFile" AfterTargets="DownloadNetworkFiles;SetEvalFile">
+    <Message Text="Embedding $(EVALFILE)$(EFileExt) as a resource" Importance="high" />
+
+    <ItemGroup>
+      <EmbeddedResource Include="$(EVALFILE)$(EFileExt)" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <AssemblyAttribute Include="Lizard.Logic.Util.EvalFileAttribute">
+        <_Parameter1>$(EVALFILE)$(EFileExt)</_Parameter1>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
+
+  <!-- Handle Horsie bindings and AOT -->
   <ItemGroup>
     <EmbeddedResource Condition="'$(BINDINGS)' != '' AND Exists('$(BINDINGS)')" Include="$(BINDINGS)" />
-  </ItemGroup>
 
-  <!-- Targeting the "aot" recipe in the makefile will set this to true.
-  -->
-  <ItemGroup>
     <AssemblyAttribute Include="Lizard.Logic.Util.IsAOTAttribute">
       <_Parameter1>$(IS_AOT)</_Parameter1>
     </AssemblyAttribute>

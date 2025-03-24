@@ -72,15 +72,13 @@ namespace Lizard.Logic.NN
             try
             {
                 Assembly asm = Assembly.GetExecutingAssembly();
-                var resName = $"{asm.GetName().Name}.{networkToLoad}";
-                Debug.WriteLine($"resources [{string.Join(", ", asm.GetManifestResourceNames())}]");
                 foreach (string res in asm.GetManifestResourceNames())
                 {
                     //  Specifically exclude the .resx file
                     if (res.ToLower().Contains("properties"))
                         continue;
 
-                    if (res.EndsWith(".bin") || res.EndsWith(".nnue") || res.EndsWith(".zstd"))
+                    if (!res.EndsWith(".dll") && !res.EndsWith(".so") && !res.Contains("HorsieBindings"))
                     {
                         Stream stream = asm.GetManifestResourceStream(res);
                         if (stream != null)
@@ -109,7 +107,7 @@ namespace Lizard.Logic.NN
             }
 
 
-            Console.WriteLine($"Couldn't find a network named '{networkToLoad}' or as a compiled resource or as a file within the current directory!");
+            Console.WriteLine($"Couldn't find a network named '{networkToLoad}' as a compiled resource or file within the current directory!");
             Console.ReadLine();
 
             if (exitIfFail)
