@@ -44,6 +44,10 @@
         public const bool UseProbCut = true;
 
 
+        public static int QuietOrderMin = 100;
+        public static int QuietOrderMax = 200;
+        public static int QuietOrderMult = 10;
+
         public static int SEMinDepth = 5;
         public static int SENumerator = 11;
         public static int SEDoubleMargin = 24;

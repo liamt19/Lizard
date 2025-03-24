@@ -201,6 +201,16 @@ namespace Lizard.Logic.Search
             }
 
 
+            if (!(ss - 1)->InCheck
+                && (ss - 1)->CurrentMove != Move.Null
+                && pos.CapturedPiece == None)
+            {
+                var val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
+                var bonus = Math.Clamp(val, -QuietOrderMin, QuietOrderMax);
+                history.MainHistory[Not(us), (ss - 1)->CurrentMove] <<= bonus;
+            }
+
+
             if (UseRFP
                 && !ss->TTPV
                 && !doSkip
