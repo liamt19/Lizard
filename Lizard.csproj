@@ -136,8 +136,7 @@
   </Target>
 
   
-  <!-- PreBuildEvent is early enough that the EmbedNetworkFile target works properly
-       but late enough that VS doesn't constantly try to download the file
+  <!-- Download the network file if it doesn't already exist, and place it into the current directory
   -->
   <Target Name="DownloadNetworkFiles" AfterTargets="SetEvalFile" Condition="!Exists('$(EVALFILE)$(EFileExt)')">
     <PropertyGroup>
