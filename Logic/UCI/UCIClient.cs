@@ -391,6 +391,10 @@ namespace Lizard.Logic.UCI
             Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
+            Options[nameof(QuietOrderMin)].AutoMinMax();
+            Options[nameof(QuietOrderMax)].AutoMinMax();
+            Options[nameof(QuietOrderMult)].AutoMinMax();
+
             Options[nameof(SEMinDepth)].AutoMinMax();
             Options[nameof(SENumerator)].AutoMinMax();
             Options[nameof(SEDoubleMargin)].AutoMinMax();
