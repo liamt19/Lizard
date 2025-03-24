@@ -55,7 +55,8 @@ namespace Lizard.Logic.Transposition
 
             if (nodeType == TTNodeType.Exact
                 || k != Key
-                || depth + (isPV ? 2 : 0) > _Depth - 4 + DepthOffset)
+                || age != Age
+                || depth + (isPV ? 2 : 0) > Depth - 4)
             {
                 _Key = k;
                 _Score = score;
