@@ -224,6 +224,19 @@ namespace Lizard.Logic.Search
             }
 
 
+            if (UseRazoring
+                && !isPV
+                && !doSkip
+                && depth <= RazoringMaxDepth
+                && alpha < 2000
+                && ss->StaticEval + RazoringMult * depth <= alpha)
+            {
+                score = QSearch<NodeType>(pos, ss, alpha, alpha + 1);
+                if (score <= alpha)
+                    return score;
+            }
+
+
             if (UseNMP
                 && !isPV
                 && !doSkip
