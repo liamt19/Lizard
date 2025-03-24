@@ -408,6 +408,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(NMPEvalDiv)].AutoMinMax();
             Options[nameof(NMPEvalMin)].SetMinMax(0, 6);
 
+            Options[nameof(RazoringMaxDepth)].AutoMinMax();
+            Options[nameof(RazoringMult)].AutoMinMax();
+
             Options[nameof(RFPMaxDepth)].AutoMinMax();
             Options[nameof(RFPMargin)].AutoMinMax();
 

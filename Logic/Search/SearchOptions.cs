@@ -40,6 +40,7 @@
         public const bool ShallowPruning = true;
         public const bool UseSingularExtensions = true;
         public const bool UseNMP = true;
+        public const bool UseRazoring = true;
         public const bool UseRFP = true;
         public const bool UseProbCut = true;
 
@@ -60,6 +61,9 @@
         public static int NMPDepthDiv = 4;
         public static int NMPEvalDiv = 165;
         public static int NMPEvalMin = 2;
+
+        public static int RazoringMaxDepth = 4;
+        public static int RazoringMult = 280;
 
         public static int RFPMaxDepth = 6;
         public static int RFPMargin = 46;
