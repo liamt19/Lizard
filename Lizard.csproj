@@ -129,10 +129,10 @@
     </PropertyGroup>
     
     <CreateProperty Value=".bin">
-      <Output TaskParameter="Value" PropertyName="EFileExt"/>
+      <Output TaskParameter="Value" PropertyName="EFileExt" />
     </CreateProperty>
 
-    <Message Text="EVALFILE set to $(EVALFILE)" Importance="high"/>
+    <Message Text="EVALFILE set to $(EVALFILE)" Importance="high" />
   </Target>
 
   
@@ -144,11 +144,9 @@
       <NetworkFileURL>https://github.com/liamt19/lizard-nets/releases/download/$(EVALFILE)/$(EVALFILE)$(EFileExt)</NetworkFileURL>
     </PropertyGroup>
 
-    <Message Text="Downloading $(NetworkFileURL) into $(MSBuildThisFileDirectory)" Importance="high"/>
+    <Message Text="Downloading $(NetworkFileURL) into $(MSBuildThisFileDirectory)" Importance="high" />
 
-    <DownloadFile 
-      SourceUrl="$(NetworkFileURL)" 
-      DestinationFolder="$(MSBuildThisFileDirectory)">
+    <DownloadFile SourceUrl="$(NetworkFileURL)" DestinationFolder="$(MSBuildThisFileDirectory)">
       <Output TaskParameter="DownloadedFile" ItemName="Content" />
     </DownloadFile>
   </Target>
@@ -158,7 +156,7 @@
        Also set EvalFileAttribute so we know what the file is named
   -->
   <Target Name="EmbedNetworkFile" AfterTargets="DownloadNetworkFiles;SetEvalFile">
-    <Message Text="Embedding $(EVALFILE)$(EFileExt) as a resource" Importance="high"/>
+    <Message Text="Embedding $(EVALFILE)$(EFileExt) as a resource" Importance="high" />
 
     <ItemGroup>
       <EmbeddedResource Include="$(EVALFILE)$(EFileExt)" />

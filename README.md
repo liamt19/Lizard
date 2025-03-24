@@ -47,7 +47,7 @@ If your processor supports Avx512, you can also use `make 512` to compile a bina
 > Building the optional bindings requires a g++ version supporting C++20.
 
 > [!IMPORTANT]
-> NNUE networks are served in [a separate repository](https://github.com/liamt19/lizard-nets/) to keep the size of this main repository small. The makefile will automatically take care of this by retrieving the network specified in the [network.txt file in the repo root](/network.txt), but note that compiling directly via `dotnet publish`/`build` will fail unless you [manually download the corresponding network file](https://github.com/liamt19/lizard-nets/releases/latest) and place it in the directory (or have previously used the makefile).
+> NNUE networks are served in [a separate repository](https://github.com/liamt19/lizard-nets/) to keep the size of this main repository small (thanks to [Stormphrax](https://github.com/Ciekce/Stormphrax) author Ciekce for the process). MSBuild will automatically take care of this by retrieving the network specified in the [network.txt file in the repo root](/network.txt). If this fails for whatever reason, you can also [manually download the corresponding network file](https://github.com/liamt19/lizard-nets/releases/latest) and place it in the directory.
 
 ## Some spotty history:
 #### Version 9.3:
