@@ -433,7 +433,7 @@ namespace Lizard.Logic.Search
                     if (skipQuiets == false)
                         skipQuiets = legalMoves >= lmpMoves;
 
-                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                    bool givesCheck = pos.GivesCheck(ourPiece, moveTo);
                     bool isQuiet = !(givesCheck || isCapture);
 
                     if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
@@ -887,7 +887,7 @@ namespace Lizard.Logic.Search
                 int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
                 bool isCapture = (theirPiece != None && !m.IsCastle);
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                bool givesCheck = pos.GivesCheck(ourPiece, moveTo);
 
                 if (bestScore > ScoreTTLoss)
                 {
