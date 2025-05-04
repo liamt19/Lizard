@@ -468,43 +468,54 @@ namespace Lizard.Logic.Search
                 if (UseSingularExtensions
                     && !isRoot
                     && !doSkip
-                    && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
                     && m.Equals(ttMove)
-                    && Math.Abs(ttScore) < ScoreWin
-                    && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
+                    && ss->Ply < thisThread.RootDepth * 2
+                    && Math.Abs(ttScore) < ScoreWin)
                 {
-                    int singleBeta = ttScore - (SENumerator * depth / 10);
-                    int singleDepth = (depth + SEDepthAdj) / 2;
+                    var SEDepth = SEMinDepth + ((isPV && tte->PV) ? 1 : 0);
 
-                    ss->Skip = m;
-                    score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
-                    ss->Skip = Move.Null;
+                    if (depth >= SEDepth
+                        && ((tte->Bound & BoundLower) != 0)
+                        && tte->Depth >= depth - 3)
+                    {
+                        int singleBeta = ttScore - (SENumerator * depth / 10);
+                        int singleDepth = (depth + SEDepthAdj) / 2;
 
-                    if (score < singleBeta)
-                    {
-                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+                        ss->Skip = m;
+                        score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
+                        ss->Skip = Move.Null;
 
-                        //  This move seems to be good, so extend it.
-                        extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                        if (score < singleBeta)
+                        {
+                            bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
+                            bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+
+                            //  This move seems to be good, so extend it.
+                            extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                        }
+                        else if (singleBeta >= beta)
+                        {
+                            return singleBeta;
+                        }
+                        else if (ttScore >= beta)
+                        {
+                            extend = -2 + (isPV ? 1 : 0);
+                        }
+                        else if (cutNode)
+                        {
+                            extend = -2;
+                        }
+                        else if (ttScore <= alpha)
+                        {
+                            extend = -1;
+                        }
                     }
-                    else if (singleBeta >= beta)
+                    else if (depth < SEDepth
+                        && !ss->InCheck
+                        && eval < alpha - 25
+                        && (tte->Bound & BoundLower) != 0)
                     {
-                        return singleBeta;
-                    }
-                    else if (ttScore >= beta)
-                    {
-                        extend = -2 + (isPV ? 1 : 0);
-                    }
-                    else if (cutNode)
-                    {
-                        extend = -2;
-                    }
-                    else if (ttScore <= alpha)
-                    {
-                        extend = -1;
+                        extend = 1;
                     }
                 }
 
