@@ -242,5 +242,5 @@ namespace Lizard.Logic.Core
             return mask;
         }
 
-}
+    }
 }
