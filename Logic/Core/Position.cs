@@ -794,9 +794,9 @@ namespace Lizard.Logic.Core
 
 
         [MethodImpl(Inline)]
-        public bool IsDraw()
+        public bool IsDraw(short ply)
         {
-            return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition();
+            return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
         }
 
 
@@ -825,40 +825,23 @@ namespace Lizard.Logic.Core
         /// Only considers moves made past the last time the HalfMoves clock was reset,
         /// which occurs when captures are made or a pawn moves.
         /// </summary>
-        public bool IsThreefoldRepetition()
+        public bool IsThreefoldRepetition(short ply)
         {
-            //  At least 8 moves must be made before a draw can occur.
-            if (GamePly < 8)
+            var dist = Math.Min(State->HalfmoveClock, GamePly);
+
+            bool rep = false;
+            var st = StartingState;
+            for (int i = 4; i <= dist; i += 2)
             {
-                return false;
-            }
-
-            ulong currHash = State->Hash;
-
-            //  Beginning with the current state's Hash, step backwards in increments of 2 until reaching the first move that we made.
-            //  If we encounter the current hash 2 additional times, then this is a draw.
-
-            int count = 0;
-            StateInfo* temp = State;
-            for (int i = 0; i < GamePly - 1; i += 2)
-            {
-                if (temp->Hash == currHash)
+                if (st[GamePly - i].Hash == State->Hash)
                 {
-                    count++;
-
-                    if (count == 3)
-                    {
+                    if (ply >= i || rep)
                         return true;
-                    }
-                }
 
-                if ((temp - 1) == StartingState || (temp - 2) == StartingState)
-                {
-                    break;
+                    rep = true;
                 }
-
-                temp -= 2;
             }
+
             return false;
         }
 

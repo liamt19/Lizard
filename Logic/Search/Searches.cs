@@ -100,7 +100,7 @@ namespace Lizard.Logic.Search
 
             if (!isRoot)
             {
-                if (pos.IsDraw())
+                if (pos.IsDraw(ss->Ply))
                 {
                     return MakeDrawScore(thisThread.Nodes);
                 }
@@ -797,7 +797,7 @@ namespace Lizard.Logic.Search
             }
 
 
-            if (pos.IsDraw())
+            if (pos.IsDraw(ss->Ply))
             {
                 return ScoreDraw;
             }

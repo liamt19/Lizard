@@ -146,7 +146,7 @@ namespace Lizard.Logic.Datagen
                         result = (pos.ToMove == White) ? GameResult.BlackWin : GameResult.WhiteWin;
                         break;
                     }
-                    else if (pos.IsDraw())
+                    else if (pos.IsDraw(0))
                     {
                         result = GameResult.Draw;
                         break;
