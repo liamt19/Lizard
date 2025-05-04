@@ -458,7 +458,8 @@ namespace Lizard.Logic.Search
                         continue;
                     }
 
-                    if ((!isQuiet || skipQuiets) && !SEE_GE(pos, m, -ShallowSEEMargin * depth))
+                    var seeMargin = -ShallowSEEMargin * depth;
+                    if ((!isQuiet || skipQuiets) && !SEE_GE(pos, m, seeMargin))
                     {
                         continue;
                     }

@@ -134,12 +134,12 @@ namespace Lizard.Logic.Search.Ordering
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
 
-                sm.Score = GetSEEValue(m.IsEnPassant ? Pawn : bb.GetPieceAtIndex(m.To));
+                sm.Score = m.IsEnPassant ? Pawn : bb.GetPieceAtIndex(m.To);
                 if (m.IsPromotion)
                 {
                     //  Gives promotions a higher score than captures.
                     //  We can assume a queen promotion is better than most captures.
-                    sm.Score += GetSEEValue(Queen) + 1;
+                    sm.Score += 10;
                 }
             }
         }
