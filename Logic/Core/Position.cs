@@ -91,6 +91,11 @@ namespace Lizard.Logic.Core
         [MethodImpl(Inline)]
         public bool IsCapture(Move m) => ((bb.GetPieceAtIndex(m.To) != None && !m.IsCastle) || m.IsEnPassant);
 
+        [MethodImpl(Inline)]
+        public bool GivesCheck(int pt, int sq) => (State->CheckSquares[pt] & SquareBB[sq]) != 0;
+
+        [MethodImpl(Inline)]
+        public ulong ThreatsBy(int pc, int pt) => bb.ThreatsBy(pc, pt);
 
         /// <summary>
         /// Creates a new Position object and loads the provided FEN.
