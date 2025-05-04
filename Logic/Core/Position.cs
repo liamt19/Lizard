@@ -89,7 +89,10 @@ namespace Lizard.Logic.Core
         public bool HasNonPawnMaterial(int pc) => (((bb.Occupancy ^ bb.Pieces[Pawn] ^ bb.Pieces[King]) & bb.Colors[pc]) != 0);
 
         [MethodImpl(Inline)]
-        public bool IsCapture(Move m) => ((bb.GetPieceAtIndex(m.To) != None && !m.IsCastle) || m.IsEnPassant);
+        public bool IsCapture(Move m) => (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
+
+        [MethodImpl(Inline)]
+        public bool IsNoisy(Move m) => (m.IsEnPassant || IsCapture(m));
 
         [MethodImpl(Inline)]
         public bool GivesCheck(int pt, int sq) => (State->CheckSquares[pt] & SquareBB[sq]) != 0;
