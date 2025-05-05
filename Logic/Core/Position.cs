@@ -468,6 +468,7 @@ namespace Lizard.Logic.Core
             }
             
             State++;
+            GamePly++;
 
             if (State->EPSquare != EPNone)
             {
@@ -491,6 +492,7 @@ namespace Lizard.Logic.Core
         public void UnmakeNullMove()
         {
             State--;
+            GamePly--;
 
             ToMove = Not(ToMove);
         }
