@@ -429,7 +429,7 @@ namespace Lizard.Logic.UCI
 
             Options[nameof(LMRQuietDiv)].AutoMinMax();
             Options[nameof(LMRCaptureDiv)].AutoMinMax();
-            Options[nameof(LMRExtMargin)].AutoMinMax();
+            Options[nameof(DeeperMargin)].AutoMinMax();
 
             Options[nameof(QSFutileMargin)].AutoMinMax();
             Options[nameof(QSSeeMargin)].AutoMinMax();

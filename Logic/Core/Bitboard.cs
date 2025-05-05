@@ -232,5 +232,15 @@ namespace Lizard.Logic.Core
             };
         }
 
+
+        public ulong ThreatsBy(int pc, int pt) {
+            ulong mask = 0;
+            var pieces = Pieces[pt] & Colors[pc];
+            while (pieces != 0)
+                mask |= AttackMask(poplsb(&pieces), pc, pt, Occupancy);
+
+            return mask;
+        }
+
     }
 }

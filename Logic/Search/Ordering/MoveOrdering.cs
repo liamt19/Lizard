@@ -18,6 +18,10 @@ namespace Lizard.Logic.Search.Ordering
             ref Bitboard bb = ref pos.bb;
             int pc = pos.ToMove;
 
+            var pawnThreats = pos.ThreatsBy(Not(pc), Pawn);
+            var minorThreats = pos.ThreatsBy(Not(pc), Knight) | pos.ThreatsBy(Not(pc), Bishop) | pawnThreats;
+            var rookThreats = pos.ThreatsBy(Not(pc), Rook) | minorThreats;
+
             for (int i = 0; i < size; i++)
             {
                 ref ScoredMove sm = ref list[i];
@@ -55,10 +59,31 @@ namespace Lizard.Logic.Search.Ordering
                         sm.Score += ((2 * PlyHistoryTable.MaxPlies + 1) * history.PlyHistory[ss->Ply, m]) / (2 * ss->Ply + 1);
                     }
 
-                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
+                    if (pos.GivesCheck(pt, moveTo))
                     {
                         sm.Score += OrderingCheckBonus;
                     }
+
+                    int threat = 0;
+                    var fromBB = SquareBB[moveFrom];
+                    var toBB = SquareBB[moveTo];
+                    if (pt == Queen)
+                    {
+                        threat += ((fromBB & rookThreats) != 0) ? 12288 : 0;
+                        threat -= ((toBB   & rookThreats) != 0) ? 11264 : 0;
+                    }
+                    else if (pt == Rook)
+                    {
+                        threat += ((fromBB & minorThreats) != 0) ? 10240 : 0;
+                        threat -= ((toBB   & minorThreats) != 0) ?  9216 : 0;
+                    }
+                    else if (pt == Bishop || pt == Knight)
+                    {
+                        threat += ((fromBB & pawnThreats)!= 0) ? 8192 : 0;
+                        threat -= ((toBB   & pawnThreats)!= 0) ? 7168 : 0;
+                    }
+
+                    list[i].Score += threat;
                 }
 
                 if (pt == Knight)
@@ -108,7 +133,7 @@ namespace Lizard.Logic.Search.Ordering
                     sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
                     sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
 
-                    if ((pos.State->CheckSquares[pt] & SquareBB[moveTo]) != 0)
+                    if (pos.GivesCheck(pt, moveTo))
                     {
                         sm.Score += OrderingCheckBonus;
                     }
@@ -134,12 +159,12 @@ namespace Lizard.Logic.Search.Ordering
                 ref ScoredMove sm = ref list[i];
                 Move m = sm.Move;
 
-                sm.Score = GetSEEValue(m.IsEnPassant ? Pawn : bb.GetPieceAtIndex(m.To));
+                sm.Score = m.IsEnPassant ? Pawn : bb.GetPieceAtIndex(m.To);
                 if (m.IsPromotion)
                 {
                     //  Gives promotions a higher score than captures.
                     //  We can assume a queen promotion is better than most captures.
-                    sm.Score += GetSEEValue(Queen) + 1;
+                    sm.Score += 10;
                 }
             }
         }

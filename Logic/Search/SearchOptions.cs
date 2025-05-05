@@ -78,12 +78,13 @@
         public static int NMFutMarginB = 180;
         public static int NMFutMarginM = 81;
         public static int NMFutMarginDiv = 139;
-        public static int ShallowSEEMargin = 216;
+        public static int ShallowSEEMargin = 80;
         public static int ShallowMaxDepth = 9;
 
         public static int LMRQuietDiv = 12948;
         public static int LMRCaptureDiv = 9424;
-        public static int LMRExtMargin = 132;
+
+        public static int DeeperMargin = 50;
 
         public static int QSFutileMargin = 187;
         public static int QSSeeMargin = 78;
@@ -103,10 +104,10 @@
         public static int StatMalusMax = 1441;
 
         public static int SEEValuePawn = 105;
-        public static int SEEValueKnight = 900;
-        public static int SEEValueBishop = 1054;
-        public static int SEEValueRook = 1332;
-        public static int SEEValueQueen = 2300;
+        public static int SEEValueKnight = 300;
+        public static int SEEValueBishop = 315;
+        public static int SEEValueRook = 535;
+        public static int SEEValueQueen = 970;
 
         public static int ValuePawn = 171;
         public static int ValueKnight = 794;

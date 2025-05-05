@@ -433,7 +433,7 @@ namespace Lizard.Logic.Search
                     if (skipQuiets == false)
                         skipQuiets = legalMoves >= lmpMoves;
 
-                    bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
+                    bool givesCheck = pos.GivesCheck(ourPiece, moveTo);
                     bool isQuiet = !(givesCheck || isCapture);
 
                     if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
@@ -458,7 +458,8 @@ namespace Lizard.Logic.Search
                         continue;
                     }
 
-                    if ((!isQuiet || skipQuiets) && !SEE_GE(pos, m, -ShallowSEEMargin * depth))
+                    var seeMargin = -ShallowSEEMargin * depth;
+                    if ((!isQuiet || skipQuiets) && !SEE_GE(pos, m, seeMargin))
                     {
                         continue;
                     }
@@ -467,43 +468,54 @@ namespace Lizard.Logic.Search
                 if (UseSingularExtensions
                     && !isRoot
                     && !doSkip
-                    && ss->Ply < thisThread.RootDepth * 2
-                    && depth >= (SEMinDepth + (isPV && tte->PV ? 1 : 0))
                     && m.Equals(ttMove)
-                    && Math.Abs(ttScore) < ScoreWin
-                    && ((tte->Bound & BoundLower) != 0)
-                    && tte->Depth >= depth - 3)
+                    && ss->Ply < thisThread.RootDepth * 2
+                    && Math.Abs(ttScore) < ScoreWin)
                 {
-                    int singleBeta = ttScore - (SENumerator * depth / 10);
-                    int singleDepth = (depth + SEDepthAdj) / 2;
+                    var SEDepth = SEMinDepth + ((isPV && tte->PV) ? 1 : 0);
 
-                    ss->Skip = m;
-                    score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
-                    ss->Skip = Move.Null;
+                    if (depth >= SEDepth
+                        && ((tte->Bound & BoundLower) != 0)
+                        && tte->Depth >= depth - 3)
+                    {
+                        int singleBeta = ttScore - (SENumerator * depth / 10);
+                        int singleDepth = (depth + SEDepthAdj) / 2;
 
-                    if (score < singleBeta)
-                    {
-                        bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
-                        bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+                        ss->Skip = m;
+                        score = Negamax<NonPVNode>(pos, ss, singleBeta - 1, singleBeta, singleDepth, cutNode);
+                        ss->Skip = Move.Null;
 
-                        //  This move seems to be good, so extend it.
-                        extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                        if (score < singleBeta)
+                        {
+                            bool doubleExt = !isPV && ss->DoubleExtensions <= 8 && (score < singleBeta - SEDoubleMargin);
+                            bool tripleExt = doubleExt && (score < singleBeta - SETripleMargin - (isCapture.AsInt() * SETripleCapSub));
+
+                            //  This move seems to be good, so extend it.
+                            extend = 1 + doubleExt.AsInt() + tripleExt.AsInt();
+                        }
+                        else if (singleBeta >= beta)
+                        {
+                            return singleBeta;
+                        }
+                        else if (ttScore >= beta)
+                        {
+                            extend = -2 + (isPV ? 1 : 0);
+                        }
+                        else if (cutNode)
+                        {
+                            extend = -2;
+                        }
+                        else if (ttScore <= alpha)
+                        {
+                            extend = -1;
+                        }
                     }
-                    else if (singleBeta >= beta)
+                    else if (depth < SEDepth
+                        && !ss->InCheck
+                        && eval < alpha - 25
+                        && (tte->Bound & BoundLower) != 0)
                     {
-                        return singleBeta;
-                    }
-                    else if (ttScore >= beta)
-                    {
-                        extend = -2 + (isPV ? 1 : 0);
-                    }
-                    else if (cutNode)
-                    {
-                        extend = -2;
-                    }
-                    else if (ttScore <= alpha)
-                    {
-                        extend = -1;
+                        extend = 1;
                     }
                 }
 
@@ -569,7 +581,7 @@ namespace Lizard.Logic.Search
                     {
                         //  This is mainly SF's idea about a verification search, and updating
                         //  the continuation histories based on the result of this search.
-                        newDepth += (score > (bestScore + LMRExtMargin)) ? 1 : 0;
+                        newDepth += (score > (bestScore + DeeperMargin + 4 * newDepth)) ? 1 : 0;
                         newDepth -= (score < (bestScore + newDepth)) ? 1 : 0;
 
                         if (newDepth - 1 > reducedDepth)
@@ -734,7 +746,7 @@ namespace Lizard.Logic.Search
                 tte->Update(pos.Hash, MakeTTScore((short)bestScore, ss->Ply), bound, depth, toSave, rawEval, TT.Age, ss->TTPV);
 
                 if (!ss->InCheck
-                    && (bestMove.IsNull() || !pos.IsCapture(bestMove))
+                    && (bestMove.IsNull() || !pos.IsNoisy(bestMove))
                     && !(bound == TTNodeType.Alpha && bestScore <= ss->StaticEval)
                     && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
                 {
@@ -775,6 +787,8 @@ namespace Lizard.Logic.Search
             Move bestMove = Move.Null;
 
             int us = pos.ToMove;
+            bool inCheck = pos.Checked;
+
             int score = -ScoreMate - MaxPly;
             int bestScore = -ScoreInfinite;
             short futility = -ScoreInfinite;
@@ -784,7 +798,7 @@ namespace Lizard.Logic.Search
 
             int startingAlpha = alpha;
 
-            ss->InCheck = pos.Checked;
+            ss->InCheck = inCheck;
             ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
             short ttScore = ss->TTHit ? MakeNormalScore(tte->Score, ss->Ply) : ScoreNone;
             Move ttMove = ss->TTHit ? tte->BestMove : Move.Null;
@@ -804,7 +818,7 @@ namespace Lizard.Logic.Search
 
             if (ss->Ply >= MaxSearchStackPly - 1)
             {
-                return ss->InCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
+                return inCheck ? ScoreDraw : NNUE.GetEvaluation(pos);
             }
 
             if (!isPV
@@ -814,7 +828,7 @@ namespace Lizard.Logic.Search
                 return ttScore;
             }
 
-            if (ss->InCheck)
+            if (inCheck)
             {
                 eval = ss->StaticEval = -ScoreInfinite;
             }
@@ -847,22 +861,20 @@ namespace Lizard.Logic.Search
                     if (!ss->TTHit)
                         tte->Update(pos.Hash, MakeTTScore(eval, ss->Ply), TTNodeType.Alpha, DepthNone, Move.Null, rawEval, TT.Age, false);
 
-                    if (Math.Abs(eval) < ScoreTTWin) eval = (short) ((4 * eval + beta) / 5);
+                    if (Math.Abs(eval) < ScoreTTWin) 
+                        eval = (short) ((4 * eval + beta) / 5);
+
                     return eval;
                 }
 
-                if (eval > alpha)
-                {
-                    alpha = eval;
-                }
+                alpha = Math.Max(eval, alpha);
 
                 bestScore = eval;
-
-                futility = (short)(Math.Min(ss->StaticEval, bestScore) + QSFutileMargin);
+                futility = (short)(bestScore + QSFutileMargin);
             }
 
             int legalMoves = 0;
-            int checkEvasions = 0;
+            int quietEvasions = 0;
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegalQS(list);
@@ -883,65 +895,40 @@ namespace Lizard.Logic.Search
 
                 int moveFrom = m.From;
                 int moveTo = m.To;
-                int theirPiece = bb.GetPieceAtIndex(moveTo);
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
-                bool isCapture = (theirPiece != None && !m.IsCastle);
-                bool givesCheck = ((pos.State->CheckSquares[ourPiece] & SquareBB[moveTo]) != 0);
 
+                bool isCapture = pos.IsCapture(m);
                 if (bestScore > ScoreTTLoss)
                 {
-                    if (!givesCheck
-                        && !m.IsPromotion
-                        && futility > -ScoreWin)
-                    {
-                        if (legalMoves > 3 && !ss->InCheck)
-                        {
-                            //  If we've already tried 3 moves and we know that we aren't getting mated,
-                            //  only try checks, promotions, and recaptures
-                            continue;
-                        }
-
-                        short futilityValue = (short)(futility + GetPieceValue(theirPiece));
-
-                        if (futilityValue <= alpha)
-                        {
-                            //  Our eval is low, and this move doesn't win us enough material to raise it above alpha.
-                            bestScore = Math.Max(bestScore, futilityValue);
-                            continue;
-                        }
-
-                        if (futility <= alpha && !SEE_GE(pos, m, 1))
-                        {
-                            //  Our eval is low, and this move doesn't win us material
-                            bestScore = Math.Max(bestScore, futility);
-                            continue;
-                        }
-                    }
-
-                    if (checkEvasions >= 2)
-                    {
-                        //  If we are in check, only consider 2 non-capturing moves.
+                    if (quietEvasions >= 2)
                         break;
+
+                    if (!inCheck && legalMoves > 3)
+                        continue;
+
+                    if (!inCheck && futility <= alpha && !SEE_GE(pos, m, 1))
+                    {
+                        bestScore = Math.Max(bestScore, futility);
+                        continue;
                     }
 
-                    if (!ss->InCheck && !SEE_GE(pos, m, -QSSeeMargin))
+                    if (!inCheck && !SEE_GE(pos, m, -QSSeeMargin))
                     {
-                        //  This move loses a significant amount of material
                         continue;
                     }
                 }
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                if (ss->InCheck && !isCapture)
+                if (inCheck && !isCapture)
                 {
-                    checkEvasions++;
+                    quietEvasions++;
                 }
 
                 int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
 
                 ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
+                ss->ContinuationHistory = history.Continuations[inCheck.AsInt()][isCapture.AsInt()][histIdx];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -964,16 +951,16 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
-                            if (Math.Abs(bestScore) < ScoreTTWin) bestScore = ((4 * bestScore + beta) / 5);
+                            if (Math.Abs(bestScore) < ScoreTTWin) 
+                                bestScore = ((4 * bestScore + beta) / 5);
 
-                            //  Beta cut
                             break;
                         }
                     }
                 }
             }
 
-            if (ss->InCheck && legalMoves == 0)
+            if (inCheck && legalMoves == 0)
             {
                 return MakeMateScore(ss->Ply);
             }
