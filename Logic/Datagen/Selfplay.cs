@@ -367,7 +367,6 @@ namespace Lizard.Logic.Datagen
             ref Bitboard bb = ref pos.bb;
 
             pos.FullMoves = 1;
-            pos.GamePly = 0;
 
             pos.State = pos.StartingState;
 

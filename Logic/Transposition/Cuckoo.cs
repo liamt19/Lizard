@@ -1,4 +1,6 @@
-﻿namespace Lizard.Logic.Transposition
+﻿using System.Collections.Generic;
+
+namespace Lizard.Logic.Transposition
 {
     public static unsafe class Cuckoo
     {
@@ -62,21 +64,26 @@
         public static bool HasCycle(Position pos, int ply)
         {
             ref Bitboard bb = ref pos.bb;
+            var occ = bb.Occupancy;
             StateInfo* st = pos.State;
-            int dist = Math.Min(st->HalfmoveClock, st->PliesFromNull);
 
+            int dist = Math.Min(st->HalfmoveClock, st->PliesFromNull);
             if (dist < 3)
                 return false;
 
-            ulong HashFromStack(int i) => pos.StartingState[pos.GamePly - i].Hash;
+            ulong HashFromStack(int i) => pos.Hashes[^i];
 
             int slot;
-            ulong other = ~(HashFromStack(0) ^ HashFromStack(1));
+            var other = st->Hash ^ HashFromStack(1) ^ Zobrist.ColorHash;
             for (int i = 3; i <= dist; i += 2)
             {
-                other ^= ~(HashFromStack(i) ^ HashFromStack(i - 1));
+                var currKey = HashFromStack(i);
+                other ^= currKey ^ HashFromStack(i - 1) ^ Zobrist.ColorHash;
 
-                var diff = st->Hash ^ HashFromStack(i);
+                if (other != 0)
+                    continue;
+
+                var diff = st->Hash ^ currKey;
 
                 if (diff != Keys[(slot = Hash1(diff))] &&
                     diff != Keys[(slot = Hash2(diff))])
@@ -86,13 +93,16 @@
                 int moveFrom = m.From;
                 int moveTo = m.To;
 
-                if ((bb.Occupancy & LineBB[moveFrom][moveTo]) == 0)
-                {
-                    if (ply > i)
-                        return true;
+                if ((occ & BetweenBB[moveFrom][moveTo]) != 0)
+                    continue;
 
-                    int pc = (bb.GetPieceAtIndex(moveFrom) != None) ? bb.GetColorAtIndex(moveFrom) : bb.GetColorAtIndex(moveTo);
-                    return pc == pos.ToMove;
+                if (ply >= i)
+                    return true;
+
+                for (int j = i + 4; j <= dist; j += 2)
+                {
+                    if (HashFromStack(j) == HashFromStack(i))
+                        return true;
                 }
             }
 

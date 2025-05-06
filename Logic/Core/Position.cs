@@ -11,13 +11,6 @@ namespace Lizard.Logic.Core
         public Bitboard bb;
 
         /// <summary>
-        /// The number of moves that have been made so far since this Position was created.
-        /// <br></br>
-        /// Only used to easily keep track of how far along the StateStack we currently are.
-        /// </summary>
-        public int GamePly = 0;
-
-        /// <summary>
         /// The second number in the FEN, which starts at 1 and increases every time black moves.
         /// </summary>
         public int FullMoves = 1;
@@ -67,6 +60,7 @@ namespace Lizard.Logic.Core
 
         private readonly int[] CastlingRookSquares;
         private readonly ulong[] CastlingRookPaths;
+        public List<ulong> Hashes;
 
         public bool IsChess960 = false;
 
@@ -122,6 +116,7 @@ namespace Lizard.Logic.Core
 
             this.bb = new Bitboard();
 
+            Hashes = new List<ulong>(1024);
             StartingState = AlignedAllocZeroed<StateInfo>(StateStackSize);
 
             EndState = &StartingState[StateStackSize - 1];
@@ -241,12 +236,11 @@ namespace Lizard.Logic.Core
                 NNUE.MakeMove(this, move);
             }
 
-            //  Move onto the next state
+            Hashes.Add(Hash);
             State++;
 
             State->HalfmoveClock++;
             State->PliesFromNull++;
-            GamePly++;
 
             if (ToMove == Black)
             {
@@ -401,7 +395,6 @@ namespace Lizard.Logic.Core
             int ourColor = Not(ToMove);
             int theirColor = ToMove;
 
-            GamePly--;
 
             if (move.IsPromotion)
             {
@@ -448,6 +441,7 @@ namespace Lizard.Logic.Core
             }
 
             State--;
+            Hashes.RemoveAt(Hashes.Count - 1);
 
             ToMove = Not(ToMove);
         }
@@ -466,7 +460,8 @@ namespace Lizard.Logic.Core
             {
                 NNUE.MakeNullMove(this);
             }
-            
+
+            Hashes.Add(Hash);
             State++;
 
             if (State->EPSquare != EPNone)
@@ -491,6 +486,7 @@ namespace Lizard.Logic.Core
         public void UnmakeNullMove()
         {
             State--;
+            Hashes.RemoveAt(Hashes.Count - 1);
 
             ToMove = Not(ToMove);
         }
@@ -800,48 +796,18 @@ namespace Lizard.Logic.Core
         }
 
 
-
         [MethodImpl(Inline)]
         public bool IsDraw(short ply)
         {
-            return IsFiftyMoveDraw() || IsInsufficientMaterial() || IsThreefoldRepetition(ply);
-        }
+            if (State->HalfmoveClock >= 100 && (!InCheck || HasLegalMoves()))
+                return true;
 
-
-        /// <summary>
-        /// Checks if the position is currently drawn by insufficient material.
-        /// This generally only happens for KvK, KvKB, and KvKN endgames.
-        /// </summary>
-        public bool IsInsufficientMaterial()
-        {
-            if ((bb.Pieces[Piece.Queen] | bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Pawn]) != 0)
-            {
-                return false;
-            }
-
-            ulong knights = popcount(bb.Pieces[Piece.Knight]);
-            ulong bishops = popcount(bb.Pieces[Piece.Bishop]);
-
-            //  Just kings, only 1 bishop, or 1 or 2 knights is a draw
-            //  Some organizations classify 2 knights a draw and others don't.
-            return (knights == 0 && bishops < 2) || (bishops == 0 && knights <= 2);
-        }
-
-
-        /// <summary>
-        /// Checks if the position is currently drawn by threefold repetition.
-        /// Only considers moves made past the last time the HalfMoves clock was reset,
-        /// which occurs when captures are made or a pawn moves.
-        /// </summary>
-        public bool IsThreefoldRepetition(short ply)
-        {
-            var dist = Math.Min(State->HalfmoveClock, GamePly);
-
+            var histSize = Hashes.Count;
+            var dist = Math.Min(State->HalfmoveClock, histSize);
             bool rep = false;
-            var st = StartingState;
             for (int i = 4; i <= dist; i += 2)
             {
-                if (st[GamePly - i].Hash == State->Hash)
+                if (Hashes[histSize - i] == State->Hash)
                 {
                     if (ply >= i || rep)
                         return true;
@@ -850,12 +816,22 @@ namespace Lizard.Logic.Core
                 }
             }
 
+            if ((bb.Pieces[Piece.Queen] | bb.Pieces[Piece.Rook] | bb.Pieces[Piece.Pawn]) != 0)
+                return false;
+
+            if (!MoreThanOne(bb.Pieces[Piece.Knight] | bb.Pieces[Piece.Bishop]))
+                return true;
+
             return false;
         }
 
-        public bool IsFiftyMoveDraw()
+
+        [MethodImpl(Inline)]
+        public bool HasLegalMoves()
         {
-            return State->HalfmoveClock >= 100;
+            ScoredMove* list = stackalloc ScoredMove[MoveListSize];
+            int size = GenLegal(list);
+            return size != 0;
         }
 
 
@@ -1049,8 +1025,6 @@ namespace Lizard.Logic.Core
                 State->CastleStatus = CastlingStatus.None;
                 State->HalfmoveClock = 0;
                 State->PliesFromNull = 0;
-
-                GamePly = 0;
 
                 for (int i = 0; i < splits.Length; i++)
                 {
