@@ -99,11 +99,8 @@ namespace Lizard.Logic.NN
 
         public static Vector128<short> arm_mulhrs_epi16(Vector128<short> a, Vector128<short> b)
         {
-            var lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
-            var hi = vmull_s16(vget_high_s16(a), vget_high_s16(b));
-            var narrowLo = vshrn_n_s32(lo, 15);
-            var narrowHi = vshrn_n_s32(hi, 15);
-            return vcombine_s16(narrowLo, narrowHi);
+            var aDiv = vshrq_n_s16(a, 1);
+            return vqrdmulhq_s16(aDiv, b);
         }
 
         public static Vector128<short> arm_slli_epi16(Vector128<short> a, [ConstantExpected(Min = 0, Max = 63)] byte count) => AdvSimd.ShiftLeftLogical(a, count);
@@ -148,7 +145,9 @@ namespace Lizard.Logic.NN
         private static Vector64<sbyte> vget_high_s8(Vector128<sbyte> a) => a.GetUpper();
         private static Vector128<short> vmulq_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.Multiply(a, b);
         private static Vector128<int> vmull_high_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.MultiplyWideningUpper(a, b);
+        private static Vector128<short> vqrdmulhq_s16(Vector128<short> a, Vector128<short> b) => AdvSimd.MultiplyRoundedDoublingSaturateHigh(a, b);
         private static Vector64<short> vshrn_n_s32(Vector128<int> a, [ConstantExpected(Min = 1, Max = 32)] byte count) => AdvSimd.ShiftRightLogicalNarrowingLower(a, count);
+        private static Vector128<short> vshrq_n_s16(Vector128<short> a, [ConstantExpected(Min = 1, Max = 64)] byte count) => AdvSimd.ShiftRightLogical(a, count);
         private static Vector128<short> vcombine_s16(Vector64<short> a, Vector64<short> b) => Vector128.Create(a, b);
         private static Vector64<short> vget_low_s16(Vector128<short> a) => a.GetLower();
         private static Vector64<short> vget_high_s16(Vector128<short> a) => a.GetUpper();

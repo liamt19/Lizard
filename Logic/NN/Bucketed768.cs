@@ -450,7 +450,7 @@ namespace Lizard.Logic.NN
                     var producta = _mm256_mulhrs_epi16(_mm256_slli_epi16(clipped0a, 16 - FT_SHIFT - 1), clipped1a);
                     var productb = _mm256_mulhrs_epi16(_mm256_slli_epi16(clipped0b, 16 - FT_SHIFT - 1), clipped1b);
 
-                    var product_one = _mm256_packus_epi16(producta, productb).AsByte();
+                    var product_one = _mm256_packus_epi16(producta, productb);
                     _mm256_storeu_si256(&ft_outputs[offset + i], product_one.AsSByte());
 
                     var nnz_mask = vec_nnz_mask(product_one);
