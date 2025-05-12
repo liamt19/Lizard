@@ -29,6 +29,7 @@ inline vec_i16 vec_add_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_a
 inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_sub_epi16(a, b); }
 inline vec_i16 vec_maddubs_epi16(const vec_i8 a, const vec_i8 b) { return _mm512_maddubs_epi16(a, b); }
 inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_mulhi_epi16(a, b); }
+inline vec_i16 vec_mulhrs_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_mulhrs_epi16(a, b); }
 inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return _mm512_slli_epi16(a, i); }
 inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_min_epi16(a, b); }
 inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return _mm512_max_epi16(a, b); }
@@ -78,6 +79,7 @@ inline vec_i16 vec_maddubs_epi16(const vec_i8 a, const vec_i8 b) { return _mm256
 inline vec_i16 vec_add_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_add_epi16(a, b); }
 inline vec_i16 vec_sub_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_sub_epi16(a, b); }
 inline vec_i16 vec_mulhi_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_mulhi_epi16(a, b); }
+inline vec_i16 vec_mulhrs_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_mulhrs_epi16(a, b); }
 inline vec_i16 vec_slli_epi16(const vec_i16 a, const i16 i) { return _mm256_slli_epi16(a, i); }
 inline vec_i16 vec_min_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_min_epi16(a, b); }
 inline vec_i16 vec_max_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_max_epi16(a, b); }
@@ -90,11 +92,13 @@ inline vec_i32 vec_madd_epi16(const vec_i16 a, const vec_i16 b) { return _mm256_
 
 inline uint16_t vec_nnz_mask(const vec_i32 vec) { return _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(vec, _mm256_setzero_si256()))); }
 
-inline float vec_hsum_ps(const vec_ps v) {
-    __m128 sum128 = _mm_add_ps(_mm256_castps256_ps128(v), _mm256_extractf128_ps(v, 1));
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    sum128 = _mm_hadd_ps(sum128, sum128);
-    return _mm_cvtss_f32(sum128);
+inline float vec_hsum_ps(const vec_ps* v) {
+    const auto vec = _mm256_add_ps(v[0], v[1]);
+    const auto sum_128 = _mm_add_ps(_mm256_castps256_ps128(vec), _mm256_extractf128_ps(vec, 1));
+    const auto sum_64 = _mm_add_ps(sum_128, _mm_movehl_ps(sum_128, sum_128));
+    const auto sum_32 = _mm_add_ss(sum_64, _mm_shuffle_ps(sum_64, sum_64, 1));
+
+    return _mm_cvtss_f32(sum_32);
 }
 
 inline vec_i32 vec_dpbusd_epi32(const vec_i32 sum, const vec_i8 vec0, const vec_i8 vec1) {

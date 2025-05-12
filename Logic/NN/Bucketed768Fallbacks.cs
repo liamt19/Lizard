@@ -60,8 +60,8 @@ namespace Lizard.Logic.NN
                     var clipped1a = _mm_min_epi16(input1a, ft_one);
                     var clipped1b = _mm_min_epi16(input1b, ft_one);
 
-                    var producta = _mm_mulhi_epi16(_mm_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
-                    var productb = _mm_mulhi_epi16(_mm_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+                    var producta = _mm_mulhrs_epi16(_mm_slli_epi16(clipped0a, 16 - FT_SHIFT - 1), clipped1a);
+                    var productb = _mm_mulhrs_epi16(_mm_slli_epi16(clipped0b, 16 - FT_SHIFT - 1), clipped1b);
 
                     var product_one = _mm_packus_epi16(producta, productb).AsByte();
                     _mm_storeu_si128(&ft_outputs[offset + i], product_one.AsSByte());
@@ -213,10 +213,10 @@ namespace Lizard.Logic.NN
                     var clipped1a = arm_min_epi16(input1a, ft_one);
                     var clipped1b = arm_min_epi16(input1b, ft_one);
 
-                    var producta = arm_mulhi_epi16(arm_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
-                    var productb = arm_mulhi_epi16(arm_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
+                    var producta = arm_mulhrs_epi16(arm_slli_epi16(clipped0a, 16 - FT_SHIFT - 1), clipped1a);
+                    var productb = arm_mulhrs_epi16(arm_slli_epi16(clipped0b, 16 - FT_SHIFT - 1), clipped1b);
 
-                    var product_one = arm_packus_epi16(producta, productb).AsByte();
+                    var product_one = arm_packus_epi16(producta, productb);
                     arm_storeu_si128(&ft_outputs[offset + i], product_one.AsSByte());
 
                     var nnz_mask = arm_vec_nnz_mask(product_one);

@@ -206,21 +206,8 @@
     <Optimize>True</Optimize>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Logic\Book\**" />
-    <Compile Remove="Logic\Tablebase\**" />
-    <EmbeddedResource Remove="Logic\Book\**" />
-    <EmbeddedResource Remove="Logic\Tablebase\**" />
-    <None Remove="Logic\Book\**" />
-    <None Remove="Logic\Tablebase\**" />
-  </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="Logic\Core\PositionRESIZE.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Bindings\" />
     <Folder Include="obj\" />
   </ItemGroup>
 

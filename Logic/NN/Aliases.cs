@@ -19,6 +19,7 @@ namespace Lizard.Logic.NN
         public static Vector256<short> _mm256_min_epi16(Vector256<short> a, Vector256<short> b) => Avx2.Min(a, b);
         public static Vector256<short> _mm256_max_epi16(Vector256<short> a, Vector256<short> b) => Avx2.Max(a, b);
         public static Vector256<short> _mm256_mulhi_epi16(Vector256<short> a, Vector256<short> b) => Avx2.MultiplyHigh(a, b);
+        public static Vector256<short> _mm256_mulhrs_epi16(Vector256<short> a, Vector256<short> b) => Avx2.MultiplyHighRoundScale(a, b);
         public static Vector256<short> _mm256_slli_epi16(Vector256<short> a, [ConstantExpected] byte count) => Avx2.ShiftLeftLogical(a, count);
         public static Vector256<short> _mm256_maddubs_epi16(Vector256<byte> a, Vector256<sbyte> b) => Avx2.MultiplyAddAdjacent(a, b); 
         public static Vector256<short> _mm256_setzero_epi16() => Vector256<short>.Zero;
@@ -54,6 +55,7 @@ namespace Lizard.Logic.NN
         public static Vector128<short> _mm_min_epi16(Vector128<short> a, Vector128<short> b) => Avx.Min(a, b);
         public static Vector128<short> _mm_max_epi16(Vector128<short> a, Vector128<short> b) => Avx.Max(a, b);
         public static Vector128<short> _mm_mulhi_epi16(Vector128<short> a, Vector128<short> b) => Avx.MultiplyHigh(a, b);
+        public static Vector128<short> _mm_mulhrs_epi16(Vector128<short> a, Vector128<short> b) => Avx.MultiplyHighRoundScale(a, b);
         public static Vector128<short> _mm_slli_epi16(Vector128<short> a, [ConstantExpected] byte count) => Avx.ShiftLeftLogical(a, count);
         public static Vector128<short> _mm_maddubs_epi16(Vector128<byte> a, Vector128<sbyte> b) => Avx.MultiplyAddAdjacent(a, b);
         public static Vector128<short> _mm_setzero_epi16() => Vector128<short>.Zero;
@@ -93,6 +95,15 @@ namespace Lizard.Logic.NN
             var lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
             var hi = vmull_s16(vget_high_s16(a), vget_high_s16(b));
             return vcombine_s16(vshrn_n_s32(lo, 16), vshrn_n_s32(hi, 16));
+        }
+
+        public static Vector128<short> arm_mulhrs_epi16(Vector128<short> a, Vector128<short> b)
+        {
+            var lo = vmull_s16(vget_low_s16(a), vget_low_s16(b));
+            var hi = vmull_s16(vget_high_s16(a), vget_high_s16(b));
+            var narrowLo = vshrn_n_s32(lo, 15);
+            var narrowHi = vshrn_n_s32(hi, 15);
+            return vcombine_s16(narrowLo, narrowHi);
         }
 
         public static Vector128<short> arm_slli_epi16(Vector128<short> a, [ConstantExpected(Min = 0, Max = 63)] byte count) => AdvSimd.ShiftLeftLogical(a, count);

@@ -24,6 +24,9 @@ constexpr auto NNZ_INPUT_SIMD_WIDTH = sizeof(vec_i32) / sizeof(i32);
 constexpr auto NNZ_CHUNK_SIZE = (NNZ_INPUT_SIMD_WIDTH > 8) ? NNZ_INPUT_SIMD_WIDTH : 8;
 constexpr auto NNZ_OUTPUTS_PER_CHUNK = NNZ_CHUNK_SIZE / 8;
 
+// 8 for Avx512 and Avx2, 4 for Ssse3 + NEON
+constexpr auto NNZ_INCREMENT = (NNZ_INPUT_SIMD_WIDTH < 8) ? 4 : 8;
+
 constexpr auto L1_CHUNK_PER_32 = sizeof(i32) / sizeof(i8);
 constexpr auto L1_PAIR_COUNT = L1_SIZE / 2;
 
