@@ -77,7 +77,7 @@ AOT_OPTS = -p:PublishAOT=true -p:PublishSingleFile=false -p:IS_AOT=true -p:IlcIn
 
 
 $(BINDINGS_FILE):
-	-g++ -std=c++20 -O3 -funroll-loops -march=x86-64-v3 -fPIC -shared -o $(BINDINGS_FILE) ./Bindings/simd.cpp
+	-g++ -std=c++20 -O3 -funroll-loops -march=x86-64-v3 -fPIC -shared -o $(BINDINGS_FILE) Bindings/simd.cpp
 bindings: $(BINDINGS_FILE)
 
 

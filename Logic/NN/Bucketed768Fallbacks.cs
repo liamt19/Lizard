@@ -213,8 +213,8 @@ namespace Lizard.Logic.NN
                     var clipped1a = arm_min_epi16(input1a, ft_one);
                     var clipped1b = arm_min_epi16(input1b, ft_one);
 
-                    var producta = arm_mulhrs_epi16(arm_slli_epi16(clipped0a, 16 - FT_SHIFT - 1), clipped1a);
-                    var productb = arm_mulhrs_epi16(arm_slli_epi16(clipped0b, 16 - FT_SHIFT - 1), clipped1b);
+                    var producta = arm_mulhrs_epi16(arm_slli_epi16(clipped0a, 16 - FT_SHIFT), clipped1a);
+                    var productb = arm_mulhrs_epi16(arm_slli_epi16(clipped0b, 16 - FT_SHIFT), clipped1b);
 
                     var product_one = arm_packus_epi16(producta, productb);
                     arm_storeu_si128(&ft_outputs[offset + i], product_one.AsSByte());
