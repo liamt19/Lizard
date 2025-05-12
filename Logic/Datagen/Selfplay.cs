@@ -146,7 +146,7 @@ namespace Lizard.Logic.Datagen
                         result = (pos.ToMove == White) ? GameResult.BlackWin : GameResult.WhiteWin;
                         break;
                     }
-                    else if (pos.IsDraw())
+                    else if (pos.IsDraw(0))
                     {
                         result = GameResult.Draw;
                         break;
@@ -367,7 +367,6 @@ namespace Lizard.Logic.Datagen
             ref Bitboard bb = ref pos.bb;
 
             pos.FullMoves = 1;
-            pos.GamePly = 0;
 
             pos.State = pos.StartingState;
 
