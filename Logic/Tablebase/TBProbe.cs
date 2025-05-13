@@ -864,13 +864,8 @@ public static unsafe class TBProbe
         d->_base[h - 1] = 0;
         for (int i = h - 2; i >= 0; i--)
             d->_base[i] = (d->_base[i + 1] + read_le_u16((uint8_t*)(d->offset + i)) - read_le_u16((uint8_t*)(d->offset + i + 1))) / 2;
-#if DECOMP64
         for (int i = 0; i < h; i++)
             d->_base[i] <<= 64 - (minLen + i);
-#else
-        for (int i = 0; i < h; i++)
-            d->_base[i] <<= 32 - (minLen + i);
-#endif
         d->offset -= d->minLen;
 
         return d;
