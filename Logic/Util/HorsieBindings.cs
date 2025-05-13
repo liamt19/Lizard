@@ -10,7 +10,7 @@ namespace Lizard.Logic.Util
         public static readonly bool HasBindings;
         private static readonly nint Handle;
 
-        private const string DEST_NAME = "HorsieBindings";
+        private const string DEST_NAME = "HorsieBindings1234";
         private static readonly bool IsWin = IsOSPlatform(OSPlatform.Windows);
 
         static HorsieBindings()
