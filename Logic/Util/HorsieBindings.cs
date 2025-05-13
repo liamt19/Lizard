@@ -20,9 +20,8 @@ namespace Lizard.Logic.Util
                 return;
 
             string fExt = IsWin ? "dll" : "so";
-            string asmName = Assembly.GetExecutingAssembly().GetName().Name;
             string fileName = $"{DEST_NAME}.{fExt}";
-            string resName = $"{asmName}.{fileName}";
+            string resName = $"Lizard.{fileName}";
 
             string absPath = Path.Combine(Path.GetDirectoryName(AppContext.BaseDirectory), fileName);
 
