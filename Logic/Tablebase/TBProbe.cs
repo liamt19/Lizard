@@ -341,8 +341,6 @@ public static unsafe class TBProbe
         if (!test_tb(str, tbSuffix[TBDefs.WDL]))
             return;
 
-        Log($"init_tb({str})");
-
         int* pcs = stackalloc int[16];
         for (int i = 0; i < 16; i++)
             pcs[i] = 0;
@@ -816,7 +814,6 @@ public static unsafe class TBProbe
         *flags = data[0];
         if (AsBool(data[0] & 0x80))
         {
-            //LTM   d = (PairsData*)malloc(sizeof(PairsData));
             var block_ = Marshal.AllocHGlobal((nint)sizeof(PairsData));
             d = (PairsData*)block_.ToPointer();
             d->idxBits = 0;
@@ -834,8 +831,7 @@ public static unsafe class TBProbe
         int maxLen = data[8];
         int minLen = data[9];
         int h = maxLen - minLen + 1;
-        uint32_t numSyms = (uint32_t)read_le_u16(data + 10 + 2 * h);
-        //LTM   d = (PairsData*)malloc(sizeof(PairsData) + h * sizeof(uint64_t) + numSyms);
+        uint32_t numSyms = read_le_u16(data + 10 + 2 * h);
         var symSize = sizeof(PairsData) + h * sizeof(uint64_t);
         var block = Marshal.AllocHGlobal((nint)(symSize + numSyms));
         d = (PairsData*)block.ToPointer();
@@ -861,11 +857,12 @@ public static unsafe class TBProbe
             if (!AsBool(tmp[s]))
                 calc_symLen(d, s, tmp);
 
-        d->_base[h - 1] = 0;
+        d->dataSlice[h - 1] = 0;
         for (int i = h - 2; i >= 0; i--)
-            d->_base[i] = (d->_base[i + 1] + read_le_u16((uint8_t*)(d->offset + i)) - read_le_u16((uint8_t*)(d->offset + i + 1))) / 2;
+            d->dataSlice[i] = (d->dataSlice[i + 1] + read_le_u16((uint8_t*)(d->offset + i)) - read_le_u16((uint8_t*)(d->offset + i + 1))) / 2;
         for (int i = 0; i < h; i++)
-            d->_base[i] <<= 64 - (minLen + i);
+            d->dataSlice[i] <<= 64 - (minLen + i);
+
         d->offset -= d->minLen;
 
         return d;
@@ -873,14 +870,12 @@ public static unsafe class TBProbe
 
     static bool init_table(BaseEntry be, string str, int type)
     {
-        //LTM   uint8_t* data = (uint8_t*)map_tb(str, tbSuffix[type], &be->mapping[type]);
         uint8_t* data = (uint8_t*)open_tb(str, tbSuffix[type]);
         if (data == null) return false;
 
         if (read_le_u32(data) != tbMagic[type])
         {
             Console.Error.WriteLine("Corrupted table.\n");
-            //LTM   unmap_file((void*)data, be.mapping[type]);
             return false;
         }
 
@@ -932,9 +927,6 @@ public static unsafe class TBProbe
         {
             uint16_t* map = (uint16_t*)data;
 
-            //LTM   *(be->hasPawns ? &PAWN(be)->dtmMap : &PIECE(be)->dtmMap) = map;
-            //LTM   uint16_t(*mapIdx)[2][2] = be.hasPawns ? &(be as PawnEntry)->dtmMapIdx[0] : &(be as PieceEntry)->dtmMapIdx;
-
             if (be.hasPawns)
                 (be as PawnEntry).dtmMap = map;
             else
@@ -963,9 +955,6 @@ public static unsafe class TBProbe
         if (type == TBDefs.DTZ)
         {
             void* map = data;
-
-            //LTM   *(be.hasPawns ? &(be as PawnEntry).dtzMap : &(be as PieceEntry).dtzMap) = map;
-            //LTM   uint16_t(*mapIdx)[4] = be.hasPawns ? &(be as PawnEntry).dtzMapIdx[0] : &(be as PieceEntry).dtzMapIdx;
 
             if (be.hasPawns)
                 (be as PawnEntry).dtzMap = map;
@@ -1068,7 +1057,7 @@ public static unsafe class TBProbe
 
         int m = d->minLen;
         uint16_t* offset = d->offset;
-        uint64_t* _base = d->_base - m;
+        uint64_t* _base = d->dataSlice - m;
         uint8_t* symLen = d->symLen;
         uint32_t sym, bitCnt;
 
@@ -1119,7 +1108,6 @@ public static unsafe class TBProbe
     static int fill_squares(FathomPos* pos, Span<uint8_t> pc, bool flip, int mirror, int* p, int i)
     {
         int color = ColorOfPiece(pc[i]);
-        ///LTM  if (flip) color = (int)(!(int)color);
         if (flip) color = Not(color);
         uint64_t bb = pieces_by_type(pos, color, TypeOfPiece(pc[i]));
         unsigned sq;
@@ -1219,7 +1207,7 @@ public static unsafe class TBProbe
                     return 0;
                 }
             }
-            //LTM   ei = type != DTZ ? &ei[AsInt(bside)] : ei;
+
             actualEi = ref type != TBDefs.DTZ ? ref ei[AsInt(bside)] : ref ei[0];
             for (int i = 0; i < be.num;)
                 i = fill_squares(pos, actualEi.pieceSpan, flip, 0, p, i);
@@ -1238,7 +1226,7 @@ public static unsafe class TBProbe
                     return 0;
                 }
             }
-            //LTM   ei = type == WDL ? &ei[t + 4 * bside] : type == DTM ? &ei[t + 6 * bside] : &ei[t];
+
             actualEi = ref type == TBDefs.WDL ? ref ei[t + 4 * AsInt(bside)]
                      : ref type == TBDefs.DTM ? ref ei[t + 6 * AsInt(bside)]
                      : ref ei[t];
@@ -1833,7 +1821,6 @@ public static unsafe class TBProbe
             {
                 v = v > 0 ? -v - 1 : -v + 1;
                 wdl = -wdl;
-                //LTM   TbMove* moves = stackalloc TbMove[TB_MAX_MOVES];
                 new Span<TbMove>(moves, TB_MAX_MOVES).Clear();
                 TbMove* end = gen_legal(pos, moves);
                 TbMove* m = moves;

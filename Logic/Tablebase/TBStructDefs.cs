@@ -21,7 +21,13 @@ public unsafe struct PairsData
     public uint8_t idxBits;
     public uint8_t minLen;
     public fixed uint8_t constValue[2];
-    public fixed uint64_t _base[1];
+
+    /// <summary>
+    /// This slice actually covers more than 10 or so uint64_t's.
+    /// The memory for PairsData is allocated with sufficient size for the preceding members,
+    /// plus however many additional uint64_t
+    /// </summary>
+    public fixed uint64_t dataSlice[1];
 };
 
 
@@ -50,7 +56,6 @@ public unsafe abstract class BaseEntry
     public bool dtmLossOnly;
     public abstract Span<EncInfo> first_ei(int type);
     public int num_tables(int type) => (hasPawns ? type == TBDefs.DTM ? 6 : 4 : 1);
-    public BaseEntry() { mapping = [new(), new(), new()]; }
 };
 
 public unsafe class PieceEntry : BaseEntry
@@ -61,6 +66,8 @@ public unsafe class PieceEntry : BaseEntry
     public void* dtzMap;
     public uint16_t[,] dtzMapIdx = new uint16_t[1, 4];
     public uint8_t[] dtzFlags = new uint8_t[1];
+
+    public PieceEntry() { mapping = [new(), new(), new()]; }
 
     public override Span<EncInfo> first_ei(int type)
     {
@@ -78,6 +85,8 @@ public unsafe class PawnEntry : BaseEntry
     public uint16_t[,] dtzMapIdx = new uint16_t[4, 4];
     public uint8_t[] dtzFlags = new uint8_t[4];
     public bool dtmSwitched;
+
+    public PawnEntry() { mapping = [new(), new(), new()]; }
 
     public override Span<EncInfo> first_ei(int type)
     {

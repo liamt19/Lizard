@@ -48,8 +48,6 @@ namespace Lizard.Logic.Tablebase;
 
 public static unsafe class TBChess
 {
-
-    //LTM   static int ColorOfPiece(int piece) => (!(piece >> 3));
     public static int ColorOfPiece(int piece) => (Not(piece >> 3));
     public static int TypeOfPiece(int piece) => (piece & 7);
 
