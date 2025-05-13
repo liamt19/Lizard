@@ -42,8 +42,8 @@ namespace Lizard
 
             TBProbe.Initialize("D:\\Fathom");
 
-            //p.LoadFromFEN("4k3/3nr3/8/8/8/8/3N1Q2/4K3 w - - 0 1");
-            p.LoadFromFEN("8/3k4/8/8/8/8/2PK4/8 w - - 0 1");
+            p.LoadFromFEN("1k6/8/1K2B3/3N4/8/8/8/8 w - - 90 100");
+            //p.LoadFromFEN("8/8/8/2p1K3/k1P5/8/8/8 w - - 0 1");
             Fathom.ProbeRoot(p);
             Fathom.ProbeRootWDL(p);
 

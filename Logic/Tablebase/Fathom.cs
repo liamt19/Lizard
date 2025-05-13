@@ -20,13 +20,13 @@ public static unsafe class Fathom
         int size = pos.GenLegal(legal);
 
         for (int i = 0; i < size; i++)
-            Log($"Results[{i}]\t {results[i]}");
+            Log($"Results[{i}]\t {results[i].ToString(pos)}");
 
         OrderResults(results, size);
         Log("SORTED\n");
 
         for (int i = 0; i < size; i++)
-            Log($"Results[{i}]\t {results[i]}");
+            Log($"Results[{i}]\t {results[i].ToString(pos)}");
 
     }
 
@@ -35,7 +35,7 @@ public static unsafe class Fathom
         TbRootMoves results = new TbRootMoves();
         FathomPos fPos = FathomPos.FromPosition(pos);
         uint castling = (uint)pos.State->CastleStatus;
-        bool r50 = false;
+        bool r50 = true;
 
         var root = TBProbe.tb_probe_root_wdl(fPos, castling, r50, &results);
         Log($"root: {root:X}");
@@ -46,14 +46,14 @@ public static unsafe class Fathom
 
         var moves = new Span<TbRootMove>(&results.moves, (int)results.size);
         for (int i = 0; i < size; i++)
-            Log($"Results[{i}]\t {moves[i]}");
+            Log($"Results[{i}]\t {moves[i].ToString(pos)}");
 
         
         OrderResults(moves, size);
         Log("SORTED\n");
 
         for (int i = 0; i < size; i++)
-            Log($"Results[{i}]\t {moves[i]}");
+            Log($"Results[{i}]\t {moves[i].ToString(pos)}");
 
     }
 

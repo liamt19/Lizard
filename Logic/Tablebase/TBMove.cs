@@ -57,7 +57,7 @@ public readonly struct TbMove(uint16_t v)
     public Move ToMove()
     {
         int flags = 0;
-        var p = Promotes + 1;
+        var p = Promotes;
         flags |= (p == Knight) ? Move.FlagPromoKnight : 0;
         flags |= (p == Bishop) ? Move.FlagPromoBishop : 0;
         flags |= (p == Rook) ? Move.FlagPromoRook : 0;
@@ -68,6 +68,7 @@ public readonly struct TbMove(uint16_t v)
     }
 
     public override string ToString() => ToMove().ToString();
+    public string ToString(Position pos) => ToMove().ToString(pos);
 }
 
 [InlineArray(TB_MAX_PLY)] public struct TbRootMovePvBuffer { TbMove _; }
@@ -80,6 +81,7 @@ public unsafe struct TbRootMove
     public int32_t tbScore, tbRank;
 
     public override string ToString() => $"{move}\ttbScore {tbScore}\ttbRank {tbRank}";
+    public string ToString(Position pos) => $"{move.ToString(pos)}\ttbScore {tbScore}\ttbRank {tbRank}";
 }
 
 [InlineArray(TB_MAX_MOVES)] public struct TbRootMovesBuffer { TbRootMove _; }
@@ -104,8 +106,6 @@ public readonly struct RootProbeMove(uint data)
 
     public TbMove ResultMove => TbMove.FromResult(Data);
 
-    public override string ToString()
-    {
-        return $"{ResultMove}: {GetWDLResult((uint)WDL)} {DTZ}";
-    }
+    public override string ToString() => $"{ResultMove}: {GetWDLResult((uint)WDL)} {DTZ}";
+    public string ToString(Position pos) => $"{ResultMove.ToString(pos)}: {GetWDLResult((uint)WDL)} {DTZ}";
 }
