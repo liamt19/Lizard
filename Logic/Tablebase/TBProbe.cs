@@ -1051,9 +1051,7 @@ public static unsafe class TBProbe
         uint32_t mainIdx = (uint32_t)(idx >> d->idxBits);
         int litIdx = (int)((idx & (((size_t)1 << d->idxBits) - 1)) - ((size_t)1 << (d->idxBits - 1)));
 
-        uint32_t block;
-        //LTM   memcpy(&block, d->indexTable + 6 * mainIdx, sizeof(block));
-        block = *(d->indexTable + 6 * mainIdx);
+        uint32_t block = *(uint*)(((intptr_t)d->indexTable).ToInt64() + 6 * mainIdx);
         block = from_le_u32(block);
 
         uint16_t idxOffset = *(uint16_t*)(d->indexTable + 6 * mainIdx + 4);
@@ -1096,36 +1094,7 @@ public static unsafe class TBProbe
                 code |= (uint64_t)tmp << (int)bitCnt;
             }
         }
-#if NO
-        uint32_t next = 0;
-        uint32_t data = *ptr++;
-        uint32_t code = from_be_u32(data);
-        bitCnt = 0; // number of bits in next
-        for (; ; )
-        {
-            int l = m;
-            while (code < _base[l]) l++;
-            sym = offset[l] + ((code - _base[l]) >> (32 - l));
-            if (litIdx < (int)symLen[sym] + 1) break;
-            litIdx -= (int)symLen[sym] + 1;
-            code <<= l;
-            if (bitCnt < l)
-            {
-                if (bitCnt)
-                {
-                    code |= (next >> (32 - l));
-                    l -= bitCnt;
-                }
-                data = *ptr++;
-                next = from_be_u32(data);
-                bitCnt = 32;
-            }
-            code |= (next >> (32 - l));
-            next <<= l;
-            bitCnt -= l;
-        }
 
-#endif
         uint8_t* symPat = d->symPat;
         while (symLen[sym] != 0)
         {
