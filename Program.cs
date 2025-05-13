@@ -3,6 +3,7 @@ using System.Text;
 
 using Lizard.Logic.Datagen;
 using Lizard.Logic.NN;
+using Lizard.Logic.Tablebase;
 using Lizard.Logic.Threads;
 
 namespace Lizard
@@ -38,6 +39,13 @@ namespace Lizard
 
             p = new Position(owner: GlobalSearchPool.MainThread);
             info = new SearchInformation(p);
+
+            TBProbe.Initialize("D:\\Fathom");
+
+            //p.LoadFromFEN("4k3/3nr3/8/8/8/8/3N1Q2/4K3 w - - 0 1");
+            p.LoadFromFEN("8/3k4/8/8/8/8/2PK4/8 w - - 0 1");
+            Fathom.ProbeRoot(p);
+            Fathom.ProbeRootWDL(p);
 
             DoInputLoop();
         }
