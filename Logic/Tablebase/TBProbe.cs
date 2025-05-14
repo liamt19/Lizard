@@ -63,9 +63,9 @@ public static unsafe class TBProbe
     static bool initialized = false;
     static List<string> paths = new();
 
-    static int TB_MaxCardinality = 0;
-    static int TB_MaxCardinalityDTM = 0;
-    static unsigned TB_LARGEST = 0;
+    public static int TB_MaxCardinality = 0;
+    public static int TB_MaxCardinalityDTM = 0;
+    public static unsigned TB_LARGEST = 0;
 
     static readonly string[] tbSuffix = { ".rtbw", ".rtbm", ".rtbz" };
     static readonly uint32_t[] tbMagic = { 0x5d23e871, 0x88ac504b, 0xa50c66d7 };
@@ -106,16 +106,10 @@ public static unsafe class TBProbe
     }
 
     public static unsigned tb_probe_wdl_impl(
-        uint64_t white,
-        uint64_t black,
-        uint64_t kings,
-        uint64_t queens,
-        uint64_t rooks,
-        uint64_t bishops,
-        uint64_t knights,
-        uint64_t pawns,
-        unsigned ep,
-        bool turn)
+        uint64_t white, uint64_t black,
+        uint64_t kings, uint64_t queens, uint64_t rooks,
+        uint64_t bishops, uint64_t knights, uint64_t pawns,
+        unsigned ep, bool turn)
     {
         FathomPos pos = new(
             white,
@@ -130,6 +124,12 @@ public static unsafe class TBProbe
             (uint8_t)ep,
             turn
         );
+
+        return tb_probe_wdl_impl(pos);
+    }
+
+    public static unsigned tb_probe_wdl_impl(FathomPos pos)
+    {
         int success;
         int v = probe_wdl(&pos, &success);
         if (success == 0)
@@ -400,8 +400,9 @@ public static unsafe class TBProbe
             add_to_hash(be, key2);
     }
 
-    public static bool Initialize(string path)
+    public static bool Initialize()
     {
+        string path = SyzygyPath;
         paths = [.. path.Split(TB_PATH_SEP, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
 
         if (!initialized)
@@ -552,6 +553,8 @@ public static unsafe class TBProbe
                             init_tb($"K{pchr(i)}{pchr(j)}{pchr(k)}vK{pchr(l)}{pchr(m)}");
 
         finished:
+
+        TB_LARGEST = (uint)Math.Max(TB_MaxCardinality, TB_MaxCardinalityDTM);
 
         return true;
     }

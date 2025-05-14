@@ -489,6 +489,8 @@ namespace Lizard.Logic.UCI
                 nameof(SearchOptions.UCI_Chess960),
                 nameof(SearchOptions.UCI_ShowWDL),
                 nameof(SearchOptions.UCI_PrettyPrint),
+                nameof(SearchOptions.UseSyzygy),
+                nameof(SearchOptions.SyzygyPath),
 
                 nameof(SearchOptions.SEMinDepth),
                 nameof(SearchOptions.NMPMinDepth),
@@ -520,6 +522,8 @@ namespace Lizard.Logic.UCI
                 nameof(SearchOptions.UCI_Chess960),
                 nameof(SearchOptions.UCI_ShowWDL),
                 nameof(SearchOptions.UCI_PrettyPrint),
+                nameof(SearchOptions.UseSyzygy),
+                nameof(SearchOptions.SyzygyPath),
             ];
 
             foreach (var optName in Options.Keys)

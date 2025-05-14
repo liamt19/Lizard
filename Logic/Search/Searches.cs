@@ -2,6 +2,7 @@
 using System.Text;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
+using Lizard.Logic.Tablebase;
 using Lizard.Logic.Threads;
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
 using static Lizard.Logic.Transposition.TTEntry;
@@ -154,6 +155,60 @@ namespace Lizard.Logic.Search
             {
                 return ttScore;
             }
+
+
+            var posPieces = popcount(bb.Occupancy);
+            int syzygyMin = -ScoreMate, syzygyMax = ScoreMate;
+            if (!isRoot
+                && !doSkip
+                && posPieces <= TBProbe.TB_LARGEST
+                && pos.State->HalfmoveClock == 0
+                && pos.State->CastleStatus == CastlingStatus.None)
+            {
+                var res = Fathom.ProbeWDL(pos);
+                if (res != FathomResult.Failed)
+                {
+                    thisThread.TBHits++;
+
+                    TTNodeType ttFlag;
+
+                    if (res == FathomResult.Win)
+                    {
+                        score = ScoreTBWin - ss->Ply;
+                        ttFlag = TTNodeType.Alpha;
+                    }
+                    else if (res == FathomResult.Loss)
+                    {
+                        score = ScoreTBLoss + ss->Ply;
+                        ttFlag = TTNodeType.Beta;
+                    }
+                    else
+                    {
+                        score = ScoreDraw;
+                        ttFlag = TTNodeType.Exact;
+                    }
+
+                    if (ttFlag == TTNodeType.Exact
+                        || ttFlag == TTNodeType.Beta && score <= alpha
+                        || ttFlag == TTNodeType.Alpha && score >= beta)
+                    {
+                        tte->Update(pos.Hash, MakeTTScore((short)score, ss->Ply), ttFlag, depth, Move.Null, ScoreNone, TT.Age, ss->TTPV);
+                        return score;
+                    }
+
+                    if (isPV)
+                    {
+                        if (ttFlag == TTNodeType.Beta)
+                            syzygyMax = score;
+                        else
+                        {
+                            alpha = Math.Max(alpha, score);
+                            syzygyMin = score;
+                        }
+                    }
+                }
+            }
+
 
             if (ss->InCheck)
             {
@@ -730,6 +785,9 @@ namespace Lizard.Logic.Search
             {
                 ss->TTPV = ss->TTPV || ((ss - 1)->TTPV && depth > 3);
             }
+
+            if (legalMoves != 0)
+                bestScore = int.Clamp(bestScore, syzygyMin, syzygyMax);
 
             if (!doSkip && !(isRoot && thisThread.PVIndex > 0))
             {

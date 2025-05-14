@@ -40,13 +40,6 @@ namespace Lizard
             p = new Position(owner: GlobalSearchPool.MainThread);
             info = new SearchInformation(p);
 
-            TBProbe.Initialize("D:\\Fathom");
-
-            p.LoadFromFEN("1k6/8/1K2B3/3N4/8/8/8/8 w - - 90 100");
-            //p.LoadFromFEN("8/8/8/2p1K3/k1P5/8/8/8 w - - 0 1");
-            Fathom.ProbeRoot(p);
-            Fathom.ProbeRootWDL(p);
-
             DoInputLoop();
         }
 
@@ -80,6 +73,8 @@ namespace Lizard
 
             //  Give the VS debugger a friendly name for the main program thread
             Thread.CurrentThread.Name = "MainThread";
+
+            TBProbe.Initialize();
         }
 
 

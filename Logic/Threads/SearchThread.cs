@@ -31,6 +31,8 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public ulong Nodes;
 
+        public ulong TBHits;
+
         public ulong HardNodeLimit;
 
         /// <summary>

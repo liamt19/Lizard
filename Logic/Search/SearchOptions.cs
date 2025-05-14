@@ -26,11 +26,12 @@
         /// </summary>
         public static int Hash = 32;
 
-
         public static bool UCI_Chess960 = false;
         public static bool UCI_ShowWDL = false;
         public static bool UCI_PrettyPrint = true;
 
+        public static string SyzygyPath = "<empty>";
+        public static bool UseSyzygy = false;
 
         public const int CorrectionScale = 1024;
         public const int CorrectionGrain = 256;

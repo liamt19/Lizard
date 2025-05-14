@@ -117,7 +117,7 @@
             {
                 var td = Threads[i];
 
-                td.Nodes = 0;
+                td.Nodes = td.TBHits = 0;
 
                 td.CompletedDepth = 0;
                 td.RootDepth = 0;
@@ -266,6 +266,13 @@
             return total;
         }
 
+        public ulong GetTBHits()
+        {
+            ulong total = 0;
+            for (int i = 0; i < ThreadCount; i++)
+                total += Threads[i].TBHits;
+            return total;
+        }
 
     }
 }

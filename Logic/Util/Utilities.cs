@@ -505,6 +505,7 @@ namespace Lizard.Logic.Util
 
             double time = Math.Max(1, Math.Round(info.TimeManager.GetSearchTime()));
             ulong nodes = thisThread.AssocPool.GetNodeCount();
+            ulong tbHits = thisThread.AssocPool.GetTBHits();
             int nodesPerSec = (int)((double)nodes / (time / 1000));
 
             int lastValidScore = 0;
@@ -590,7 +591,7 @@ namespace Lizard.Logic.Util
                 {
                     string wdl = UCI_ShowWDL ? $" wdl {win} {draw} {loss}" : string.Empty;
 
-                    Console.Write($"info depth {depth} seldepth {rm.Depth} multipv {i + 1} time {time} score {score}" +
+                    Console.Write($"info depth {depth} seldepth {rm.Depth} multipv {i + 1} tbhits {tbHits} time {time} score {score}" +
                                   $"{wdl} nodes {nodes} nps {nodesPerSec} hashfull {hashfull} pv");
                 }
 
@@ -661,6 +662,12 @@ namespace Lizard.Logic.Util
                 s += (score > 0) ? (( ScoreMate - score + 1) / 2)
                                  : ((-ScoreMate - score    ) / 2);
             }
+            else if (pretty && Math.Abs(Math.Abs(score) - ScoreTTWin) < MaxPly)
+            {
+                s = "Z#";
+                s += (score > 0) ? ( ScoreTTWin - score)
+                                 : (-ScoreTTWin - score);
+            }
             else
             {
                 var ev = ((double)score * 100 / NormalizeEvalFactor);
@@ -680,7 +687,7 @@ namespace Lizard.Logic.Util
                 else if (ev >= 0.01)
                 {
                     s = $"+{ev:0.00}";
-                }                
+                }
             }
 
             return s;

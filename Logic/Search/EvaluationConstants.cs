@@ -7,6 +7,10 @@
         public const int ScoreMate = 30000;
         public const int ScoreDraw = 0;
 
+
+        public const int ScoreTBWin = ScoreTTWin;
+        public const int ScoreTBLoss = -ScoreTBWin;
+
         public const int ScoreTTWin = ScoreMate - 512;
         public const int ScoreTTLoss = -ScoreTTWin;
 

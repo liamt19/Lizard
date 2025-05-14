@@ -4,10 +4,35 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using static Lizard.Logic.Tablebase.TBProbe;
+using static Lizard.Logic.Tablebase.TBDefs;
+
 namespace Lizard.Logic.Tablebase;
+
+public enum FathomResult
+{
+    Failed,
+    Win,
+    Draw,
+    Loss,
+}
 
 public static unsafe class Fathom
 {
+    public static FathomResult ProbeWDL(Position pos)
+    {
+        FathomPos fPos = FathomPos.FromPosition(pos);
+        var wdl = TBProbe.tb_probe_wdl_impl(fPos);
+
+        return wdl switch
+        {
+            TB_RESULT_FAILED => FathomResult.Failed,
+            TB_WIN           => FathomResult.Win,
+            TB_LOSS          => FathomResult.Loss,
+            _                => FathomResult.Draw
+        };
+    }
+
     public static void ProbeRoot(Position pos)
     {
         RootProbeMove* results = stackalloc RootProbeMove[MoveListSize];
