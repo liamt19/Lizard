@@ -555,6 +555,7 @@ public static unsafe class TBProbe
         finished:
 
         TB_LARGEST = (uint)Math.Max(TB_MaxCardinality, TB_MaxCardinalityDTM);
+        Console.WriteLine($"info string Loaded {TB_LARGEST} tables");
 
         return true;
     }

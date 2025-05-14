@@ -4,6 +4,7 @@
 using System.Reflection;
 
 using Lizard.Logic.NN;
+using Lizard.Logic.Tablebase;
 using Lizard.Logic.Threads;
 
 namespace Lizard.Logic.UCI
@@ -355,6 +356,11 @@ namespace Lizard.Logic.UCI
                         if (opt.Name == nameof(Hash))
                         {
                             GlobalSearchPool.TTable.Initialize(SearchOptions.Hash);
+                        }
+
+                        if (opt.Name == nameof(SyzygyPath) || (opt.Name == nameof(UseSyzygy) && UseSyzygy))
+                        {
+                            TBProbe.Initialize();
                         }
                     }
                 }
