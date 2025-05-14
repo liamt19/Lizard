@@ -385,7 +385,9 @@ namespace Lizard.Logic.UCI
 
                 //  Most options are numbers and are called "spin"
                 //  If they are true/false, they are called "check"
-                string fieldType = field.FieldType == typeof(bool) ? "check" : "spin";
+                string fieldType = field.FieldType == typeof(bool)   ? "check" 
+                                 : field.FieldType == typeof(string) ? "string"
+                                 :                                     "spin";
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
                 UCIOption opt = new UCIOption(fieldName, fieldType, defaultValue, field);
