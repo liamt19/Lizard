@@ -19,7 +19,8 @@ namespace Lizard.Logic.Search.Ordering
         {
             SearchThread thisThread = pos.Owner;
             ref Bitboard bb = ref pos.bb;
-            int pc = pos.ToMove;
+            var pc = pos.ToMove;
+            var ply = ss->Ply;
 
             var pawnThreats = pos.ThreatsBy(Not(pc), Pawn);
             var minorThreats = pos.ThreatsBy(Not(pc), Knight) | pos.ThreatsBy(Not(pc), Bishop) | pawnThreats;
@@ -27,40 +28,42 @@ namespace Lizard.Logic.Search.Ordering
 
             for (int i = 0; i < size; i++)
             {
-                ref ScoredMove sm = ref list[i];
-                Move m = sm.Move;
+                Move m = list[i].Move;
                 var (moveFrom, moveTo) = m;
+
                 int pt = bb.GetPieceAtIndex(moveFrom);
+                int capturedPiece = bb.GetPieceAtIndex(moveTo);
                 var piece = MakePiece(pc, pt);
+
+                int score = 0;
 
                 if (m.Equals(ttMove))
                 {
-                    sm.Score = int.MaxValue - 1_000_000;
+                    score = int.MaxValue - 1_000_000;
                 }
                 else if (m == ss->KillerMove)
                 {
-                    sm.Score = int.MaxValue - 10_000_000;
+                    score = int.MaxValue - 10_000_000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
+                else if (capturedPiece != None && !m.IsCastle)
                 {
-                    int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     var hist = thisThread.GetNoisyHistory(piece, moveTo, capturedPiece);
-                    sm.Score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
+                    score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
                 }
                 else
                 {
-                    sm.Score  = NMOrderingMH * thisThread.GetMainHistory(pc, m);
-                    sm.Score += NMOrderingSS1 * thisThread.GetContinuationEntry(ss->Ply, 1, piece, moveTo);
-                    sm.Score += NMOrderingSS2 * thisThread.GetContinuationEntry(ss->Ply, 2, piece, moveTo);
-                    sm.Score += NMOrderingSS4 * thisThread.GetContinuationEntry(ss->Ply, 4, piece, moveTo);
-                    sm.Score += NMOrderingSS6 * thisThread.GetContinuationEntry(ss->Ply, 6, piece, moveTo);
-                    sm.Score /= 256;
+                    score += NMOrderingMH * thisThread.GetMainHistory(pc, m);
+                    score += NMOrderingSS1 * thisThread.GetContinuationEntry(ply, 1, piece, moveTo);
+                    score += NMOrderingSS2 * thisThread.GetContinuationEntry(ply, 2, piece, moveTo);
+                    score += NMOrderingSS4 * thisThread.GetContinuationEntry(ply, 4, piece, moveTo);
+                    score += NMOrderingSS6 * thisThread.GetContinuationEntry(ply, 6, piece, moveTo);
+                    score /= 256;
 
-                    sm.Score += thisThread.GetPlyHistory(ss->Ply, m);
+                    score += thisThread.GetPlyHistory(ply, m);
 
                     if (pos.GivesCheck(pt, moveTo))
                     {
-                        sm.Score += CheckBonus;
+                        score += CheckBonus;
                     }
 
                     int threat = 0;
@@ -82,13 +85,15 @@ namespace Lizard.Logic.Search.Ordering
                         threat -= ((toBB   & pawnThreats)!= 0) ? (14 * OrderingEnPriseMult) : 0;
                     }
 
-                    list[i].Score += threat;
+                    score += threat;
                 }
 
                 if (pt == Knight)
                 {
-                    sm.Score += 200;
+                    score += 200;
                 }
+
+                list[i].Score = score;
             }
         }
 
@@ -101,48 +106,50 @@ namespace Lizard.Logic.Search.Ordering
         public static void AssignQuiescenceScores(Position pos, SearchStackEntry* ss, ScoredMove* list, int size, Move ttMove)
         {
             SearchThread thisThread = pos.Owner;
-            ref HistoryTable history = ref thisThread.History;
             ref Bitboard bb = ref pos.bb;
-            int pc = pos.ToMove;
+            var pc = pos.ToMove;
+            var ply = ss->Ply;
 
             for (int i = 0; i < size; i++)
             {
-                ref ScoredMove sm = ref list[i];
-                Move m = sm.Move;
+                Move m = list[i].Move;
                 var (moveFrom, moveTo) = m;
+
                 int pt = bb.GetPieceAtIndex(moveFrom);
+                int capturedPiece = bb.GetPieceAtIndex(moveTo);
                 var piece = MakePiece(pc, pt);
 
-                if (m.Equals(ttMove))
+                int score = 0;
+                if (m == ttMove)
                 {
-                    sm.Score = int.MaxValue - 1_000_000;
+                    score = int.MaxValue - 1_000_000;
                 }
-                else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
+                else if (capturedPiece != None && !m.IsCastle)
                 {
-                    int capturedPiece = bb.GetPieceAtIndex(moveTo);
                     var hist = thisThread.GetNoisyHistory(piece, moveTo, capturedPiece);
-                    sm.Score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
+                    score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
                 }
                 else
                 {
-                    sm.Score  = QSOrderingMH * thisThread.GetMainHistory(pc, m);
-                    sm.Score += QSOrderingSS1 * thisThread.GetContinuationEntry(ss->Ply, 1, piece, moveTo);
-                    sm.Score += QSOrderingSS2 * thisThread.GetContinuationEntry(ss->Ply, 2, piece, moveTo);
-                    sm.Score += QSOrderingSS4 * thisThread.GetContinuationEntry(ss->Ply, 4, piece, moveTo);
-                    sm.Score += QSOrderingSS6 * thisThread.GetContinuationEntry(ss->Ply, 6, piece, moveTo);
-
-                    sm.Score /= 256;
+                    score += QSOrderingMH * thisThread.GetMainHistory(pc, m);
+                    score += QSOrderingSS1 * thisThread.GetContinuationEntry(ply, 1, piece, moveTo);
+                    score += QSOrderingSS2 * thisThread.GetContinuationEntry(ply, 2, piece, moveTo);
+                    score += QSOrderingSS4 * thisThread.GetContinuationEntry(ply, 4, piece, moveTo);
+                    score += QSOrderingSS6 * thisThread.GetContinuationEntry(ply, 6, piece, moveTo);
+                    score /= 256;
 
                     if (pos.GivesCheck(pt, moveTo))
                     {
-                        sm.Score += CheckBonus;
+                        score += CheckBonus;
                     }
                 }
 
                 if (pt == Knight)
                 {
-                    sm.Score += 200;
+                    score += 200;
                 }
+
+                list[i].Score = score;
             }
         }
 

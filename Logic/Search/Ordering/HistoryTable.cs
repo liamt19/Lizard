@@ -6,7 +6,7 @@ namespace Lizard.Logic.Search.Ordering
     /// <summary>
     /// Holds instances of the MainHistory, CaptureHistory, and 4 ContinuationHistory's for a single SearchThread.
     /// </summary>
-    public unsafe struct HistoryTable
+    public unsafe readonly struct HistoryTable
     {
         public const int NormalClamp = 16384;
 
@@ -14,8 +14,8 @@ namespace Lizard.Logic.Search.Ordering
         public readonly CaptureHistoryTable CaptureHistory;
         public readonly PlyHistoryTable PlyHistory;
 
-        public PawnCorrectionTable PawnCorrection;
-        public NonPawnCorrectionTable NonPawnCorrection;
+        public readonly PawnCorrectionTable PawnCorrection;
+        public readonly NonPawnCorrectionTable NonPawnCorrection;
 
         /// <summary>
         /// Index with [inCheck] [Capture]
@@ -102,7 +102,7 @@ namespace Lizard.Logic.Search.Ordering
         }
 
         private static readonly int[] ContinuationOffsets = [1, 2, 4, 6];
-        public readonly void UpdateContinuations(PieceToHistory** cont, Move* moves, short ply, int piece, int dstSq, int bonus, bool inCheck) {
+        public static void UpdateContinuations(PieceToHistory** cont, Move* moves, short ply, int piece, int dstSq, int bonus, bool inCheck) {
             foreach (var i in ContinuationOffsets) {
                 if (ply < i) break;
                 if (inCheck && i > 2) break;
@@ -114,7 +114,7 @@ namespace Lizard.Logic.Search.Ordering
             }
         }
 
-        public readonly short GetContinuationEntry(PieceToHistory** cont, short ply, int i, int piece, int dstSq) {
+        public static short GetContinuationEntry(PieceToHistory** cont, short ply, int i, int piece, int dstSq) {
             if (ply < i) return PieceToHistory.FillValue;
 
             return (*cont[ply - i])[piece, dstSq];

@@ -9,23 +9,22 @@ namespace Lizard.Logic.Search.History
     /// <br></br>
     /// This is a short array with dimensions [12][64], with a size of <inheritdoc cref="Length"/>.
     /// </summary>
-    public unsafe struct PieceToHistory
+    public unsafe readonly struct PieceToHistory
     {
-        private StatEntry* _History;
+        private readonly StatEntry* _History;
 
         public const short FillValue = -50;
-
-        private const int DimX = PieceNB * 2;
-        private const int DimY = SquareNB;
 
         /// <summary>
         /// 12 * 64 == 768 elements
         /// </summary>
-        public const int Length = DimX * DimY;
+        public const int Length = 12 * 64;
 
-        public PieceToHistory() { }
+        public PieceToHistory()
+        {
+            _History = AlignedAllocZeroed<StatEntry>(Length);
+        }
 
-        public void Alloc() => _History = AlignedAllocZeroed<StatEntry>(Length);
         public void Clear() => new Span<StatEntry>(_History, Length).Fill(FillValue);
         public void Dispose() => NativeMemory.AlignedFree(_History);
 
@@ -35,33 +34,20 @@ namespace Lizard.Logic.Search.History
             set => _History[idx] = value;
         }
 
-        public StatEntry this[int pc, int pt, int sq]
-        {
-            get => _History[GetIndex(pc, pt, sq)];
-            set => _History[GetIndex(pc, pt, sq)] = value;
-        }
-
         public StatEntry this[int piece, int sq]
         {
             get => _History[GetIndex(piece, sq)];
             set => _History[GetIndex(piece, sq)] = value;
         }
 
-
         /// <summary>
         /// Returns the index of the score in the History array for a piece of color <paramref name="pc"/> 
         /// and type <paramref name="pt"/> moving to the square <paramref name="sq"/>.
         /// </summary>
-        public static int GetIndex(int pc, int pt, int sq)
-        {
-            Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length, $"GetIndex({pc}, {pt}, {sq}) should be < {Length}");
-            return ((pt + (PieceNB * pc)) * DimY) + sq;
-        }
-
         public static int GetIndex(int piece, int sq)
         {
-            Assert(((piece * DimY) + sq) is >= 0 and < (int)Length, $"GetIndex({piece}, {sq}) should be < {Length}");
-            return (piece * DimY) + sq;
+            Assert(((piece * 64) + sq) is >= 0 and < (int)Length, $"GetIndex({piece}, {sq}) should be < {Length}");
+            return (piece * 64) + sq;
         }
 
     }

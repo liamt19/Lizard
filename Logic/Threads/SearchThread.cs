@@ -412,16 +412,16 @@ namespace Lizard.Logic.Threads
 
         public short GetMainHistory(int stm, Move m) => History.GetMainHistory(stm, m);
         public short GetNoisyHistory(int movingPiece, int dstSq, int capPieceType) => History.GetNoisyHistory(movingPiece, dstSq, capPieceType);
-        public short GetContinuationEntry(short ply, int i, int piece, int dstSq) => History.GetContinuationEntry(Continuations, ply, i, piece, dstSq);
+        public short GetContinuationEntry(short ply, int i, int piece, int dstSq) => HistoryTable.GetContinuationEntry(Continuations, ply, i, piece, dstSq);
 
         public void UpdateMainHistory(int stm, Move m, int bonus) => History.UpdateMainHistory(stm, m, bonus);
-        public void UpdateContinuations(short ply, int piece, int dstSq, int bonus, bool inCheck) => History.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, inCheck);
+        public void UpdateContinuations(short ply, int piece, int dstSq, int bonus, bool inCheck) => HistoryTable.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, inCheck);
         public void UpdateQuietScore(short ply, int piece, Move move, int bonus, bool inCheck) => History.UpdateQuietScore(Continuations, CurrentMoves, ply, piece, move, bonus, inCheck);
         public void UpdateNoisyHistory(int movingPiece, int dstSq, int capturedPiece, int bonus) => History.UpdateNoisyHistory(movingPiece, dstSq, capturedPiece, bonus);
 
 
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
-        private static int StabilityMax = StabilityCoefficients.Length - 1;
+        private static readonly int StabilityMax = StabilityCoefficients.Length - 1;
 
         private bool SoftTimeUp(TimeManager tm, int stability, Span<int> searchScores)
         {

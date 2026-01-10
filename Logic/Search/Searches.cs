@@ -605,7 +605,6 @@ namespace Lizard.Logic.Search
                 if (isPV && (playedMoves == 1 || score > alpha))
                 {
                     //  Do a new PV search here.
-                    //  TODO: Is it fine to use (newDepth - 1) here since it could've been changed in the LMR logic section?
                     (ss + 1)->PV[0] = Move.Null;
                     score = -Negamax<PVNode>(pos, ss + 1, -beta, -alpha, newDepth, false);
                 }
@@ -1015,7 +1014,7 @@ namespace Lizard.Logic.Search
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    var (moveFrom, moveTo) = m;
+                    var (moveFrom, _) = m;
                     var thisPiece = bb.GetPieceAtIndex(moveFrom);
                     thisThread.UpdateQuietScore(ss->Ply, MakePiece(us, thisPiece), m, penalty, ss->InCheck);
                 }

@@ -5,7 +5,7 @@ namespace Lizard.Logic.Search.History
     public readonly unsafe struct MainHistoryTable
     {
         private readonly StatEntry* _History;
-        private const int MainHistoryElements = ColorNB * SquareNB * SquareNB;
+        private const int MainHistoryElements = 2 * 4096;
 
         public MainHistoryTable()
         {
