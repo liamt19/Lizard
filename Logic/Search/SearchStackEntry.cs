@@ -22,7 +22,7 @@ namespace Lizard.Logic.Search
         [FieldOffset(18)] public bool InCheck;
         [FieldOffset(19)] public bool TTPV;
         [FieldOffset(20)] public bool TTHit;
-        [FieldOffset(21)] private fixed byte _pad0[4];
+        [FieldOffset(21)] private fixed byte _pad0[3];
 
 
         public SearchStackEntry()
