@@ -5,9 +5,9 @@ namespace Lizard.Logic.Transposition
 {
     public unsafe class TranspositionTable
     {
-        public const int TT_BOUND_MASK = 0x3;
-        public const int TT_PV_MASK = 0x4;
-        public const int TT_AGE_MASK = 0xF8;
+        public const int TT_BOUND_MASK = 0b011;
+        public const int TT_PV_MASK    = 0b100;
+        public const int TT_AGE_MASK   = 0xF8;
         public const int TT_AGE_INC = 0x8;
         public const int TT_AGE_CYCLE = 255 + TT_AGE_INC;
 
@@ -116,11 +116,8 @@ namespace Lizard.Logic.Transposition
             TTEntry* replace = tte;
             for (int i = 1; i < EntriesPerCluster; i++)
             {
-                if ((replace->RawDepth - replace->RelAge(Age)) >
-                    (  tte[i].RawDepth -   tte[i].RelAge(Age)))
-                {
+                if (replace->Quality(Age) > tte[i].Quality(Age))
                     replace = &tte[i];
-                }
             }
 
             tte = replace;

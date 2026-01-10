@@ -40,10 +40,14 @@ namespace Lizard.Logic.Transposition
         public readonly bool PV => (_AgePVType & TT_PV_MASK) != 0;
         public readonly TTNodeType NodeType => (TTNodeType)(_AgePVType & TT_BOUND_MASK);
         public readonly int Bound => _AgePVType & TT_BOUND_MASK;
+        public readonly bool IsEmpty => _Depth == 0;
 
         [MethodImpl(Inline)]
-        public readonly sbyte RelAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
-        public readonly bool IsEmpty => _Depth == 0;
+        public readonly sbyte RelativeAge(byte age) => (sbyte)((TT_AGE_CYCLE + age - _AgePVType) & TT_AGE_MASK);
+
+        [MethodImpl(Inline)] 
+        public readonly int Quality(byte age) => RawDepth - RelativeAge(age);
+
 
         public void Update(ulong key, short score, TTNodeType nodeType, int depth, Move move, short statEval, byte age, bool isPV = false)
         {

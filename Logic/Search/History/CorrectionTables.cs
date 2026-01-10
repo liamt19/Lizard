@@ -4,7 +4,7 @@ namespace Lizard.Logic.Search.History
 
     public unsafe class PawnCorrectionTable : ICorrectionTable
     {
-        public ref StatEntry this[Position pos, int pc] => ref _History[CorrectionIndex(pos, pc)];
+        public ref CorrectionEntry this[Position pos, int pc] => ref _History[CorrectionIndex(pos, pc)];
 
         public int CorrectionIndex(Position pos, int pc)
         {
@@ -17,7 +17,7 @@ namespace Lizard.Logic.Search.History
     /// https://zzzzz151.pythonanywhere.com/test/729/
     public unsafe class NonPawnCorrectionTable : ICorrectionTable
     {
-        public ref StatEntry this[Position pos, int pc, int side] => ref _History[CorrectionIndex(pos, pc, side)];
+        public ref CorrectionEntry this[Position pos, int pc, int side] => ref _History[CorrectionIndex(pos, pc, side)];
 
         public int CorrectionIndex(Position pos, int pc, int side)
         {

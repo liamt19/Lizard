@@ -4,7 +4,7 @@ namespace Lizard.Logic.Search.History
 {
     public unsafe abstract class ICorrectionTable
     {
-        protected readonly StatEntry* _History;
+        protected readonly CorrectionEntry* _History;
 
         public readonly int TableSize;
         public readonly int TableCount;
@@ -15,10 +15,10 @@ namespace Lizard.Logic.Search.History
         {
             TableSize = size;
             TableCount = tables;
-            _History = (StatEntry*)AlignedAllocZeroed((nuint)(sizeof(StatEntry) * TableElements), AllocAlignment);
+            _History = (CorrectionEntry*)AlignedAllocZeroed((nuint)(sizeof(CorrectionEntry) * TableElements), AllocAlignment);
         }
 
         public void Dispose() => NativeMemory.AlignedFree(_History);
-        public void Clear() => NativeMemory.Clear(_History, (nuint)(sizeof(StatEntry) * TableElements));
+        public void Clear() => NativeMemory.Clear(_History, (nuint)(sizeof(CorrectionEntry) * TableElements));
     }
 }

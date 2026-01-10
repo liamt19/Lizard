@@ -25,6 +25,7 @@ namespace Lizard.Logic.Core
         public ulong PawnHash => State->PawnHash;
         public ulong NonPawnHash(int pc) => State->NonPawnHash[pc];
         public int CapturedPiece => State->CapturedPiece;
+        public int HalfmoveClock => State->HalfmoveClock;
 
         /// <summary>
         /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.

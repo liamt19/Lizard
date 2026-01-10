@@ -1,8 +1,11 @@
-﻿using System.Runtime.CompilerServices;
-using System.Text;
+﻿using Lizard.Logic.Data;
 using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
+using Lizard.Logic.Search.Ordering;
 using Lizard.Logic.Threads;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using static Lizard.Logic.Search.Ordering.MoveOrdering;
 using static Lizard.Logic.Transposition.TTEntry;
 
@@ -54,6 +57,7 @@ namespace Lizard.Logic.Search
             ref Bitboard bb = ref pos.bb;
 
             Move bestMove = Move.Null;
+            Move priorMove = thisThread.CurrentMoves[ss->Ply - 1];
 
             int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
@@ -174,7 +178,7 @@ namespace Lizard.Logic.Search
                 //  We don't overwrite that TT's StatEval score yet though.
                 rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
                 //  If the ttScore isn't invalid, use that score instead of the static eval.
                 if (ttScore != ScoreNone && (tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0)
@@ -187,7 +191,7 @@ namespace Lizard.Logic.Search
                 //  Get the static evaluation and store it in the empty TT slot.
                 rawEval = NNUE.GetEvaluation(pos);
 
-                eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
                 tte->Update(pos.Hash, ScoreNone, BoundNone, DepthNone, Move.Null, rawEval, TT.Age, ss->TTPV);
             }
@@ -201,13 +205,14 @@ namespace Lizard.Logic.Search
             }
 
 
-            if (!(ss - 1)->InCheck
-                && (ss - 1)->CurrentMove != Move.Null
+            if (ss->Ply >= 1
+                && !(ss - 1)->InCheck 
+                && priorMove
                 && pos.CapturedPiece == None)
             {
                 var val = -(QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval)) / 16;
                 var bonus = Math.Clamp(val, -QuietOrderMin, QuietOrderMax);
-                history.MainHistory[Not(us), (ss - 1)->CurrentMove] <<= bonus;
+                thisThread.UpdateMainHistory(Not(us), priorMove, bonus);
             }
 
 
@@ -244,12 +249,12 @@ namespace Lizard.Logic.Search
                 && ss->Ply >= thisThread.NMPPly
                 && eval >= beta
                 && eval >= ss->StaticEval
-                && (ss - 1)->CurrentMove != Move.Null
+                && priorMove != Move.Null
                 && pos.HasNonPawnMaterial(pos.ToMove))
             {
                 int reduction = NMPBaseRed + (depth / NMPDepthDiv) + Math.Min((eval - beta) / NMPEvalDiv, NMPEvalMin);
-                ss->CurrentMove = Move.Null;
-                ss->ContinuationHistory = history.Continuations[0][0][0];
+                thisThread.CurrentMoves[ss->Ply] = Move.Null;
+                thisThread.Continuations[ss->Ply] = history.NullContHist;
 
                 //  Skip our turn, and see if the our opponent is still behind even with a free move.
                 pos.MakeNullMove();
@@ -306,6 +311,7 @@ namespace Lizard.Logic.Search
                 for (int i = 0; i < numCaps; i++)
                 {
                     Move m = OrderNextMove(captures, numCaps, i);
+                    var (moveFrom, moveTo) = m;
                     if (!pos.IsLegal(m) || !SEE_GE(pos, m, Math.Max(1, probBeta - ss->StaticEval)))
                     {
                         //  Skip illegal moves, and captures/promotions that don't result in a positive material trade
@@ -314,11 +320,10 @@ namespace Lizard.Logic.Search
 
                     prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                    bool isCap = (bb.GetPieceAtIndex(m.To) != None && !m.IsCastle);
-                    int histIdx = PieceToHistory.GetIndex(us, bb.GetPieceAtIndex(m.From), m.To);
+                    int histIdx = PieceToHistory.GetIndex(MakePiece(us, bb.GetPieceAtIndex(moveFrom)), moveTo);
 
-                    ss->CurrentMove = m;
-                    ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCap.AsInt()][histIdx];
+                    thisThread.CurrentMoves[ss->Ply] = m;
+                    thisThread.Continuations[ss->Ply] = history.Continuations[0][1][histIdx];
                     thisThread.Nodes++;
 
                     pos.MakeMove(m);
@@ -376,7 +381,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegal(list);
-            AssignScores(pos, ss, history, list, size, ttMove);
+            AssignScores(pos, ss, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -414,23 +419,30 @@ namespace Lizard.Logic.Search
 
                 Assert(pos.IsPseudoLegal(m), $"The move {m} = {m.ToString(pos)} was legal for FEN {pos.GetFEN()}, but it isn't pseudo-legal!");
 
-                int moveFrom = m.From;
-                int moveTo = m.To;
-                int theirPiece = bb.GetPieceAtIndex(moveTo);
-                int ourPiece = bb.GetPieceAtIndex(moveFrom);
-                bool isCapture = (theirPiece != None && !m.IsCastle);
+                var (moveFrom, moveTo) = m;
+                var ourPiece = bb.GetPieceAtIndex(moveFrom);
+                var theirPiece = bb.GetPieceAtIndex(moveTo);
+                bool isCapture = pos.IsCapture(m);
+                var piece = MakePiece(us, ourPiece);
 
                 legalMoves++;
                 int extend = 0;
                 int R = LogarithmicReductionTable[depth][legalMoves];
-                int moveHist = (isCapture ? history.CaptureHistory[us, ourPiece, moveTo, theirPiece] : history.MainHistory[us, m]);
+                int moveHist = isCapture ? history.GetNoisyHistory(piece, moveTo, theirPiece) : history.GetMainHistory(us, m);
+                int shallowHist = moveHist;
+                if (!isCapture)
+                {
+                    shallowHist += thisThread.GetContinuationEntry(ss->Ply, 1, piece, moveTo)
+                                 + thisThread.GetContinuationEntry(ss->Ply, 2, piece, moveTo)
+                                 + thisThread.GetContinuationEntry(ss->Ply, 4, piece, moveTo);
+                }
 
                 if (ShallowPruning
                     && !isRoot
                     && bestScore > ScoreMatedMax
                     && pos.HasNonPawnMaterial(pos.ToMove))
                 {
-                    if (skipQuiets == false)
+                    if (!skipQuiets)
                         skipQuiets = legalMoves >= lmpMoves;
 
                     bool givesCheck = pos.GivesCheck(ourPiece, moveTo);
@@ -443,12 +455,12 @@ namespace Lizard.Logic.Search
 
                     lmrRed += (!isPV).AsInt() * NMFutilePVCoeff;
                     lmrRed += (!improving).AsInt() * NMFutileImpCoeff;
-                    lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
+                    lmrRed -= ((shallowHist * NMFutileHistCoeff) / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
 
                     lmrRed /= 128;
                     int lmrDepth = Math.Max(0, depth - lmrRed);
 
-                    int futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
+                    int futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (shallowHist / NMFutMarginDiv);
                     if (isQuiet
                         && !ss->InCheck
                         && lmrDepth <= 8
@@ -522,11 +534,9 @@ namespace Lizard.Logic.Search
 
                 prefetch(TT.GetCluster(pos.HashAfter(m)));
 
-                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
-
                 ss->DoubleExtensions = (short)((ss - 1)->DoubleExtensions + (extend >= 2).AsInt());
-                ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][histIdx];
+                thisThread.CurrentMoves[ss->Ply] = m;
+                thisThread.Continuations[ss->Ply] = history.Continuations[ss->InCheck.AsInt()][isCapture.AsInt()][piece, moveTo];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -536,7 +546,7 @@ namespace Lizard.Logic.Search
 
                 if (isPV)
                 {
-                    System.Runtime.InteropServices.NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
+                    NativeMemory.Clear((ss + 1)->PV, (nuint)(MaxPly * sizeof(Move)));
                 }
 
                 int newDepth = depth - 1 + extend;
@@ -554,9 +564,9 @@ namespace Lizard.Logic.Search
                     R -= ((m == ss->KillerMove).AsInt() * LMRKillerCoeff);
 
                     var histScore = LMRHist * moveHist +
-                                    LMRHistSS1 * (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                    LMRHistSS2 * (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                    LMRHistSS4 * (*(ss - 4)->ContinuationHistory)[histIdx];
+                                    LMRHistSS1 * thisThread.GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
+                                    LMRHistSS2 * thisThread.GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
+                                    LMRHistSS4 * thisThread.GetContinuationEntry(ss->Ply, 4, piece, moveTo);
 
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
                     
@@ -584,7 +594,7 @@ namespace Lizard.Logic.Search
                                   : (score >= beta)  ? LMRBonus(newDepth)
                                   :                    0;
 
-                        UpdateContinuations(ss, us, ourPiece, m.To, bonus);
+                        thisThread.UpdateContinuations(ss->Ply, piece, moveTo, bonus, ss->InCheck);
                     }
                 }
                 else if (!isPV || legalMoves > 1)
@@ -672,7 +682,7 @@ namespace Lizard.Logic.Search
 
                         if (score >= beta)
                         {
-                            UpdateStats(pos, ss, bestMove, bestScore, beta, depth, quietMoves, quietCount, captureMoves, captureCount);
+                            UpdateStats(pos, ss, bestMove, depth, quietMoves, quietCount, captureMoves, captureCount);
 
                             //  This is a beta cutoff: Don't bother searching other moves because the current one is already too good.
                             break;
@@ -734,7 +744,7 @@ namespace Lizard.Logic.Search
                     && !(bound == TTNodeType.Beta && bestScore >= ss->StaticEval))
                 {
                     var diff = bestScore - ss->StaticEval;
-                    UpdateCorrectionHistory(pos, diff, depth);
+                    thisThread.UpdateCorrections(pos, diff, depth);
                 }
             }
 
@@ -768,6 +778,7 @@ namespace Lizard.Logic.Search
             ref Bitboard bb = ref pos.bb;
 
             Move bestMove = Move.Null;
+            Move priorMove = thisThread.CurrentMoves[ss->Ply - 1];
 
             int us = pos.ToMove;
             bool inCheck = pos.Checked;
@@ -778,8 +789,6 @@ namespace Lizard.Logic.Search
 
             short rawEval = ScoreNone;
             short eval = ss->StaticEval;
-
-            int startingAlpha = alpha;
 
             ss->InCheck = inCheck;
             ss->TTHit = TT.Probe(pos.Hash, out TTEntry* tte);
@@ -822,7 +831,7 @@ namespace Lizard.Logic.Search
                     //  If the TT hit didn't have a static eval, get one now.
                     rawEval = tte->StatEval != ScoreNone ? tte->StatEval : NNUE.GetEvaluation(pos);
 
-                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                    eval = ss->StaticEval = AdjustEval(pos, rawEval);
 
                     if (ttScore != ScoreNone && ((tte->Bound & (ttScore > eval ? BoundLower : BoundUpper)) != 0))
                     {
@@ -834,9 +843,9 @@ namespace Lizard.Logic.Search
                 {
                     //  If the previous move made was done in NMP (and nothing has changed since (ss - 1)),
                     //  use the previous static eval but negative. Otherwise get the eval as normal.
-                    rawEval = (ss - 1)->CurrentMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
+                    rawEval = priorMove.IsNull() ? (short)(-(ss - 1)->StaticEval) : NNUE.GetEvaluation(pos);
 
-                    eval = ss->StaticEval = AdjustEval(thisThread, us, rawEval);
+                    eval = ss->StaticEval = AdjustEval(pos, rawEval);
                 }
 
                 if (eval >= beta)
@@ -861,7 +870,7 @@ namespace Lizard.Logic.Search
 
             ScoredMove* list = stackalloc ScoredMove[MoveListSize];
             int size = pos.GenPseudoLegalQS(list);
-            AssignQuiescenceScores(pos, ss, history, list, size, ttMove);
+            AssignQuiescenceScores(pos, ss, list, size, ttMove);
 
             for (int i = 0; i < size; i++)
             {
@@ -876,8 +885,7 @@ namespace Lizard.Logic.Search
 
                 legalMoves++;
 
-                int moveFrom = m.From;
-                int moveTo = m.To;
+                var (moveFrom, moveTo) = m;
                 int ourPiece = bb.GetPieceAtIndex(moveFrom);
 
                 bool isCapture = pos.IsCapture(m);
@@ -908,10 +916,8 @@ namespace Lizard.Logic.Search
                     quietEvasions++;
                 }
 
-                int histIdx = PieceToHistory.GetIndex(us, ourPiece, moveTo);
-
-                ss->CurrentMove = m;
-                ss->ContinuationHistory = history.Continuations[inCheck.AsInt()][isCapture.AsInt()][histIdx];
+                thisThread.CurrentMoves[ss->Ply] = m;
+                thisThread.Continuations[ss->Ply] = history.Continuations[inCheck.AsInt()][isCapture.AsInt()][MakePiece(us, ourPiece), moveTo];
                 thisThread.Nodes++;
 
                 pos.MakeMove(m);
@@ -974,25 +980,23 @@ namespace Lizard.Logic.Search
         /// <paramref name="captureCount"/> captures stored in <paramref name="captureMoves"/>, 
         /// and <paramref name="quietCount"/> quiet moves stored in <paramref name="quietMoves"/>.
         /// </summary>
-        private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int bestScore, int beta, int depth,
+        private static void UpdateStats(Position pos, SearchStackEntry* ss, Move bestMove, int depth,
                                 Move* quietMoves, int quietCount, Move* captureMoves, int captureCount)
         {
-            ref HistoryTable history = ref pos.Owner.History;
-            int moveFrom = bestMove.From;
-            int moveTo = bestMove.To;
-
+            SearchThread thisThread = pos.Owner;
             ref Bitboard bb = ref pos.bb;
 
-            int thisPiece = bb.GetPieceAtIndex(moveFrom);
-            int thisColor = bb.GetColorAtIndex(moveFrom);
-            int capturedPiece = bb.GetPieceAtIndex(moveTo);
+            var us = pos.ToMove;
+            var (bmFrom, bmTo) = bestMove;
+            var bmPiece = bb.GetPieceAtIndex(bmFrom);
+            var bmCapPiece = bb.GetPieceAtIndex(bmTo);
 
             int bonus = StatBonus(depth);
             int penalty = StatPenalty(depth);
 
-            if (capturedPiece != None && !bestMove.IsCastle)
+            if (bmCapPiece != None && !bestMove.IsCastle)
             {
-                history.CaptureHistory[thisColor, thisPiece, moveTo, capturedPiece] <<= bonus;
+                thisThread.UpdateNoisyHistory(MakePiece(us, bmPiece), bmTo, bmCapPiece, bonus);
             }
             else
             {
@@ -1004,94 +1008,40 @@ namespace Lizard.Logic.Search
                 //  Idea from Ethereal:
                 //  Don't reward/punish moves resulting from a trivial, low-depth cutoff
                 if (quietCount == 0 && depth <= 3)
-                {
                     return;
-                }
 
-                history.MainHistory[thisColor, bestMove] <<= bonus;
-                if (ss->Ply < PlyHistoryTable.MaxPlies)
-                    history.PlyHistory[ss->Ply, bestMove] <<= bonus;
-
-                UpdateContinuations(ss, thisColor, thisPiece, moveTo, bonus);
+                thisThread.UpdateQuietScore(ss->Ply, MakePiece(us, bmPiece), bestMove, bonus, ss->InCheck);
 
                 for (int i = 0; i < quietCount; i++)
                 {
                     Move m = quietMoves[i];
-                    thisPiece = bb.GetPieceAtIndex(m.From);
-
-                    history.MainHistory[thisColor, m] <<= penalty;
-                    if (ss->Ply < PlyHistoryTable.MaxPlies)
-                        history.PlyHistory[ss->Ply, m] <<= penalty;
-
-                    UpdateContinuations(ss, thisColor, thisPiece, m.To, penalty);
+                    var (moveFrom, moveTo) = m;
+                    var thisPiece = bb.GetPieceAtIndex(moveFrom);
+                    thisThread.UpdateQuietScore(ss->Ply, MakePiece(us, thisPiece), m, penalty, ss->InCheck);
                 }
             }
 
             for (int i = 0; i < captureCount; i++)
             {
                 Move m = captureMoves[i];
-                thisPiece = bb.GetPieceAtIndex(m.From);
-                capturedPiece = bb.GetPieceAtIndex(m.To);
+                var (moveFrom, moveTo) = m;
+                var thisPiece = bb.GetPieceAtIndex(moveFrom);
+                var capturedPiece = bb.GetPieceAtIndex(moveTo);
 
-                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= penalty;
+                thisThread.UpdateNoisyHistory(MakePiece(us, thisPiece), moveTo, capturedPiece, penalty);
             }
         }
 
 
-        private static short AdjustEval(SearchThread thread, int us, short rawEval)
+        private static short AdjustEval(Position pos, short rawEval)
         {
-            Position pos = thread.RootPosition;
+            var hmvScaled = (rawEval * (200 - pos.HalfmoveClock)) / 200;
+            var corr = pos.Owner.GetCorrection(pos);
 
-            rawEval = (short)(rawEval * (200 - pos.State->HalfmoveClock) / 200);
-
-            var pawn = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
-            var nonPawnW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
-            var nonPawnB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
-
-            var corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
-
-            return (short)(rawEval + corr);
+            return (short)(hmvScaled + corr);
         }
 
 
-        private static void UpdateCorrectionHistory(Position pos, int diff, int depth)
-        {
-            var scaledWeight = Math.Min((depth * depth) + 1, 128);
-
-            ref var pawnCh = ref pos.Owner.History.PawnCorrection[pos, pos.ToMove];
-            var pawnBonus = (pawnCh * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            pawnCh = (StatEntry)Math.Clamp(pawnBonus, -CorrectionMax, CorrectionMax);
-
-            ref var nonPawnChW = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, White];
-            var nonPawnBonusW = (nonPawnChW * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            nonPawnChW = (StatEntry)Math.Clamp(nonPawnBonusW, -CorrectionMax, CorrectionMax);
-
-            ref var nonPawnChB = ref pos.Owner.History.NonPawnCorrection[pos, pos.ToMove, Black];
-            var nonPawnBonusB = (nonPawnChB * (CorrectionScale - scaledWeight) + (diff * CorrectionGrain * scaledWeight)) / CorrectionScale;
-            nonPawnChB = (StatEntry)Math.Clamp(nonPawnBonusB, -CorrectionMax, CorrectionMax);
-        }
-
-
-        private static readonly int[] ContinuationOffsets = [1, 2, 4, 6];
-        /// <summary>
-        /// Applies the <paramref name="bonus"/> to the continuation history for the previous 1, 2, 4, and 6 plies, 
-        /// given the piece of type <paramref name="pt"/> and color <paramref name="pc"/> moving to the square <paramref name="sq"/>
-        /// </summary>
-        private static void UpdateContinuations(SearchStackEntry* ss, int pc, int pt, int sq, int bonus)
-        {
-            foreach (int i in ContinuationOffsets)
-            {
-                if (ss->InCheck && i > 2)
-                {
-                    break;
-                }
-
-                if ((ss - i)->CurrentMove != Move.Null)
-                {
-                    (*(ss - i)->ContinuationHistory)[pc, pt, sq] <<= bonus;
-                }
-            }
-        }
 
         /// <summary>
         /// Calculates a bonus, given the current <paramref name="depth"/>.
@@ -1225,27 +1175,5 @@ namespace Lizard.Logic.Search
             return res != 0;
         }
 
-
-        /// <summary>
-        /// Returns a string with the CurrentMove for each state between the first one and the current one.
-        /// </summary>
-        private static string Debug_GetMovesPlayed(SearchStackEntry* ss)
-        {
-            StringBuilder sb = new StringBuilder();
-
-            while (ss->Ply >= 0)
-            {
-                sb.Insert(0, ss->CurrentMove.ToString() + ", ");
-
-                ss--;
-            }
-
-            if (sb.Length >= 3)
-            {
-                sb.Remove(sb.Length - 2, 2);
-            }
-
-            return sb.ToString();
-        }
     }
 }

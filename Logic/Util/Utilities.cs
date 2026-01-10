@@ -10,7 +10,7 @@ namespace Lizard.Logic.Util
 {
     public static class Utilities
     {
-        public const string EngineBuildVersion = "11.3.1";
+        public const string EngineBuildVersion = "11.3.2";
 
         public const int NormalListCapacity = 128;
         public const int MoveListSize = 256;
@@ -170,10 +170,11 @@ namespace Lizard.Logic.Util
         /// <summary>
         /// Returns the opposite of <paramref name="color"/>.
         /// </summary>
-        public static int Not(int color)
-        {
-            return color ^ 1;
-        }
+        public static int Not(int color) => color ^ 1;
+
+        public static int MakePiece(int pc, int pt) => (pc * 6) + pt;
+        public static int ColorOfPiece(int piece) => piece / 6;
+        public static int TypeOfPiece(int piece) => piece % 6;
 
 
         /// <summary>

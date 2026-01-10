@@ -7,9 +7,9 @@ namespace Lizard.Logic.Search.History
     /// <br></br>
     /// This is an array of <see cref="PieceToHistory"/> [12][64], with a size of <inheritdoc cref="ByteSize"/>.
     /// </summary>
-    public unsafe struct ContinuationHistory
+    public unsafe readonly struct ContinuationHistory
     {
-        private PieceToHistory* _History;
+        private readonly PieceToHistory* _History;
 
         private const int DimX = PieceNB * 2;
         private const int DimY = SquareNB;
@@ -22,7 +22,7 @@ namespace Lizard.Logic.Search.History
 
         public ContinuationHistory()
         {
-            _History = (PieceToHistory*)AlignedAllocZeroed((nuint)(sizeof(ulong) * Length), AllocAlignment);
+            _History = (PieceToHistory*)AlignedAllocZeroed(sizeof(ulong) * Length, AllocAlignment);
 
             for (nuint i = 0; i < Length; i++)
             {
@@ -30,8 +30,9 @@ namespace Lizard.Logic.Search.History
             }
         }
 
-        public PieceToHistory* this[int pc, int pt, int sq] => &_History[PieceToHistory.GetIndex(pc, pt, sq)];
         public PieceToHistory* this[int idx] => &_History[idx];
+        public PieceToHistory* this[int pc, int pt, int sq] => &_History[PieceToHistory.GetIndex(pc, pt, sq)];
+        public PieceToHistory* this[int piece, int sq] => &_History[PieceToHistory.GetIndex(piece, sq)];
 
         public void Dispose()
         {

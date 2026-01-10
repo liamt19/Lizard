@@ -92,9 +92,9 @@
         public static int LMRHistSS2 = 128;
         public static int LMRHistSS4 = 127;
 
-        public static int PawnCorrCoeff = 388;
-        public static int NonPawnCorrCoeff = 208;
-        public static int CorrDivisor = 588;
+        public static int PawnCorrCoeff = 129;
+        public static int NonPawnCorrCoeff = 70;
+        public static int CorrDivisor = 3136;
 
         public static int NMOrderingMH = 419;
         public static int NMOrderingSS1 = 491;

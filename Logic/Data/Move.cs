@@ -2,8 +2,9 @@
 #pragma warning disable CS0660 // Type defines operator == or operator != but does not override Object.Equals(object o)
 #pragma warning disable CS0661 // Type defines operator == or operator != but does not override Object.GetHashCode()
 
-using System.Text;
+using Lizard.Logic.Search.History;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Lizard.Logic.Data
 {
@@ -59,6 +60,13 @@ namespace Lizard.Logic.Data
 
         [MethodImpl(Inline)]
         public readonly bool IsNull() => (_data & Mask_ToFrom) == 0;
+        public static implicit operator bool(Move m) => !m.IsNull();
+
+        public void Deconstruct(out int from, out int to)
+        {
+            from = From;
+            to = To;
+        }
 
 
         [MethodImpl(Inline)]

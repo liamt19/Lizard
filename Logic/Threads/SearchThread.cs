@@ -1,7 +1,7 @@
-﻿using System.Runtime.InteropServices;
-
+﻿using Lizard.Logic.NN;
 using Lizard.Logic.Search.History;
-using Lizard.Logic.NN;
+using Lizard.Logic.Search.Ordering;
+using System.Runtime.InteropServices;
 
 namespace Lizard.Logic.Threads
 {
@@ -84,58 +84,31 @@ namespace Lizard.Logic.Threads
         /// </summary>
         public bool Quit;
 
-        /// <summary>
-        /// Set to true if this thread is the first one created, with a <see cref="ThreadIdx"/> of 0.
-        /// </summary>
         public readonly bool IsMain = false;
 
-        /// <summary>
-        /// A unique copy of the root position for the search.
-        /// </summary>
         public readonly Position RootPosition;
 
-        /// <summary>
-        /// A unique list of unique RootMoves (scored moves from the starting position) that this thread can search.
-        /// <para></para>
-        /// Threads must get their own List, and the RootMoves within that list must be a personal copy as well.
-        /// </summary>
-        public List<RootMove> RootMoves = new List<RootMove>(20);
-        public Move CurrentMove => RootMoves[PVIndex].Move;
-
-        /// <summary>
-        /// The unique history heuristic table for this thread.
-        /// </summary>
         public HistoryTable History;
-
         public BucketCache[] CachedBuckets;
-
         public ulong[][] NodeTable;
-
+        public Move* CurrentMoves;
+        public PieceToHistory** Continuations;
         public SearchThreadPool AssocPool;
         public TranspositionTable TT;
 
-        /// <summary>
-        /// The system Thread that this SearchThread is running on.
-        /// </summary>
         private Thread _SysThread;
-
-        /// <summary>
-        /// The mutex that <see cref="_SearchCond"/> signals when <see cref="Searching"/>'s value changes.
-        /// </summary>
         private readonly object _Mutex;
-
-        /// <summary>
-        /// A condition associated with <see cref="Searching"/>. The main thread may call <see cref="WaitForThreadFinished"/> and 
-        /// block until this thread finishes its search and signals that accordingly.
-        /// </summary>
         private readonly ConditionVariable _SearchCond;
-
-        /// <summary>
-        /// Prevents the main program thread from using this thread before it is initialized.
-        /// </summary>
         private Barrier _InitBarrier = new Barrier(2);
 
-        public string FriendlyName => _SysThread.Name;
+
+        public List<RootMove> RootMoves = new List<RootMove>(20);
+        public Move CurrentMove => RootMoves[PVIndex].Move;
+
+        private PieceToHistory* NullContHist => &(History.Continuations[0][0][0][0]);
+        public void ClearCurrentMoves() => new Span<Move>(CurrentMoves, MaxPly).Fill(Move.Null);
+        // If it's stupid and it works, it ain't stupid.
+        public void ClearContinuations() => new Span<IntPtr>(Continuations, MaxPly).Fill((nint)NullContHist);
 
         public SearchThread(int idx)
         {
@@ -189,107 +162,13 @@ namespace Lizard.Logic.Threads
                 NodeTable[sq] = new ulong[SquareNB];
             }
 
-            _SysThread.Name = "SearchThread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
-            if (IsMain)
-            {
-                _SysThread.Name = "(MAIN)Thread " + ThreadIdx + ", ID " + Environment.CurrentManagedThreadId;
-            }
+            _SysThread.Name = $"{(IsMain ? "(MAIN)" : "Search")}Thread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
+
+            CurrentMoves = AlignedAllocZeroed<Move>(MaxPly);
+            Continuations = (PieceToHistory**)AlignedAllocZeroed((nuint)(sizeof(PieceToHistory*) * MaxPly));
+            ClearContinuations();
 
             IdleLoop();
-        }
-
-
-
-        /// <summary>
-        /// Sets this thread's <see cref="Searching"/> variable to true, which will cause the thread in the IdleLoop to
-        /// call the search function once it wakes up.
-        /// </summary>
-        public void PrepareToSearch()
-        {
-            Monitor.Enter(_Mutex);
-            Searching = true;
-            Monitor.Exit(_Mutex);
-
-            _SearchCond.Pulse();
-        }
-
-
-        /// <summary>
-        /// Blocks the calling thread until this SearchThread has exited its search call 
-        /// and has returned to the beginning of its IdleLoop.
-        /// </summary>
-        public void WaitForThreadFinished()
-        {
-            if (_Mutex == null)
-            {
-                //  Asserting that _Mutex has been initialized properly
-                throw new Exception("Thread " + Thread.CurrentThread.Name + " tried accessing the Mutex of " + this.ToString() + ", but Mutex was null!");
-            }
-
-            Monitor.Enter(_Mutex);
-
-            while (Searching)
-            {
-                _SearchCond.Wait(_Mutex);
-
-                if (Searching)
-                {
-                    ///  Spurious wakeups are possible here if <see cref="SearchThreadPool.StartSearch"/> is called
-                    ///  again before this thread has returned to IdleLoop.
-                    _SearchCond.Pulse();
-                    Thread.Yield();
-                }
-            }
-
-            Monitor.Exit(_Mutex);
-        }
-
-
-        /// <summary>
-        /// The main loop that threads will be in while they are not currently searching.
-        /// Threads enter here after they have been initialized and do not leave until their thread is terminated.
-        /// </summary>
-        public void IdleLoop()
-        {
-            //  Let the main thread know that this thread is initialized and ready to go.
-            _InitBarrier.SignalAndWait();
-
-            while (true)
-            {
-                Monitor.Enter(_Mutex);
-                Searching = false;
-                _SearchCond.Pulse();
-
-                while (!Searching)
-                {
-                    //  Wait here until we are notified of a change in Searching's state.
-                    _SearchCond.Wait(_Mutex);
-                    if (!Searching)
-                    {
-                        //  This was a spurious wakeup since Searching's state has not changed.
-
-                        //  Another thread was waiting on this signal but the OS gave it to this thread instead.
-                        //  We can pulse the condition again, yield, and hope that the OS gives it to the thread that actually needs it
-                        _SearchCond.Pulse();
-                        Thread.Yield();
-                    }
-
-                }
-
-                if (Quit)
-                    return;
-
-                Monitor.Exit(_Mutex);
-
-                if (IsMain)
-                {
-                    MainThreadSearch();
-                }
-                else
-                {
-                    Search();
-                }
-            }
         }
 
 
@@ -342,8 +221,10 @@ namespace Lizard.Logic.Threads
                 (ss + i)->Clear();
                 (ss + i)->Ply = (short)i;
                 (ss + i)->PV = AlignedAllocZeroed<Move>(MaxPly);
-                (ss + i)->ContinuationHistory = History.Continuations[0][0][0, 0, 0];
             }
+
+            ClearContinuations();
+            ClearCurrentMoves();
 
             Bucketed768.ResetCaches(this);
 
@@ -411,7 +292,7 @@ namespace Lizard.Logic.Threads
 
                     while (true)
                     {
-                        score = Logic.Search.Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, usedDepth), false);
+                        score = Searches.Negamax<RootNode>(info.Position, ss, alpha, beta, Math.Max(1, usedDepth), false);
 
                         StableSort(RootMoves, PVIndex);
 
@@ -517,6 +398,28 @@ namespace Lizard.Logic.Threads
             }
         }
 
+
+        public int GetCorrection(in Position pos) => History.GetCorrection(pos);
+        public void UpdateCorrections(in Position pos, int diff, int depth) => History.UpdateCorrections(pos, diff, depth);
+
+        public int GetPlyHistory(short ply, Move m)
+        {
+            if (ply >= PlyHistoryTable.MaxPlies) return 0;
+
+            var hist = History.GetPlyHistory(ply, m);
+            return ((2 * PlyHistoryTable.MaxPlies + 1) * hist) / (2 * ply + 1);
+        }
+
+        public short GetMainHistory(int stm, Move m) => History.GetMainHistory(stm, m);
+        public short GetNoisyHistory(int movingPiece, int dstSq, int capPieceType) => History.GetNoisyHistory(movingPiece, dstSq, capPieceType);
+        public short GetContinuationEntry(short ply, int i, int piece, int dstSq) => History.GetContinuationEntry(Continuations, ply, i, piece, dstSq);
+
+        public void UpdateMainHistory(int stm, Move m, int bonus) => History.UpdateMainHistory(stm, m, bonus);
+        public void UpdateContinuations(short ply, int piece, int dstSq, int bonus, bool inCheck) => History.UpdateContinuations(Continuations, CurrentMoves, ply, piece, dstSq, bonus, inCheck);
+        public void UpdateQuietScore(short ply, int piece, Move move, int bonus, bool inCheck) => History.UpdateQuietScore(Continuations, CurrentMoves, ply, piece, move, bonus, inCheck);
+        public void UpdateNoisyHistory(int movingPiece, int dstSq, int capturedPiece, int bonus) => History.UpdateNoisyHistory(movingPiece, dstSq, capturedPiece, bonus);
+
+
         private static ReadOnlySpan<double> StabilityCoefficients => [2.2, 1.6, 1.4, 1.1, 1, 0.95, 0.9];
         private static int StabilityMax = StabilityCoefficients.Length - 1;
 
@@ -547,6 +450,101 @@ namespace Lizard.Logic.Threads
 
             return false;
         }
+
+
+        /// <summary>
+        /// Sets this thread's <see cref="Searching"/> variable to true, which will cause the thread in the IdleLoop to
+        /// call the search function once it wakes up.
+        /// </summary>
+        public void PrepareToSearch()
+        {
+            Monitor.Enter(_Mutex);
+            Searching = true;
+            Monitor.Exit(_Mutex);
+
+            _SearchCond.Pulse();
+        }
+
+
+        /// <summary>
+        /// Blocks the calling thread until this SearchThread has exited its search call 
+        /// and has returned to the beginning of its IdleLoop.
+        /// </summary>
+        public void WaitForThreadFinished()
+        {
+            if (_Mutex == null)
+            {
+                //  Asserting that _Mutex has been initialized properly
+                throw new Exception("Thread " + Thread.CurrentThread.Name + " tried accessing the Mutex of " + this.ToString() + ", but Mutex was null!");
+            }
+
+            Monitor.Enter(_Mutex);
+
+            while (Searching)
+            {
+                _SearchCond.Wait(_Mutex);
+
+                if (Searching)
+                {
+                    ///  Spurious wakeups are possible here if <see cref="SearchThreadPool.StartSearch"/> is called
+                    ///  again before this thread has returned to IdleLoop.
+                    _SearchCond.Pulse();
+                    Thread.Yield();
+                }
+            }
+
+            Monitor.Exit(_Mutex);
+        }
+
+
+        /// <summary>
+        /// The main loop that threads will be in while they are not currently searching.
+        /// Threads enter here after they have been initialized and do not leave until their thread is terminated.
+        /// </summary>
+        public void IdleLoop()
+        {
+            //  Let the main thread know that this thread is initialized and ready to go.
+            _InitBarrier.SignalAndWait();
+
+            while (true)
+            {
+                Monitor.Enter(_Mutex);
+                Searching = false;
+                _SearchCond.Pulse();
+
+                while (!Searching)
+                {
+                    //  Wait here until we are notified of a change in Searching's state.
+                    _SearchCond.Wait(_Mutex);
+                    if (!Searching)
+                    {
+                        //  This was a spurious wakeup since Searching's state has not changed.
+
+                        //  Another thread was waiting on this signal but the OS gave it to this thread instead.
+                        //  We can pulse the condition again, yield, and hope that the OS gives it to the thread that actually needs it
+                        _SearchCond.Pulse();
+                        Thread.Yield();
+                    }
+
+                }
+
+                if (Quit)
+                    return;
+
+                Monitor.Exit(_Mutex);
+
+                if (IsMain)
+                {
+                    MainThreadSearch();
+                }
+                else
+                {
+                    Search();
+                }
+            }
+        }
+
+
 
         /// <summary>
         /// Frees up the memory that was allocated to this SearchThread.
@@ -595,9 +593,6 @@ namespace Lizard.Logic.Threads
         }
 
 
-        public override string ToString()
-        {
-            return "[" + (_SysThread != null ? _SysThread.Name : "NULL?") + " (caller ID " + Environment.CurrentManagedThreadId + ")]";
-        }
+        public override string ToString() => $"[{(_SysThread != null ? _SysThread.Name : "NULL?")} (caller ID {Environment.CurrentManagedThreadId})]";
     }
 }

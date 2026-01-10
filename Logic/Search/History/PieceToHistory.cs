@@ -7,13 +7,13 @@ namespace Lizard.Logic.Search.History
     /// Records how successful different moves have been in the past by recording that move's
     /// piece type and color, and the square that it is moving to. 
     /// <br></br>
-    /// This is a short array with dimensions [12][64], with a size of <inheritdoc cref="ByteSize"/>.
+    /// This is a short array with dimensions [12][64], with a size of <inheritdoc cref="Length"/>.
     /// </summary>
     public unsafe struct PieceToHistory
     {
         private StatEntry* _History;
 
-        private const short FillValue = -50;
+        public const short FillValue = -50;
 
         private const int DimX = PieceNB * 2;
         private const int DimY = SquareNB;
@@ -25,9 +25,14 @@ namespace Lizard.Logic.Search.History
 
         public PieceToHistory() { }
 
-        public void Dispose()
+        public void Alloc() => _History = AlignedAllocZeroed<StatEntry>(Length);
+        public void Clear() => new Span<StatEntry>(_History, Length).Fill(FillValue);
+        public void Dispose() => NativeMemory.AlignedFree(_History);
+
+        public StatEntry this[int idx]
         {
-            NativeMemory.AlignedFree(_History);
+            get => _History[idx];
+            set => _History[idx] = value;
         }
 
         public StatEntry this[int pc, int pt, int sq]
@@ -36,11 +41,12 @@ namespace Lizard.Logic.Search.History
             set => _History[GetIndex(pc, pt, sq)] = value;
         }
 
-        public StatEntry this[int idx]
+        public StatEntry this[int piece, int sq]
         {
-            get => _History[idx];
-            set => _History[idx] = value;
+            get => _History[GetIndex(piece, sq)];
+            set => _History[GetIndex(piece, sq)] = value;
         }
+
 
         /// <summary>
         /// Returns the index of the score in the History array for a piece of color <paramref name="pc"/> 
@@ -49,27 +55,14 @@ namespace Lizard.Logic.Search.History
         public static int GetIndex(int pc, int pt, int sq)
         {
             Assert((((pt + (PieceNB * pc)) * DimY) + sq) is >= 0 and < (int)Length, $"GetIndex({pc}, {pt}, {sq}) should be < {Length}");
-
             return ((pt + (PieceNB * pc)) * DimY) + sq;
         }
 
-        /// <summary>
-        /// Allocates memory for this instance's array.
-        /// </summary>
-        public void Alloc()
+        public static int GetIndex(int piece, int sq)
         {
-            _History = AlignedAllocZeroed<StatEntry>(Length);
+            Assert(((piece * DimY) + sq) is >= 0 and < (int)Length, $"GetIndex({piece}, {sq}) should be < {Length}");
+            return (piece * DimY) + sq;
         }
 
-        /// <summary>
-        /// Fills this instance's array with the value of <see cref="FillValue"/>.
-        /// </summary>
-        public void Clear()
-        {
-            NativeMemory.Clear(_History, (nuint)(sizeof(StatEntry) * Length));
-            Span<StatEntry> span = new Span<StatEntry>(_History, (int)Length);
-            span.Fill(FillValue);
-        }
     }
-
 }
