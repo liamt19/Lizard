@@ -50,7 +50,9 @@ namespace Lizard.Logic.Util
                     Array.Resize(ref buffer, bytesRead);
                 }
 
-                Span<BulletFormatEntry> entries = MemoryMarshal.Cast<byte, BulletFormatEntry>(buffer);
+
+                var entriesBytes = MemoryMarshal.CreateSpan(ref buffer[0], BytesToRead / sizeof(BulletFormatEntry));
+                Span<BulletFormatEntry> entries = MemoryMarshal.Cast<byte, BulletFormatEntry>(entriesBytes);
                 for (int i = 0; i < entries.Length; i++)
                 {
                     fixed (byte* b = entries[i]._pad)
@@ -103,7 +105,9 @@ namespace Lizard.Logic.Util
                 if (InputQueue.TryDequeue(out byte[] data))
                 {
                     QueueSignal.Release();
-                    Span<BulletFormatEntry> entries = MemoryMarshal.Cast<byte, BulletFormatEntry>(data);
+                    //Span<BulletFormatEntry> entries = MemoryMarshal.Cast<byte, BulletFormatEntry>(data);
+                    var entriesBytes = MemoryMarshal.CreateSpan(ref data[0], data.Length / sizeof(BulletFormatEntry));
+                    Span<BulletFormatEntry> entries = MemoryMarshal.Cast<byte, BulletFormatEntry>(entriesBytes);
 
                     pos.LoadFromFEN(InitialFEN);
 
