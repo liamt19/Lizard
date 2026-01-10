@@ -57,7 +57,7 @@ namespace Lizard.Logic.Search
             ref Bitboard bb = ref pos.bb;
 
             Move bestMove = Move.Null;
-            Move priorMove = thisThread.CurrentMoves[ss->Ply - 1];
+            Move priorMove = (ss->Ply > 0 ? thisThread.CurrentMoves[ss->Ply - 1] : Move.Null);
 
             int us = pos.ToMove;
             int score = -ScoreMate - MaxPly;
@@ -556,23 +556,21 @@ namespace Lizard.Logic.Search
                     && !(isPV && isCapture))
                 {
 
-                    R += ((!improving).AsInt() * LMRNotImpCoeff);
-                    R += (cutNode.AsInt() * LMRCutNodeCoeff);
-
-                    R -= (ss->TTPV.AsInt() * LMRTTPVCoeff);
-                    R -= (isPV.AsInt() * LMRPVCoeff);
-                    R -= ((m == ss->KillerMove).AsInt() * LMRKillerCoeff);
-
                     var histScore = LMRHist * moveHist +
                                     LMRHistSS1 * thisThread.GetContinuationEntry(ss->Ply, 1, piece, moveTo) +
                                     LMRHistSS2 * thisThread.GetContinuationEntry(ss->Ply, 2, piece, moveTo) +
                                     LMRHistSS4 * thisThread.GetContinuationEntry(ss->Ply, 4, piece, moveTo);
 
+                    R += ((!improving).AsInt() * LMRNotImpCoeff);
+                    R += (cutNode.AsInt() * LMRCutNodeCoeff);
+
+                    R -= (ss->TTPV.AsInt() * LMRTTPVCoeff);
+                    R -= ((m == ss->KillerMove).AsInt() * LMRKillerCoeff);
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
                     
                     R /= 128;
 
-                    int reduced = Math.Max(0, Math.Min(newDepth - R, newDepth));
+                    int reduced = Math.Max(0, Math.Min(newDepth - R, newDepth)) + isPV.AsInt();
 
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reduced, true);
 
@@ -591,7 +589,7 @@ namespace Lizard.Logic.Search
                         }
 
                         int bonus = (score <= alpha) ? LMRPenalty(newDepth) 
-                                  : (score >= beta)  ? LMRBonus(newDepth)
+                                  : (score >=  beta) ? LMRBonus(newDepth)
                                   :                    0;
 
                         thisThread.UpdateContinuations(ss->Ply, piece, moveTo, bonus, ss->InCheck);
@@ -777,7 +775,7 @@ namespace Lizard.Logic.Search
             ref Bitboard bb = ref pos.bb;
 
             Move bestMove = Move.Null;
-            Move priorMove = thisThread.CurrentMoves[ss->Ply - 1];
+            Move priorMove = (ss->Ply > 0 ? thisThread.CurrentMoves[ss->Ply - 1] : Move.Null);
 
             int us = pos.ToMove;
             bool inCheck = pos.Checked;

@@ -84,7 +84,6 @@
         public static int LMRNotImpCoeff = 119;
         public static int LMRCutNodeCoeff = 280;
         public static int LMRTTPVCoeff = 124;
-        public static int LMRPVCoeff = 133;
         public static int LMRKillerCoeff = 129;
 
         public static int LMRHist = 189;
