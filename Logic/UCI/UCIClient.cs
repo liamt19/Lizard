@@ -382,7 +382,11 @@ namespace Lizard.Logic.UCI
                 string fieldType = field.FieldType == typeof(bool) ? "check" : "spin";
                 string defaultValue = field.GetValue(null).ToString().ToLower();
 
-                UCIOption opt = new UCIOption(fieldName, fieldType, defaultValue, field);
+                UCIOption opt = new(fieldName, fieldType, defaultValue, field);
+                if (field.FieldType != typeof(bool) && field.FieldType != typeof(string))
+                {
+                    opt.AutoMinMax();
+                }
 
                 Options.Add(fieldName, opt);
             }
@@ -391,75 +395,9 @@ namespace Lizard.Logic.UCI
             Options[nameof(MultiPV)].SetMinMax(1, 256);
             Options[nameof(Hash)].SetMinMax(1, 1048576);
 
-            Options[nameof(QuietOrderMin)].AutoMinMax();
-            Options[nameof(QuietOrderMax)].AutoMinMax();
-            Options[nameof(QuietOrderMult)].AutoMinMax();
-
-            Options[nameof(SEMinDepth)].AutoMinMax();
-            Options[nameof(SENumerator)].AutoMinMax();
-            Options[nameof(SEDoubleMargin)].AutoMinMax();
-            Options[nameof(SETripleMargin)].AutoMinMax();
-            Options[nameof(SETripleCapSub)].AutoMinMax();
             Options[nameof(SEDepthAdj)].SetMinMax(-3, 2);
-
-            Options[nameof(NMPMinDepth)].AutoMinMax();
-            Options[nameof(NMPBaseRed)].AutoMinMax();
-            Options[nameof(NMPDepthDiv)].AutoMinMax();
-            Options[nameof(NMPEvalDiv)].AutoMinMax();
             Options[nameof(NMPEvalMin)].SetMinMax(0, 6);
-
-            Options[nameof(RazoringMaxDepth)].AutoMinMax();
-            Options[nameof(RazoringMult)].AutoMinMax();
-
-            Options[nameof(RFPMaxDepth)].AutoMinMax();
-            Options[nameof(RFPMargin)].AutoMinMax();
-
-            Options[nameof(ProbcutBeta)].AutoMinMax();
-            Options[nameof(ProbcutBetaImp)].AutoMinMax();
-
-            Options[nameof(NMFutileBase)].AutoMinMax();
-            Options[nameof(NMFutilePVCoeff)].AutoMinMax();
-            Options[nameof(NMFutileImpCoeff)].AutoMinMax();
-            Options[nameof(NMFutileHistCoeff)].AutoMinMax();
-            Options[nameof(NMFutMarginB)].AutoMinMax();
-            Options[nameof(NMFutMarginM)].AutoMinMax();
-            Options[nameof(NMFutMarginDiv)].AutoMinMax();
-            Options[nameof(ShallowSEEMargin)].AutoMinMax();
-            Options[nameof(ShallowMaxDepth)].AutoMinMax();
-
-            Options[nameof(LMRQuietDiv)].AutoMinMax();
-            Options[nameof(LMRCaptureDiv)].AutoMinMax();
-            Options[nameof(DeeperMargin)].AutoMinMax();
-
-            Options[nameof(QSFutileMargin)].AutoMinMax();
-            Options[nameof(QSSeeMargin)].AutoMinMax();
-
-            Options[nameof(OrderingCheckBonus)].AutoMinMax();
-            Options[nameof(OrderingVictimMult)].AutoMinMax();
-
             Options[nameof(IIRMinDepth)].SetMinMax(2, 6);
-            Options[nameof(AspWindow)].AutoMinMax();
-
-            Options[nameof(StatBonusMult)].AutoMinMax();
-            Options[nameof(StatBonusSub)].AutoMinMax();
-            Options[nameof(StatBonusMax)].AutoMinMax();
-
-            Options[nameof(StatMalusMult)].AutoMinMax();
-            Options[nameof(StatMalusSub)].AutoMinMax();
-            Options[nameof(StatMalusMax)].AutoMinMax();
-
-            Options[nameof(SEEValuePawn)].AutoMinMax();
-            Options[nameof(SEEValueKnight)].AutoMinMax();
-            Options[nameof(SEEValueBishop)].AutoMinMax();
-            Options[nameof(SEEValueRook)].AutoMinMax();
-            Options[nameof(SEEValueQueen)].AutoMinMax();
-
-            Options[nameof(ValuePawn)].AutoMinMax();
-            Options[nameof(ValueKnight)].AutoMinMax();
-            Options[nameof(ValueBishop)].AutoMinMax();
-            Options[nameof(ValueRook)].AutoMinMax();
-            Options[nameof(ValueQueen)].AutoMinMax();
-
 
             foreach (var optName in Options.Keys)
             {
@@ -492,16 +430,10 @@ namespace Lizard.Logic.UCI
 
                 nameof(SearchOptions.SEMinDepth),
                 nameof(SearchOptions.NMPMinDepth),
+                nameof(SearchOptions.RazoringMaxDepth),
                 nameof(SearchOptions.RFPMaxDepth),
-                nameof(SearchOptions.RFPMargin),
-                nameof(SearchOptions.ProbcutBeta),
+                nameof(SearchOptions.ShallowMaxDepth),
                 nameof(SearchOptions.IIRMinDepth),
-                nameof(SearchOptions.AspWindow),
-                nameof(SearchOptions.ValuePawn),
-                nameof(SearchOptions.ValueKnight),
-                nameof(SearchOptions.ValueBishop),
-                nameof(SearchOptions.ValueRook),
-                nameof(SearchOptions.ValueQueen),
             ];
 
             foreach (string k in Options.Keys.Where(x => whitelist.Contains(x)))

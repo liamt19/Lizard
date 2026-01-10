@@ -1,5 +1,6 @@
 ﻿
 using Lizard.Logic.Search.History;
+using System.Collections.Generic;
 
 namespace Lizard.Logic.Search.Ordering
 {
@@ -41,18 +42,20 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, pt, moveTo, capturedPiece]);
+                    var hist = history.CaptureHistory[pc, pt, moveTo, capturedPiece];
+                    sm.Score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
                 }
                 else
                 {
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
-                    sm.Score  = 2 * history.MainHistory[pc, m];
-                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 2)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
+                    sm.Score  = NMOrderingMH * history.MainHistory[pc, m];
+                    sm.Score += NMOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx];
+                    sm.Score += NMOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx];
+                    sm.Score += NMOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx];
+                    sm.Score += NMOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx];
+
+                    sm.Score /= 256;
 
                     if (ss->Ply < PlyHistoryTable.MaxPlies)
                     {
@@ -61,7 +64,7 @@ namespace Lizard.Logic.Search.Ordering
 
                     if (pos.GivesCheck(pt, moveTo))
                     {
-                        sm.Score += OrderingCheckBonus;
+                        sm.Score += CheckBonus;
                     }
 
                     int threat = 0;
@@ -69,18 +72,18 @@ namespace Lizard.Logic.Search.Ordering
                     var toBB = SquareBB[moveTo];
                     if (pt == Queen)
                     {
-                        threat += ((fromBB & rookThreats) != 0) ? 12288 : 0;
-                        threat -= ((toBB   & rookThreats) != 0) ? 11264 : 0;
+                        threat += ((fromBB & rookThreats) != 0) ? (24 * OrderingEnPriseMult) : 0;
+                        threat -= ((toBB   & rookThreats) != 0) ? (22 * OrderingEnPriseMult) : 0;
                     }
                     else if (pt == Rook)
                     {
-                        threat += ((fromBB & minorThreats) != 0) ? 10240 : 0;
-                        threat -= ((toBB   & minorThreats) != 0) ?  9216 : 0;
+                        threat += ((fromBB & minorThreats) != 0) ? (20 * OrderingEnPriseMult) : 0;
+                        threat -= ((toBB   & minorThreats) != 0) ? (18 * OrderingEnPriseMult) : 0;
                     }
                     else if (pt == Bishop || pt == Knight)
                     {
-                        threat += ((fromBB & pawnThreats)!= 0) ? 8192 : 0;
-                        threat -= ((toBB   & pawnThreats)!= 0) ? 7168 : 0;
+                        threat += ((fromBB & pawnThreats)!= 0) ? (16 * OrderingEnPriseMult) : 0;
+                        threat -= ((toBB   & pawnThreats)!= 0) ? (14 * OrderingEnPriseMult) : 0;
                     }
 
                     list[i].Score += threat;
@@ -120,22 +123,24 @@ namespace Lizard.Logic.Search.Ordering
                 else if (bb.GetPieceAtIndex(moveTo) != None && !m.IsCastle)
                 {
                     int capturedPiece = bb.GetPieceAtIndex(moveTo);
-                    sm.Score = (OrderingVictimMult * GetPieceValue(capturedPiece)) + 
-                               (history.CaptureHistory[pc, pt, moveTo, capturedPiece]);
+                    var hist = history.CaptureHistory[pc, pt, moveTo, capturedPiece];
+                    sm.Score = hist + ((MVVMult * GetPieceValue(capturedPiece)) / 32);
                 }
                 else
                 {
                     int contIdx = PieceToHistory.GetIndex(pc, pt, moveTo);
 
-                    sm.Score  = 2 * history.MainHistory[pc, m];
-                    sm.Score += 2 * (*(ss - 1)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 2)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 4)->ContinuationHistory)[contIdx];
-                    sm.Score +=     (*(ss - 6)->ContinuationHistory)[contIdx];
+                    sm.Score  = QSOrderingMH * history.MainHistory[pc, m];
+                    sm.Score += QSOrderingSS1 * (*(ss - 1)->ContinuationHistory)[contIdx];
+                    sm.Score += QSOrderingSS2 * (*(ss - 2)->ContinuationHistory)[contIdx];
+                    sm.Score += QSOrderingSS4 * (*(ss - 4)->ContinuationHistory)[contIdx];
+                    sm.Score += QSOrderingSS6 * (*(ss - 6)->ContinuationHistory)[contIdx];
+
+                    sm.Score /= 256;
 
                     if (pos.GivesCheck(pt, moveTo))
                     {
-                        sm.Score += OrderingCheckBonus;
+                        sm.Score += CheckBonus;
                     }
                 }
 

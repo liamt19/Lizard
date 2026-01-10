@@ -324,13 +324,10 @@
                 LogarithmicReductionTable[depth] = new int[MoveListSize];
                 for (int moveIndex = 0; moveIndex < MoveListSize; moveIndex++)
                 {
-                    //LogarithmicReductionTable[depth][moveIndex] = (int)(Math.Log(depth) * Math.Log(moveIndex) / 2 - 0.3);
-                    LogarithmicReductionTable[depth][moveIndex] = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
-
-                    if (LogarithmicReductionTable[depth][moveIndex] < 1)
-                    {
-                        LogarithmicReductionTable[depth][moveIndex] = 0;
-                    }
+                    int r = (int)((Math.Log(depth) * Math.Log(moveIndex) / 2.25) + 0.25);
+                    r = Math.Max(0, r);
+                    r *= 128;
+                    LogarithmicReductionTable[depth][moveIndex] = r;
                 }
             }
 

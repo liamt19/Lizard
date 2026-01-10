@@ -205,7 +205,7 @@ namespace Lizard.Logic.Search
                 && (ss - 1)->CurrentMove != Move.Null
                 && pos.CapturedPiece == None)
             {
-                var val = -QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval);
+                var val = -(QuietOrderMult * ((ss - 1)->StaticEval + ss->StaticEval)) / 16;
                 var bonus = Math.Clamp(val, -QuietOrderMin, QuietOrderMax);
                 history.MainHistory[Not(us), (ss - 1)->CurrentMove] <<= bonus;
             }
@@ -439,13 +439,13 @@ namespace Lizard.Logic.Search
                     if (isQuiet && skipQuiets && depth <= ShallowMaxDepth)
                         continue;
 
-                    int lmrRed = (R * 1024) + NMFutileBase;
+                    int lmrRed = R + NMFutileBase;
 
                     lmrRed += (!isPV).AsInt() * NMFutilePVCoeff;
                     lmrRed += (!improving).AsInt() * NMFutileImpCoeff;
                     lmrRed -= (moveHist / (isCapture ? LMRCaptureDiv : LMRQuietDiv)) * NMFutileHistCoeff;
 
-                    lmrRed /= 1024;
+                    lmrRed /= 128;
                     int lmrDepth = Math.Max(0, depth - lmrRed);
 
                     int futilityMargin = NMFutMarginB + (lmrDepth * NMFutMarginM) + (moveHist / NMFutMarginDiv);
@@ -546,30 +546,22 @@ namespace Lizard.Logic.Search
                     && !(isPV && isCapture))
                 {
 
-                    //  Reduce if our static eval is declining
-                    R += (!improving).AsInt();
+                    R += ((!improving).AsInt() * LMRNotImpCoeff);
+                    R += (cutNode.AsInt() * LMRCutNodeCoeff);
 
-                    //  Reduce if we think that this move is going to be a bad one
-                    R += cutNode.AsInt() * 2;
+                    R -= (ss->TTPV.AsInt() * LMRTTPVCoeff);
+                    R -= (isPV.AsInt() * LMRPVCoeff);
+                    R -= ((m == ss->KillerMove).AsInt() * LMRKillerCoeff);
 
-                    R -= ss->TTPV.AsInt();
-
-                    //  Extend for PV searches
-                    R -= isPV.AsInt();
-
-                    //  Extend killer moves
-                    R -= (m == ss->KillerMove).AsInt();
-
-                    var histScore = 2 * moveHist +
-                                    2 * (*(ss - 1)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 2)->ContinuationHistory)[histIdx] +
-                                        (*(ss - 4)->ContinuationHistory)[histIdx];
+                    var histScore = LMRHist * moveHist +
+                                    LMRHistSS1 * (*(ss - 1)->ContinuationHistory)[histIdx] +
+                                    LMRHistSS2 * (*(ss - 2)->ContinuationHistory)[histIdx] +
+                                    LMRHistSS4 * (*(ss - 4)->ContinuationHistory)[histIdx];
 
                     R -= (histScore / (isCapture ? LMRCaptureDiv : LMRQuietDiv));
+                    
+                    R /= 128;
 
-                    //  Clamp the reduction so that the new depth is somewhere in [1, depth + extend]
-                    //  If we don't reduce at all, then we will just be searching at (depth + extend - 1) as normal.
-                    //  With a large number of reductions, this is able to drop directly into QSearch with depth 0.
                     int reduced = Math.Max(0, Math.Min(newDepth - R, newDepth));
 
                     score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, reduced, true);
@@ -588,17 +580,9 @@ namespace Lizard.Logic.Search
                             score = -Negamax<NonPVNode>(pos, ss + 1, -alpha - 1, -alpha, newDepth, !cutNode);
                         }
 
-                        int bonus = 0;
-                        if (score <= alpha)
-                        {
-                            //  Apply a penalty to this continuation.
-                            bonus = -StatBonus(newDepth - 1);
-                        }
-                        else if (score >= beta)
-                        {
-                            //  Apply a bonus to this continuation.
-                            bonus = StatBonus(newDepth - 1);
-                        }
+                        int bonus = (score <= alpha) ? LMRPenalty(newDepth) 
+                                  : (score >= beta)  ? LMRBonus(newDepth)
+                                  :                    0;
 
                         UpdateContinuations(ss, us, ourPiece, m.To, bonus);
                     }
@@ -1004,7 +988,7 @@ namespace Lizard.Logic.Search
             int capturedPiece = bb.GetPieceAtIndex(moveTo);
 
             int bonus = StatBonus(depth);
-            int malus = StatMalus(depth);
+            int penalty = StatPenalty(depth);
 
             if (capturedPiece != None && !bestMove.IsCastle)
             {
@@ -1035,11 +1019,11 @@ namespace Lizard.Logic.Search
                     Move m = quietMoves[i];
                     thisPiece = bb.GetPieceAtIndex(m.From);
 
-                    history.MainHistory[thisColor, m] <<= -malus;
+                    history.MainHistory[thisColor, m] <<= penalty;
                     if (ss->Ply < PlyHistoryTable.MaxPlies)
-                        history.PlyHistory[ss->Ply, m] <<= -malus;
+                        history.PlyHistory[ss->Ply, m] <<= penalty;
 
-                    UpdateContinuations(ss, thisColor, thisPiece, m.To, -malus);
+                    UpdateContinuations(ss, thisColor, thisPiece, m.To, penalty);
                 }
             }
 
@@ -1049,7 +1033,7 @@ namespace Lizard.Logic.Search
                 thisPiece = bb.GetPieceAtIndex(m.From);
                 capturedPiece = bb.GetPieceAtIndex(m.To);
 
-                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= -malus;
+                history.CaptureHistory[thisColor, thisPiece, m.To, capturedPiece] <<= penalty;
             }
         }
 
@@ -1060,11 +1044,11 @@ namespace Lizard.Logic.Search
 
             rawEval = (short)(rawEval * (200 - pos.State->HalfmoveClock) / 200);
 
-            var pch = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
-            var mchW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
-            var mchB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
+            var pawn = thread.History.PawnCorrection[pos, us] / CorrectionGrain;
+            var nonPawnW = thread.History.NonPawnCorrection[pos, us, White] / CorrectionGrain;
+            var nonPawnB = thread.History.NonPawnCorrection[pos, us, Black] / CorrectionGrain;
 
-            var corr = (pch * 200 + mchW * 100 + mchB * 100) / 300;
+            var corr = (PawnCorrCoeff * pawn + NonPawnCorrCoeff * (nonPawnW + nonPawnB)) / CorrDivisor;
 
             return (short)(rawEval + corr);
         }
@@ -1112,18 +1096,11 @@ namespace Lizard.Logic.Search
         /// <summary>
         /// Calculates a bonus, given the current <paramref name="depth"/>.
         /// </summary>
-        private static int StatBonus(int depth)
-        {
-            return Math.Min((StatBonusMult * depth) - StatBonusSub, StatBonusMax);
-        }
+        private static int StatBonus(int depth) => Math.Min((StatBonusMult * depth) - StatBonusSub, StatBonusMax);
+        private static int StatPenalty(int depth) => -Math.Min((StatPenaltyMult * depth) - StatPenaltySub, StatPenaltyMax);
 
-        /// <summary>
-        /// Calculates a penalty, given the current <paramref name="depth"/>.
-        /// </summary>
-        private static int StatMalus(int depth)
-        {
-            return Math.Min((StatMalusMult * depth) - StatMalusSub, StatMalusMax);
-        }
+        private static int LMRBonus(int depth) => Math.Min((LMRBonusMult * depth) - LMRBonusSub, LMRBonusMax);
+        private static int LMRPenalty(int depth) => -Math.Min((LMRPenaltyMult * depth) - LMRPenaltySub, LMRPenaltyMax);
 
         /// <summary>
         /// Returns a safety margin score given the <paramref name="depth"/> and whether or not our 
