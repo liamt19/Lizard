@@ -65,16 +65,16 @@ namespace Lizard.Logic.Transposition
         {
             ref Bitboard bb = ref pos.bb;
             var occ = bb.Occupancy;
-            StateInfo* st = pos.State;
+            StateInfo st = pos.State;
 
-            int dist = Math.Min(st->HalfmoveClock, st->PliesFromNull);
+            int dist = Math.Min(st.HalfmoveClock, st.PliesFromNull);
             if (dist < 3)
                 return false;
 
             ulong HashFromStack(int i) => pos.Hashes[^i];
 
             int slot;
-            var other = st->Hash ^ HashFromStack(1) ^ Zobrist.ColorHash;
+            var other = st.Hash ^ HashFromStack(1) ^ Zobrist.ColorHash;
             for (int i = 3; i <= dist; i += 2)
             {
                 var currKey = HashFromStack(i);
@@ -83,7 +83,7 @@ namespace Lizard.Logic.Transposition
                 if (other != 0)
                     continue;
 
-                var diff = st->Hash ^ currKey;
+                var diff = st.Hash ^ currKey;
 
                 if (diff != Keys[(slot = Hash1(diff))] &&
                     diff != Keys[(slot = Hash2(diff))])

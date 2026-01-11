@@ -9,16 +9,15 @@ namespace Lizard.Logic.NN
     {
         public static int GetEvaluationSSE(Position pos, int outputBucket)
         {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-
-            Bucketed768.ProcessUpdates(pos);
+            var accumulator = pos.CurrentAccumulator;
+            pos.Accumulators.EnsureUpdated(pos);
 
             float* L1Outputs = stackalloc float[L2_SIZE];
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
 
-            var us   = (short*)(accumulator[pos.ToMove]);
-            var them = (short*)(accumulator[Not(pos.ToMove)]);
+            var us   = (short*)((*accumulator)[pos.ToMove]);
+            var them = (short*)((*accumulator)[Not(pos.ToMove)]);
 
             ActivateFTSparseSSE(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
             ActivateL2SSE(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
@@ -162,16 +161,15 @@ namespace Lizard.Logic.NN
 
         public static int GetEvaluationARM(Position pos, int outputBucket)
         {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-
-            Bucketed768.ProcessUpdates(pos);
+            var accumulator = pos.CurrentAccumulator;
+            pos.Accumulators.EnsureUpdated(pos);
 
             float* L1Outputs = stackalloc float[L2_SIZE];
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
 
-            var us   = (short*)(accumulator[pos.ToMove]);
-            var them = (short*)(accumulator[Not(pos.ToMove)]);
+            var us   = (short*)((*accumulator)[pos.ToMove]);
+            var them = (short*)((*accumulator)[Not(pos.ToMove)]);
 
             ActivateFTSparseARM(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
             ActivateL2ARM(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);
@@ -313,16 +311,15 @@ namespace Lizard.Logic.NN
 
         public static int GetEvaluationFallback(Position pos, int outputBucket)
         {
-            ref Accumulator accumulator = ref *pos.State->Accumulator;
-
-            Bucketed768.ProcessUpdates(pos);
+            var accumulator = pos.CurrentAccumulator;
+            pos.Accumulators.EnsureUpdated(pos);
 
             float* L1Outputs = stackalloc float[L2_SIZE];
             float* L2Outputs = stackalloc float[L3_SIZE];
             float L3Output = 0;
 
-            var us   = (short*)(accumulator[pos.ToMove]);
-            var them = (short*)(accumulator[Not(pos.ToMove)]);
+            var us   = (short*)((*accumulator)[pos.ToMove]);
+            var them = (short*)((*accumulator)[Not(pos.ToMove)]);
 
             ActivateFTFallback(us, them, Net.L1Weights[outputBucket], Net.L1Biases[outputBucket], L1Outputs);
             ActivateL2Fallback(L1Outputs, Net.L2Weights[outputBucket], Net.L2Biases[outputBucket], L2Outputs);

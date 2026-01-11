@@ -166,6 +166,13 @@ namespace Lizard.Logic.Util
             return (T*)block;
         }
 
+        public static unsafe T* AlignedRealloc<T>(T* block, nuint items, nuint alignment = AllocAlignment)
+        {
+            nuint bytes = ((nuint)sizeof(T) * items);
+            block = (T*) NativeMemory.AlignedRealloc(block, bytes, alignment);
+            return block;
+        }
+
 
         [DllImport("libc", SetLastError = true)]
         private static extern int madvise(IntPtr addr, UIntPtr length, int advice);

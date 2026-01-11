@@ -20,8 +20,9 @@ namespace Lizard.Logic.NN
 
         public Accumulator()
         {
-            White = AlignedAllocZeroed<short>(Bucketed768.L1_SIZE);
-            Black = AlignedAllocZeroed<short>(Bucketed768.L1_SIZE);
+            short* block = AlignedAllocZeroed<short>(Bucketed768.L1_SIZE * 2);
+            White = &block[Bucketed768.L1_SIZE * 0];
+            Black = &block[Bucketed768.L1_SIZE * 1];
 
             NeedsRefresh[Color.White] = NeedsRefresh[Color.Black] = true;
             Computed[Color.White] = Computed[Color.Black] = false;
@@ -37,7 +38,23 @@ namespace Lizard.Logic.NN
 
             target->NeedsRefresh[0] = NeedsRefresh[0];
             target->NeedsRefresh[1] = NeedsRefresh[1];
+        }
 
+        [MethodImpl(Inline)]
+        public void CopyTo(ref Accumulator target)
+        {
+            Unsafe.CopyBlock(target[Color.White], White, ByteSize);
+            Unsafe.CopyBlock(target[Color.Black], Black, ByteSize);
+
+            target.NeedsRefresh[0] = NeedsRefresh[0];
+            target.NeedsRefresh[1] = NeedsRefresh[1];
+        }
+
+        [MethodImpl(Inline)]
+        public void CopyTo(Accumulator* target, int perspective)
+        {
+            Unsafe.CopyBlock((*target)[perspective], this[perspective], ByteSize);
+            target->NeedsRefresh[perspective] = NeedsRefresh[perspective];
         }
 
         [MethodImpl(Inline)]
@@ -47,16 +64,19 @@ namespace Lizard.Logic.NN
             target.NeedsRefresh[perspective] = NeedsRefresh[perspective];
         }
 
+
         public void ResetWithBiases(short* biases, uint byteCount)
         {
             Unsafe.CopyBlock(White, biases, byteCount);
             Unsafe.CopyBlock(Black, biases, byteCount);
         }
 
-        public void Dispose()
+        public void MarkDirty()
         {
-            NativeMemory.AlignedFree(White);
-            NativeMemory.AlignedFree(Black);
+            NeedsRefresh[Color.White] = NeedsRefresh[Color.Black] = true;
+            Computed[Color.White] = Computed[Color.Black] = false;
         }
+
+        public void Dispose() => NativeMemory.AlignedFree(White);
     }
 }

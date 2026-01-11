@@ -41,7 +41,7 @@ namespace Lizard.Logic.Transposition
             BlackHash = rand.NextUlong();
         }
 
-        public static ulong GetHash(Position position, ulong* pawnHash, ulong* nonPawnHash)
+        public static ulong GetHash(Position position, ref ulong pawnHash, ref ulong nonPawnHash)
         {
             ref Bitboard bb = ref position.bb;
 
@@ -58,11 +58,11 @@ namespace Lizard.Logic.Transposition
 
                 if (pt == Pawn)
                 {
-                    *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
+                    pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
                 }
                 else
                 {
-                    *nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
+                    nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.White, pt, idx)];
                 }
             }
 
@@ -74,34 +74,34 @@ namespace Lizard.Logic.Transposition
 
                 if (pt == Pawn)
                 {
-                    *pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
+                    pawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
                 }
                 else
                 {
-                    *nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
+                    nonPawnHash ^= ColorPieceSquareHashes[ColorPieceSquareHashesIndex(Color.Black, pt, idx)];
                 }
             }
 
-            if ((position.State->CastleStatus & CastlingStatus.WK) != 0)
+            if ((position.CastleStatus & CastlingStatus.WK) != 0)
             {
                 hash ^= CastlingRightsHashes[0];
             }
-            if ((position.State->CastleStatus & CastlingStatus.WQ) != 0)
+            if ((position.CastleStatus & CastlingStatus.WQ) != 0)
             {
                 hash ^= CastlingRightsHashes[1];
             }
-            if ((position.State->CastleStatus & CastlingStatus.BK) != 0)
+            if ((position.CastleStatus & CastlingStatus.BK) != 0)
             {
                 hash ^= CastlingRightsHashes[2];
             }
-            if ((position.State->CastleStatus & CastlingStatus.BQ) != 0)
+            if ((position.CastleStatus & CastlingStatus.BQ) != 0)
             {
                 hash ^= CastlingRightsHashes[3];
             }
 
-            if (position.State->EPSquare != EPNone)
+            if (position.EPSquare != EPNone)
             {
-                hash ^= EnPassantFileHashes[GetIndexFile(position.State->EPSquare)];
+                hash ^= EnPassantFileHashes[GetIndexFile(position.EPSquare)];
             }
 
             if (position.ToMove == Color.Black)

@@ -122,6 +122,19 @@ namespace Lizard.Logic.Threads
             _SearchCond = new ConditionVariable();
             Searching = true;
 
+
+            NodeTable = new ulong[SquareNB][];
+            for (int sq = 0; sq < SquareNB; sq++)
+            {
+                NodeTable[sq] = new ulong[SquareNB];
+            }
+
+            CachedBuckets = new BucketCache[Bucketed768.INPUT_BUCKETS * 2];
+            for (int i = 0; i < Bucketed768.INPUT_BUCKETS * 2; i++)
+            {
+                CachedBuckets[i] = new BucketCache();
+            }
+
             //  Each thread its own position object, which lasts the entire lifetime of the thread.
             RootPosition = new Position(InitialFEN, true, this);
 
@@ -148,19 +161,6 @@ namespace Lizard.Logic.Threads
             Quit = false;
 
             History = new HistoryTable();
-
-            const int CacheSize = Bucketed768.INPUT_BUCKETS * 2;
-            CachedBuckets = new BucketCache[CacheSize];
-            for (int i = 0; i < CacheSize; i++)
-            {
-                CachedBuckets[i] = new BucketCache();
-            }
-
-            NodeTable = new ulong[SquareNB][];
-            for (int sq = 0; sq < SquareNB; sq++)
-            {
-                NodeTable[sq] = new ulong[SquareNB];
-            }
 
             _SysThread.Name = $"{(IsMain ? "(MAIN)" : "Search")}Thread {ThreadIdx}, ID {Environment.CurrentManagedThreadId}";
 
@@ -226,7 +226,7 @@ namespace Lizard.Logic.Threads
             ClearContinuations();
             ClearCurrentMoves();
 
-            Bucketed768.ResetCaches(this);
+            ResetCaches();
 
             for (int sq = 0; sq < SquareNB; sq++)
             {
@@ -451,6 +451,17 @@ namespace Lizard.Logic.Threads
             return false;
         }
 
+
+        public void ResetCaches()
+        {
+            for (int bIdx = 0; bIdx < CachedBuckets.Length; bIdx++)
+            {
+                ref BucketCache bc = ref CachedBuckets[bIdx];
+                bc.Accumulator.ResetWithBiases(Bucketed768.Net.FTBiases, sizeof(short) * Bucketed768.L1_SIZE);
+                bc.Boards[White].Reset();
+                bc.Boards[Black].Reset();
+            }
+        }
 
         /// <summary>
         /// Sets this thread's <see cref="Searching"/> variable to true, which will cause the thread in the IdleLoop to

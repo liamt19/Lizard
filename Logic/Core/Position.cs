@@ -1,8 +1,10 @@
-﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using Lizard.Logic.Data;
 using Lizard.Logic.NN;
 using Lizard.Logic.Threads;
+using Lizard.Logic.Util;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Lizard.Logic.Core
 {
@@ -17,33 +19,29 @@ namespace Lizard.Logic.Core
 
         public int ToMove;
 
-        public bool InCheck => popcount(State->Checkers) == 1;
-        public bool InDoubleCheck => popcount(State->Checkers) == 2;
-        public bool Checked => popcount(State->Checkers) != 0;
+        public bool InCheck => popcount(State.Checkers) == 1;
+        public bool InDoubleCheck => popcount(State.Checkers) == 2;
+        public bool Checked => popcount(State.Checkers) != 0;
 
-        public ulong Hash => State->Hash;
-        public ulong PawnHash => State->PawnHash;
-        public ulong NonPawnHash(int pc) => State->NonPawnHash[pc];
-        public int CapturedPiece => State->CapturedPiece;
-        public int HalfmoveClock => State->HalfmoveClock;
+        public ulong CheckSquares(int pt) => State.CheckSquares[pt];
+        public ulong BlockingPieces(int pc) => State.BlockingPieces[pc];
+        public ulong Pinners(int pc) => State.Pinners[pc];
+        public int KingSquare(int pc) => State.KingSquares[pc];
+        public ulong Checkers => State.Checkers;
+        public ulong Hash => State.Hash;
+        public ulong PawnHash => State.PawnHash;
+        public ulong NonPawnHash(int pc) => State.NonPawnHash[pc];
+        public int HalfmoveClock => State.HalfmoveClock;
+        public int EPSquare => State.EPSquare;
+        public int CapturedPiece => State.CapturedPiece;
+        public int PliesFromNull => State.PliesFromNull;
+        public CastlingStatus CastleStatus => State.CastleStatus;
 
-        /// <summary>
-        /// The number of <see cref="StateInfo"/> items that memory will be allocated for within the StateStack, which is 256 KB.
-        /// If you find yourself in a game exceeding 2047 moves, go outside.
-        /// </summary>
-        private const int StateStackSize = 2048;
+        public List<StateInfo> States;
+        public StateInfo State;
 
-        public readonly StateInfo* StartingState;
-        private readonly StateInfo* EndState;
-
-
-        /// <summary>
-        /// A pointer to this Position's current <see cref="StateInfo"/> object, which corresponds to the StateStack[GamePly]
-        /// </summary>
-        public StateInfo* State;
-        public StateInfo* NextState => (State + 1);
-
-        private readonly Accumulator* _accumulatorBlock;
+        public AccumulatorStack Accumulators;
+        public Accumulator* CurrentAccumulator => Accumulators.Current;
 
 
         /// <summary>
@@ -69,7 +67,7 @@ namespace Lizard.Logic.Core
         [MethodImpl(Inline)]
         public bool CanCastle(ulong boardOcc, ulong ourOcc, CastlingStatus cr)
         {
-            return State->CastleStatus.HasFlag(cr)
+            return State.CastleStatus.HasFlag(cr)
                 && !CastlingImpeded(boardOcc, cr)
                 && HasCastlingRook(ourOcc, cr);
         }
@@ -90,7 +88,7 @@ namespace Lizard.Logic.Core
         public bool IsNoisy(Move m) => (m.IsEnPassant || IsCapture(m));
 
         [MethodImpl(Inline)]
-        public bool GivesCheck(int pt, int sq) => (State->CheckSquares[pt] & SquareBB[sq]) != 0;
+        public bool GivesCheck(int pt, int sq) => (State.CheckSquares[pt] & SquareBB[sq]) != 0;
 
         [MethodImpl(Inline)]
         public ulong ThreatsBy(int pc, int pt) => bb.ThreatsBy(pc, pt);
@@ -117,25 +115,9 @@ namespace Lizard.Logic.Core
 
             this.bb = new Bitboard();
 
+            Accumulators = new AccumulatorStack();
             Hashes = new List<ulong>(1024);
-            StartingState = AlignedAllocZeroed<StateInfo>(StateStackSize);
-
-            EndState = &StartingState[StateStackSize - 1];
-            State = &StartingState[0];
-
-            if (UpdateNN)
-            {
-                //  Create the accumulators now if we need to.
-                //  We do this in one contiguous block rather than allocating each accumulator individually
-                //  only so that there aren't 2k small blocks that the runtime has to work around.
-                _accumulatorBlock = AlignedAllocZeroed<Accumulator>(StateStackSize);
-                for (int i = 0; i < StateStackSize; i++)
-                {
-                    (StartingState + i)->Accumulator = _accumulatorBlock + i;
-                    *(StartingState + i)->Accumulator = new Accumulator();
-                }
-            }
-
+            States = new List<StateInfo>(256);
 
             if (UpdateNN && Owner == null)
             {
@@ -145,27 +127,6 @@ namespace Lizard.Logic.Core
             }
 
             LoadFromFEN(fen);
-        }
-
-
-        /// <summary>
-        /// Free the memory block that we allocated for this Position's <see cref="Bitboard"/>
-        /// </summary>
-        ~Position()
-        {
-            if (UpdateNN)
-            {
-                //  Free each accumulator, then the block
-                for (int i = 0; i < StateStackSize; i++)
-                {
-                    var acc = *(StartingState + i)->Accumulator;
-                    acc.Dispose();
-                }
-
-                NativeMemory.AlignedFree((void*)_accumulatorBlock);
-            }
-
-            NativeMemory.AlignedFree((void*)StartingState);
         }
 
         /// <summary>
@@ -228,28 +189,23 @@ namespace Lizard.Logic.Core
         /// <param name="move">The move to make, which needs to be a legal move or strange things might happen.</param>
         public void MakeMove(Move move)
         {
-            //  Copy everything except the pointer to the accumulator, which should never change.
-            //  The data within the accumulator will be copied, but each state needs its own pointer to its own accumulator.
-            Unsafe.CopyBlock(NextState, State, (uint)StateInfo.StateCopySize);
+            States.Add(State);
+            Hashes.Add(Hash);
 
             if (UpdateNN)
             {
-                NNUE.MakeMove(this, move);
+                Accumulators.MakeMove(this, move);
             }
 
-            Hashes.Add(Hash);
-            State++;
-
-            State->HalfmoveClock++;
-            State->PliesFromNull++;
+            State.HalfmoveClock++;
+            State.PliesFromNull++;
 
             if (ToMove == Black)
             {
                 FullMoves++;
             }
 
-            int moveFrom = move.From;
-            int moveTo = move.To;
+            var (moveFrom, moveTo) = move;
 
             int ourPiece = bb.GetPieceAtIndex(moveFrom);
             int ourColor = ToMove;
@@ -271,11 +227,11 @@ namespace Lizard.Logic.Core
 
                     //  Move our rook and update the hash
                     DoCastling(ourColor, moveFrom, moveTo, undo: false);
-                    State->KingSquares[ourColor] = move.CastlingKingSquare();
+                    State.KingSquares[ourColor] = move.CastlingKingSquare();
                 }
                 else
                 {
-                    State->KingSquares[ourColor] = moveTo;
+                    State.KingSquares[ourColor] = moveTo;
                 }
 
                 //  Remove all of our castling rights
@@ -287,7 +243,7 @@ namespace Lizard.Logic.Core
                 RemoveCastling(GetCastlingForRook(moveFrom));
             }
 
-            State->CapturedPiece = theirPiece;
+            State.CapturedPiece = theirPiece;
             if (theirPiece != None)
             {
                 //  Remove their piece, and update the hash
@@ -301,17 +257,17 @@ namespace Lizard.Logic.Core
                 }
 
                 //  Reset the halfmove clock
-                State->HalfmoveClock = 0;
+                State.HalfmoveClock = 0;
             }
 
 
-            int tempEPSquare = State->EPSquare;
-            if (State->EPSquare != EPNone)
+            int tempEPSquare = State.EPSquare;
+            if (State.EPSquare != EPNone)
             {
                 //  Set st->EPSquare to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-                State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
-                State->EPSquare = EPNone;
+                State.Hash.ZobristEnPassant(GetIndexFile(State.EPSquare));
+                State.EPSquare = EPNone;
             }
 
             if (ourPiece == Pawn)
@@ -324,7 +280,7 @@ namespace Lizard.Logic.Core
                     UpdateHash(theirColor, Pawn, idxPawn);
 
                     //  The EnPassant/Capture flags are mutually exclusive, so set CapturedPiece here
-                    State->CapturedPiece = Pawn;
+                    State.CapturedPiece = Pawn;
                 }
                 else if ((moveTo ^ moveFrom) == 16)
                 {
@@ -333,13 +289,13 @@ namespace Lizard.Logic.Core
                     //  st->EPSquare is only set if they have a pawn that can capture this one (via en passant)
                     if ((PawnAttackMasks[ourColor][moveTo + down] & bb.Colors[theirColor] & bb.Pieces[Pawn]) != 0)
                     {
-                        State->EPSquare = moveTo + down;
-                        State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
+                        State.EPSquare = moveTo + down;
+                        State.Hash.ZobristEnPassant(GetIndexFile(State.EPSquare));
                     }
                 }
 
                 //  Reset the halfmove clock
-                State->HalfmoveClock = 0;
+                State.HalfmoveClock = 0;
             }
 
 
@@ -363,33 +319,37 @@ namespace Lizard.Logic.Core
                 UpdateHash(ourColor, move.PromotionTo, moveTo);
             }
 
-            State->Hash.ZobristChangeToMove();
+            State.Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
 
-            State->Checkers = bb.AttackersTo(State->KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
+            State.Checkers = bb.AttackersTo(State.KingSquares[theirColor], bb.Occupancy) & bb.Colors[ourColor];
 
             SetCheckInfo();
         }
 
         private void UpdateHash(int pc, int pt, int sq)
         {
-            State->Hash.ZobristToggleSquare(pc, pt, sq);
+            State.Hash.ZobristToggleSquare(pc, pt, sq);
 
             if (pt == Pawn)
             {
-                State->PawnHash.ZobristToggleSquare(pc, pt, sq);
+                State.PawnHash.ZobristToggleSquare(pc, pt, sq);
             }
             else
             {
-                State->NonPawnHash[pc].ZobristToggleSquare(pc, pt, sq);
+                State.NonPawnHash[pc].ZobristToggleSquare(pc, pt, sq);
             }
         }
 
 
         public void UnmakeMove(Move move)
         {
-            int moveFrom = move.From;
-            int moveTo = move.To;
+            if (UpdateNN)
+            {
+                Accumulators.UndoMove();
+            }
+
+            var (moveFrom, moveTo) = move;
 
             //  Assume that "we" just made the last move, and "they" are undoing it.
             int ourPiece = bb.GetPieceAtIndex(moveTo);
@@ -418,7 +378,7 @@ namespace Lizard.Logic.Core
                 bb.MoveSimple(moveTo, moveFrom, ourColor, ourPiece);
             }
 
-            if (State->CapturedPiece != Piece.None)
+            if (State.CapturedPiece != Piece.None)
             {
                 //  CapturedPiece is set for captures and en passant, so check which it was
                 if (move.IsEnPassant)
@@ -431,7 +391,7 @@ namespace Lizard.Logic.Core
                 else
                 {
                     //  Otherwise it was a capture, so put the captured piece back
-                    bb.AddPiece(moveTo, theirColor, State->CapturedPiece);
+                    bb.AddPiece(moveTo, theirColor, State.CapturedPiece);
                 }
             }
 
@@ -441,8 +401,8 @@ namespace Lizard.Logic.Core
                 FullMoves--;
             }
 
-            State--;
-            Hashes.RemoveAt(Hashes.Count - 1);
+            State = States.PopBack();
+            Hashes.PopBack();
 
             ToMove = Not(ToMove);
         }
@@ -454,29 +414,21 @@ namespace Lizard.Logic.Core
         /// </summary>
         public void MakeNullMove()
         {
-            //  Copy everything except the pointer to the accumulator, which should never change.
-            Unsafe.CopyBlock(NextState, State, (uint)StateInfo.StateCopySize);
-
-            if (UpdateNN)
-            {
-                NNUE.MakeNullMove(this);
-            }
-
+            States.Add(State);
             Hashes.Add(Hash);
-            State++;
 
-            if (State->EPSquare != EPNone)
+            if (State.EPSquare != EPNone)
             {
                 //  Set EnPassantTarget to 64 now.
                 //  If we are capturing en passant, move.EnPassant is true. In any case it should be reset every move.
-                State->Hash.ZobristEnPassant(GetIndexFile(State->EPSquare));
-                State->EPSquare = EPNone;
+                State.Hash.ZobristEnPassant(GetIndexFile(State.EPSquare));
+                State.EPSquare = EPNone;
             }
 
-            State->Hash.ZobristChangeToMove();
+            State.Hash.ZobristChangeToMove();
             ToMove = Not(ToMove);
-            State->HalfmoveClock++;
-            State->PliesFromNull = 0;
+            State.HalfmoveClock++;
+            State.PliesFromNull = 0;
 
             SetCheckInfo();
         }
@@ -486,8 +438,8 @@ namespace Lizard.Logic.Core
         /// </summary>
         public void UnmakeNullMove()
         {
-            State--;
-            Hashes.RemoveAt(Hashes.Count - 1);
+            State = States.PopBack();
+            Hashes.PopBack();
 
             ToMove = Not(ToMove);
         }
@@ -529,38 +481,34 @@ namespace Lizard.Logic.Core
         }
 
 
-
-
-
-
         [MethodImpl(Inline)]
         public void SetState()
         {
-            State->Checkers = bb.AttackersTo(State->KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
+            State.Checkers = bb.AttackersTo(State.KingSquares[ToMove], bb.Occupancy) & bb.Colors[Not(ToMove)];
 
             SetCheckInfo();
 
-            State->PawnHash = 0;
-            State->NonPawnHash[White] = State->NonPawnHash[Black] = 0;
-            State->Hash = Zobrist.GetHash(this, &State->PawnHash, &State->NonPawnHash[White]);
-            State->NonPawnHash[Black] = State->NonPawnHash[White];
+            State.PawnHash = 0;
+            State.NonPawnHash[White] = State.NonPawnHash[Black] = 0;
+            State.Hash = Zobrist.GetHash(this, ref State.PawnHash, ref State.NonPawnHash[White]);
+            State.NonPawnHash[Black] = State.NonPawnHash[White];
         }
 
 
         [MethodImpl(Inline)]
         public void SetCheckInfo()
         {
-            State->BlockingPieces[White] = bb.BlockingPieces(White, &State->Pinners[Black]);
-            State->BlockingPieces[Black] = bb.BlockingPieces(Black, &State->Pinners[White]);
+            State.BlockingPieces[White] = bb.BlockingPieces(White, ref State.Pinners[Black]);
+            State.BlockingPieces[Black] = bb.BlockingPieces(Black, ref State.Pinners[White]);
 
-            int kingSq = State->KingSquares[Not(ToMove)];
+            int kingSq = State.KingSquares[Not(ToMove)];
 
-            State->CheckSquares[Pawn] = PawnAttackMasks[Not(ToMove)][kingSq];
-            State->CheckSquares[Knight] = KnightMasks[kingSq];
-            State->CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
-            State->CheckSquares[Rook] = GetRookMoves(bb.Occupancy, kingSq);
-            State->CheckSquares[Queen] = State->CheckSquares[Bishop] | State->CheckSquares[Rook];
-            State->CheckSquares[King] = 0;
+            State.CheckSquares[Pawn] = PawnAttackMasks[Not(ToMove)][kingSq];
+            State.CheckSquares[Knight] = KnightMasks[kingSq];
+            State.CheckSquares[Bishop] = GetBishopMoves(bb.Occupancy, kingSq);
+            State.CheckSquares[Rook] = GetRookMoves(bb.Occupancy, kingSq);
+            State.CheckSquares[Queen] = State.CheckSquares[Bishop] | State.CheckSquares[Rook];
+            State.CheckSquares[King] = 0;
         }
 
 
@@ -580,7 +528,7 @@ namespace Lizard.Logic.Core
 
             CastlingRookPaths[(int)cr] = (LineBB[rfrom][rto] | LineBB[kfrom][kto]) & ~(SquareBB[kfrom] | SquareBB[rfrom]);
 
-            State->CastleStatus |= cr;
+            State.CastleStatus |= cr;
         }
 
 
@@ -593,7 +541,7 @@ namespace Lizard.Logic.Core
         /// </summary>
         public ulong HashAfter(Move m)
         {
-            ulong hash = State->Hash;
+            ulong hash = State.Hash;
 
             int from = m.From;
             int to = m.To;
@@ -650,7 +598,7 @@ namespace Lizard.Logic.Core
             {
                 if (move.IsEnPassant)
                 {
-                    return State->EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
+                    return State.EPSquare != EPNone && (SquareBB[moveTo - ShiftUpDir(ToMove)] & bb.Pieces[Pawn] & bb.Colors[Not(ToMove)]) != 0;
                 }
 
                 ulong empty = ~bb.Occupancy;
@@ -680,7 +628,7 @@ namespace Lizard.Logic.Core
         /// Returns true if the move <paramref name="move"/> is legal in the current position.
         /// </summary>
         [MethodImpl(Inline)] 
-        public bool IsLegal(in Move move) => IsLegal(move, State->KingSquares[ToMove], State->KingSquares[Not(ToMove)], State->BlockingPieces[ToMove]);
+        public bool IsLegal(in Move move) => IsLegal(move, State.KingSquares[ToMove], State.KingSquares[Not(ToMove)], State.BlockingPieces[ToMove]);
 
         /// <summary>
         /// Returns true if the move <paramref name="move"/> is legal given the current position.
@@ -719,7 +667,7 @@ namespace Lizard.Logic.Core
                     return ((bb.AttackersTo(moveTo, bb.Occupancy ^ SquareBB[moveFrom]) & bb.Colors[theirColor]) | (NeighborsMask[moveTo] & SquareBB[theirKing])) == 0;
                 }
 
-                int checker = lsb(State->Checkers);
+                int checker = lsb(State.Checkers);
                 if (((LineBB[ourKing][checker] & SquareBB[moveTo]) != 0)
                     || (move.IsEnPassant && GetIndexFile(moveTo) == GetIndexFile(checker)))
                 {
@@ -746,7 +694,7 @@ namespace Lizard.Logic.Core
                         return false;
                     }
 
-                    if (IsChess960 && (State->BlockingPieces[ourColor] & SquareBB[moveTo]) != 0)
+                    if (IsChess960 && (State.BlockingPieces[ourColor] & SquareBB[moveTo]) != 0)
                     {
                         //  This rook was blocking a check, and it would put our king in check
                         //  once the rook and king switched places
@@ -792,7 +740,7 @@ namespace Lizard.Logic.Core
             //  The piece we are moving isn't a blocker for our king
             //  The piece is a blocker for our king, but it is moving along the same ray that it had been blocking previously.
             //  (i.e. a rook on B1 moving to A1 to capture a rook that was pinning it to our king on C1)
-            return ((State->BlockingPieces[ourColor] & SquareBB[moveFrom]) == 0) ||
+            return ((State.BlockingPieces[ourColor] & SquareBB[moveFrom]) == 0) ||
                    ((RayBB[moveFrom][moveTo] & SquareBB[ourKing]) != 0);
         }
 
@@ -800,15 +748,15 @@ namespace Lizard.Logic.Core
         [MethodImpl(Inline)]
         public bool IsDraw(short ply)
         {
-            if (State->HalfmoveClock >= 100 && (!InCheck || HasLegalMoves()))
+            if (State.HalfmoveClock >= 100 && (!InCheck || HasLegalMoves()))
                 return true;
 
             var histSize = Hashes.Count;
-            var dist = Math.Min(State->HalfmoveClock, histSize);
+            var dist = Math.Min(State.HalfmoveClock, histSize);
             bool rep = false;
             for (int i = 4; i <= dist; i += 2)
             {
-                if (Hashes[histSize - i] == State->Hash)
+                if (Hashes[histSize - i] == State.Hash)
                 {
                     if (ply >= i || rep)
                         return true;
@@ -858,8 +806,8 @@ namespace Lizard.Logic.Core
         [MethodImpl(Inline)]
         private void RemoveCastling(CastlingStatus cr)
         {
-            State->Hash.ZobristCastle(State->CastleStatus, cr);
-            State->CastleStatus &= ~cr;
+            State.Hash.ZobristCastle(State.CastleStatus, cr);
+            State.CastleStatus &= ~cr;
         }
 
 
@@ -890,15 +838,15 @@ namespace Lizard.Logic.Core
                 bb.AddPiece(A8 + sq, Black, bBackrank[sq]);
 
                 if (wBackrank[sq] == King)
-                    State->KingSquares[White] = A1 + sq;
+                    State.KingSquares[White] = A1 + sq;
 
                 if (bBackrank[sq] == King)
-                    State->KingSquares[Black] = A8 + sq;
+                    State.KingSquares[Black] = A8 + sq;
             }
 
             for (int sq = 0; sq < 8; sq++)
             {
-                //  SetCastlingStatus needs State->KingSquare which might not be set yet if we do this in the above loop
+                //  SetCastlingStatus needs State.KingSquare which might not be set yet if we do this in the above loop
                 if (wBackrank[sq] == Rook)
                     SetCastlingStatus(White, A1 + sq);
 
@@ -1021,11 +969,9 @@ namespace Lizard.Logic.Core
                 bb.Reset();
                 FullMoves = 1;
 
-                State = StartingState;
-                NativeMemory.Clear(State, StateInfo.StateCopySize);
-                State->CastleStatus = CastlingStatus.None;
-                State->HalfmoveClock = 0;
-                State->PliesFromNull = 0;
+                Hashes.Clear();
+                States.Clear();
+                State = default;
 
                 for (int i = 0; i < splits.Length; i++)
                 {
@@ -1069,7 +1015,7 @@ namespace Lizard.Logic.Core
                     //  castling availability
                     else if (i == 9)
                     {
-                        State->CastleStatus = CastlingStatus.None;
+                        State.CastleStatus = CastlingStatus.None;
 
                         foreach (char ch in splits[i])
                         {
@@ -1107,11 +1053,11 @@ namespace Lizard.Logic.Core
                             //  White moved a pawn last
                             if (splits[i][1].Equals('3'))
                             {
-                                State->EPSquare = StringToIndex(splits[i]);
+                                State.EPSquare = StringToIndex(splits[i]);
                             }
                             else if (splits[i][1].Equals('6'))
                             {
-                                State->EPSquare = StringToIndex(splits[i]);
+                                State.EPSquare = StringToIndex(splits[i]);
                             }
                         }
                     }
@@ -1120,7 +1066,7 @@ namespace Lizard.Logic.Core
                     {
                         if (int.TryParse(splits[i], out int halfMoves))
                         {
-                            State->HalfmoveClock = halfMoves;
+                            State.HalfmoveClock = halfMoves;
                         }
                     }
                     //  fullmove number
@@ -1140,17 +1086,16 @@ namespace Lizard.Logic.Core
                 return false;
             }
 
-            State->KingSquares[White] = bb.KingIndex(White);
-            State->KingSquares[Black] = bb.KingIndex(Black);
+            State.KingSquares[White] = bb.KingIndex(White);
+            State.KingSquares[Black] = bb.KingIndex(Black);
 
             SetState();
 
-            State->CapturedPiece = None;
+            //State.CapturedPiece = None;
 
-            if (UpdateNN)
-            {
-                NNUE.RefreshAccumulator(this);
-            }
+            Accumulators.Reset();
+            Accumulators.RefreshIntoCache(this);
+            Owner.ResetCaches();
 
             return true;
         }
@@ -1200,21 +1145,21 @@ namespace Lizard.Logic.Core
 
             fen.Append(ToMove == Color.White ? " w " : " b ");
 
-            if (State->CastleStatus != CastlingStatus.None)
+            if (State.CastleStatus != CastlingStatus.None)
             {
-                if (State->CastleStatus.HasFlag(CastlingStatus.WK))
+                if (State.CastleStatus.HasFlag(CastlingStatus.WK))
                 {
                     fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WK])) : 'K');
                 }
-                if (State->CastleStatus.HasFlag(CastlingStatus.WQ))
+                if (State.CastleStatus.HasFlag(CastlingStatus.WQ))
                 {
                     fen.Append(IsChess960 ? (char)('A' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.WQ])) : 'Q');
                 }
-                if (State->CastleStatus.HasFlag(CastlingStatus.BK))
+                if (State.CastleStatus.HasFlag(CastlingStatus.BK))
                 {
                     fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BK])) : 'k');
                 }
-                if (State->CastleStatus.HasFlag(CastlingStatus.BQ))
+                if (State.CastleStatus.HasFlag(CastlingStatus.BQ))
                 {
                     fen.Append(IsChess960 ? (char)('a' + GetIndexFile(CastlingRookSquares[(int)CastlingStatus.BQ])) : 'q');
                 }
@@ -1224,16 +1169,16 @@ namespace Lizard.Logic.Core
                 fen.Append('-');
             }
 
-            if (State->EPSquare != EPNone)
+            if (State.EPSquare != EPNone)
             {
-                fen.Append(" " + IndexToString(State->EPSquare));
+                fen.Append(" " + IndexToString(State.EPSquare));
             }
             else
             {
                 fen.Append(" -");
             }
 
-            fen.Append(" " + State->HalfmoveClock + " " + FullMoves);
+            fen.Append(" " + State.HalfmoveClock + " " + FullMoves);
 
             return fen.ToString();
         }

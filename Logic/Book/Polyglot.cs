@@ -174,31 +174,31 @@ namespace LTChess.Logic.Book
             }
 
             ulong castleHash = 0;
-            if (pos.State->CastleStatus.HasFlag(CastlingStatus.WK))
+            if (pos.CastleStatus.HasFlag(CastlingStatus.WK))
             {
                 castleHash ^= RandomCastle[0];
             }
-            if (pos.State->CastleStatus.HasFlag(CastlingStatus.WQ))
+            if (pos.CastleStatus.HasFlag(CastlingStatus.WQ))
             {
                 castleHash ^= RandomCastle[1];
             }
-            if (pos.State->CastleStatus.HasFlag(CastlingStatus.BK))
+            if (pos.CastleStatus.HasFlag(CastlingStatus.BK))
             {
                 castleHash ^= RandomCastle[2];
             }
-            if (pos.State->CastleStatus.HasFlag(CastlingStatus.BQ))
+            if (pos.CastleStatus.HasFlag(CastlingStatus.BQ))
             {
                 castleHash ^= RandomCastle[3];
             }
 
             ulong enPassantHash = 0;
-            if (pos.State->EPSquare != EPNone)
+            if (pos.EPSquare != EPNone)
             {
                 int up = ShiftUpDir(pos.ToMove);
-                int epPawnSquare = pos.State->EPSquare - up;
+                int epPawnSquare = pos.EPSquare - up;
                 if ((GetRankBB(epPawnSquare) & NeighborsMask[epPawnSquare] & bb.Pieces[Piece.Pawn] & bb.Colors[pos.ToMove]) != 0)
                 {
-                    enPassantHash ^= RandomEnPassant[GetIndexFile(pos.State->EPSquare)];
+                    enPassantHash ^= RandomEnPassant[GetIndexFile(pos.EPSquare)];
                 }
             }
 

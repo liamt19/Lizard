@@ -226,7 +226,7 @@ namespace Lizard.Logic.Datagen
 
             //  0.25 + 0.5 - (0.25 * 0.5) == 62.5% == ~40 squares
             ulong scrambleMask = (ulong)((rand.NextInt64() & rand.NextInt64()) | rand.NextInt64());
-            CastlingStatus cr = pos.State->CastleStatus;
+            CastlingStatus cr = pos.CastleStatus;
 
             int bitSide = White;
             while (scrambleMask != 0)
@@ -368,17 +368,18 @@ namespace Lizard.Logic.Datagen
 
             pos.FullMoves = 1;
 
-            pos.State = pos.StartingState;
+            // TODO: might be wrong
+            pos.State = default;
+            pos.States.Clear();
+            pos.Hashes.Clear();
 
-            var st = pos.State;
-            NativeMemory.Clear(st, StateInfo.StateCopySize);
-            st->CastleStatus = cr;
-            st->HalfmoveClock = 0;
-            st->PliesFromNull = 0;
-            st->EPSquare = EPNone;
-            st->CapturedPiece = None;
-            st->KingSquares[White] = bb.KingIndex(White);
-            st->KingSquares[Black] = bb.KingIndex(Black);
+            pos.State.CastleStatus = cr;
+            pos.State.HalfmoveClock = 0;
+            pos.State.PliesFromNull = 0;
+            pos.State.EPSquare = EPNone;
+            pos.State.CapturedPiece = None;
+            pos.State.KingSquares[White] = bb.KingIndex(White);
+            pos.State.KingSquares[Black] = bb.KingIndex(Black);
 
             pos.SetState();
 

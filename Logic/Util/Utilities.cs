@@ -724,6 +724,14 @@ namespace Lizard.Logic.Util
             }
         }
 
+        [MethodImpl(Inline)]
+        public static T PopBack<T>(this List<T> list)
+        {
+            T back = list[^1];
+            list.RemoveAt(list.Count - 1);
+            return back;
+        }
+
 
         public static void ParsePositionCommand(string[] input, Position pos, ThreadSetup setup)
         {

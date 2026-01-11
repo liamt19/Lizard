@@ -159,10 +159,10 @@ namespace Lizard.Logic.Core
         /// <paramref name="pinners"/> is a mask of the other side's pieces that would be 
         /// putting <paramref name="pc"/>'s king in check if a blocker of color <paramref name="pc"/> wasn't in the way
         /// </summary>
-        public ulong BlockingPieces(int pc, ulong* pinners)
+        public ulong BlockingPieces(int pc, ref ulong pinners)
         {
             ulong blockers = 0UL;
-            *pinners = 0;
+            pinners = 0;
 
             ulong temp;
             ulong us = Colors[pc];
@@ -190,7 +190,7 @@ namespace Lizard.Logic.Core
                     if ((temp & us) != 0)
                     {
                         //  If the blocker is ours, then the candidate on the square "idx" is a pinner
-                        *pinners |= SquareBB[idx];
+                        pinners |= SquareBB[idx];
                     }
                 }
             }

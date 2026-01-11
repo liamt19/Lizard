@@ -32,7 +32,7 @@
 
             ulong us   = bb.Colors[ToMove];
             ulong them = bb.Colors[Not(ToMove)];
-            ulong captureSquares = evasions ? State->Checkers : them;
+            ulong captureSquares = evasions ? State.Checkers : them;
 
             ulong emptySquares = ~bb.Occupancy;
 
@@ -40,7 +40,7 @@
             ulong promotingPawns    = ourPawns & rank7;
             ulong notPromotingPawns = ourPawns & ~rank7;
 
-            int theirKing = State->KingSquares[Not(ToMove)];
+            int theirKing = State.KingSquares[Not(ToMove)];
 
             if (!noisyMoves)
             {
@@ -115,19 +115,19 @@
                 list[size++].Move = new Move(to - up - Direction.EAST, to);
             }
 
-            if (State->EPSquare != EPNone && !noisyMoves)
+            if (State.EPSquare != EPNone && !noisyMoves)
             {
-                if (evasions && (targets & (SquareBB[State->EPSquare + up])) != 0)
+                if (evasions && (targets & (SquareBB[State.EPSquare + up])) != 0)
                 {
                     //  When in check, we can only en passant if the pawn being captured is the one giving check
                     return size;
                 }
 
-                ulong mask = notPromotingPawns & PawnAttackMasks[Not(ToMove)][State->EPSquare];
+                ulong mask = notPromotingPawns & PawnAttackMasks[Not(ToMove)][State.EPSquare];
                 while (mask != 0)
                 {
                     int from = poplsb(&mask);
-                    list[size++].Move = new Move(from, State->EPSquare, Move.FlagEnPassant);
+                    list[size++].Move = new Move(from, State.EPSquare, Move.FlagEnPassant);
                 }
             }
 
@@ -165,15 +165,15 @@
             ulong them = bb.Colors[Not(ToMove)];
             ulong occ  = bb.Occupancy;
 
-            int ourKing   = State->KingSquares[ToMove];
-            int theirKing = State->KingSquares[Not(ToMove)];
+            int ourKing   = State.KingSquares[ToMove];
+            int theirKing = State.KingSquares[Not(ToMove)];
 
             ulong targets = 0;
 
             // If we are generating evasions and in double check, then skip non-king moves.
-            if (!(evasions && MoreThanOne(State->Checkers)))
+            if (!(evasions && MoreThanOne(State.Checkers)))
             {
-                targets = evasions    ? LineBB[ourKing][lsb(State->Checkers)]
+                targets = evasions    ? LineBB[ourKing][lsb(State.Checkers)]
                         : nonEvasions ? ~us
                         : noisyMoves  ?  them
                         :               ~occ;
@@ -222,12 +222,12 @@
         /// </summary>
         public int GenLegal(ScoredMove* legal)
         {
-            int numMoves = (State->Checkers != 0) ? GenAll<GenEvasions>(legal) :
+            int numMoves = (State.Checkers != 0) ? GenAll<GenEvasions>(legal) :
                                                     GenAll<GenNonEvasions>(legal);
 
-            int ourKing   = State->KingSquares[ToMove];
-            int theirKing = State->KingSquares[Not(ToMove)];
-            ulong pinned  = State->BlockingPieces[ToMove];
+            int ourKing   = State.KingSquares[ToMove];
+            int theirKing = State.KingSquares[Not(ToMove)];
+            ulong pinned  = State.BlockingPieces[ToMove];
 
             ScoredMove* curr = legal;
             ScoredMove* end = legal + numMoves;
@@ -309,7 +309,7 @@
         /// </summary>
         public int GenPseudoLegal(ScoredMove* pseudo)
         {
-            return (State->Checkers != 0) ? GenAll<GenEvasions>   (pseudo)
+            return (State.Checkers != 0) ? GenAll<GenEvasions>   (pseudo)
                                           : GenAll<GenNonEvasions>(pseudo);
         }
 
@@ -319,7 +319,7 @@
         /// </summary>
         public int GenPseudoLegalQS(ScoredMove* pseudo)
         {
-            return (State->Checkers != 0) ? GenAll<GenEvasions>(pseudo)
+            return (State.Checkers != 0) ? GenAll<GenEvasions>(pseudo)
                                           : GenAll<GenNoisy>   (pseudo);
         }
     }

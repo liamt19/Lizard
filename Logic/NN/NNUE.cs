@@ -17,10 +17,24 @@ namespace Lizard.Logic.NN
         public static readonly bool UseARM = AdvSimd.IsSupported;
         public static bool UseFallback => !(UseAvx || UseSSE || UseARM);
 
+        public static int BucketForPerspective(int ksq, int perspective) => (KingBuckets[perspective == Black ? (ksq ^ 56) : ksq]);
+        public static ReadOnlySpan<int> KingBuckets =>
+        [
+             0,  1,  2,  3, 17, 16, 15, 14,
+             4,  5,  6,  7, 21, 20, 19, 18,
+             8,  9, 10, 11, 25, 24, 23, 22,
+             8,  9, 10, 11, 25, 24, 23, 22,
+            12, 12, 13, 13, 27, 27, 26, 26,
+            12, 12, 13, 13, 27, 27, 26, 26,
+            12, 12, 13, 13, 27, 27, 26, 26,
+            12, 12, 13, 13, 27, 27, 26, 26,
+        ];
+
+
         [MethodImpl(Inline)]
         public static void RefreshAccumulator(Position pos)
         {
-            Bucketed768.RefreshAccumulator(pos);
+            pos.Accumulators.RefreshIntoCache(pos);
         }
 
         [MethodImpl(Inline)]
@@ -29,18 +43,55 @@ namespace Lizard.Logic.NN
             return Bucketed768.GetEvaluation(pos);
         }
 
+
         [MethodImpl(Inline)]
-        public static void MakeMove(Position pos, Move m)
+        public static int FeatureIndexSingle(int pc, int pt, int sq, int kingSq, int perspective)
         {
-            Bucketed768.MakeMove(pos, m);
+            const int ColorStride = 64 * 6;
+            const int PieceStride = 64;
+
+            if (perspective == Black)
+            {
+                sq ^= 56;
+                kingSq ^= 56;
+            }
+
+            if (kingSq % 8 > 3)
+            {
+                sq ^= 7;
+                kingSq ^= 7;
+            }
+
+            return ((768 * KingBuckets[kingSq]) + ((pc ^ perspective) * ColorStride) + (pt * PieceStride) + (sq)) * Bucketed768.L1_SIZE;
         }
 
         [MethodImpl(Inline)]
-        public static void MakeNullMove(Position pos)
+        public static (int, int) FeatureIndex(int pc, int pt, int sq, int wk, int bk)
         {
-            Bucketed768.MakeNullMove(pos);
-        }
+            const int ColorStride = 64 * 6;
+            const int PieceStride = 64;
 
+            int wSq = sq;
+            int bSq = sq ^ 56;
+
+            if (wk % 8 > 3)
+            {
+                wk ^= 7;
+                wSq ^= 7;
+            }
+
+            bk ^= 56;
+            if (bk % 8 > 3)
+            {
+                bk ^= 7;
+                bSq ^= 7;
+            }
+
+            int whiteIndex = (768 * KingBuckets[wk]) + (pc * ColorStride) + (pt * PieceStride) + wSq;
+            int blackIndex = (768 * KingBuckets[bk]) + (Not(pc) * ColorStride) + (pt * PieceStride) + bSq;
+
+            return (whiteIndex * Bucketed768.L1_SIZE, blackIndex * Bucketed768.L1_SIZE);
+        }
 
 
         /// <summary>
@@ -174,7 +225,6 @@ namespace Lizard.Logic.NN
 
             Log($"\nNNUE evaluation: {baseEval}\n");
 
-            ref Accumulator Accumulator = ref *pos.State->Accumulator;
             ref Bitboard bb = ref pos.bb;
             for (int f = Files.A; f <= Files.H; f++)
             {

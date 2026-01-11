@@ -1,7 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 
-using Lizard.Logic.NN;
-
 namespace Lizard.Logic.Core
 {
     /// <summary>
@@ -12,10 +10,8 @@ namespace Lizard.Logic.Core
     /// and keep track of the squares that checks can occur on.
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
-    public unsafe struct StateInfo
+    public unsafe struct StateInfo()
     {
-        public static readonly nuint StateCopySize = (nuint)Marshal.OffsetOf<StateInfo>(nameof(_pad0));
-
         [FieldOffset(  0)] public fixed ulong CheckSquares[PieceNB];
         [FieldOffset( 48)] public fixed ulong BlockingPieces[2];
         [FieldOffset( 64)] public fixed ulong Pinners[2];
@@ -29,15 +25,5 @@ namespace Lizard.Logic.Core
         [FieldOffset(136)] public int CapturedPiece = None;
         [FieldOffset(140)] public int PliesFromNull = 0;
         [FieldOffset(144)] public CastlingStatus CastleStatus = CastlingStatus.None;
-        [FieldOffset(148)] private fixed byte _pad0[4];
-        [FieldOffset(152)] public Accumulator* Accumulator;
-
-
-
-        public StateInfo()
-        {
-
-        }
-
     }
 }
