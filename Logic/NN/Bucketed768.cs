@@ -485,7 +485,7 @@ namespace Lizard.Logic.NN
                 ftBiases[dst + L1_PAIR_COUNT] = temp[src + L1_PAIR_COUNT];
             }
 
-            NativeMemory.AlignedFree(temp);
+            Interop.AlignedFree(temp);
         }
 
         private static void PermuteL1(sbyte[,,] l1Weights)

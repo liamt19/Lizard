@@ -1,13 +1,12 @@
 ﻿#pragma warning disable CS8500 // This takes the address of, gets the size of, or declares a pointer to a managed type
 
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Lizard.Logic.Data
 {
     public unsafe class UnsafeVector<T> where T : new()
     {
-        private T* Items;
+        protected T* Items;
         private uint Count;
         private uint Extent;
 
@@ -28,7 +27,7 @@ namespace Lizard.Logic.Data
 
         ~UnsafeVector()
         {
-            NativeMemory.AlignedFree(Items);
+            Interop.AlignedFree(Items);
         }
 
         public T* this[int i] => &Items[i];

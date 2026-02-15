@@ -336,7 +336,7 @@ namespace Lizard.Logic.Threads
 
                     for (int i = -10; i < MaxSearchStackPly; i++)
                     {
-                        NativeMemory.AlignedFree((ss + i)->PV);
+                        Interop.AlignedFree((ss + i)->PV);
                     }
 
                     return;
@@ -394,7 +394,7 @@ namespace Lizard.Logic.Threads
 
             for (int i = -10; i < MaxSearchStackPly; i++)
             {
-                NativeMemory.AlignedFree((ss + i)->PV);
+                Interop.AlignedFree((ss + i)->PV);
             }
         }
 

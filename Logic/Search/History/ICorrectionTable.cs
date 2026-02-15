@@ -18,7 +18,7 @@ namespace Lizard.Logic.Search.History
             _History = (CorrectionEntry*)AlignedAllocZeroed((nuint)(sizeof(CorrectionEntry) * TableElements), AllocAlignment);
         }
 
-        public void Dispose() => NativeMemory.AlignedFree(_History);
+        public void Dispose() => Interop.AlignedFree(_History);
         public void Clear() => NativeMemory.Clear(_History, (nuint)(sizeof(CorrectionEntry) * TableElements));
     }
 }

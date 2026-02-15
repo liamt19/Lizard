@@ -77,6 +77,6 @@ namespace Lizard.Logic.NN
             Computed[Color.White] = Computed[Color.Black] = false;
         }
 
-        public void Dispose() => NativeMemory.AlignedFree(White);
+        public void Dispose() => Interop.AlignedFree(White);
     }
 }

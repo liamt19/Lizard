@@ -109,13 +109,16 @@ namespace Lizard.Logic.Core
             CastlingRookSquares = new int[(int)CastlingStatus.All];
             CastlingRookPaths = new ulong[(int)CastlingStatus.All];
 
-
             this.UpdateNN = createAccumulators;
             this.Owner = owner;
 
             this.bb = new Bitboard();
 
-            Accumulators = new AccumulatorStack();
+            if (UpdateNN)
+            {
+                Accumulators = new AccumulatorStack();
+            }
+            
             Hashes = new List<ulong>(1024);
             States = new List<StateInfo>(256);
 
@@ -1091,12 +1094,13 @@ namespace Lizard.Logic.Core
 
             SetState();
 
-            //State.CapturedPiece = None;
-
-            Accumulators.Reset();
-            Accumulators.RefreshIntoCache(this);
-            Owner.ResetCaches();
-
+            if (UpdateNN)
+            {
+                Accumulators.Reset();
+                Accumulators.RefreshIntoCache(this);
+                Owner.ResetCaches();
+            }
+            
             return true;
         }
 

@@ -36,7 +36,7 @@ namespace Lizard.Logic.Search.History
             for (nuint i = 0; i < Length; i++)
                 _History[i].Dispose();
 
-            NativeMemory.AlignedFree(_History);
+            Interop.AlignedFree(_History);
         }
 
         public void Clear()

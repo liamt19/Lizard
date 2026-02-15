@@ -138,6 +138,12 @@ namespace Lizard.Logic.Util
         }
 
 
+        public static unsafe void AlignedFree(void* ptr)
+        {
+            NativeMemory.AlignedFree(ptr);
+        }
+
+
         /// <summary>
         /// Allocates a block of memory of size <paramref name="byteCount"/>, aligned on the boundary <paramref name="alignment"/>,
         /// and clears the block before returning its address.
@@ -150,7 +156,6 @@ namespace Lizard.Logic.Util
         {
             void* block = NativeMemory.AlignedAlloc(byteCount, alignment);
             NativeMemory.Clear(block, byteCount);
-
             return block;
         }
 
@@ -160,10 +165,7 @@ namespace Lizard.Logic.Util
         public static unsafe T* AlignedAllocZeroed<T>(nuint items, nuint alignment = AllocAlignment)
         {
             nuint bytes = ((nuint)sizeof(T) * (nuint)items);
-            void* block = NativeMemory.AlignedAlloc(bytes, alignment);
-            NativeMemory.Clear(block, bytes);
-
-            return (T*)block;
+            return (T*)AlignedAllocZeroed(bytes, alignment);
         }
 
         public static unsafe T* AlignedRealloc<T>(T* block, nuint items, nuint alignment = AllocAlignment)

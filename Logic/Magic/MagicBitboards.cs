@@ -90,8 +90,8 @@ namespace Lizard.Logic.Magic
             if (UsePext)
             {
                 //  We will be using the fancy magics, so free the memory for these
-                NativeMemory.AlignedFree(RookMagics);
-                NativeMemory.AlignedFree(BishopMagics);
+                Interop.AlignedFree(RookMagics);
+                Interop.AlignedFree(BishopMagics);
 
                 RookMagics = FancyRookMagics;
                 BishopMagics = FancyBishopMagics;
@@ -99,13 +99,13 @@ namespace Lizard.Logic.Magic
             else
             {
                 //  We will be using the normal magics, so free the memory of the fancy ones
-                NativeMemory.AlignedFree(FancyRookMagics);
-                NativeMemory.AlignedFree(FancyBishopMagics);
+                Interop.AlignedFree(FancyRookMagics);
+                Interop.AlignedFree(FancyBishopMagics);
 
                 //  InitializeFancyMagics borked everything in RookTable and BishopTable
                 //  so we need to free + reinitialize these.
-                NativeMemory.AlignedFree(RookMagics);
-                NativeMemory.AlignedFree(BishopMagics);
+                Interop.AlignedFree(RookMagics);
+                Interop.AlignedFree(BishopMagics);
                 RookMagics   = InitializeMagics(Piece.Rook, RookTable);
                 BishopMagics = InitializeMagics(Piece.Bishop, BishopTable);
             }

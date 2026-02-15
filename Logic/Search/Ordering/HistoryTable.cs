@@ -63,7 +63,7 @@ namespace Lizard.Logic.Search.Ordering
                 Continuations[i][1].Dispose();
             }
 
-            NativeMemory.AlignedFree(Continuations);
+            Interop.AlignedFree(Continuations);
         }
 
         public void Clear()

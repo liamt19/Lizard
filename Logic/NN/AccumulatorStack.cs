@@ -7,7 +7,7 @@ namespace Lizard.Logic.NN
 {
     public unsafe class AccumulatorStack
     {
-        private readonly UnsafeVector<Accumulator> AccStack;
+        private readonly AccumulatorVector AccStack;
         private int HeadIndex;
 
         public Accumulator* Previous => AccStack[HeadIndex - 1];

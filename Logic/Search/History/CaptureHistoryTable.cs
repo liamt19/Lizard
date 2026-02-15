@@ -26,7 +26,7 @@ namespace Lizard.Logic.Search.History
 
         public static int HistoryIndex(int ourPiece, int toSquare, int capturedPt) => (capturedPt * 768) + (toSquare * 12) + ourPiece;
 
-        public void Dispose() => NativeMemory.AlignedFree(_History);
+        public void Dispose() => Interop.AlignedFree(_History);
         public void Clear() => NativeMemory.Clear(_History, (nuint)sizeof(StatEntry) * CaptureHistoryElements);
     }
 }

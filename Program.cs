@@ -202,6 +202,10 @@ namespace Lizard
                 {
                     Bucketed768.PrintActivationStats();
                 }
+                else if (input.EqualsIgnoreCase("gc"))
+                {
+                    ForceGC();
+                }
                 else
                 {
                     //  You can just copy paste in a FEN string rather than typing "position fen" before it.

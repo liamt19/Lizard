@@ -47,7 +47,7 @@ namespace Lizard.Logic.Search
 
             if (PV != null)
             {
-                NativeMemory.AlignedFree(PV);
+                Interop.AlignedFree(PV);
                 PV = null;
             }
 

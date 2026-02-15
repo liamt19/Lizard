@@ -39,7 +39,7 @@ namespace Lizard.Logic.Transposition
         public unsafe void Initialize(int mb)
         {
             if (Clusters != null)
-                NativeMemory.AlignedFree(Clusters);
+                Interop.AlignedFree(Clusters);
 
             ClusterCount = (ulong)mb * 0x100000UL / (ulong)sizeof(TTCluster);
             nuint allocSize = ((nuint)sizeof(TTCluster) * (nuint)ClusterCount);

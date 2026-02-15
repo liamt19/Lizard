@@ -26,7 +26,7 @@ namespace Lizard.Logic.Search.History
         }
 
         public void Clear() => new Span<StatEntry>(_History, Length).Fill(FillValue);
-        public void Dispose() => NativeMemory.AlignedFree(_History);
+        public void Dispose() => Interop.AlignedFree(_History);
 
         public StatEntry this[int idx]
         {
